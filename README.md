@@ -11,7 +11,7 @@
 
 </h1>
 
-A user-friendly, batteries-included, opinionated Emacs configuration built around [Meow](https://github.com/meow-edit/meow)'s editing paradigm of selection -> extend via visual hints -> act. 
+A user-friendly, batteries-included, opinionated Emacs configuration built around [Meow](https://github.com/meow-edit/meow)'s editing paradigm of select -> extend -> act with the aid of visual aids and tooltips. 
 It is (meant to be) for Meow what Doom and evil-collection are for Evil. It breaks meow's minimal extension rule to implement a real `SPC` leader instead of Meow's keypad, a labelled menu for every major mode under `SPC m`, integrations for the most popular packages, and everything discoverable through which-key and `C-h`. The original keypad still exists, but more as a compatibility option.
 New editing surfaces are OS windows, so your window manager arranges them.
 
