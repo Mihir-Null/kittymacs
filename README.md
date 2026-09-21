@@ -15,7 +15,7 @@ A user-friendly, batteries-included, opinionated Emacs configuration built aroun
 It is (meant to be) for Meow what Doom and evil-collection are for Evil. It breaks meow's minimal extension rule to implement a real `SPC` leader instead of Meow's keypad, a labelled menu for every major mode under `SPC m`, integrations for the most popular packages, and everything discoverable through which-key and `C-h`. The original keypad still exists, but more as a compatibility option.
 New editing surfaces are OS windows, so your window manager arranges them.
 
-The whole configuration is written as a literate org-roam book (thank you Donald Knuth) in [`literate/`](literate/index.org): every chapter explains one part of the editor, shows the small piece of Lisp that configures it, and explains why.
+The whole configuration is written as a literate org-roam wiki (thank you Donald Knuth) in [`literate/`](literate/index.org): every chapter explains one part of the editor, shows the small piece of Lisp that configures it, and explains why.
 
 ## Install
 
