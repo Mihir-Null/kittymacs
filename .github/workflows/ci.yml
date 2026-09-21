@@ -6,7 +6,8 @@ name: CI
 #      supported Emacs and the current one?                        (startup)
 #   3. Does the same hold on Windows, the machine this is written on? (windows)
 #   4. And on macOS?                                                    (macos)
-#   5. Does the Nix flake still evaluate, with its nix-darwin example?  (nix)
+#   5. Does the Nix flake still evaluate, with its nix-darwin and
+#      nix-on-droid examples?  (nix)
 # The weekly run skips the package cache so upstream package breakage
 # shows up even when nothing here changed.
 
@@ -113,7 +114,7 @@ jobs:
           EMACS_DOTS_TEST_PACKAGES: ${{ github.workspace }}/var/elpa
 
   nix:
-    name: Flake evaluates, with the nix-darwin example
+    name: Flake evaluates, with its example hosts
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -126,6 +127,11 @@ jobs:
         run: |
           nix eval --no-write-lock-file --override-input kittymacs "path:$PWD" \
             --json ./nix/example#darwinConfigurations.example.config.environment.systemPackages \
+            --apply 'ps: map (p: p.name) ps'
+      - name: Evaluate the example nix-on-droid device against this checkout
+        run: |
+          nix eval --no-write-lock-file --override-input kittymacs "path:$PWD" \
+            --json ./nix/example-nix-on-droid#nixOnDroidConfigurations.default.config.home-manager.config.home.packages \
             --apply 'ps: map (p: p.name) ps'
 
   windows:

@@ -20,6 +20,9 @@
 (declare-function ghostel-readonly-enter "ghostel" ())
 (declare-function ghostel "ghostel" (&optional arg))
 (declare-function ghostel-project "ghostel" (&optional arg))
+;; The Eshell fallback below: `kittymacs-shell' is loaded before this module
+;; by `init.el', but this module does not require it.
+(declare-function kittymacs-eshell-project "kittymacs-shell" ())
 
 (defgroup kittymacs-terminal nil
   "The integrated terminal."
@@ -39,8 +42,16 @@ is what the terminal needs."
        (file-exists-p
         (expand-file-name (concat "ghostel-module" module-file-suffix)
                           kittymacs-terminal-module-directory))))
+(defcustom kittymacs-terminal-ghostel
+  (not (eq system-type 'android))
+  "Whether ghostel provides the terminal.
+Off on Android, which has neither `git' for ghostel's `:vc' checkout nor a
+prebuilt native module.  `kittymacs-terminal-open' falls back to Eshell
+whenever this is nil."
+  :type 'boolean)
 (use-package ghostel
   :vc (:url "https://github.com/dakra/ghostel" :lisp-dir "lisp" :rev :newest)
+  :if kittymacs-terminal-ghostel
   :defer t
   :commands (ghostel ghostel-project ghostel-other ghostel-list-buffers
              ghostel-create ghostel-exec ghostel-compile ghostel-recompile)
@@ -147,16 +158,21 @@ The buffer becomes read-only, so Meow's grammar can select its output."
 (defun kittymacs-terminal-open (&optional arg)
   "Open a terminal.  With prefix ARG, open another one.
 Ghostel offers to fetch its native module the first time; declining that
-offer leaves the terminal unavailable, so say so in words."
+offer leaves the terminal unavailable, so say so in words.  Where ghostel
+is not used at all, Eshell answers this key instead."
   (interactive "P")
-  (condition-case error (ghostel arg)
-    (void-function (kittymacs-terminal--without-module error))))
+  (if (not kittymacs-terminal-ghostel)
+      (eshell arg)
+    (condition-case error (ghostel arg)
+      (void-function (kittymacs-terminal--without-module error)))))
 
 (defun kittymacs-terminal-project (&optional arg)
   "Open a terminal at the current project's root.  ARG is passed through."
   (interactive "P")
-  (condition-case error (ghostel-project arg)
-    (void-function (kittymacs-terminal--without-module error))))
+  (if (not kittymacs-terminal-ghostel)
+      (kittymacs-eshell-project)
+    (condition-case error (ghostel-project arg)
+      (void-function (kittymacs-terminal--without-module error)))))
 
 (defun kittymacs-terminal-msys2 (&optional arg)
   "Open an MSYS2 UCRT64 login shell in a terminal.
@@ -173,12 +189,14 @@ With prefix ARG, create another one instead of reusing the existing buffer."
                                        ghostel-environment))
           (ghostel-buffer-name "*ghostel: msys2*"))
       (ghostel arg))))
-(with-eval-after-load 'project
-  (add-to-list 'project-switch-commands '(ghostel-project "Terminal") t))
+(when kittymacs-terminal-ghostel
+  (with-eval-after-load 'project
+    (add-to-list 'project-switch-commands '(ghostel-project "Terminal") t)))
 
 (use-package consult-ghostel
   :vc (:url "https://github.com/dakra/ghostel"
        :lisp-dir "extensions/consult-ghostel" :rev :newest)
+  :if kittymacs-terminal-ghostel
   :after (ghostel consult)
   :demand t
   :bind (:map ghostel-semi-char-mode-map
@@ -203,11 +221,12 @@ With prefix ARG, create another one instead of reusing the existing buffer."
 
 ;; `kittymacs-define-localleader' replaces a mode's whole map, and prog-mode's
 ;; belongs to the programming chapter, so add to the map it built.
-(with-eval-after-load 'kittymacs-programming
-  (when-let* ((map (alist-get 'prog-mode kittymacs-localleader-alist)))
-    (keymap-set map "t" (cons "compile in a terminal" #'ghostel-compile))
-    (keymap-set map "T" (cons "recompile in a terminal" #'ghostel-recompile))
-    (kittymacs-refresh-localleaders)))
+(when kittymacs-terminal-ghostel
+  (with-eval-after-load 'kittymacs-programming
+    (when-let* ((map (alist-get 'prog-mode kittymacs-localleader-alist)))
+      (keymap-set map "t" (cons "compile in a terminal" #'ghostel-compile))
+      (keymap-set map "T" (cons "recompile in a terminal" #'ghostel-recompile))
+      (kittymacs-refresh-localleaders))))
 (kittymacs-define-localleader 'ghostel-mode
   "i" (cons "type in the terminal" #'ghostel-semi-char-mode)
   "I" (cons "send every key (char mode)" #'ghostel-char-mode)

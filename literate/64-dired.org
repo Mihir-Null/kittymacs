@@ -35,8 +35,8 @@ Entering a directory reuses the buffer instead of leaving a trail of Dired
 buffers. Copies and deletes recurse without asking per directory, and when
 two Dired windows are visible the other one is the default target, which
 makes copying between directories a two-step affair. Directories sort
-first: GNU =ls= does this with a switch, and on Windows, where Emacs lists
-directories itself, a variable does.
+first: GNU =ls= does this with a switch, and on Windows and Android, where
+Emacs lists directories itself, a variable does.
 
 #+begin_src emacs-lisp
 (setopt dired-kill-when-opening-new-dired-buffer t
@@ -48,7 +48,11 @@ directories itself, a variable does.
         dired-create-destination-dirs 'ask
         wdired-allow-to-change-permissions t)
 
-(if (eq system-type 'windows-nt)
+;; Windows has no `ls' at all.  Android has one, but every subprocess there
+;; is started through an executable loader that traces its children, so the
+;; cheapest listing is the one that starts no process: Emacs's own `ls-lisp'
+;; reads the directory itself and sorts directories first without GNU `ls'.
+(if (memq system-type '(windows-nt android))
     (setopt ls-lisp-use-insert-directory-program nil
             ls-lisp-dirs-first t
             dired-listing-switches "-lah")

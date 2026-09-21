@@ -16,7 +16,11 @@
         dired-create-destination-dirs 'ask
         wdired-allow-to-change-permissions t)
 
-(if (eq system-type 'windows-nt)
+;; Windows has no `ls' at all.  Android has one, but every subprocess there
+;; is started through an executable loader that traces its children, so the
+;; cheapest listing is the one that starts no process: Emacs's own `ls-lisp'
+;; reads the directory itself and sorts directories first without GNU `ls'.
+(if (memq system-type '(windows-nt android))
     (setopt ls-lisp-use-insert-directory-program nil
             ls-lisp-dirs-first t
             dired-listing-switches "-lah")

@@ -2,8 +2,17 @@
 ;; Generated from literate/45-frames.org; edit the Org source, then tangle.
 
 ;;; Code:
+(defcustom kittymacs-frames-only
+  (not (eq system-type 'android))
+  "Whether every auxiliary buffer becomes its own operating-system window.
+Off on Android, where an Emacs frame is an activity in the task switcher
+rather than a window some desktop window manager arranges for you.  Set
+it in `private.el', before this module is loaded, to override."
+  :type 'boolean
+  :group 'kittymacs)
 (use-package frames-only-mode
   :ensure t
+  :if kittymacs-frames-only
   :demand t
   :custom
   (frames-only-mode-use-windows-for-completion t)

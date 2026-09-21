@@ -40,6 +40,18 @@ in
       '';
     };
 
+    installFonts = lib.mkOption {
+      type = lib.types.bool;
+      default = cfg.installPackages;
+      defaultText = lib.literalExpression "config.programs.kittymacs.installPackages";
+      description = ''
+        Install the Nerd Font that renders the icons, and turn on
+        fontconfig.  Turn off for a terminal-only Emacs, which has no use
+        for either; the configuration detects the missing font and renders
+        without icons.
+      '';
+    };
+
     package = lib.mkOption {
       type = lib.types.package;
       default = pkgs.emacs;
@@ -49,9 +61,10 @@ in
   };
 
   config = lib.mkIf cfg.enable {
-    home.packages = lib.mkIf cfg.installPackages
-      ([ cfg.package ] ++ tools.programs ++ tools.fonts);
-    fonts.fontconfig.enable = lib.mkIf cfg.installPackages (lib.mkDefault true);
+    home.packages =
+      (lib.optionals cfg.installPackages ([ cfg.package ] ++ tools.programs))
+      ++ (lib.optionals cfg.installFonts tools.fonts);
+    fonts.fontconfig.enable = lib.mkIf cfg.installFonts (lib.mkDefault true);
 
     xdg.configFile."emacs" = lib.mkIf (cfg.source != null) {
       source = config.lib.file.mkOutOfStoreSymlink cfg.source;

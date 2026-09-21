@@ -15,7 +15,7 @@
         (delq #'process-kill-buffer-query-function kill-buffer-query-functions))
 (use-package exec-path-from-shell
   :ensure t
-  :if (not (eq system-type 'windows-nt))
+  :if (not (memq system-type '(windows-nt android)))
   :custom
   (exec-path-from-shell-arguments (and (eq system-type 'darwin) '("-l")))
   :config
