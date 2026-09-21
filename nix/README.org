@@ -82,10 +82,18 @@ off on its own for a terminal Emacs, which has no use for the icon font.
 nix-on-droid runs Nix on Android, and it consumes home-manager modules, so
 the module above is the whole integration: no Android-specific Nix code
 exists in this repository. [[file:example-nix-on-droid/flake.nix][example-nix-on-droid/flake.nix]] is a complete
-device; =nix-on-droid switch --flake .#default= applies it. Use
+device; =nix-on-droid switch --flake .#default --impure= applies it. Use
 =pkgs.emacs-pgtk=, which serves Wayland and X11 both, with [[https://github.com/termux/termux-x11][Termux:X11]] for a
 display; or =pkgs.emacs-nox= with =installFonts = false= to stay in the
 console.
+
+The =--impure= is nix-on-droid's own requirement rather than anything this
+repository does. proot-static cannot be built on the device, so nix-on-droid
+hardcodes the store path of a pre-built one and reaches it through
+=builtins.storePath=, which pure evaluation forbids; every flake-based
+nix-on-droid build needs the flag. CI therefore checks the package list the
+module produces rather than the activation script, which is the same check
+the nix-darwin example gets and stays inside pure evaluation.
 
 Inside nix-on-droid, =system-type= is =gnu/linux=. This is an ordinary
 GNU/Linux Emacs that happens to be on a telephone, so *none* of the
@@ -140,7 +148,8 @@ nix eval --no-write-lock-file --override-input kittymacs path:$PWD \
   --json ./nix/example#darwinConfigurations.example.config.environment.systemPackages \
   --apply 'ps: map (p: p.name) ps'
 nix eval --no-write-lock-file --override-input kittymacs path:$PWD \
-  --json ./nix/example-nix-on-droid#nixOnDroidConfigurations.default.activationPackage.drvPath
+  --json ./nix/example-nix-on-droid#nixOnDroidConfigurations.default.config.home-manager.config.home.packages \
+  --apply 'ps: map (p: p.name) ps'
 #+end_src
 
 CI runs all of them on Linux; building the nix-darwin example needs a Mac

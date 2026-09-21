@@ -1,13 +1,22 @@
 # A complete nix-on-droid device that uses the kittymacs module.  Copy it as
 # a starting point.  On the phone:
 #
-#   nix-on-droid switch --flake .#default
+#   nix-on-droid switch --flake .#default --impure
 #
-# To evaluate it against the checkout you are in, rather than the published
-# repository, override the input (CI does this; nothing is built):
+# The --impure is nix-on-droid's, not this flake's.  proot-static cannot be
+# built on the device, so nix-on-droid hardcodes the store path of a
+# pre-built one and reaches it with `builtins.storePath', which pure
+# evaluation forbids.  Anything that evaluates the activation script needs
+# the flag.
+#
+# To check this file against the checkout you are in, rather than the
+# published repository, evaluate the package list it produces.  That is what
+# this repository contributes, it stays inside pure evaluation, and it is
+# the same check the nix-darwin example gets (CI runs it; nothing is built):
 #
 #   nix eval --no-write-lock-file --override-input kittymacs path:$PWD \
-#     --json ./nix/example-nix-on-droid#nixOnDroidConfigurations.default.activationPackage.drvPath
+#     --json ./nix/example-nix-on-droid#nixOnDroidConfigurations.default.config.home-manager.config.home.packages \
+#     --apply 'ps: map (p: p.name) ps'
 #
 # This is the *other* Android path, and it is a different machine from the
 # Android port of Emacs.  Here Emacs is an ordinary GNU/Linux Emacs running

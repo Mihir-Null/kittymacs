@@ -131,7 +131,8 @@ jobs:
       - name: Evaluate the example nix-on-droid device against this checkout
         run: |
           nix eval --no-write-lock-file --override-input kittymacs "path:$PWD" \
-            --json ./nix/example-nix-on-droid#nixOnDroidConfigurations.default.activationPackage.drvPath
+            --json ./nix/example-nix-on-droid#nixOnDroidConfigurations.default.config.home-manager.config.home.packages \
+            --apply 'ps: map (p: p.name) ps'
 
   windows:
     name: Fresh install and startup (Windows, Emacs 30.1)
