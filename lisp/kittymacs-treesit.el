@@ -1,4 +1,4 @@
-;;; uwumacs-treesit.el --- Portable Tree-sitter policy -*- lexical-binding: t; -*-
+;;; kittymacs-treesit.el --- Portable Tree-sitter policy -*- lexical-binding: t; -*-
 ;; Generated from literate/74-languages.org; edit the Org source, then tangle.
 
 ;;; Commentary:
@@ -12,10 +12,10 @@
 (require 'cl-lib)
 (require 'rx)
 (require 'treesit)
-(defgroup uwumacs-treesit nil
+(defgroup kittymacs-treesit nil
   "Portable Tree-sitter policy for the starter configuration."
-  :group 'uwumacs)
-(defcustom uwumacs-treesit-language-source-alist
+  :group 'kittymacs)
+(defcustom kittymacs-treesit-language-source-alist
   '((bash "https://github.com/tree-sitter/tree-sitter-bash"
           "8509e3229b863c255ab6b61f3bf74ad0bf14e8bc")
     (cmake "https://github.com/uyha/tree-sitter-cmake"
@@ -55,8 +55,8 @@ Those ABIs are loadable by Emacs 30 as well as newer Emacs releases.  Each
 entry has the same shape accepted by `treesit-language-source-alist':
 (LANGUAGE REPOSITORY REVISION &optional SOURCE-DIRECTORY CC CXX)."
   :type '(repeat sexp)
-  :group 'uwumacs-treesit)
-(defconst uwumacs-treesit-mode-remaps
+  :group 'kittymacs-treesit)
+(defconst kittymacs-treesit-mode-remaps
   '((yaml-mode yaml-ts-mode yaml)
     (bash-mode bash-ts-mode bash)
     (typescript-mode typescript-ts-mode typescript)
@@ -65,18 +65,18 @@ entry has the same shape accepted by `treesit-language-source-alist':
     (python-mode python-ts-mode python)
     (typst-mode typst-ts-mode typst))
   "Classic mode, Tree-sitter mode, and grammar triples managed here.")
-(defun uwumacs-treesit--language-available-p (language)
+(defun kittymacs-treesit--language-available-p (language)
   "Return non-nil when LANGUAGE can be loaded by this Emacs build."
   (and (treesit-available-p)
        (condition-case nil
            (treesit-language-available-p language)
          (error nil))))
-(defun uwumacs-treesit-apply-pinned-sources ()
+(defun kittymacs-treesit-apply-pinned-sources ()
   "Replace Lambda's moving grammar recipes with pinned recipes."
-  (dolist (source uwumacs-treesit-language-source-alist)
+  (dolist (source kittymacs-treesit-language-source-alist)
     (setf (alist-get (car source) treesit-language-source-alist)
           (cdr source))))
-(defun uwumacs-treesit--git-clone-revision
+(defun kittymacs-treesit--git-clone-revision
     (original-function url revision workdir)
   "Clone URL at exact REVISION into WORKDIR for `treesit'.
 
@@ -101,25 +101,25 @@ ORIGINAL-FUNCTION unchanged."
          "git" nil t nil "-C" workdir "checkout" "--detach" "--quiet"
          "FETCH_HEAD"))
     (funcall original-function url revision workdir)))
-(defun uwumacs-treesit-refresh-mode-remaps (&rest _)
+(defun kittymacs-treesit-refresh-mode-remaps (&rest _)
   "Refresh managed mode remaps for the grammars available right now.
 
 Any unconditional remaps inherited from Lambda are removed first.  A remap is
 then added only when its target mode exists and its grammar loads successfully."
   (interactive)
-  (let ((managed-modes (mapcar #'car uwumacs-treesit-mode-remaps)))
+  (let ((managed-modes (mapcar #'car kittymacs-treesit-mode-remaps)))
     (setq major-mode-remap-alist
           (cl-remove-if
            (lambda (remap) (memq (car remap) managed-modes))
            major-mode-remap-alist)))
-  (dolist (spec uwumacs-treesit-mode-remaps)
+  (dolist (spec kittymacs-treesit-mode-remaps)
     (pcase-let ((`(,classic-mode ,treesit-mode ,language) spec))
       (when (and (fboundp treesit-mode)
-                 (uwumacs-treesit--language-available-p language))
+                 (kittymacs-treesit--language-available-p language))
         (add-to-list 'major-mode-remap-alist
                      (cons classic-mode treesit-mode) t))))
   major-mode-remap-alist)
-(defun uwumacs-treesit-install-language-grammar (language)
+(defun kittymacs-treesit-install-language-grammar (language)
   "Install pinned grammar LANGUAGE, then refresh conditional remaps."
   (interactive
    (list
@@ -127,36 +127,36 @@ then added only when its target mode exists and its grammar loads successfully."
      (completing-read
       "Install pinned grammar: "
       (mapcar (lambda (source) (symbol-name (car source)))
-              uwumacs-treesit-language-source-alist)
+              kittymacs-treesit-language-source-alist)
       nil t))))
-  (unless (assq language uwumacs-treesit-language-source-alist)
+  (unless (assq language kittymacs-treesit-language-source-alist)
     (user-error "No pinned Tree-sitter recipe for %s" language))
-  (uwumacs-treesit-apply-pinned-sources)
+  (kittymacs-treesit-apply-pinned-sources)
   (treesit-install-language-grammar language)
-  (uwumacs-treesit-refresh-mode-remaps))
-(defun uwumacs-treesit-install-all-grammars ()
+  (kittymacs-treesit-refresh-mode-remaps))
+(defun kittymacs-treesit-install-all-grammars ()
   "Install every missing pinned grammar and refresh mode remaps."
   (interactive)
   (unless (treesit-available-p)
     (user-error "This Emacs build does not include Tree-sitter support"))
-  (uwumacs-treesit-apply-pinned-sources)
-  (dolist (source uwumacs-treesit-language-source-alist)
+  (kittymacs-treesit-apply-pinned-sources)
+  (dolist (source kittymacs-treesit-language-source-alist)
     (let ((language (car source)))
-      (unless (uwumacs-treesit--language-available-p language)
+      (unless (kittymacs-treesit--language-available-p language)
         (treesit-install-language-grammar language))))
-  (uwumacs-treesit-refresh-mode-remaps))
-(uwumacs-treesit-apply-pinned-sources)
-(uwumacs-treesit-refresh-mode-remaps)
-(unless (advice-member-p #'uwumacs-treesit--git-clone-revision
+  (kittymacs-treesit-refresh-mode-remaps))
+(kittymacs-treesit-apply-pinned-sources)
+(kittymacs-treesit-refresh-mode-remaps)
+(unless (advice-member-p #'kittymacs-treesit--git-clone-revision
                          #'treesit--git-clone-repo)
   (advice-add #'treesit--git-clone-repo :around
-              #'uwumacs-treesit--git-clone-revision))
+              #'kittymacs-treesit--git-clone-revision))
 ;; Lambda's bulk command calls the built-in installer directly.  Refresh after
 ;; each successful installation so a restart is not required before the remap
 ;; becomes active.
-(unless (advice-member-p #'uwumacs-treesit-refresh-mode-remaps
+(unless (advice-member-p #'kittymacs-treesit-refresh-mode-remaps
                          #'treesit-install-language-grammar)
   (advice-add #'treesit-install-language-grammar :after
-              #'uwumacs-treesit-refresh-mode-remaps))
-(provide 'uwumacs-treesit)
-;;; uwumacs-treesit.el ends here
+              #'kittymacs-treesit-refresh-mode-remaps))
+(provide 'kittymacs-treesit)
+;;; kittymacs-treesit.el ends here

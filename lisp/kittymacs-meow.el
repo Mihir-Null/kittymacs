@@ -1,12 +1,12 @@
-;;; uwumacs-meow.el --- Selection-first editing -*- lexical-binding: t; -*-
+;;; kittymacs-meow.el --- Selection-first editing -*- lexical-binding: t; -*-
 ;; Generated from literate/40-editing.org; edit the Org source, then tangle.
 
 ;; Grammar adapted from Colin McLear's cpm-setup-meow.el (GPL-3.0-or-later).
 
 ;;; Code:
 
-(require 'uwumacs-leader)
-(defun uwumacs-meow-setup ()
+(require 'kittymacs-leader)
+(defun kittymacs-meow-setup ()
   "Install the QWERTY selection grammar and the Motion-state basics."
   ;; Motion state: application buffers keep their own keys; only j/k move.
   (meow-motion-define-key
@@ -98,13 +98,13 @@
   (with-eval-after-load 'org
     ;; Treat @ as part of symbols/words during Meow movement in Org.
     (modify-syntax-entry ?@ "_" org-mode-syntax-table))
-  (uwumacs-meow-setup)
+  (kittymacs-meow-setup)
   (meow-global-mode 1)
-  (uwumacs-leader-enable))
+  (kittymacs-leader-enable))
 (use-package meow-tree-sitter
   :ensure t
   :after meow
   :config
   (meow-tree-sitter-register-defaults))
-(provide 'uwumacs-meow)
-;;; uwumacs-meow.el ends here
+(provide 'kittymacs-meow)
+;;; kittymacs-meow.el ends here

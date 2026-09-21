@@ -1,5 +1,5 @@
 {
-  description = "UwUmacs: a Meow-first Emacs configuration, with the tools it looks for";
+  description = "kittymacs: a Meow-first Emacs configuration, with the tools it looks for";
 
   inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
 
@@ -11,16 +11,16 @@
       forEachSystem = f: nixpkgs.lib.genAttrs systems (system: f nixpkgs.legacyPackages.${system});
     in
     {
-      # nix-darwin: `imports = [ uwumacs.darwinModules.default ];` then
-      # `programs.uwumacs.enable = true;`.  Installs Emacs, every program the
+      # nix-darwin: `imports = [ kittymacs.darwinModules.default ];` then
+      # `programs.kittymacs.enable = true;`.  Installs Emacs, every program the
       # configuration discovers, and the icon font.  See nix/README.org.
       darwinModules.default = import ./nix/darwin-module.nix;
-      darwinModules.uwumacs = self.darwinModules.default;
+      darwinModules.kittymacs = self.darwinModules.default;
 
       # home-manager: links the checkout into place as ~/.config/emacs and can
       # install the same tools for a user without nix-darwin.
       homeManagerModules.default = import ./nix/home-module.nix;
-      homeManagerModules.uwumacs = self.homeManagerModules.default;
+      homeManagerModules.kittymacs = self.homeManagerModules.default;
 
       # The programs the configuration discovers at startup, as one list, so a
       # plain `nix profile install` or a NixOS configuration can use them too.
@@ -28,7 +28,7 @@
         let tools = import ./nix/tools.nix { inherit pkgs; };
         in {
           tools = pkgs.buildEnv {
-            name = "uwumacs-tools";
+            name = "kittymacs-tools";
             paths = tools.programs ++ tools.fonts;
           };
           default = tools.emacs;
@@ -42,7 +42,7 @@
           default = pkgs.mkShell {
             packages = [ tools.emacs ] ++ tools.programs;
             shellHook = ''
-              echo "UwUmacs: emacs -Q --batch -l tools/tangle.el -- --check"
+              echo "kittymacs: emacs -Q --batch -l tools/tangle.el -- --check"
             '';
           };
         });

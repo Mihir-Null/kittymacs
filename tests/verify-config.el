@@ -27,15 +27,15 @@
 (setq user-emacs-directory (file-name-as-directory dots-test-root)
       default-directory user-emacs-directory
       user-init-file (expand-file-name "init.el" user-emacs-directory)
-      uwumacs-org-directory (expand-file-name "org/" user-emacs-directory)
+      kittymacs-org-directory (expand-file-name "org/" user-emacs-directory)
       native-comp-jit-compilation nil)
 (make-directory (expand-file-name "var/etc" user-emacs-directory) t)
 (with-temp-file (expand-file-name "var/etc/custom.el" user-emacs-directory)
   (insert "(setq dots-test-custom-loaded t)\n"))
 (with-temp-file (expand-file-name "lisp/private.el" user-emacs-directory)
-  (insert "(unless (boundp 'uwumacs-project-directory) (error \"Private loaded before platform\"))\n"
+  (insert "(unless (boundp 'kittymacs-project-directory) (error \"Private loaded before platform\"))\n"
           "(setq dots-test-private-loads (1+ (if (boundp 'dots-test-private-loads) dots-test-private-loads 0)))\n"
-          "(setopt uwumacs-project-directory (expand-file-name \"test-projects/\" user-emacs-directory))\n"))
+          "(setopt kittymacs-project-directory (expand-file-name \"test-projects/\" user-emacs-directory))\n"))
 (when (getenv "EMACS_DOTS_TEST_PACKAGES")
   (advice-add 'package-initialize :before
               (lambda (&rest _)
@@ -48,42 +48,42 @@
       (run-hooks 'emacs-startup-hook)
       (require 'cus-edit)
       (dots-test-check (= dots-test-private-loads 1) "private.el must load once")
-      (dots-test-check (equal uwumacs-project-directory
+      (dots-test-check (equal kittymacs-project-directory
                               (expand-file-name "test-projects/" user-emacs-directory))
                        "Project override was overwritten")
       (dots-test-check (and (boundp 'dots-test-custom-loaded) dots-test-custom-loaded)
                        "Persistent Customize file was not loaded")
       (dots-test-check (string-suffix-p "var/etc/custom.el" custom-file)
                        "Customize file is not in persistent state")
-      (dolist (feature '(uwumacs-literate uwumacs-dashboard uwumacs-meow
-                        uwumacs-leader uwumacs-keys uwumacs-treesit uwumacs-languages
-                        uwumacs-terminal uwumacs-treemacs uwumacs-org uwumacs-ui
-                        uwumacs-frames))
+      (dolist (feature '(kittymacs-literate kittymacs-dashboard kittymacs-meow
+                        kittymacs-leader kittymacs-keys kittymacs-treesit kittymacs-languages
+                        kittymacs-terminal kittymacs-treemacs kittymacs-org kittymacs-ui
+                        kittymacs-frames))
         (dots-test-check (featurep feature) (format "Missing feature %s" feature)))
       (dots-test-check (equal custom-enabled-themes '(doom-sonokai)) "Theme changed")
       ;; Exercise the real loader in both directions: themes must not stack.
-      (uwumacs-toggle-theme)
-      (dots-test-check (equal custom-enabled-themes (list uwumacs-light-theme))
+      (kittymacs-toggle-theme)
+      (dots-test-check (equal custom-enabled-themes (list kittymacs-light-theme))
                        "Light theme toggle failed")
-      (uwumacs-toggle-theme)
+      (kittymacs-toggle-theme)
       (dots-test-check (equal custom-enabled-themes '(doom-sonokai))
                        "Sonokai was not restored by the theme toggle")
       (dots-test-check (and meow-global-mode doom-modeline-mode) "Editor modes missing")
-      (dots-test-check (null uwumacs-eglot-auto-start-modes) "LSP auto-start changed")
-      (dots-test-check (null uwumacs-language-packages) "Language package opt-ins changed")
-      (dots-test-check (not (featurep 'uwumacs-key-hints)) "Hint adapter still loads")
-      (dots-test-check (eq (lookup-key meow-normal-state-keymap (kbd "SPC")) uwumacs-leader-map)
+      (dots-test-check (null kittymacs-eglot-auto-start-modes) "LSP auto-start changed")
+      (dots-test-check (null kittymacs-language-packages) "Language package opt-ins changed")
+      (dots-test-check (not (featurep 'kittymacs-key-hints)) "Hint adapter still loads")
+      (dots-test-check (eq (lookup-key meow-normal-state-keymap (kbd "SPC")) kittymacs-leader-map)
                        "SPC is not the literal leader in Normal state")
-      (dots-test-check (eq (lookup-key meow-motion-state-keymap (kbd "SPC")) uwumacs-leader-map)
+      (dots-test-check (eq (lookup-key meow-motion-state-keymap (kbd "SPC")) kittymacs-leader-map)
                        "SPC is not the literal leader in Motion state")
-      (dots-test-check (eq (lookup-key uwumacs-leader-map (kbd "l e")) #'uwumacs-eglot)
+      (dots-test-check (eq (lookup-key kittymacs-leader-map (kbd "l e")) #'kittymacs-eglot)
                        "SPC l is not the language-server menu")
-      (dots-test-check (eq (lookup-key uwumacs-leader-map (kbd "s l")) #'vertico-repeat)
+      (dots-test-check (eq (lookup-key kittymacs-leader-map (kbd "s l")) #'vertico-repeat)
                        "SPC s l is not completion history")
-      (dots-test-check (eq (lookup-key uwumacs-leader-map (kbd "h ?"))
-                           #'uwumacs-dashboard-open-cheatsheet)
+      (dots-test-check (eq (lookup-key kittymacs-leader-map (kbd "h ?"))
+                           #'kittymacs-dashboard-open-cheatsheet)
                        "Cheat-sheet leader binding was overwritten")
-      (dots-test-check (eq (lookup-key uwumacs-leader-map (kbd "h h")) #'dashboard-open)
+      (dots-test-check (eq (lookup-key kittymacs-leader-map (kbd "h h")) #'dashboard-open)
                        "Home leader binding was overwritten")
       (require 'bookmark) (require 'recentf) (require 'project)
       (save-window-excursion
@@ -91,7 +91,7 @@
               (project--list nil) (bookmark-alist nil))
           (dashboard-open) (set-buffer dashboard-buffer-name)
           (run-hooks 'post-command-hook)
-          (dots-test-check (eq (key-binding (kbd "?")) #'uwumacs-dashboard-open-cheatsheet)
+          (dots-test-check (eq (key-binding (kbd "?")) #'kittymacs-dashboard-open-cheatsheet)
                            "Dashboard shortcut is hidden by modal editing")
           (goto-char (point-min))
           (search-forward "Config")
@@ -108,13 +108,13 @@
           (widget-button-press (1- (point)))
           (dots-test-check (and (derived-mode-p 'org-mode)
                                 (file-equal-p buffer-file-name
-                                              (expand-file-name "keybindings.org" uwumacs-lisp-dir)))
+                                              (expand-file-name "keybindings.org" kittymacs-lisp-dir)))
                            "Dashboard button did not open the cheat sheet")
           (goto-char (point-min))
           (while (re-search-forward "^| \\(SPC [^|]+?\\) +|[^|]+| \\([a-z][a-z0-9-]+\\) +|" nil t)
             (let* ((key (string-trim (match-string 1)))
                    (command (intern (match-string 2))))
-              (dots-test-check (eq (lookup-key uwumacs-leader-map (kbd (substring key 4))) command)
+              (dots-test-check (eq (lookup-key kittymacs-leader-map (kbd (substring key 4))) command)
                                (format "Cheat sheet binding mismatch: %s -> %s" key command)))))))
   (error (push (format "Startup error: %S" err) dots-test-failures)))
 ;; Check syntax without running installed packages' programming-mode hooks.

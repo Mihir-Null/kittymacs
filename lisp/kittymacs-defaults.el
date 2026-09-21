@@ -1,4 +1,4 @@
-;;; uwumacs-defaults.el --- Sane defaults -*- lexical-binding: t; -*-
+;;; kittymacs-defaults.el --- Sane defaults -*- lexical-binding: t; -*-
 ;; Generated from literate/25-defaults.org; edit the Org source, then tangle.
 
 ;; Distilled from Lambda-Emacs by Colin McLear (GPL-3.0-or-later).
@@ -6,14 +6,14 @@
 ;;; Code:
 ;; The three directories are defined in early-init.el (see the startup chapter);
 ;; these defaults only apply when a module is loaded on its own.
-(defvar uwumacs-var-dir (expand-file-name "var/" user-emacs-directory))
-(defvar uwumacs-cache-dir (expand-file-name "cache/" uwumacs-var-dir))
-(defvar uwumacs-etc-dir (expand-file-name "etc/" uwumacs-var-dir))
+(defvar kittymacs-var-dir (expand-file-name "var/" user-emacs-directory))
+(defvar kittymacs-cache-dir (expand-file-name "cache/" kittymacs-var-dir))
+(defvar kittymacs-etc-dir (expand-file-name "etc/" kittymacs-var-dir))
 
-(dolist (directory (list uwumacs-var-dir uwumacs-cache-dir uwumacs-etc-dir))
+(dolist (directory (list kittymacs-var-dir kittymacs-cache-dir kittymacs-etc-dir))
   (make-directory directory t))
 
-(setopt custom-file (expand-file-name "custom.el" uwumacs-etc-dir))
+(setopt custom-file (expand-file-name "custom.el" kittymacs-etc-dir))
 (unless (file-exists-p custom-file)
   (make-empty-file custom-file t))
 (load custom-file nil t)
@@ -23,8 +23,8 @@
         find-file-visit-truename t
         view-read-only t)
 
-(let ((backups (expand-file-name "backup/" uwumacs-cache-dir))
-      (auto-saves (expand-file-name "auto-save/" uwumacs-cache-dir)))
+(let ((backups (expand-file-name "backup/" kittymacs-cache-dir))
+      (auto-saves (expand-file-name "auto-save/" kittymacs-cache-dir)))
   (make-directory backups t)
   (make-directory auto-saves t)
   (setopt backup-directory-alist `(("." . ,backups))
@@ -43,12 +43,12 @@
         auto-save-interval 300)
 (auto-save-visited-mode 1)
 
-(setopt savehist-file (expand-file-name "savehist" uwumacs-cache-dir)
+(setopt savehist-file (expand-file-name "savehist" kittymacs-cache-dir)
         savehist-save-minibuffer-history t
         history-length 100)
 (savehist-mode 1)
 (global-so-long-mode 1)
-(setopt multisession-directory (expand-file-name "multisession/" uwumacs-cache-dir))
+(setopt multisession-directory (expand-file-name "multisession/" kittymacs-cache-dir))
 (setq-default indent-tabs-mode nil
               tab-width 4
               fill-column 80
@@ -109,13 +109,13 @@
 ;; the default into the new buffer's `major-mode' without calling it, and
 ;; everything that inspects a mode -- `derived-mode-p', `symbol-name', the
 ;; `derived-mode-parent' property -- expects to find a symbol there.
-(defun uwumacs-guess-major-mode ()
+(defun kittymacs-guess-major-mode ()
   "Choose a major mode for this buffer, by file name or by buffer name."
   (if buffer-file-name
       (fundamental-mode)
     (let ((buffer-file-name (buffer-name)))
       (set-auto-mode))))
-(setq-default major-mode #'uwumacs-guess-major-mode)
+(setq-default major-mode #'kittymacs-guess-major-mode)
 (fset 'undo-auto-amalgamate #'ignore)
 (setopt undo-limit 67108864
         undo-strong-limit 100663296
@@ -158,59 +158,59 @@
   :init
   (popper-mode 1)
   (popper-echo-mode 1))
-(defvar uwumacs-scratch-file (expand-file-name "scratch" uwumacs-cache-dir)
+(defvar kittymacs-scratch-file (expand-file-name "scratch" kittymacs-cache-dir)
   "Where the *scratch* buffer's text is kept between sessions.")
 
-(defun uwumacs--bury-scratch ()
+(defun kittymacs--bury-scratch ()
   "Bury *scratch* instead of killing it."
   (if (eq (current-buffer) (get-buffer "*scratch*"))
       (progn (bury-buffer) nil)
     t))
 
-(defun uwumacs--save-scratch ()
-  "Save the text of *scratch* to `uwumacs-scratch-file'."
+(defun kittymacs--save-scratch ()
+  "Save the text of *scratch* to `kittymacs-scratch-file'."
   (with-current-buffer (get-buffer-create "*scratch*")
-    (write-region (point-min) (point-max) uwumacs-scratch-file nil 'quiet)))
+    (write-region (point-min) (point-max) kittymacs-scratch-file nil 'quiet)))
 
-(defun uwumacs--restore-scratch ()
-  "Restore *scratch* from `uwumacs-scratch-file' when it exists."
-  (when (file-exists-p uwumacs-scratch-file)
+(defun kittymacs--restore-scratch ()
+  "Restore *scratch* from `kittymacs-scratch-file' when it exists."
+  (when (file-exists-p kittymacs-scratch-file)
     (with-current-buffer (get-buffer-create "*scratch*")
       (erase-buffer)
-      (insert-file-contents uwumacs-scratch-file))))
+      (insert-file-contents kittymacs-scratch-file))))
 
-(add-hook 'kill-buffer-query-functions #'uwumacs--bury-scratch)
-(add-hook 'after-init-hook #'uwumacs--restore-scratch)
-(add-hook 'kill-emacs-hook #'uwumacs--save-scratch)
-(run-with-idle-timer 300 t #'uwumacs--save-scratch)
+(add-hook 'kill-buffer-query-functions #'kittymacs--bury-scratch)
+(add-hook 'after-init-hook #'kittymacs--restore-scratch)
+(add-hook 'kill-emacs-hook #'kittymacs--save-scratch)
+(run-with-idle-timer 300 t #'kittymacs--save-scratch)
 (when (or window-system (daemonp))
   (require 'server)
   (setopt server-client-instructions nil)
   (unless (server-running-p)
     (server-start)))
-(defun uwumacs-user-buffer-p (&optional buffer)
+(defun kittymacs-user-buffer-p (&optional buffer)
   "Return non-nil when BUFFER is one the user opened, not an internal one."
   (not (string-match-p "\\`[ *]" (buffer-name buffer))))
 
-(defun uwumacs-next-user-buffer ()
+(defun kittymacs-next-user-buffer ()
   "Switch to the next user buffer."
   (interactive)
   (next-buffer)
   (let ((tries 0))
-    (while (and (< tries 20) (not (uwumacs-user-buffer-p)))
+    (while (and (< tries 20) (not (kittymacs-user-buffer-p)))
       (next-buffer)
       (setq tries (1+ tries)))))
 
-(defun uwumacs-previous-user-buffer ()
+(defun kittymacs-previous-user-buffer ()
   "Switch to the previous user buffer."
   (interactive)
   (previous-buffer)
   (let ((tries 0))
-    (while (and (< tries 20) (not (uwumacs-user-buffer-p)))
+    (while (and (< tries 20) (not (kittymacs-user-buffer-p)))
       (previous-buffer)
       (setq tries (1+ tries)))))
 
-(defun uwumacs-new-buffer (&optional frame)
+(defun kittymacs-new-buffer (&optional frame)
   "Create an empty buffer; with FRAME (prefix argument), show it in a new frame."
   (interactive "P")
   (let ((buffer (generate-new-buffer "untitled")))
@@ -220,7 +220,7 @@
         (display-buffer buffer '(display-buffer-pop-up-frame))
       (switch-to-buffer buffer))))
 
-(defun uwumacs-copy-file-name ()
+(defun kittymacs-copy-file-name ()
   "Show this buffer's file name and copy it to the kill ring."
   (interactive)
   (if-let* ((name (buffer-file-name)))
@@ -233,5 +233,5 @@
   :ensure t
   :commands rainbow-mode)
 
-(provide 'uwumacs-defaults)
-;;; uwumacs-defaults.el ends here
+(provide 'kittymacs-defaults)
+;;; kittymacs-defaults.el ends here

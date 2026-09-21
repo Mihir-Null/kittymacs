@@ -1,13 +1,13 @@
 #+TITLE: Selection-first editing with Meow
 #+OPTIONS: toc:3 num:nil
 #+STARTUP: overview
-#+PROPERTY: header-args:emacs-lisp :tangle ../lisp/uwumacs-meow.el :eval never :comments no :padline no :mkdirp yes
+#+PROPERTY: header-args:emacs-lisp :tangle ../lisp/kittymacs-meow.el :eval never :comments no :padline no :mkdirp yes
 
-[[file:index.org][Reading guide]] · [[file:41-leader.org][The UwUmacs leader]] · [[file:../lisp/keybindings.org][Cheat sheet]]
+[[file:index.org][Reading guide]] · [[file:41-leader.org][The kittymacs leader]] · [[file:../lisp/keybindings.org][Cheat sheet]]
 
 Ownership: *user configuration*. The key grammar is adapted from Colin
 McLear's Meow setup (GPL-3.0-or-later). Meow is an external package; this
-chapter configures it and hands =SPC= to [[file:41-leader.org][the UwUmacs leader]].
+chapter configures it and hands =SPC= to [[file:41-leader.org][the kittymacs leader]].
 
 * How Meow thinks
 
@@ -31,14 +31,14 @@ Run =M-x meow-tutor= once. It teaches the grammar interactively in an hour.
 * The module
 
 #+begin_src emacs-lisp
-;;; uwumacs-meow.el --- Selection-first editing -*- lexical-binding: t; -*-
+;;; kittymacs-meow.el --- Selection-first editing -*- lexical-binding: t; -*-
 ;; Generated from literate/40-editing.org; edit the Org source, then tangle.
 
 ;; Grammar adapted from Colin McLear's cpm-setup-meow.el (GPL-3.0-or-later).
 
 ;;; Code:
 
-(require 'uwumacs-leader)
+(require 'kittymacs-leader)
 
 #+end_src
 
@@ -51,7 +51,7 @@ shifted key does the same while *extending* the current selection. Digits
 pick one of the numbered expansion hints Meow draws after a movement.
 
 #+begin_src emacs-lisp
-(defun uwumacs-meow-setup ()
+(defun kittymacs-meow-setup ()
   "Install the QWERTY selection grammar and the Motion-state basics."
   ;; Motion state: application buffers keep their own keys; only j/k move.
   (meow-motion-define-key
@@ -164,9 +164,9 @@ leaves the hints indistinguishable from text.
   (with-eval-after-load 'org
     ;; Treat @ as part of symbols/words during Meow movement in Org.
     (modify-syntax-entry ?@ "_" org-mode-syntax-table))
-  (uwumacs-meow-setup)
+  (kittymacs-meow-setup)
   (meow-global-mode 1)
-  (uwumacs-leader-enable))
+  (kittymacs-leader-enable))
 
 #+end_src
 
@@ -190,8 +190,8 @@ without a grammar these keys simply report that there is no parser.
 * Publish the module
 
 #+begin_src emacs-lisp
-(provide 'uwumacs-meow)
-;;; uwumacs-meow.el ends here
+(provide 'kittymacs-meow)
+;;; kittymacs-meow.el ends here
 #+end_src
 
 * Where the keys are

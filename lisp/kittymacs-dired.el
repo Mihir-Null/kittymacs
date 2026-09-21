@@ -1,12 +1,12 @@
-;;; uwumacs-dired.el --- The file manager -*- lexical-binding: t; -*-
+;;; kittymacs-dired.el --- The file manager -*- lexical-binding: t; -*-
 ;; Generated from literate/64-dired.org; edit the Org source, then tangle.
 
 ;; Distilled from Lambda-Emacs by Colin McLear (GPL-3.0-or-later).
 
 ;;; Code:
 
-(require 'uwumacs-leader)
-(require 'uwumacs-ui)
+(require 'kittymacs-leader)
+(require 'kittymacs-ui)
 (setopt dired-kill-when-opening-new-dired-buffer t
         dired-recursive-copies 'always
         dired-recursive-deletes 'always
@@ -30,13 +30,13 @@
                 "-lahv --group-directories-first"
               "-lah"))))
 
-(defun uwumacs-dired-up-directory ()
+(defun kittymacs-dired-up-directory ()
   "Go to the parent directory in this buffer."
   (interactive)
   (find-alternate-file ".."))
 
 (with-eval-after-load 'dired
-  (keymap-set dired-mode-map "h" #'uwumacs-dired-up-directory)
+  (keymap-set dired-mode-map "h" #'kittymacs-dired-up-directory)
   (keymap-set dired-mode-map "l" #'dired-find-file))
 (use-package diredfl
   :ensure t
@@ -60,7 +60,7 @@
 (with-eval-after-load 'meow
   (add-to-list 'meow-mode-state-list '(dired-mode . motion)))
 
-(uwumacs-define-localleader 'dired-mode
+(kittymacs-define-localleader 'dired-mode
   "c" (cons "copy" #'dired-do-copy)
   "r" (cons "rename / move" #'dired-do-rename)
   "d" (cons "delete" #'dired-do-delete)
@@ -82,5 +82,5 @@
   "g" (cons "refresh" #'revert-buffer)
   "?" (cons "menu" #'casual-dired-tmenu))
 
-(provide 'uwumacs-dired)
-;;; uwumacs-dired.el ends here
+(provide 'kittymacs-dired)
+;;; kittymacs-dired.el ends here

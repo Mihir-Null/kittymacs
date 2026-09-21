@@ -3,19 +3,19 @@
 
 ;;; Code:
 
-(defvar uwumacs-lisp-dir (expand-file-name "lisp/" user-emacs-directory)
+(defvar kittymacs-lisp-dir (expand-file-name "lisp/" user-emacs-directory)
   "Directory of the generated configuration modules.")
 
-(defvar uwumacs-var-dir (expand-file-name "var/" user-emacs-directory)
+(defvar kittymacs-var-dir (expand-file-name "var/" user-emacs-directory)
   "Directory for everything Emacs writes on its own.  Ignored by Git.")
 
-(defvar uwumacs-cache-dir (expand-file-name "cache/" uwumacs-var-dir)
+(defvar kittymacs-cache-dir (expand-file-name "cache/" kittymacs-var-dir)
   "Directory for caches that can be deleted at any time.")
 
-(defvar uwumacs-etc-dir (expand-file-name "etc/" uwumacs-var-dir)
+(defvar kittymacs-etc-dir (expand-file-name "etc/" kittymacs-var-dir)
   "Directory for state worth keeping: saved customizations, shell history.")
 
-(setq package-user-dir (expand-file-name "elpa/" uwumacs-var-dir)
+(setq package-user-dir (expand-file-name "elpa/" kittymacs-var-dir)
       package-gnupghome-dir (expand-file-name "gnupg/" package-user-dir)
       package-enable-at-startup nil)
 (setopt package-archives '(("gnu" . "https://elpa.gnu.org/packages/")
@@ -50,7 +50,7 @@
          (setq package-check-signature nil))))
 
 (when (featurep 'native-compile)
-  (startup-redirect-eln-cache (expand-file-name "eln-cache/" uwumacs-cache-dir))
+  (startup-redirect-eln-cache (expand-file-name "eln-cache/" kittymacs-cache-dir))
   (setopt native-comp-async-report-warnings-errors 'silent))
 
 (setq gc-cons-threshold most-positive-fixnum)

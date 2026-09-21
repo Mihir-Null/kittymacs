@@ -63,7 +63,7 @@
   (skip-unless (display-graphic-p))
   (require 'magit)
   (dots-frames-with-buffer
-    (magit-status (expand-file-name "../" (file-name-directory (locate-library "uwumacs-frames"))))
+    (magit-status (expand-file-name "../" (file-name-directory (locate-library "kittymacs-frames"))))
     (let ((frame (selected-frame)))
       (should-not (eq frame original))
       (should (derived-mode-p 'magit-status-mode))

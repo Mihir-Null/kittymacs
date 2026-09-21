@@ -1,21 +1,21 @@
-;;; uwumacs-navigation.el --- Projects, places, search and workspaces -*- lexical-binding: t; -*-
+;;; kittymacs-navigation.el --- Projects, places, search and workspaces -*- lexical-binding: t; -*-
 ;; Generated from literate/68-navigation.org; edit the Org source, then tangle.
 
 ;; Distilled from Lambda-Emacs by Colin McLear (GPL-3.0-or-later).
 
 ;;; Code:
 
-(require 'uwumacs-defaults)
-(setopt save-place-file (expand-file-name "saved-places" uwumacs-cache-dir)
+(require 'kittymacs-defaults)
+(setopt save-place-file (expand-file-name "saved-places" kittymacs-cache-dir)
         save-place-forget-unreadable-files nil)
 (save-place-mode 1)
 
-(setopt recentf-save-file (expand-file-name "recentf" uwumacs-cache-dir)
+(setopt recentf-save-file (expand-file-name "recentf" kittymacs-cache-dir)
         recentf-max-saved-items 500
         recentf-max-menu-items 10)
 (recentf-mode 1)
 
-(setopt bookmark-default-file (expand-file-name "bookmarks" uwumacs-cache-dir))
+(setopt bookmark-default-file (expand-file-name "bookmarks" kittymacs-cache-dir))
 
 (use-package goto-last-change
   :ensure t
@@ -37,7 +37,7 @@
   (when (fboundp 'imenu-list-install-display-buffer)
     (imenu-list-install-display-buffer)))
 
-(defun uwumacs-jump-in-buffer ()
+(defun kittymacs-jump-in-buffer ()
   "Jump to a heading or definition in this buffer with completion."
   (interactive)
   (if (derived-mode-p 'org-mode)
@@ -51,29 +51,29 @@
   (avy-timeout-seconds 0.4)
   (avy-all-windows t)
   (avy-style 'at-full))
-(defun uwumacs-project-magit ()
+(defun kittymacs-project-magit ()
   "Open Magit status for the current project."
   (interactive)
   (magit-status))
 
-(defun uwumacs-projects-directory ()
+(defun kittymacs-projects-directory ()
   "Open the directory where projects live."
   (interactive)
-  (dired uwumacs-project-directory))
+  (dired kittymacs-project-directory))
 
 (use-package project
   :ensure nil
   :bind (:map project-prefix-map
-         ("G" . uwumacs-project-magit)
-         ("t" . uwumacs-projects-directory)
+         ("G" . kittymacs-project-magit)
+         ("t" . kittymacs-projects-directory)
          ("R" . project-remember-projects-under))
   :custom
-  (project-list-file (expand-file-name "projects" uwumacs-cache-dir))
+  (project-list-file (expand-file-name "projects" kittymacs-cache-dir))
   (project-switch-commands '((project-find-file "Find file")
                              (project-find-regexp "Find regexp")
                              (project-find-dir "Find directory")
                              (project-vc-dir "VC-Dir")
-                             (uwumacs-project-magit "Magit status")))
+                             (kittymacs-project-magit "Magit status")))
   (project-vc-extra-root-markers '(".dir-locals.el" ".project.el" "package.json" "requirements.txt" "autogen.sh"))
   :config
   (when (executable-find "rg")
@@ -96,7 +96,7 @@
         tab-bar-close-button-show nil
         tab-bar-auto-width nil)
 
-(defun uwumacs-tab-dwim ()
+(defun kittymacs-tab-dwim ()
   "Create a tab if there is one, switch if there are two, else choose one."
   (interactive)
   (let ((tabs (mapcar (lambda (tab) (alist-get 'name tab)) (tab-bar--tabs-recent))))
@@ -114,7 +114,7 @@
   (tabspaces-default-tab "Home")
   :config
   (with-eval-after-load 'consult
-    (defvar uwumacs-consult-source-workspace
+    (defvar kittymacs-consult-source-workspace
       (list :name "Workspace Buffers"
             :narrow ?w
             :history 'buffer-name-history
@@ -126,18 +126,18 @@
                                :sort 'visibility
                                :as #'buffer-name)))
       "Consult source listing only this workspace's buffers.")
-    (defun uwumacs--consult-tabspaces ()
+    (defun kittymacs--consult-tabspaces ()
       "Show workspace buffers first while tabspaces is on."
       (if tabspaces-mode
           (progn
             (plist-put consult-source-buffer :hidden t)
             (plist-put consult-source-buffer :default nil)
-            (add-to-list 'consult-buffer-sources 'uwumacs-consult-source-workspace))
+            (add-to-list 'consult-buffer-sources 'kittymacs-consult-source-workspace))
         (plist-put consult-source-buffer :hidden nil)
         (plist-put consult-source-buffer :default t)
-        (setq consult-buffer-sources (remove 'uwumacs-consult-source-workspace consult-buffer-sources))))
-    (add-hook 'tabspaces-mode-hook #'uwumacs--consult-tabspaces)
-    (uwumacs--consult-tabspaces)))
+        (setq consult-buffer-sources (remove 'kittymacs-consult-source-workspace consult-buffer-sources))))
+    (add-hook 'tabspaces-mode-hook #'kittymacs--consult-tabspaces)
+    (kittymacs--consult-tabspaces)))
 
-(provide 'uwumacs-navigation)
-;;; uwumacs-navigation.el ends here
+(provide 'kittymacs-navigation)
+;;; kittymacs-navigation.el ends here

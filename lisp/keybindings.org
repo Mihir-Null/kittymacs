@@ -1,4 +1,4 @@
-#+TITLE: UwUmacs keys and commands
+#+TITLE: kittymacs keys and commands
 #+OPTIONS: toc:2 num:nil
 #+STARTUP: showall
 
@@ -86,24 +86,24 @@ Press =SPC=, then:
 | Key     | Does                           | Command                        |
 |---------+--------------------------------+--------------------------------|
 | SPC SPC | Run a command by name          | execute-extended-command       |
-| SPC /   | Describe the leader here       | uwumacs-describe-leader        |
+| SPC /   | Describe the leader here       | kittymacs-describe-leader        |
 | SPC ?   | Search commands by description | consult-apropos                |
 | SPC f f | Open a file                    | find-file                      |
 | SPC f s | Save                           | save-buffer                    |
 | SPC f r | Recent files                   | consult-recent-file            |
 | SPC f b | Bookmarks                      | consult-bookmark               |
 | SPC f t | Reveal this file in the tree   | treemacs-find-file             |
-| SPC f o | Show in Finder or Explorer     | uwumacs-reveal-in-file-manager |
+| SPC f o | Show in Finder or Explorer     | kittymacs-reveal-in-file-manager |
 | SPC b b | Switch buffer                  | consult-buffer                 |
 | SPC b k | Close this buffer              | kill-current-buffer            |
 | SPC b a | List all buffers               | ibuffer                        |
-| SPC [   | Previous buffer                | uwumacs-previous-user-buffer   |
-| SPC ]   | Next buffer                    | uwumacs-next-user-buffer       |
+| SPC [   | Previous buffer                | kittymacs-previous-user-buffer   |
+| SPC ]   | Next buffer                    | kittymacs-next-user-buffer       |
 | SPC d   | Directory of this file         | dired-jump                     |
 | SPC x   | Scratch buffer                 | scratch-buffer                 |
 | SPC s s | Search lines here              | consult-line                   |
 | SPC s d | Search files with ripgrep      | consult-ripgrep                |
-| SPC s . | Search the symbol at point     | uwumacs-search-symbol-at-point |
+| SPC s . | Search the symbol at point     | kittymacs-search-symbol-at-point |
 | SPC k   | Paste from the kill ring       | consult-yank-from-kill-ring    |
 | SPC ;   | Comment this line              | comment-line                   |
 
@@ -114,16 +114,16 @@ Press =SPC=, then:
 | SPC p p | Open a project in its own workspace | tabspaces-open-or-create-project-and-workspace |
 | SPC p f | Find a file in the project          | project-find-file                              |
 | SPC p b | Switch to a project buffer          | consult-project-buffer                         |
-| SPC p G | Magit status for the project        | uwumacs-project-magit                          |
+| SPC p G | Magit status for the project        | kittymacs-project-magit                          |
 | SPC W s | Switch or create a workspace        | tabspaces-switch-or-create-workspace           |
 | SPC W d | Close this workspace                | tabspaces-close-workspace                      |
-| SPC TAB | Switch tab                          | uwumacs-tab-dwim                               |
+| SPC TAB | Switch tab                          | kittymacs-tab-dwim                               |
 
 * Version control
 
 | Key     | Does         | Command      |
 |---------+--------------+--------------|
-| SPC v s | Magit status | uwumacs-magit-status |
+| SPC v s | Magit status | kittymacs-magit-status |
 | SPC v l | Log          | magit-log    |
 | SPC v d | Diff         | magit-diff   |
 | SPC v b | Blame        | magit-blame  |
@@ -159,25 +159,25 @@ New editing surfaces are OS windows (frames); your window manager arranges them.
 
 | Key     | Does                              | Command                           |
 |---------+-----------------------------------+-----------------------------------|
-| SPC o e | A real terminal                   | uwumacs-terminal-open             |
+| SPC o e | A real terminal                   | kittymacs-terminal-open             |
 | SPC o E | Pick a terminal                   | consult-ghostel                   |
-| SPC o p | Terminal at the project root      | uwumacs-terminal-project          |
-| SPC o m | MSYS2 terminal (Windows)          | uwumacs-terminal-msys2            |
+| SPC o p | Terminal at the project root      | kittymacs-terminal-project          |
+| SPC o m | MSYS2 terminal (Windows)          | kittymacs-terminal-msys2            |
 | SPC o t | Jump into the file tree           | treemacs-select-window            |
-| SPC o s | Eshell for this project           | uwumacs-eshell-project            |
-| SPC o a | Agenda dashboard                  | uwumacs-org-dashboard             |
+| SPC o s | Eshell for this project           | kittymacs-eshell-project            |
+| SPC o a | Agenda dashboard                  | kittymacs-org-dashboard             |
 | SPC o c | Capture a note or task            | org-capture                       |
 | SPC c c | Comment                           | comment-dwim                      |
 | SPC c d | Duplicate line or region          | duplicate-dwim                    |
 | SPC c s | Surround with a pair              | embrace-commander                 |
 | SPC e e | Evaluate the last expression      | eval-last-sexp                    |
-| SPC l e | Start or manage a language server | uwumacs-eglot                     |
+| SPC l e | Start or manage a language server | kittymacs-eglot                     |
 | SPC l a | Code actions                      | eglot-code-actions                |
 | SPC l R | Rename symbol                     | eglot-rename                      |
 | SPC l d | Go to definition                  | xref-find-definitions             |
 | SPC F d | List problems in this buffer      | flymake-show-buffer-diagnostics   |
 | SPC i s | Insert a snippet                  | yas-insert-snippet                |
-| SPC t t | Light or dark theme               | uwumacs-toggle-theme              |
+| SPC t t | Light or dark theme               | kittymacs-toggle-theme              |
 | SPC h k | What does this key do             | helpful-key                       |
 | SPC h f | Describe a function               | helpful-callable                  |
 | SPC h v | Describe a variable               | helpful-variable                  |
@@ -185,10 +185,10 @@ New editing surfaces are OS windows (frames); your window manager arranges them.
 | SPC h b | Keys that work here               | embark-bindings                   |
 | SPC h t | Meow tutorial                     | meow-tutor                        |
 | SPC h h | Home page                         | dashboard-open                    |
-| SPC h ? | This cheat sheet                  | uwumacs-dashboard-open-cheatsheet |
-| SPC C c | Open the configuration guide      | uwumacs-literate-open             |
-| SPC C f | Open a configuration chapter      | uwumacs-find-config-file          |
-| SPC C t | Rebuild the configuration         | uwumacs-literate-tangle           |
+| SPC h ? | This cheat sheet                  | kittymacs-dashboard-open-cheatsheet |
+| SPC C c | Open the configuration guide      | kittymacs-literate-open             |
+| SPC C f | Open a configuration chapter      | kittymacs-find-config-file          |
+| SPC C t | Rebuild the configuration         | kittymacs-literate-tangle           |
 | SPC q q | Save everything and quit          | save-buffers-kill-emacs           |
 | SPC q r | Restart Emacs                     | restart-emacs                     |
 

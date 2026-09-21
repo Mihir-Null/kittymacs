@@ -1,4 +1,4 @@
-;;; uwumacs-treemacs.el --- The project tree -*- lexical-binding: t; -*-
+;;; kittymacs-treemacs.el --- The project tree -*- lexical-binding: t; -*-
 ;; Generated from literate/65-treemacs.org; edit the Org source, then tangle.
 
 ;;; Commentary:
@@ -8,9 +8,9 @@
 
 ;;; Code:
 
-(require 'uwumacs-defaults)
-(require 'uwumacs-leader)
-(require 'uwumacs-ui)
+(require 'kittymacs-defaults)
+(require 'kittymacs-leader)
+(require 'kittymacs-ui)
 (use-package treemacs
   :ensure t
   :defer t
@@ -18,9 +18,9 @@
              treemacs-add-and-display-current-project-exclusively)
   :custom
   ;; State, not cache: the workspace layout is worth keeping between sessions.
-  (treemacs-persist-file (expand-file-name "treemacs/persist" uwumacs-etc-dir))
+  (treemacs-persist-file (expand-file-name "treemacs/persist" kittymacs-etc-dir))
   (treemacs-last-error-persist-file
-   (expand-file-name "treemacs/persist-at-last-error" uwumacs-cache-dir))
+   (expand-file-name "treemacs/persist-at-last-error" kittymacs-cache-dir))
   (treemacs-width 35)
   (treemacs-width-is-initially-locked t)
   (treemacs-position 'left)
@@ -67,7 +67,7 @@
   :after treemacs
   :demand t
   :config
-  (when (uwumacs-icons-available-p)
+  (when (kittymacs-icons-available-p)
     (treemacs-load-theme "nerd-icons")))
 
 (use-package treemacs-tab-bar
@@ -84,7 +84,7 @@
 (with-eval-after-load 'meow
   (add-to-list 'meow-mode-state-list '(treemacs-mode . motion)))
 
-(uwumacs-define-localleader 'treemacs-mode
+(kittymacs-define-localleader 'treemacs-mode
   "f" (cons "new file" #'treemacs-create-file)
   "d" (cons "new directory" #'treemacs-create-dir)
   "r" (cons "rename" #'treemacs-rename-file)
@@ -106,5 +106,5 @@
   "q" (cons "close the tree" #'treemacs-quit)
   "?" (cons "menu" #'treemacs-common-helpful-hydra))
 
-(provide 'uwumacs-treemacs)
-;;; uwumacs-treemacs.el ends here
+(provide 'kittymacs-treemacs)
+;;; kittymacs-treemacs.el ends here

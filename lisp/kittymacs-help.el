@@ -1,12 +1,12 @@
-;;; uwumacs-help.el --- Help, Info and menus -*- lexical-binding: t; -*-
+;;; kittymacs-help.el --- Help, Info and menus -*- lexical-binding: t; -*-
 ;; Generated from literate/62-help.org; edit the Org source, then tangle.
 
 ;; Distilled from Lambda-Emacs by Colin McLear (GPL-3.0-or-later).
 
 ;;; Code:
 
-(require 'uwumacs-defaults)
-(require 'uwumacs-leader)
+(require 'kittymacs-defaults)
+(require 'kittymacs-leader)
 
 (setopt use-file-dialog nil
         use-dialog-box nil
@@ -39,9 +39,9 @@
   :ensure nil
   :defer t
   :custom
-  (transient-levels-file (expand-file-name "transient/levels.el" uwumacs-cache-dir))
-  (transient-values-file (expand-file-name "transient/values.el" uwumacs-cache-dir))
-  (transient-history-file (expand-file-name "transient/history.el" uwumacs-cache-dir))
+  (transient-levels-file (expand-file-name "transient/levels.el" kittymacs-cache-dir))
+  (transient-values-file (expand-file-name "transient/values.el" kittymacs-cache-dir))
+  (transient-history-file (expand-file-name "transient/history.el" kittymacs-cache-dir))
   (transient-detect-key-conflicts t)
   (transient-force-fixed-pitch t)
   (transient-display-buffer-action '(display-buffer-in-side-window
@@ -49,7 +49,7 @@
                                      (dedicated . t)
                                      (inhibit-same-window . t)
                                      (window-parameters (no-other-window . t)))))
-(defvar-keymap uwumacs-help-map
+(defvar-keymap kittymacs-help-map
   :doc "Help, documentation and tutorials."
   "h" (cons "home" #'dashboard-open)
   "k" (cons "key" #'helpful-key)
@@ -61,13 +61,13 @@
   "m" (cons "mode" #'describe-mode)
   "b" (cons "bindings here" #'embark-bindings)
   "B" (cons "all bindings" #'describe-bindings)
-  "l" (cons "leader" #'uwumacs-describe-leader)
+  "l" (cons "leader" #'kittymacs-describe-leader)
   "F" (cons "face" #'describe-face)
   "w" (cons "where is" #'where-is)
   "e" (cons "messages" #'view-echo-area-messages)
   "L" (cons "lossage" #'view-lossage)
   "i" (cons "info" #'info)
-  "s" (cons "search manuals" #'uwumacs-search-manuals)
+  "s" (cons "search manuals" #'kittymacs-search-manuals)
   "S" (cons "find source" #'find-function)
   "V" (cons "find variable" #'find-variable)
   "K" (cons "find key" #'find-function-on-key)
@@ -94,12 +94,12 @@
 (with-eval-after-load 'info (keymap-set Info-mode-map "C-o" #'casual-info-tmenu))
 (with-eval-after-load 'compile (keymap-set compilation-mode-map "C-o" #'casual-compile-tmenu))
 
-(uwumacs-define-localleader 'ibuffer-mode
+(kittymacs-define-localleader 'ibuffer-mode
   "?" (cons "menu" #'casual-ibuffer-tmenu))
 
-(uwumacs-define-localleader 'compilation-mode
+(kittymacs-define-localleader 'compilation-mode
   "?" (cons "menu" #'casual-compile-tmenu))
-(uwumacs-define-localleader 'Info-mode
+(kittymacs-define-localleader 'Info-mode
   "n" (cons "next node" #'Info-next)
   "p" (cons "previous node" #'Info-prev)
   "u" (cons "up" #'Info-up)
@@ -113,7 +113,7 @@
   "r" (cons "forward" #'Info-history-forward)
   "?" (cons "menu" #'casual-info-tmenu))
 
-(uwumacs-define-localleader 'help-mode
+(kittymacs-define-localleader 'help-mode
   "l" (cons "back" #'help-go-back)
   "r" (cons "forward" #'help-go-forward)
   "s" (cons "source" #'help-view-source)
@@ -121,9 +121,9 @@
   "?" (cons "menu" #'casual-help-tmenu))
 
 (with-eval-after-load 'helpful
-  (uwumacs-define-localleader 'helpful-mode
+  (kittymacs-define-localleader 'helpful-mode
     "u" (cons "update" #'helpful-update)
     "s" (cons "source" #'helpful-visit-reference)))
 
-(provide 'uwumacs-help)
-;;; uwumacs-help.el ends here
+(provide 'kittymacs-help)
+;;; kittymacs-help.el ends here

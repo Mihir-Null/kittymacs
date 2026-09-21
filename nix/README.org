@@ -1,4 +1,4 @@
-#+TITLE: Deploying UwUmacs with Nix
+#+TITLE: Deploying kittymacs with Nix
 
 The repository is a flake. It does not put the configuration in the Nix
 store: the configuration installs its Emacs Lisp packages under =var/= and
@@ -9,7 +9,7 @@ program the chapters look for, and the icon font, so a fresh Mac needs one
 
 | Output | What it is |
 |---+---|
-| =darwinModules.default= | nix-darwin module: =programs.uwumacs.enable= installs Emacs, the tools and the font system-wide |
+| =darwinModules.default= | nix-darwin module: =programs.kittymacs.enable= installs Emacs, the tools and the font system-wide |
 | =homeManagerModules.default= | home-manager module: links a checkout to =~/.config/emacs=; can install the tools per user |
 | =packages.<system>.default= | the Emacs the modules install (=pkgs.emacs=, 31.1 at the time of writing) |
 | =packages.<system>.tools= | one environment with every tool, for =nix profile install= |
@@ -27,14 +27,14 @@ Add the flake as an input and import the module:
 
 #+begin_src nix
 {
-  inputs.uwumacs.url = "github:Mihir-Null/UwUmacs";
-  inputs.uwumacs.inputs.nixpkgs.follows = "nixpkgs";
+  inputs.kittymacs.url = "github:Mihir-Null/kittymacs";
+  inputs.kittymacs.inputs.nixpkgs.follows = "nixpkgs";
 
-  outputs = { nix-darwin, uwumacs, ... }: {
+  outputs = { nix-darwin, kittymacs, ... }: {
     darwinConfigurations.mac = nix-darwin.lib.darwinSystem {
       modules = [
-        uwumacs.darwinModules.default
-        { programs.uwumacs.enable = true; }
+        kittymacs.darwinModules.default
+        { programs.kittymacs.enable = true; }
       ];
     };
   };
@@ -45,13 +45,13 @@ Then clone the configuration somewhere writable. Emacs looks in
 =~/.config/emacs= when =~/.emacs.d= does not exist:
 
 #+begin_src sh
-git clone https://github.com/Mihir-Null/UwUmacs.git ~/.config/emacs
+git clone https://github.com/Mihir-Null/kittymacs.git ~/.config/emacs
 #+end_src
 
-Options under =programs.uwumacs=:
+Options under =programs.kittymacs=:
 
 - =package= :: the Emacs to install. Default =pkgs.emacs=, the Cocoa build;
-  =pkgs.emacs-macport= is the Mitsuharu port. UwUmacs needs 30.1 or later.
+  =pkgs.emacs-macport= is the Mitsuharu port. kittymacs needs 30.1 or later.
 - =daemon= :: start the Emacs server at login through launchd, so
   =emacsclient= opens files as frames of one running Emacs. Off by default;
   the configuration starts a server itself whenever it has a display.
@@ -63,10 +63,10 @@ place declaratively. The link points outside the store on purpose.
 
 #+begin_src nix
 home-manager.users.me = {
-  imports = [ uwumacs.homeManagerModules.default ];
-  programs.uwumacs = {
+  imports = [ kittymacs.homeManagerModules.default ];
+  programs.kittymacs = {
     enable = true;
-    source = "/Users/me/src/UwUmacs";  # a writable clone
+    source = "/Users/me/src/kittymacs";  # a writable clone
     installPackages = false;           # nix-darwin already installed them
   };
 };
@@ -78,7 +78,7 @@ the user profile. [[file:example/flake.nix][example/flake.nix]] is a complete ho
 * Without a module
 
 #+begin_src sh
-nix profile install github:Mihir-Null/UwUmacs#default github:Mihir-Null/UwUmacs#tools
+nix profile install github:Mihir-Null/kittymacs#default github:Mihir-Null/kittymacs#tools
 #+end_src
 
 * Developing
@@ -89,7 +89,7 @@ example host against the checkout you are in, override its input:
 
 #+begin_src sh
 nix flake check --no-build
-nix eval --no-write-lock-file --override-input uwumacs path:$PWD \
+nix eval --no-write-lock-file --override-input kittymacs path:$PWD \
   --json ./nix/example#darwinConfigurations.example.config.environment.systemPackages \
   --apply 'ps: map (p: p.name) ps'
 #+end_src

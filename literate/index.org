@@ -1,11 +1,11 @@
-#+TITLE: UwUmacs: the reading guide
+#+TITLE: kittymacs: the reading guide
 #+OPTIONS: toc:3 num:nil
 #+STARTUP: overview
 #+PROPERTY: header-args :tangle no :eval never
 
 * Start here
 
-UwUmacs is a personal Emacs configuration written as a book. Every chapter
+kittymacs is a personal Emacs configuration written as a book. Every chapter
 in this folder explains one part of the editor, shows the small piece of
 Lisp that configures it, and says why. The Lisp blocks are *tangled* (copied
 out) into =lisp/*.el= and the two startup files, which is what Emacs actually
@@ -74,8 +74,8 @@ from [[https://codeberg.org/Lambda-Emacs/lambda-emacs][Lambda-Emacs]] by Colin M
 * Change something
 
 1. Edit the chapter: the prose and the code block together.
-2. =SPC C t= (or =M-x uwumacs-literate-tangle=) rebuilds the generated files in
-   a clean Emacs subprocess and reports in =*UwUmacs literate build*=.
+2. =SPC C t= (or =M-x kittymacs-literate-tangle=) rebuilds the generated files in
+   a clean Emacs subprocess and reports in =*kittymacs literate build*=.
    Unsaved chapters are refused, so a build never uses a stale file.
 3. =SPC C k= checks that chapters and generated files agree without writing.
 4. Restart Emacs. Commit the chapter and the generated file together.
@@ -100,12 +100,12 @@ yourself.
 * Add a chapter
 
 1. Create =literate/NN-name.org= with the header of any existing chapter,
-   changing the =:tangle= target to =../lisp/uwumacs-name.el=.
+   changing the =:tangle= target to =../lisp/kittymacs-name.el=.
 2. Register the source and the output in [[file:manifest.json][manifest.json]].
-3. Add =(require 'uwumacs-name)= to =init.el= in the [[file:10-startup.org][startup chapter]] where
+3. Add =(require 'kittymacs-name)= to =init.el= in the [[file:10-startup.org][startup chapter]] where
    it belongs in the order.
 4. Give the package a Meow section: which state its buffers start in, and a
-   =uwumacs-define-localleader= form for its =SPC m= menu.
+   =kittymacs-define-localleader= form for its =SPC m= menu.
 
 * Where things are on disk
 

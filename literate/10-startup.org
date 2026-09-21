@@ -48,19 +48,19 @@ frames created without the toolbar rather than with one that is then removed.
 
 ;;; Code:
 
-(defvar uwumacs-lisp-dir (expand-file-name "lisp/" user-emacs-directory)
+(defvar kittymacs-lisp-dir (expand-file-name "lisp/" user-emacs-directory)
   "Directory of the generated configuration modules.")
 
-(defvar uwumacs-var-dir (expand-file-name "var/" user-emacs-directory)
+(defvar kittymacs-var-dir (expand-file-name "var/" user-emacs-directory)
   "Directory for everything Emacs writes on its own.  Ignored by Git.")
 
-(defvar uwumacs-cache-dir (expand-file-name "cache/" uwumacs-var-dir)
+(defvar kittymacs-cache-dir (expand-file-name "cache/" kittymacs-var-dir)
   "Directory for caches that can be deleted at any time.")
 
-(defvar uwumacs-etc-dir (expand-file-name "etc/" uwumacs-var-dir)
+(defvar kittymacs-etc-dir (expand-file-name "etc/" kittymacs-var-dir)
   "Directory for state worth keeping: saved customizations, shell history.")
 
-(setq package-user-dir (expand-file-name "elpa/" uwumacs-var-dir)
+(setq package-user-dir (expand-file-name "elpa/" kittymacs-var-dir)
       package-gnupghome-dir (expand-file-name "gnupg/" package-user-dir)
       package-enable-at-startup nil)
 (setopt package-archives '(("gnu" . "https://elpa.gnu.org/packages/")
@@ -95,7 +95,7 @@ frames created without the toolbar rather than with one that is then removed.
          (setq package-check-signature nil))))
 
 (when (featurep 'native-compile)
-  (startup-redirect-eln-cache (expand-file-name "eln-cache/" uwumacs-cache-dir))
+  (startup-redirect-eln-cache (expand-file-name "eln-cache/" kittymacs-cache-dir))
   (setopt native-comp-async-report-warnings-errors 'silent))
 
 (setq gc-cons-threshold most-positive-fixnum)
@@ -129,12 +129,12 @@ up before the keys chapter binds the leader, the terminal comes after the
 programming chapter whose mode menu it extends, and frames policy goes last.
 
 #+begin_src emacs-lisp
-;;; init.el --- UwUmacs -*- lexical-binding: t; -*-
+;;; init.el --- kittymacs -*- lexical-binding: t; -*-
 ;; Generated from literate/10-startup.org; edit the Org source, then tangle.
 
 ;;; Code:
 
-(add-to-list 'load-path uwumacs-lisp-dir)
+(add-to-list 'load-path kittymacs-lisp-dir)
 (package-initialize)
 (unless package-archive-contents
   (package-refresh-contents))
@@ -142,34 +142,34 @@ programming chapter whose mode menu it extends, and frames policy goes last.
 (setopt use-package-enable-imenu-support t)
 
 ;; Foundation: defaults, platform paths, machine overrides, the look.
-(require 'uwumacs-defaults)
-(require 'uwumacs-platform)
-(let ((private (expand-file-name "private.el" uwumacs-lisp-dir)))
+(require 'kittymacs-defaults)
+(require 'kittymacs-platform)
+(let ((private (expand-file-name "private.el" kittymacs-lisp-dir)))
   (when (file-exists-p private)
     (load private nil t)))
-(uwumacs-platform-apply)
-(require 'uwumacs-ui)
-(require 'uwumacs-literate)
-(require 'uwumacs-dashboard)
+(kittymacs-platform-apply)
+(require 'kittymacs-ui)
+(require 'kittymacs-literate)
+(require 'kittymacs-dashboard)
 
 ;; Editing: completion, help, files, git, navigation, then Meow and the leader.
-(require 'uwumacs-completion)
-(require 'uwumacs-help)
-(require 'uwumacs-dired)
-(require 'uwumacs-treemacs)
-(require 'uwumacs-vc)
-(require 'uwumacs-navigation)
-(require 'uwumacs-meow)
-(require 'uwumacs-keys)
+(require 'kittymacs-completion)
+(require 'kittymacs-help)
+(require 'kittymacs-dired)
+(require 'kittymacs-treemacs)
+(require 'kittymacs-vc)
+(require 'kittymacs-navigation)
+(require 'kittymacs-meow)
+(require 'kittymacs-keys)
 
 ;; Applications: shells, programming, Org, and finally frame policy.
-(require 'uwumacs-shell)
-(require 'uwumacs-programming)
-(require 'uwumacs-treesit)
-(require 'uwumacs-languages)
-(require 'uwumacs-terminal)
-(require 'uwumacs-org)
-(require 'uwumacs-frames)
+(require 'kittymacs-shell)
+(require 'kittymacs-programming)
+(require 'kittymacs-treesit)
+(require 'kittymacs-languages)
+(require 'kittymacs-terminal)
+(require 'kittymacs-org)
+(require 'kittymacs-frames)
 
 ;;; init.el ends here
 #+end_src
