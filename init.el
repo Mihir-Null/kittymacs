@@ -1,9 +1,9 @@
-;;; init.el --- UwUmacs -*- lexical-binding: t; -*-
+;;; init.el --- kittymacs -*- lexical-binding: t; -*-
 ;; Generated from literate/10-startup.org; edit the Org source, then tangle.
 
 ;;; Code:
 
-(add-to-list 'load-path uwumacs-lisp-dir)
+(add-to-list 'load-path kittymacs-lisp-dir)
 (package-initialize)
 (unless package-archive-contents
   (package-refresh-contents))
@@ -11,33 +11,33 @@
 (setopt use-package-enable-imenu-support t)
 
 ;; Foundation: defaults, platform paths, machine overrides, the look.
-(require 'uwumacs-defaults)
-(require 'uwumacs-platform)
-(let ((private (expand-file-name "private.el" uwumacs-lisp-dir)))
+(require 'kittymacs-defaults)
+(require 'kittymacs-platform)
+(let ((private (expand-file-name "private.el" kittymacs-lisp-dir)))
   (when (file-exists-p private)
     (load private nil t)))
-(uwumacs-platform-apply)
-(require 'uwumacs-ui)
-(require 'uwumacs-literate)
-(require 'uwumacs-dashboard)
+(kittymacs-platform-apply)
+(require 'kittymacs-ui)
+(require 'kittymacs-literate)
+(require 'kittymacs-dashboard)
 
 ;; Editing: completion, help, files, git, navigation, then Meow and the leader.
-(require 'uwumacs-completion)
-(require 'uwumacs-help)
-(require 'uwumacs-dired)
-(require 'uwumacs-treemacs)
-(require 'uwumacs-vc)
-(require 'uwumacs-navigation)
-(require 'uwumacs-meow)
-(require 'uwumacs-keys)
+(require 'kittymacs-completion)
+(require 'kittymacs-help)
+(require 'kittymacs-dired)
+(require 'kittymacs-treemacs)
+(require 'kittymacs-vc)
+(require 'kittymacs-navigation)
+(require 'kittymacs-meow)
+(require 'kittymacs-keys)
 
 ;; Applications: shells, programming, Org, and finally frame policy.
-(require 'uwumacs-shell)
-(require 'uwumacs-programming)
-(require 'uwumacs-treesit)
-(require 'uwumacs-languages)
-(require 'uwumacs-terminal)
-(require 'uwumacs-org)
-(require 'uwumacs-frames)
+(require 'kittymacs-shell)
+(require 'kittymacs-programming)
+(require 'kittymacs-treesit)
+(require 'kittymacs-languages)
+(require 'kittymacs-terminal)
+(require 'kittymacs-org)
+(require 'kittymacs-frames)
 
 ;;; init.el ends here

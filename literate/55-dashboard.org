@@ -5,22 +5,22 @@
 
 [[file:index.org][Reading guide]] · [[file:framework.org][Framework provenance]]
 
-Ownership: *subsequent development*. The external dashboard package presents core recentf, project.el and bookmarks. Our additions supply the UwUmacs banner, the home layout, callbacks to the landing pages (the cheat sheet, the reading guide, the leader tree and Meow's tutor), a short guide to the first keys, font-aware centering and the literate Config destination. No second project or workspace database is introduced.
+Ownership: *subsequent development*. The external dashboard package presents core recentf, project.el and bookmarks. Our additions supply the kittymacs banner, the home layout, callbacks to the landing pages (the cheat sheet, the reading guide, the leader tree and Meow's tutor), a short guide to the first keys, font-aware centering and the literate Config destination. No second project or workspace database is introduced.
 
-* uwumacs-dashboard
+* kittymacs-dashboard
 :PROPERTIES:
-:header-args:emacs-lisp: :tangle ../lisp/uwumacs-dashboard.el :eval never :comments no :padline no :mkdirp yes
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-dashboard.el :eval never :comments no :padline no :mkdirp yes
 :END:
 
-Deployed file: [[file:../lisp/uwumacs-dashboard.el][lisp/uwumacs-dashboard.el]]. Edit the blocks here; generated Lisp is kept in Git for ordinary startup and review.
+Deployed file: [[file:../lisp/kittymacs-dashboard.el][lisp/kittymacs-dashboard.el]]. Edit the blocks here; generated Lisp is kept in Git for ordinary startup and review.
 
-** Load uwumacs-fonts
+** Load kittymacs-fonts
 
 Load this dependency before evaluating the forms that use its functions or variables. This preserves the existing startup dependency order.
 
-#+name: uwumacs-dashboard-01-1
+#+name: kittymacs-dashboard-01-1
 #+begin_src emacs-lisp
-;;; uwumacs-dashboard.el --- Doom-like home page -*- lexical-binding: t; -*-
+;;; kittymacs-dashboard.el --- Doom-like home page -*- lexical-binding: t; -*-
 ;; Generated from literate/55-dashboard.org; edit the Org source, then tangle.
 
 ;;; Commentary:
@@ -29,19 +29,19 @@ Load this dependency before evaluating the forms that use its functions or varia
 
 ;;; Code:
 
-(require 'uwumacs-ui)
+(require 'kittymacs-ui)
 #+end_src
 
 ** Keep help available offline
 
 The dashboard callback accepts widget arguments and opens the local Org cheat sheet. The same command is reachable with ? at home and SPC H elsewhere.
 
-#+name: uwumacs-dashboard-02-1
+#+name: kittymacs-dashboard-02-1
 #+begin_src emacs-lisp
-(defun uwumacs-dashboard-open-cheatsheet (&rest _)
+(defun kittymacs-dashboard-open-cheatsheet (&rest _)
   "Open the local keybindings and commands cheat sheet."
   (interactive)
-  (find-file (expand-file-name "keybindings.org" uwumacs-lisp-dir)))
+  (find-file (expand-file-name "keybindings.org" kittymacs-lisp-dir)))
 #+end_src
 
 ** The other landing pages
@@ -51,14 +51,14 @@ and the reading guide: Meow's interactive tutorial, the [[file:42-keys.org][keys
 lists the whole =SPC= tree, and the reading guide itself (the Config button
 below). Each is a plain command so it also works from =M-x=.
 
-#+name: uwumacs-dashboard-02-2
+#+name: kittymacs-dashboard-02-2
 #+begin_src emacs-lisp
-(defun uwumacs-dashboard-open-tutor (&rest _)
+(defun kittymacs-dashboard-open-tutor (&rest _)
   "Start Meow's interactive tutorial."
   (interactive)
   (call-interactively #'meow-tutor))
 
-(defun uwumacs-dashboard-open-keys-chapter (&rest _)
+(defun kittymacs-dashboard-open-keys-chapter (&rest _)
   "Open the keys chapter: the whole SPC tree, group by group."
   (interactive)
   (find-file (expand-file-name "literate/42-keys.org" user-emacs-directory)))
@@ -68,9 +68,9 @@ below). Each is a plain command so it also works from =M-x=.
 
 Prompt for a file from a dashboard button.
 
-#+name: uwumacs-dashboard-03-1
+#+name: kittymacs-dashboard-03-1
 #+begin_src emacs-lisp
-(defun uwumacs-dashboard-open-file (&rest _)
+(defun kittymacs-dashboard-open-file (&rest _)
   "Prompt for a file from a dashboard button."
   (interactive)
   (call-interactively #'find-file))
@@ -80,21 +80,21 @@ Prompt for a file from a dashboard button.
 
 The Config button now opens literate/index.org. The generated config.el remains a runtime file, while the reading guide explains where to edit each choice.
 
-#+name: uwumacs-dashboard-04-1
+#+name: kittymacs-dashboard-04-1
 #+begin_src emacs-lisp
-(defun uwumacs-dashboard-open-config (&rest _)
+(defun kittymacs-dashboard-open-config (&rest _)
   "Open the documented literate configuration."
   (interactive)
-  (uwumacs-literate-open))
+  (kittymacs-literate-open))
 #+end_src
 
 ** Dashboard open project
 
 Choose a project using Emacs project.el.
 
-#+name: uwumacs-dashboard-05-1
+#+name: kittymacs-dashboard-05-1
 #+begin_src emacs-lisp
-(defun uwumacs-dashboard-open-project (&rest _)
+(defun kittymacs-dashboard-open-project (&rest _)
   "Choose a project using Emacs project.el."
   (interactive)
   (call-interactively #'project-switch-project))
@@ -104,9 +104,9 @@ Choose a project using Emacs project.el.
 
 Choose a recently opened file.
 
-#+name: uwumacs-dashboard-06-1
+#+name: kittymacs-dashboard-06-1
 #+begin_src emacs-lisp
-(defun uwumacs-dashboard-open-recent (&rest _)
+(defun kittymacs-dashboard-open-recent (&rest _)
   "Choose a recently opened file."
   (interactive)
   (if (fboundp 'consult-recent-file)
@@ -118,9 +118,9 @@ Choose a recently opened file.
 
 Open the Org agenda.
 
-#+name: uwumacs-dashboard-07-1
+#+name: kittymacs-dashboard-07-1
 #+begin_src emacs-lisp
-(defun uwumacs-dashboard-open-agenda (&rest _)
+(defun kittymacs-dashboard-open-agenda (&rest _)
   "Open the Org agenda."
   (interactive)
   (call-interactively #'org-agenda))
@@ -132,9 +132,9 @@ Icons, proportional headings and display overlays have different pixel widths. M
 
 The following blocks are consecutive fragments of this source section. Some share an open Lisp form; edit them here and rebuild the whole chapter rather than evaluating a fragment on its own.
 
-#+name: uwumacs-dashboard-08-1
+#+name: kittymacs-dashboard-08-1
 #+begin_src emacs-lisp
-(defun uwumacs-dashboard-center-lines ()
+(defun kittymacs-dashboard-center-lines ()
   "Center each visible dashboard line using its rendered pixel width.
 Measure the actual buffer so heading display overlays and icon faces count.
 Exclude trailing padding and compensate for leading indentation."
@@ -168,7 +168,7 @@ Exclude trailing padding and compensate for leading indentation."
 
 Convert the measured width and indentation into a display-space prefix. The center-relative expression follows window resizing; font and theme changes trigger a fresh measurement.
 
-#+name: uwumacs-dashboard-08-2
+#+name: kittymacs-dashboard-08-2
 #+begin_src emacs-lisp
                        (offset (/ (+ width indent) 2.0))
                        (prefix (propertize
@@ -183,14 +183,14 @@ Convert the measured width and indentation into a display-space prefix. The cent
 
 Only a visible dashboard needs measuring. Font, theme and initial window setup hooks use this helper after their changes settle.
 
-#+name: uwumacs-dashboard-09-1
+#+name: kittymacs-dashboard-09-1
 #+begin_src emacs-lisp
-(defun uwumacs-dashboard-recenter (&rest _)
+(defun kittymacs-dashboard-recenter (&rest _)
   "Recompute visible dashboard text metrics after a font or theme change."
   (when-let* ((window (get-buffer-window dashboard-buffer-name t)))
     (with-selected-window window
       (with-current-buffer dashboard-buffer-name
-        (uwumacs-dashboard-center-lines)))))
+        (kittymacs-dashboard-center-lines)))))
 #+end_src
 
 ** A guide to the first keys
@@ -201,18 +201,18 @@ anything has been opened. Keys use the navigator face and descriptions
 the comment face; the centering pass below aligns each line like the rest
 of the page. The rows are data, so adding one is adding a pair.
 
-#+name: uwumacs-dashboard-09-2
+#+name: kittymacs-dashboard-09-2
 #+begin_src emacs-lisp
-(defvar uwumacs-dashboard-key-guide
+(defvar kittymacs-dashboard-key-guide
   '(("SPC SPC" "run a command by name" "SPC h ?" "the cheat sheet")
     ("SPC f f" "open a file"           "SPC h t" "Meow's tutorial")
     ("SPC m"   "menu for this mode"    "SPC C c" "the reading guide"))
   "Rows of (KEY WHAT KEY WHAT) shown at the bottom of the home page.")
 
-(defun uwumacs-dashboard-insert-key-guide ()
+(defun kittymacs-dashboard-insert-key-guide ()
   "Insert the short guide to the first keys."
   (insert "\n")
-  (dolist (row uwumacs-dashboard-key-guide)
+  (dolist (row kittymacs-dashboard-key-guide)
     (pcase-let ((`(,left-key ,left-what ,right-key ,right-what) row))
       (insert (propertize (format "%-8s" left-key) 'face 'dashboard-navigator)
               (propertize (format "%-24s" left-what) 'face 'font-lock-comment-face)
@@ -223,11 +223,11 @@ of the page. The rows are data, so adding one is adding a pair.
 
 ** Assemble the home page
 
-Fonts have already initialized. The dashboard renders the UwUmacs banner, three button rows, bounded lists from core editor facilities and the key guide; the last insertion pass applies pixel-based centering.
+Fonts have already initialized. The dashboard renders the kittymacs banner, three button rows, bounded lists from core editor facilities and the key guide; the last insertion pass applies pixel-based centering.
 
 The following blocks are consecutive fragments of this source section. Some share an open Lisp form; edit them here and rebuild the whole chapter rather than evaluating a fragment on its own.
 
-#+name: uwumacs-dashboard-10-1
+#+name: kittymacs-dashboard-10-1
 #+begin_src emacs-lisp
 (use-package dashboard
   :ensure t
@@ -239,7 +239,7 @@ The following blocks are consecutive fragments of this source section. Some shar
         (mapconcat #'identity
                    '("╭────────────────────────────╮"
                      "│                            │"
-                     "│     U w U m a c s   :3     │"
+                     "│   k i t t y m a c s   :3   │"
                      "│                            │"
                      "╰────────────────────────────╯")
                    "\n")
@@ -251,7 +251,7 @@ The following blocks are consecutive fragments of this source section. Some shar
         dashboard-icon-type 'nerd-icons
         dashboard-set-heading-icons t
         dashboard-set-file-icons t
-        dashboard-display-icons-p #'uwumacs-icons-available-p
+        dashboard-display-icons-p #'kittymacs-icons-available-p
         dashboard-heading-icon-height 1.0
         dashboard-show-shortcuts t
         dashboard-projects-backend 'project-el
@@ -269,7 +269,7 @@ The following blocks are consecutive fragments of this source section. Some shar
 
 Continue the same definition in its original scope. This fragment follows the preceding block directly in the deployed file.
 
-#+name: uwumacs-dashboard-10-2
+#+name: kittymacs-dashboard-10-2
 #+begin_src emacs-lisp
         dashboard-item-names '(("Recent Files:" . "Recent")
                                ("Projects:" . "Projects")
@@ -281,28 +281,28 @@ Continue the same definition in its original scope. This fragment follows the pr
                                     dashboard-insert-newline
                                     dashboard-insert-init-info
                                     dashboard-insert-items
-                                    uwumacs-dashboard-insert-key-guide
-                                    uwumacs-dashboard-center-lines)
+                                    kittymacs-dashboard-insert-key-guide
+                                    kittymacs-dashboard-center-lines)
         dashboard-init-info
         (lambda ()
           (format "Emacs %s · ready in %s"
                   emacs-version
                   (emacs-init-time)))
         dashboard-navigator-buttons
-        '((("+" "File" "Open a file" uwumacs-dashboard-open-file)
-           ("◆" "Project" "Switch project" uwumacs-dashboard-open-project)
-           ("↺" "Recent" "Open a recent file" uwumacs-dashboard-open-recent))
-          (("◎" "Agenda" "Open the Org agenda" uwumacs-dashboard-open-agenda)
+        '((("+" "File" "Open a file" kittymacs-dashboard-open-file)
+           ("◆" "Project" "Switch project" kittymacs-dashboard-open-project)
+           ("↺" "Recent" "Open a recent file" kittymacs-dashboard-open-recent))
+          (("◎" "Agenda" "Open the Org agenda" kittymacs-dashboard-open-agenda)
            ("*" "Scratch" "Open the scratch buffer"
             (lambda (&rest _) (switch-to-buffer "*scratch*")))
-           ("λ" "Config" "Open the UwUmacs reading guide (SPC C c)"
-            uwumacs-dashboard-open-config))
+           ("λ" "Config" "Open the kittymacs reading guide (SPC C c)"
+            kittymacs-dashboard-open-config))
           (("?" "Keys & commands" "Open the local cheat sheet (SPC h ?, or ? here)"
-            uwumacs-dashboard-open-cheatsheet)
+            kittymacs-dashboard-open-cheatsheet)
            ("»" "Meow tutor" "Learn select, extend, act (SPC h t)"
-            uwumacs-dashboard-open-tutor)
+            kittymacs-dashboard-open-tutor)
            ("§" "Leader tree" "Every SPC key, group by group"
-            uwumacs-dashboard-open-keys-chapter))))
+            kittymacs-dashboard-open-keys-chapter))))
   :config
   (set-face-attribute 'dashboard-text-banner nil
                       :inherit 'font-lock-keyword-face
@@ -313,7 +313,7 @@ Continue the same definition in its original scope. This fragment follows the pr
 
 Skip the home page when Emacs was invoked with a file argument.
 
-#+name: uwumacs-dashboard-10-3
+#+name: kittymacs-dashboard-10-3
 #+begin_src emacs-lisp
   (set-face-attribute 'dashboard-banner-logo-title nil
                       :inherit 'font-lock-comment-face
@@ -325,21 +325,21 @@ Skip the home page when Emacs was invoked with a file argument.
                       :inherit 'font-lock-keyword-face
                       :weight 'semi-bold)
 
-  (define-key dashboard-mode-map (kbd "?") #'uwumacs-dashboard-open-cheatsheet)
+  (define-key dashboard-mode-map (kbd "?") #'kittymacs-dashboard-open-cheatsheet)
 
-  (add-hook 'window-setup-hook #'uwumacs-dashboard-recenter 100)
-  (add-hook 'after-setting-font-hook #'uwumacs-dashboard-recenter 100)
-  (add-hook 'enable-theme-functions #'uwumacs-dashboard-recenter 100)
+  (add-hook 'window-setup-hook #'kittymacs-dashboard-recenter 100)
+  (add-hook 'after-setting-font-hook #'kittymacs-dashboard-recenter 100)
+  (add-hook 'enable-theme-functions #'kittymacs-dashboard-recenter 100)
 
   ;; Skip the home page when Emacs was invoked with a file argument.
   (dashboard-setup-startup-hook))
 #+end_src
 
-** Apply policy after uwumacs-meow
+** Apply policy after kittymacs-meow
 
 Waiting for the feature avoids racing its initialization. The following policy takes effect once its variables, maps or hooks exist; it does not force an unrelated feature to load now.
 
-#+name: uwumacs-dashboard-11-1
+#+name: kittymacs-dashboard-11-1
 #+begin_src emacs-lisp
 ;; Keep r/p/b/? and dashboard item shortcuts alongside Meow j/k and SPC.
 (with-eval-after-load 'meow
@@ -350,9 +350,9 @@ Waiting for the feature avoids racing its initialization. The following policy t
 
 The core require/provide protocol records that this file loaded. Later requires can reuse the feature without evaluating the module again.
 
-#+name: uwumacs-dashboard-12-1
+#+name: kittymacs-dashboard-12-1
 #+begin_src emacs-lisp
-(provide 'uwumacs-dashboard)
-;;; uwumacs-dashboard.el ends here
+(provide 'kittymacs-dashboard)
+;;; kittymacs-dashboard.el ends here
 #+end_src
 

@@ -1,10 +1,10 @@
 # home-manager module: link a writable checkout into place as ~/.config/emacs
 # and, without nix-darwin, install Emacs and the tools for this user.
 #
-#   imports = [ inputs.uwumacs.homeManagerModules.default ];
-#   programs.uwumacs = {
+#   imports = [ inputs.kittymacs.homeManagerModules.default ];
+#   programs.kittymacs = {
 #     enable = true;
-#     source = "${config.home.homeDirectory}/src/UwUmacs";
+#     source = "${config.home.homeDirectory}/src/kittymacs";
 #   };
 #
 # The link points outside the Nix store on purpose: the configuration
@@ -13,17 +13,17 @@
 { config, lib, pkgs, ... }:
 
 let
-  cfg = config.programs.uwumacs;
+  cfg = config.programs.kittymacs;
   tools = import ./tools.nix { inherit pkgs; emacs = cfg.package; };
 in
 {
-  options.programs.uwumacs = {
-    enable = lib.mkEnableOption "UwUmacs, linked into ~/.config/emacs";
+  options.programs.kittymacs = {
+    enable = lib.mkEnableOption "kittymacs, linked into ~/.config/emacs";
 
     source = lib.mkOption {
       type = lib.types.nullOr lib.types.str;
       default = null;
-      example = "/Users/me/src/UwUmacs";
+      example = "/Users/me/src/kittymacs";
       description = ''
         Absolute path of a writable clone of the repository.  When set,
         ~/.config/emacs becomes a symbolic link to it.  Leave null to manage

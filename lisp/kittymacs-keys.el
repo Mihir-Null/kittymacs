@@ -1,11 +1,11 @@
-;;; uwumacs-keys.el --- The leader tree -*- lexical-binding: t; -*-
+;;; kittymacs-keys.el --- The leader tree -*- lexical-binding: t; -*-
 ;; Generated from literate/42-keys.org; edit the Org source, then tangle.
 
 ;;; Code:
 
-(require 'uwumacs-leader)
-(require 'uwumacs-help)
-(require 'uwumacs-completion)
+(require 'kittymacs-leader)
+(require 'kittymacs-help)
+(require 'kittymacs-completion)
 (setopt which-key-idle-delay 0.45
         which-key-idle-secondary-delay 0.05
         which-key-show-early-on-C-h t
@@ -13,34 +13,34 @@
         which-key-side-window-location 'top
         which-key-side-window-max-height 0.5)
 (which-key-mode 1)
-(defun uwumacs-new-buffer-frame ()
+(defun kittymacs-new-buffer-frame ()
   "Create an empty buffer in a new frame."
   (interactive)
-  (uwumacs-new-buffer t))
+  (kittymacs-new-buffer t))
 
-(defvar-keymap uwumacs-buffer-map
+(defvar-keymap kittymacs-buffer-map
   :doc "Buffers."
   "b" (cons "switch" #'consult-buffer)
   "B" (cons "switch in other frame" #'consult-buffer-other-frame)
   "p" (cons "project buffer" #'consult-project-buffer)
   "k" (cons "kill this" #'kill-current-buffer)
   "K" (cons "kill some" #'kill-buffer)
-  "n" (cons "new" #'uwumacs-new-buffer)
-  "N" (cons "new in frame" #'uwumacs-new-buffer-frame)
+  "n" (cons "new" #'kittymacs-new-buffer)
+  "N" (cons "new in frame" #'kittymacs-new-buffer-frame)
   "s" (cons "save" #'save-buffer)
   "r" (cons "revert" #'revert-buffer-quick)
   "R" (cons "rename file" #'rename-visited-file)
   "i" (cons "imenu" #'consult-imenu)
-  "j" (cons "jump to heading" #'uwumacs-jump-in-buffer)
+  "j" (cons "jump to heading" #'kittymacs-jump-in-buffer)
   "m" (cons "mark ring" #'consult-mark)
   "M" (cons "global mark ring" #'consult-global-mark)
   "a" (cons "ibuffer" #'ibuffer)
   "x" (cons "scratch" #'scratch-buffer)
   "u" (cons "undo tree" #'vundo)
-  "[" (cons "previous" #'uwumacs-previous-user-buffer)
-  "]" (cons "next" #'uwumacs-next-user-buffer))
+  "[" (cons "previous" #'kittymacs-previous-user-buffer)
+  "]" (cons "next" #'kittymacs-next-user-buffer))
 
-(defvar-keymap uwumacs-file-map
+(defvar-keymap kittymacs-file-map
   :doc "Files."
   "f" (cons "find" #'find-file)
   "F" (cons "find in other frame" #'find-file-other-frame)
@@ -52,15 +52,15 @@
   "d" (cons "directory" #'dired-jump)
   "D" (cons "switch directory" #'consult-dir)
   "R" (cons "rename" #'rename-visited-file)
-  "y" (cons "copy file name" #'uwumacs-copy-file-name)
+  "y" (cons "copy file name" #'kittymacs-copy-file-name)
   "t" (cons "reveal in file tree" #'treemacs-find-file)
-  "o" (cons "show in file manager" #'uwumacs-reveal-in-file-manager))
+  "o" (cons "show in file manager" #'kittymacs-reveal-in-file-manager))
 
-(defvar-keymap uwumacs-search-map
+(defvar-keymap kittymacs-search-map
   :doc "Search."
   "s" (cons "lines" #'consult-line)
   "S" (cons "lines in all buffers" #'consult-line-multi)
-  "." (cons "symbol at point" #'uwumacs-search-symbol-at-point)
+  "." (cons "symbol at point" #'kittymacs-search-symbol-at-point)
   "d" (cons "ripgrep" #'consult-ripgrep)
   "D" (cons "ripgrep buffer" #'deadgrep)
   "r" (cons "replace (visual)" #'vr/query-replace)
@@ -77,7 +77,7 @@
 (with-eval-after-load 'project
   (keymap-set project-prefix-map "C" #'recompile))
 
-(defvar-keymap uwumacs-jump-map
+(defvar-keymap kittymacs-jump-map
   :doc "Jump with on-screen hints."
   "j" (cons "to character" #'avy-goto-char-timer)
   "l" (cons "to line" #'avy-goto-line)
@@ -86,9 +86,9 @@
   "e" (cons "to end of line" #'avy-goto-end-of-line)
   "i" (cons "in this line" #'avy-goto-char-in-line))
 
-(defvar-keymap uwumacs-vc-map
+(defvar-keymap kittymacs-vc-map
   :doc "Version control."
-  "s" (cons "status" #'uwumacs-magit-status)
+  "s" (cons "status" #'kittymacs-magit-status)
   "d" (cons "diff" #'magit-diff)
   "l" (cons "log" #'magit-log)
   "L" (cons "log this file" #'magit-log-buffer-file)
@@ -105,7 +105,7 @@
   "q" (cons "quick commit (vc)" #'vc-next-action)
   "?" (cons "all commands" #'magit-dispatch))
 
-(defvar-keymap uwumacs-window-map
+(defvar-keymap kittymacs-window-map
   :doc "Windows and frames."
   "n" (cons "new frame" #'make-frame-command)
   "k" (cons "close frame" #'delete-frame)
@@ -124,9 +124,9 @@
   "f" (cons "fullscreen" #'toggle-frame-fullscreen)
   "M" (cons "maximize" #'toggle-frame-maximized))
 
-(defvar-keymap uwumacs-workspace-map
+(defvar-keymap kittymacs-workspace-map
   :doc "Workspaces (tabs with their own buffers)."
-  "TAB" (cons "switch" #'uwumacs-tab-dwim)
+  "TAB" (cons "switch" #'kittymacs-tab-dwim)
   "s" (cons "switch or create" #'tabspaces-switch-or-create-workspace)
   "o" (cons "open project" #'tabspaces-open-or-create-project-and-workspace)
   "n" (cons "new tab" #'tab-new)
@@ -138,7 +138,7 @@
   "k" (cons "kill buffers and close" #'tabspaces-kill-buffers-close-workspace)
   "]" (cons "next tab" #'tab-next)
   "[" (cons "previous tab" #'tab-previous))
-(defvar-keymap uwumacs-code-map
+(defvar-keymap kittymacs-code-map
   :doc "Change code."
   "c" (cons "comment" #'comment-dwim)
   "l" (cons "comment line" #'comment-line)
@@ -147,9 +147,9 @@
   "f" (cons "indent region" #'indent-region)
   "w" (cons "clean whitespace" #'whitespace-cleanup)
   "m" (cons "editing menu" #'casual-editkit-main-tmenu)
-  "p" (cons "complete with" uwumacs-cape-map))
+  "p" (cons "complete with" kittymacs-cape-map))
 
-(defvar-keymap uwumacs-eval-map
+(defvar-keymap kittymacs-eval-map
   :doc "Evaluate Lisp."
   "e" (cons "last sexp" #'eval-last-sexp)
   "d" (cons "defun" #'eval-defun)
@@ -159,9 +159,9 @@
   "i" (cons "ielm" #'ielm)
   "l" (cons "load file" #'load-file))
 
-(defvar-keymap uwumacs-lsp-map
+(defvar-keymap kittymacs-lsp-map
   :doc "Language server and code intelligence."
-  "e" (cons "start or manage" #'uwumacs-eglot)
+  "e" (cons "start or manage" #'kittymacs-eglot)
   "q" (cons "shut down" #'eglot-shutdown)
   "=" (cons "reconnect" #'eglot-reconnect)
   "a" (cons "code actions" #'eglot-code-actions)
@@ -175,7 +175,7 @@
   "t" (cons "type definition" #'eglot-find-typeDefinition)
   "h" (cons "documentation" #'eldoc-doc-buffer))
 
-(defvar-keymap uwumacs-diagnostics-map
+(defvar-keymap kittymacs-diagnostics-map
   :doc "Diagnostics (Flymake)."
   "n" (cons "next" #'flymake-goto-next-error)
   "p" (cons "previous" #'flymake-goto-prev-error)
@@ -185,12 +185,12 @@
   "s" (cons "start check" #'flymake-start)
   "P" (cons "package lint" #'package-lint-current-buffer))
 
-(defun uwumacs-insert-date ()
+(defun kittymacs-insert-date ()
   "Insert today's date as YYYY-MM-DD."
   (interactive)
   (insert (format-time-string "%Y-%m-%d")))
 
-(defvar-keymap uwumacs-insert-map
+(defvar-keymap kittymacs-insert-map
   :doc "Insert."
   "s" (cons "snippet" #'yas-insert-snippet)
   "S" (cons "new snippet" #'yas-new-snippet)
@@ -199,31 +199,31 @@
   "R" (cons "store register" #'consult-register-store)
   "c" (cons "character" #'insert-char)
   "e" (cons "emoji" #'emoji-insert)
-  "d" (cons "date" #'uwumacs-insert-date))
-(defun uwumacs-org-inbox ()
+  "d" (cons "date" #'kittymacs-insert-date))
+(defun kittymacs-org-inbox ()
   "Open the Org inbox file."
   (interactive)
   (find-file org-default-notes-file))
 
-(defvar-keymap uwumacs-open-map
+(defvar-keymap kittymacs-open-map
   :doc "Open applications."
-  "e" (cons "terminal" #'uwumacs-terminal-open)
+  "e" (cons "terminal" #'kittymacs-terminal-open)
   "E" (cons "pick a terminal" #'consult-ghostel)
-  "p" (cons "project terminal" #'uwumacs-terminal-project)
-  "m" (cons "MSYS2 terminal (Windows)" #'uwumacs-terminal-msys2)
+  "p" (cons "project terminal" #'kittymacs-terminal-project)
+  "m" (cons "MSYS2 terminal (Windows)" #'kittymacs-terminal-msys2)
   "t" (cons "file tree" #'treemacs-select-window)
-  "s" (cons "eshell (project)" #'uwumacs-eshell-project)
+  "s" (cons "eshell (project)" #'kittymacs-eshell-project)
   "S" (cons "eshell" #'eshell)
-  "a" (cons "agenda dashboard" #'uwumacs-org-dashboard)
+  "a" (cons "agenda dashboard" #'kittymacs-org-dashboard)
   "A" (cons "agenda" #'org-agenda)
   "c" (cons "capture" #'org-capture)
-  "i" (cons "org inbox" #'uwumacs-org-inbox)
+  "i" (cons "org inbox" #'kittymacs-org-inbox)
   "d" (cons "dired" #'dired)
   "h" (cons "home" #'dashboard-open))
 
-(defvar-keymap uwumacs-toggle-map
+(defvar-keymap kittymacs-toggle-map
   :doc "Toggles."
-  "t" (cons "light/dark theme" #'uwumacs-toggle-theme)
+  "t" (cons "light/dark theme" #'kittymacs-toggle-theme)
   "T" (cons "choose theme" #'load-theme)
   "n" (cons "line numbers" #'display-line-numbers-mode)
   "h" (cons "highlight line" #'hl-line-mode)
@@ -246,95 +246,95 @@
   "p" (cons "structural editing" #'puni-mode)
   "z" (cons "zone out" #'zone))
 
-(defun uwumacs-find-config-file ()
+(defun kittymacs-find-config-file ()
   "Open one of the literate chapters."
   (interactive)
   (let ((default-directory (expand-file-name "literate/" user-emacs-directory)))
     (call-interactively #'find-file)))
 
-(defun uwumacs-search-config ()
+(defun kittymacs-search-config ()
   "Search the configuration sources with ripgrep."
   (interactive)
   (consult-ripgrep (expand-file-name "literate/" user-emacs-directory)))
 
-(defun uwumacs-open-private-file ()
+(defun kittymacs-open-private-file ()
   "Open private.el, creating it from the example if needed."
   (interactive)
-  (let ((private (expand-file-name "private.el" uwumacs-lisp-dir))
-        (example (expand-file-name "private.example.el" uwumacs-lisp-dir)))
+  (let ((private (expand-file-name "private.el" kittymacs-lisp-dir))
+        (example (expand-file-name "private.example.el" kittymacs-lisp-dir)))
     (when (and (not (file-exists-p private)) (file-exists-p example))
       (copy-file example private))
     (find-file private)))
 
-(defun uwumacs-open-custom-file ()
+(defun kittymacs-open-custom-file ()
   "Open the file where Customize saves settings."
   (interactive)
   (find-file custom-file))
 
-(defun uwumacs-open-architecture ()
+(defun kittymacs-open-architecture ()
   "Open ARCHITECTURE.md, the design record."
   (interactive)
   (find-file (expand-file-name "ARCHITECTURE.md" user-emacs-directory)))
 
-(defvar-keymap uwumacs-config-map
+(defvar-keymap kittymacs-config-map
   :doc "This configuration."
-  "c" (cons "reading guide" #'uwumacs-literate-open)
-  "f" (cons "find chapter" #'uwumacs-find-config-file)
-  "s" (cons "search config" #'uwumacs-search-config)
-  "t" (cons "tangle" #'uwumacs-literate-tangle)
-  "k" (cons "check tangle" #'uwumacs-literate-check)
-  "p" (cons "private.el" #'uwumacs-open-private-file)
-  "u" (cons "custom.el" #'uwumacs-open-custom-file)
-  "a" (cons "architecture" #'uwumacs-open-architecture)
+  "c" (cons "reading guide" #'kittymacs-literate-open)
+  "f" (cons "find chapter" #'kittymacs-find-config-file)
+  "s" (cons "search config" #'kittymacs-search-config)
+  "t" (cons "tangle" #'kittymacs-literate-tangle)
+  "k" (cons "check tangle" #'kittymacs-literate-check)
+  "p" (cons "private.el" #'kittymacs-open-private-file)
+  "u" (cons "custom.el" #'kittymacs-open-custom-file)
+  "a" (cons "architecture" #'kittymacs-open-architecture)
   "r" (cons "restart Emacs" #'restart-emacs))
 
-(defvar-keymap uwumacs-quit-map
+(defvar-keymap kittymacs-quit-map
   :doc "Quit."
   "q" (cons "save and quit" #'save-buffers-kill-emacs)
   "Q" (cons "quit without saving" #'kill-emacs)
   "r" (cons "restart" #'restart-emacs)
   "f" (cons "close frame" #'delete-frame))
 
-(defvar-keymap uwumacs-user-map
+(defvar-keymap kittymacs-user-map
   :doc "Your own keys. Add them here or in private.el.")
 
-(keymap-set uwumacs-help-map "?" (cons "cheat sheet" #'uwumacs-dashboard-open-cheatsheet))
-(keymap-set uwumacs-leader-map "SPC" (cons "M-x" #'execute-extended-command))
-(keymap-set uwumacs-leader-map "/" (cons "describe leader" #'uwumacs-describe-leader))
-(keymap-set uwumacs-leader-map "?" (cons "search commands" #'consult-apropos))
-(keymap-set uwumacs-leader-map ";" (cons "comment line" #'comment-line))
-(keymap-set uwumacs-leader-map "d" (cons "directory" #'dired-jump))
-(keymap-set uwumacs-leader-map "x" (cons "scratch" #'scratch-buffer))
-(keymap-set uwumacs-leader-map "k" (cons "kill ring" #'consult-yank-from-kill-ring))
-(keymap-set uwumacs-leader-map "[" (cons "previous buffer" #'uwumacs-previous-user-buffer))
-(keymap-set uwumacs-leader-map "]" (cons "next buffer" #'uwumacs-next-user-buffer))
-(keymap-set uwumacs-leader-map "{" (cons "previous tab" #'tab-bar-switch-to-prev-tab))
-(keymap-set uwumacs-leader-map "}" (cons "next tab" #'tab-bar-switch-to-next-tab))
-(keymap-set uwumacs-leader-map "TAB" (cons "switch tab" #'uwumacs-tab-dwim))
+(keymap-set kittymacs-help-map "?" (cons "cheat sheet" #'kittymacs-dashboard-open-cheatsheet))
+(keymap-set kittymacs-leader-map "SPC" (cons "M-x" #'execute-extended-command))
+(keymap-set kittymacs-leader-map "/" (cons "describe leader" #'kittymacs-describe-leader))
+(keymap-set kittymacs-leader-map "?" (cons "search commands" #'consult-apropos))
+(keymap-set kittymacs-leader-map ";" (cons "comment line" #'comment-line))
+(keymap-set kittymacs-leader-map "d" (cons "directory" #'dired-jump))
+(keymap-set kittymacs-leader-map "x" (cons "scratch" #'scratch-buffer))
+(keymap-set kittymacs-leader-map "k" (cons "kill ring" #'consult-yank-from-kill-ring))
+(keymap-set kittymacs-leader-map "[" (cons "previous buffer" #'kittymacs-previous-user-buffer))
+(keymap-set kittymacs-leader-map "]" (cons "next buffer" #'kittymacs-next-user-buffer))
+(keymap-set kittymacs-leader-map "{" (cons "previous tab" #'tab-bar-switch-to-prev-tab))
+(keymap-set kittymacs-leader-map "}" (cons "next tab" #'tab-bar-switch-to-next-tab))
+(keymap-set kittymacs-leader-map "TAB" (cons "switch tab" #'kittymacs-tab-dwim))
 
-(keymap-set uwumacs-leader-map "b" (cons "buffers" uwumacs-buffer-map))
-(keymap-set uwumacs-leader-map "f" (cons "files" uwumacs-file-map))
-(keymap-set uwumacs-leader-map "s" (cons "search" uwumacs-search-map))
-(keymap-set uwumacs-leader-map "j" (cons "jump" uwumacs-jump-map))
-(keymap-set uwumacs-leader-map "p" (cons "project" project-prefix-map))
-(keymap-set uwumacs-leader-map "v" (cons "version control" uwumacs-vc-map))
-(keymap-set uwumacs-leader-map "w" (cons "windows" uwumacs-window-map))
-(keymap-set uwumacs-leader-map "W" (cons "workspaces" uwumacs-workspace-map))
-(keymap-set uwumacs-leader-map "c" (cons "code" uwumacs-code-map))
-(keymap-set uwumacs-leader-map "e" (cons "eval" uwumacs-eval-map))
-(keymap-set uwumacs-leader-map "l" (cons "language server" uwumacs-lsp-map))
-(keymap-set uwumacs-leader-map "F" (cons "diagnostics" uwumacs-diagnostics-map))
-(keymap-set uwumacs-leader-map "i" (cons "insert" uwumacs-insert-map))
-(keymap-set uwumacs-leader-map "o" (cons "open" uwumacs-open-map))
-(keymap-set uwumacs-leader-map "t" (cons "toggle" uwumacs-toggle-map))
-(keymap-set uwumacs-leader-map "C" (cons "config" uwumacs-config-map))
-(keymap-set uwumacs-leader-map "q" (cons "quit" uwumacs-quit-map))
-(keymap-set uwumacs-leader-map "h" (cons "help" uwumacs-help-map))
-(keymap-set uwumacs-leader-map "u" (cons "user" uwumacs-user-map))
+(keymap-set kittymacs-leader-map "b" (cons "buffers" kittymacs-buffer-map))
+(keymap-set kittymacs-leader-map "f" (cons "files" kittymacs-file-map))
+(keymap-set kittymacs-leader-map "s" (cons "search" kittymacs-search-map))
+(keymap-set kittymacs-leader-map "j" (cons "jump" kittymacs-jump-map))
+(keymap-set kittymacs-leader-map "p" (cons "project" project-prefix-map))
+(keymap-set kittymacs-leader-map "v" (cons "version control" kittymacs-vc-map))
+(keymap-set kittymacs-leader-map "w" (cons "windows" kittymacs-window-map))
+(keymap-set kittymacs-leader-map "W" (cons "workspaces" kittymacs-workspace-map))
+(keymap-set kittymacs-leader-map "c" (cons "code" kittymacs-code-map))
+(keymap-set kittymacs-leader-map "e" (cons "eval" kittymacs-eval-map))
+(keymap-set kittymacs-leader-map "l" (cons "language server" kittymacs-lsp-map))
+(keymap-set kittymacs-leader-map "F" (cons "diagnostics" kittymacs-diagnostics-map))
+(keymap-set kittymacs-leader-map "i" (cons "insert" kittymacs-insert-map))
+(keymap-set kittymacs-leader-map "o" (cons "open" kittymacs-open-map))
+(keymap-set kittymacs-leader-map "t" (cons "toggle" kittymacs-toggle-map))
+(keymap-set kittymacs-leader-map "C" (cons "config" kittymacs-config-map))
+(keymap-set kittymacs-leader-map "q" (cons "quit" kittymacs-quit-map))
+(keymap-set kittymacs-leader-map "h" (cons "help" kittymacs-help-map))
+(keymap-set kittymacs-leader-map "u" (cons "user" kittymacs-user-map))
 
 ;; The same tree without Meow: C-c C-SPC works in Insert state and in
 ;; buffers where Meow is off.
-(keymap-global-set "C-c C-SPC" uwumacs-leader-map)
+(keymap-global-set "C-c C-SPC" kittymacs-leader-map)
 
-(provide 'uwumacs-keys)
-;;; uwumacs-keys.el ends here
+(provide 'kittymacs-keys)
+;;; kittymacs-keys.el ends here

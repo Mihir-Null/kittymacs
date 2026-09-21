@@ -1,4 +1,4 @@
-# The programs UwUmacs looks for at startup, as Nix packages.  Every module
+# The programs kittymacs looks for at startup, as Nix packages.  Every module
 # and the dev shell draw from this one list, so the set of dependencies is
 # stated once.  Each entry names the chapter that discovers it.
 { pkgs, emacs ? pkgs.emacs }:

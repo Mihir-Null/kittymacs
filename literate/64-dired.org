@@ -1,7 +1,7 @@
 #+TITLE: Dired: the file manager
 #+OPTIONS: toc:3 num:nil
 #+STARTUP: overview
-#+PROPERTY: header-args:emacs-lisp :tangle ../lisp/uwumacs-dired.el :eval never :comments no :padline no :mkdirp yes
+#+PROPERTY: header-args:emacs-lisp :tangle ../lisp/kittymacs-dired.el :eval never :comments no :padline no :mkdirp yes
 
 [[file:index.org][Reading guide]] · [[file:65-treemacs.org][Treemacs]] · [[file:41-leader.org][Leader]] · [[file:60-completion.org][Completion]]
 
@@ -17,15 +17,15 @@ then copy, rename or delete the marks. Type =/= to narrow the listing as
 you type. =SPC m= shows the actions that matter, labelled.
 
 #+begin_src emacs-lisp
-;;; uwumacs-dired.el --- The file manager -*- lexical-binding: t; -*-
+;;; kittymacs-dired.el --- The file manager -*- lexical-binding: t; -*-
 ;; Generated from literate/64-dired.org; edit the Org source, then tangle.
 
 ;; Distilled from Lambda-Emacs by Colin McLear (GPL-3.0-or-later).
 
 ;;; Code:
 
-(require 'uwumacs-leader)
-(require 'uwumacs-ui)
+(require 'kittymacs-leader)
+(require 'kittymacs-ui)
 
 #+end_src
 
@@ -62,13 +62,13 @@ directories itself, a variable does.
                 "-lahv --group-directories-first"
               "-lah"))))
 
-(defun uwumacs-dired-up-directory ()
+(defun kittymacs-dired-up-directory ()
   "Go to the parent directory in this buffer."
   (interactive)
   (find-alternate-file ".."))
 
 (with-eval-after-load 'dired
-  (keymap-set dired-mode-map "h" #'uwumacs-dired-up-directory)
+  (keymap-set dired-mode-map "h" #'kittymacs-dired-up-directory)
   (keymap-set dired-mode-map "l" #'dired-find-file))
 
 #+end_src
@@ -121,7 +121,7 @@ new user looks for.
 (with-eval-after-load 'meow
   (add-to-list 'meow-mode-state-list '(dired-mode . motion)))
 
-(uwumacs-define-localleader 'dired-mode
+(kittymacs-define-localleader 'dired-mode
   "c" (cons "copy" #'dired-do-copy)
   "r" (cons "rename / move" #'dired-do-rename)
   "d" (cons "delete" #'dired-do-delete)
@@ -143,8 +143,8 @@ new user looks for.
   "g" (cons "refresh" #'revert-buffer)
   "?" (cons "menu" #'casual-dired-tmenu))
 
-(provide 'uwumacs-dired)
-;;; uwumacs-dired.el ends here
+(provide 'kittymacs-dired)
+;;; kittymacs-dired.el ends here
 #+end_src
 
 * Try it

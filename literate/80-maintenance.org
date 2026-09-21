@@ -35,18 +35,18 @@ The following blocks are consecutive fragments of this source section. Some shar
 
 ;; Paths
 ;; These variables are already defined when private.el is loaded, so `setopt' is useful.
-;; (setopt uwumacs-project-directory (expand-file-name "~/src/"))
-;; (setopt uwumacs-org-directory (expand-file-name "~/Documents/my-org/"))
+;; (setopt kittymacs-project-directory (expand-file-name "~/src/"))
+;; (setopt kittymacs-org-directory (expand-file-name "~/Documents/my-org/"))
 
 ;; Terminal
 ;; MSYS2's location, when it is not the normal C:/msys64/.  The platform
 ;; chapter defines this before private.el loads, so `setopt' works.
-;; (setopt uwumacs-msys2-root "D:/Tools/msys64/")
+;; (setopt kittymacs-msys2-root "D:/Tools/msys64/")
 ;;
 ;; Which shell the terminal runs, and where the escape key goes while a
 ;; full-screen program is drawing (`auto', `terminal' or `meow').
 ;; (setopt ghostel-shell '("/bin/zsh" "--login"))
-;; (setopt uwumacs-terminal-escape 'terminal)
+;; (setopt kittymacs-terminal-escape 'terminal)
 ;;
 ;; Let programs in the terminal write the system clipboard (OSC 52).  Handy
 ;; over SSH; it also lets anything you `cat' set your clipboard.
@@ -59,34 +59,34 @@ The following blocks are consecutive fragments of this source section. Some shar
 ;; macOS
 ;; Modifier keys are applied after this file loads, so `setopt' works here.
 ;; Swap Command and Option, or give the right Option key to Emacs too:
-;; (setopt uwumacs-macos-modifiers '((ns-command-modifier . meta)
+;; (setopt kittymacs-macos-modifiers '((ns-command-modifier . meta)
 ;;                                   (ns-option-modifier . super)
 ;;                                   (ns-right-option-modifier . meta)))
 
 ;; Language tooling
 ;; Eglot is available manually through SPC l e. Automatic startup and external
 ;; language packages are opt-in because their servers/runtimes are platform-owned.
-;; (setq uwumacs-eglot-auto-start-modes '(python-mode python-ts-mode)
-;;       uwumacs-language-packages '(nix racket guile))
+;; (setq kittymacs-eglot-auto-start-modes '(python-mode python-ts-mode)
+;;       kittymacs-language-packages '(nix racket guile))
 #+end_src
 
 *** Keep account and machine choices local: continued 2
 
-UI preserve these pre-bound values. uwumacs-ui-light-theme 'doom-one-light
+UI preserve these pre-bound values. kittymacs-ui-light-theme 'doom-one-light
 
 #+name: private.example-01-2
 #+begin_src emacs-lisp
 ;; UI
-;; `uwumacs-ui' is loaded later, so use `setq' here; its `defcustom' forms will
+;; `kittymacs-ui' is loaded later, so use `setq' here; its `defcustom' forms will
 ;; preserve these pre-bound values.
-;; (setq uwumacs-theme 'doom-dark+
-;;       uwumacs-light-theme 'doom-one-light
-;;       uwumacs-font-family "GoogleSansCode Nerd Font"
-;;       uwumacs-icons 'auto
-;;       uwumacs-nerd-font "Symbols Nerd Font Mono")
+;; (setq kittymacs-theme 'doom-dark+
+;;       kittymacs-light-theme 'doom-one-light
+;;       kittymacs-font-family "GoogleSansCode Nerd Font"
+;;       kittymacs-icons 'auto
+;;       kittymacs-nerd-font "Symbols Nerd Font Mono")
 
 ;; The primary programming font and the dedicated Nerd Icons symbol font are kept
-;; separate. `uwumacs-font-family' changes only the default face family, preserving
+;; separate. `kittymacs-font-family' changes only the default face family, preserving
 ;; the platform's existing point size. If the family is absent, the starter keeps the
 ;; platform default rather than failing startup.
 #+end_src
@@ -101,8 +101,8 @@ Project commands. A justfile needs nothing here; a project that wants its own na
 ;; Project commands
 ;; A project with a justfile needs nothing here: SPC p j lists its recipes.
 ;; Name a wrapper when the binary is not on PATH -- a Nix development shell, or
-;; WSL.  `uwumacs-programming' loads later, so `setq' is the form to use.
-;; (setq uwumacs-just-program "/home/you/.nix-profile/bin/just")
+;; WSL.  `kittymacs-programming' loads later, so `setq' is the form to use.
+;; (setq kittymacs-just-program "/home/you/.nix-profile/bin/just")
 ;;
 ;; To give one project commands under their own names, define a minor mode for
 ;; it and name that mode in each command's `interactive' form.  M-x then offers
@@ -114,33 +114,33 @@ Project commands. A justfile needs nothing here; a project that wants its own na
 ;; (defun my-project-switch ()
 ;;   "Deploy this project.  Runs in a terminal so sudo can prompt."
 ;;   (interactive nil my-project-mode)
-;;   (uwumacs-just "switch" t))
+;;   (kittymacs-just "switch" t))
 ;;
 ;; Switch the mode on from the project's own .dir-locals.el, so the knowledge
 ;; travels with the repository instead of living on this machine:
 ;;   ((nil . ((mode . my-project))))
 #+end_src
 
-* uwumacs-literate
+* kittymacs-literate
 :PROPERTIES:
-:header-args:emacs-lisp: :tangle ../lisp/uwumacs-literate.el :eval never :comments no :padline no :mkdirp yes
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-literate.el :eval never :comments no :padline no :mkdirp yes
 :END:
 
-Deployed file: [[file:../lisp/uwumacs-literate.el][lisp/uwumacs-literate.el]]. Edit the blocks here; generated Lisp is kept in Git for ordinary startup and review.
+Deployed file: [[file:../lisp/kittymacs-literate.el][lisp/kittymacs-literate.el]]. Edit the blocks here; generated Lisp is kept in Git for ordinary startup and review.
 
 ** Open the reading guide
 
 The path is relative to Lambda's resolved configuration root, so it works from any buffer or working directory.
 
-#+name: uwumacs-literate-01-1
+#+name: kittymacs-literate-01-1
 #+begin_src emacs-lisp
-;;; uwumacs-literate.el --- Edit and build the literate source -*- lexical-binding: t; -*-
+;;; kittymacs-literate.el --- Edit and build the literate source -*- lexical-binding: t; -*-
 ;; Generated from literate/80-maintenance.org; edit the Org source, then tangle.
 ;;; Commentary:
 ;; Development addition: keep authoring explicit and startup independent of Org.
 ;;; Code:
 
-(defun uwumacs-literate-open (&rest _)
+(defun kittymacs-literate-open (&rest _)
   "Open the literate configuration's reading guide."
   (interactive)
   (find-file (expand-file-name "literate/index.org" user-emacs-directory)))
@@ -150,12 +150,12 @@ The path is relative to Lambda's resolved configuration root, so it works from a
 
 Unsaved Org buffers are rejected before reading files from disk. A separate -Q process uses the bundled Org without loading personal startup; its output is displayed for review. Successful generation still requires a restart to apply configuration changes.
 
-#+name: uwumacs-literate-02-1
+#+name: kittymacs-literate-02-1
 #+begin_src emacs-lisp
-(defun uwumacs-literate--build (write)
+(defun kittymacs-literate--build (write)
   "Run the isolated literate builder; WRITE selects generation over checking."
   (let ((source-dir (expand-file-name "literate/" user-emacs-directory))
-        (output (get-buffer-create "*UwUmacs literate build*")))
+        (output (get-buffer-create "*kittymacs literate build*")))
     (dolist (buffer (buffer-list))
       (when-let* ((file (buffer-file-name buffer)))
         (when (and (file-in-directory-p file source-dir)
@@ -181,33 +181,33 @@ Unsaved Org buffers are rejected before reading files from disk. A separate -Q p
 
 This is the explicit write operation. The builder stages and validates all declared outputs before copying changed files into the configuration tree.
 
-#+name: uwumacs-literate-03-1
+#+name: kittymacs-literate-03-1
 #+begin_src emacs-lisp
-(defun uwumacs-literate-tangle ()
+(defun kittymacs-literate-tangle ()
   "Regenerate deployed Lisp from saved literate sources."
   (interactive)
-  (uwumacs-literate--build t))
+  (kittymacs-literate--build t))
 #+end_src
 
 ** Detect source/output drift
 
 This read-only mode compares staged output with deployed Lisp. It catches edits to generated files and forgotten rebuilds without silently choosing one version.
 
-#+name: uwumacs-literate-04-1
+#+name: kittymacs-literate-04-1
 #+begin_src emacs-lisp
-(defun uwumacs-literate-check ()
+(defun kittymacs-literate-check ()
   "Check that deployed Lisp matches saved literate sources without writing it."
   (interactive)
-  (uwumacs-literate--build nil))
+  (kittymacs-literate--build nil))
 #+end_src
 
 ** Publish the module
 
 The core require/provide protocol records that this file loaded. Later requires can reuse the feature without evaluating the module again.
 
-#+name: uwumacs-literate-05-1
+#+name: kittymacs-literate-05-1
 #+begin_src emacs-lisp
-(provide 'uwumacs-literate)
-;;; uwumacs-literate.el ends here
+(provide 'kittymacs-literate)
+;;; kittymacs-literate.el ends here
 #+end_src
 

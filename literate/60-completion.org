@@ -1,7 +1,7 @@
 #+TITLE: Completion: Vertico, Consult, Embark, Corfu
 #+OPTIONS: toc:3 num:nil
 #+STARTUP: overview
-#+PROPERTY: header-args:emacs-lisp :tangle ../lisp/uwumacs-completion.el :eval never :comments no :padline no :mkdirp yes
+#+PROPERTY: header-args:emacs-lisp :tangle ../lisp/kittymacs-completion.el :eval never :comments no :padline no :mkdirp yes
 
 [[file:index.org][Reading guide]] · [[file:25-defaults.org][Defaults]] · [[file:41-leader.org][Leader]] · [[file:62-help.org][Help]]
 
@@ -22,14 +22,14 @@ completions as you type, and Cape adds sources such as file names and
 dictionary words. Yasnippet expands templates.
 
 #+begin_src emacs-lisp
-;;; uwumacs-completion.el --- Minibuffer and in-buffer completion -*- lexical-binding: t; -*-
+;;; kittymacs-completion.el --- Minibuffer and in-buffer completion -*- lexical-binding: t; -*-
 ;; Generated from literate/60-completion.org; edit the Org source, then tangle.
 
 ;; Distilled from Lambda-Emacs by Colin McLear (GPL-3.0-or-later).
 
 ;;; Code:
 
-(require 'uwumacs-defaults)
+(require 'kittymacs-defaults)
 
 #+end_src
 
@@ -54,12 +54,12 @@ frame, which [[file:45-frames.org][the frames chapter]] keeps attached to the ed
   :init
   (vertico-mode 1)
   :config
-  (defun uwumacs-vertico-directories-first (files)
+  (defun kittymacs-vertico-directories-first (files)
     "Sort FILES by history, length and name, then put directories first."
     (let ((sorted (vertico-sort-history-length-alpha files)))
       (nconc (seq-filter (lambda (file) (string-suffix-p "/" file)) sorted)
              (seq-remove (lambda (file) (string-suffix-p "/" file)) sorted))))
-  (setopt vertico-multiform-categories '((file (vertico-sort-function . uwumacs-vertico-directories-first))))
+  (setopt vertico-multiform-categories '((file (vertico-sort-function . kittymacs-vertico-directories-first))))
   (vertico-multiform-mode 1))
 
 (use-package vertico-directory
@@ -104,10 +104,10 @@ mode is on, and =M-:= or a key binding is the way to reach one anyway.
 =M-X= narrows further still, to what this buffer's modes define.
 
 #+begin_src emacs-lisp
-(defun uwumacs--crm-indicator (args)
+(defun kittymacs--crm-indicator (args)
   "Prefix a `completing-read-multiple' prompt with [CRM]."
   (cons (concat "[CRM] " (car args)) (cdr args)))
-(advice-add #'completing-read-multiple :filter-args #'uwumacs--crm-indicator)
+(advice-add #'completing-read-multiple :filter-args #'kittymacs--crm-indicator)
 
 (setopt resize-mini-windows t
         enable-recursive-minibuffers t
@@ -190,12 +190,12 @@ the thing at point. Ripgrep results appear after two characters. Xref
    :preview-key '(:debounce 0.2 any))
   (advice-add #'register-preview :override #'consult-register-window))
 
-(defun uwumacs-search-symbol-at-point ()
+(defun kittymacs-search-symbol-at-point ()
   "Search this buffer's lines for the symbol at point."
   (interactive)
   (consult-line (thing-at-point 'symbol)))
 
-(defun uwumacs-search-manuals ()
+(defun kittymacs-search-manuals ()
   "Search the Emacs, Org and completion-stack manuals with Consult."
   (interactive)
   (consult-info "emacs" "efaq" "elisp" "org" "vertico" "consult" "marginalia"
@@ -234,7 +234,7 @@ file actions open Dired or ripgrep in the file's directory.
   (prefix-help-command #'embark-prefix-help-command)
   (embark-prompter #'embark-keymap-prompter)
   :config
-  (defun uwumacs-embark-which-key-indicator ()
+  (defun kittymacs-embark-which-key-indicator ()
     "Show Embark's action keymap with which-key."
     (lambda (&optional keymap targets prefix)
       (if (null keymap)
@@ -246,29 +246,29 @@ file actions open Dired or ripgrep in the file's directory.
                    (plist-get (car targets) :type)
                    (embark--truncate-target (plist-get (car targets) :target))
                    (if (cdr targets) "..." "")))))))
-  (setopt embark-indicators '(uwumacs-embark-which-key-indicator
+  (setopt embark-indicators '(kittymacs-embark-which-key-indicator
                               embark-highlight-indicator
                               embark-isearch-highlight-indicator))
-  (defun uwumacs--embark-hide-which-key (function &rest args)
+  (defun kittymacs--embark-hide-which-key (function &rest args)
     "Hide the which-key popup before the completing-read prompter takes over."
     (which-key-hide-popup)
-    (let ((embark-indicators (remq #'uwumacs-embark-which-key-indicator embark-indicators)))
+    (let ((embark-indicators (remq #'kittymacs-embark-which-key-indicator embark-indicators)))
       (apply function args)))
-  (advice-add #'embark-completing-read-prompter :around #'uwumacs--embark-hide-which-key)
+  (advice-add #'embark-completing-read-prompter :around #'kittymacs--embark-hide-which-key)
   (add-to-list 'display-buffer-alist
                '("\\`\\*Embark Collect \\(Live\\|Completions\\)\\*"
                  nil
                  (window-parameters (mode-line-format . none))))
-  (defun uwumacs-embark-dired-here (file)
+  (defun kittymacs-embark-dired-here (file)
     "Open Dired in FILE's directory."
     (dired (file-name-directory file)))
-  (defun uwumacs-embark-ripgrep-here (file)
+  (defun kittymacs-embark-ripgrep-here (file)
     "Run ripgrep in FILE's directory."
     (let ((default-directory (file-name-directory file)))
       (consult-ripgrep)))
   (keymap-set embark-file-map "x" #'embark-open-externally)
-  (keymap-set embark-file-map "D" #'uwumacs-embark-dired-here)
-  (keymap-set embark-file-map "g" #'uwumacs-embark-ripgrep-here)
+  (keymap-set embark-file-map "D" #'kittymacs-embark-dired-here)
+  (keymap-set embark-file-map "g" #'kittymacs-embark-ripgrep-here)
   (keymap-set embark-general-map "A" #'marginalia-cycle))
 
 (use-package embark-consult
@@ -316,25 +316,25 @@ the margin come from [[file:50-appearance.org][the appearance chapter]].
   :config
   (corfu-history-mode 1)
   (corfu-popupinfo-mode 1)
-  (defun uwumacs--corfu-in-minibuffer ()
+  (defun kittymacs--corfu-in-minibuffer ()
     "Enable Corfu in minibuffers that offer completion at point, such as M-:."
     (when (where-is-internal #'completion-at-point (list (current-local-map)))
       (corfu-mode 1)))
-  (add-hook 'minibuffer-setup-hook #'uwumacs--corfu-in-minibuffer)
-  (defun uwumacs--corfu-in-shells ()
+  (add-hook 'minibuffer-setup-hook #'kittymacs--corfu-in-minibuffer)
+  (defun kittymacs--corfu-in-shells ()
     "In shells, complete only on request and accept without a second RET."
     (setq-local corfu-auto nil
                 corfu-quit-no-match t
                 corfu-quit-at-boundary t)
     (corfu-mode 1))
-  (add-hook 'eshell-mode-hook #'uwumacs--corfu-in-shells)
-  (defun uwumacs--corfu-send-shell (&rest _)
+  (add-hook 'eshell-mode-hook #'kittymacs--corfu-in-shells)
+  (defun kittymacs--corfu-send-shell (&rest _)
     "Send the completed input when inside Eshell or a comint buffer."
     (cond ((and (derived-mode-p 'eshell-mode) (fboundp 'eshell-send-input))
            (eshell-send-input))
           ((and (derived-mode-p 'comint-mode) (fboundp 'comint-send-input))
            (comint-send-input))))
-  (advice-add #'corfu-insert :after #'uwumacs--corfu-send-shell))
+  (advice-add #'corfu-insert :after #'kittymacs--corfu-send-shell))
 
 (keymap-global-set "M-/" #'dabbrev-completion)
 (keymap-global-set "C-M-/" #'dabbrev-expand)
@@ -354,7 +354,7 @@ particular kind of candidate.
   :config
   (advice-add 'pcomplete-completions-at-point :around #'cape-wrap-silent))
 
-(defvar-keymap uwumacs-cape-map
+(defvar-keymap kittymacs-cape-map
   :doc "Complete with one particular source."
   "p" #'completion-at-point
   "d" #'cape-dabbrev
@@ -393,7 +393,7 @@ expand, or pick one with =SPC i s=. Your own snippets live under
 =var/etc/snippets/<major-mode>/=.
 
 #+begin_src emacs-lisp
-(defvar uwumacs-snippets-dir (expand-file-name "snippets/" uwumacs-etc-dir)
+(defvar kittymacs-snippets-dir (expand-file-name "snippets/" kittymacs-etc-dir)
   "Directory of personal snippets, one subdirectory per major mode.")
 
 (use-package yasnippet
@@ -402,19 +402,19 @@ expand, or pick one with =SPC i s=. Your own snippets live under
   :bind (:map yas-minor-mode-map
          ("C-'" . yas-expand))
   :custom
-  (yas-snippet-dirs (list uwumacs-snippets-dir))
+  (yas-snippet-dirs (list kittymacs-snippets-dir))
   :config
-  (make-directory uwumacs-snippets-dir t)
-  (defun uwumacs--yas-not-in-org-src ()
+  (make-directory kittymacs-snippets-dir t)
+  (defun kittymacs--yas-not-in-org-src ()
     "Do not expand snippets inside Org source blocks."
     (setq-local yas-buffer-local-condition '(not (org-in-src-block-p t))))
-  (add-hook 'org-mode-hook #'uwumacs--yas-not-in-org-src)
+  (add-hook 'org-mode-hook #'kittymacs--yas-not-in-org-src)
   (with-eval-after-load 'warnings
     (push '(yasnippet backquote-change) warning-suppress-types))
   (yas-global-mode 1))
 
-(provide 'uwumacs-completion)
-;;; uwumacs-completion.el ends here
+(provide 'kittymacs-completion)
+;;; kittymacs-completion.el ends here
 #+end_src
 
 * Meow and completion

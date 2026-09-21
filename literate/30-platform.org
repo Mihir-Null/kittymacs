@@ -14,20 +14,20 @@ Windows shell; MSYS2 UCRT64 is a separate choice offered by [[file:34-terminal.o
 chapter]], not a global environment replacement. The macOS policy is distilled
 from Lambda-Emacs's =lem-setup-macos=.
 
-* uwumacs-platform
+* kittymacs-platform
 :PROPERTIES:
-:header-args:emacs-lisp: :tangle ../lisp/uwumacs-platform.el :eval never :comments no :padline no :mkdirp yes
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-platform.el :eval never :comments no :padline no :mkdirp yes
 :END:
 
-Deployed file: [[file:../lisp/uwumacs-platform.el][lisp/uwumacs-platform.el]]. Edit the blocks here; generated Lisp is kept in Git for ordinary startup and review.
+Deployed file: [[file:../lisp/kittymacs-platform.el][lisp/kittymacs-platform.el]]. Edit the blocks here; generated Lisp is kept in Git for ordinary startup and review.
 
 ** Load seq
 
 Load this dependency before evaluating the forms that use its functions or variables. This preserves the existing startup dependency order.
 
-#+name: uwumacs-platform-01-1
+#+name: kittymacs-platform-01-1
 #+begin_src emacs-lisp
-;;; uwumacs-platform.el --- Portable platform defaults -*- lexical-binding: t; -*-
+;;; kittymacs-platform.el --- Portable platform defaults -*- lexical-binding: t; -*-
 ;; Generated from literate/30-platform.org; edit the Org source, then tangle.
 
 ;;; Commentary:
@@ -45,7 +45,7 @@ Load this dependency before evaluating the forms that use its functions or varia
 
 Load this dependency before evaluating the forms that use its functions or variables. This preserves the existing startup dependency order.
 
-#+name: uwumacs-platform-02-1
+#+name: kittymacs-platform-02-1
 #+begin_src emacs-lisp
 (require 'subr-x)
 #+end_src
@@ -54,20 +54,20 @@ Load this dependency before evaluating the forms that use its functions or varia
 
 This Custom group gives the following settings a discoverable home in Emacs's built-in customization interface.
 
-#+name: uwumacs-platform-03-1
+#+name: kittymacs-platform-03-1
 #+begin_src emacs-lisp
-(defgroup uwumacs-platform nil
+(defgroup kittymacs-platform nil
   "Portable defaults for the Lambda learning configuration."
-  :group 'uwumacs)
+  :group 'kittymacs)
 #+end_src
 
 ** Distinguish Emacs home from personal documents
 
 Native Windows Emacs can use AppData as its home. USERPROFILE is a better default for user-owned projects and documents; other platforms retain their normal home resolution.
 
-#+name: uwumacs-platform-04-1
+#+name: kittymacs-platform-04-1
 #+begin_src emacs-lisp
-(defun uwumacs--user-home-directory ()
+(defun kittymacs--user-home-directory ()
   "Return the user's ordinary home directory for configuration defaults.
 On native Windows, Emacs may define HOME as AppData/Roaming, so prefer
 USERPROFILE for user-owned projects and documents."
@@ -81,10 +81,10 @@ USERPROFILE for user-owned projects and documents."
 
 This is a portable user default, not a machine-specific absolute path. private.el can override it before the project module consumes it.
 
-#+name: uwumacs-platform-05-1
+#+name: kittymacs-platform-05-1
 #+begin_src emacs-lisp
-(defcustom uwumacs-project-directory
-  (expand-file-name "Projects/" (uwumacs--user-home-directory))
+(defcustom kittymacs-project-directory
+  (expand-file-name "Projects/" (kittymacs--user-home-directory))
   "Default place to look for projects."
   :type 'directory)
 #+end_src
@@ -93,10 +93,10 @@ This is a portable user default, not a machine-specific absolute path. private.e
 
 The starter uses a small independent Org directory. Change it explicitly when choosing a different notes location.
 
-#+name: uwumacs-platform-06-1
+#+name: kittymacs-platform-06-1
 #+begin_src emacs-lisp
-(defcustom uwumacs-org-directory
-  (expand-file-name "Documents/org/" (uwumacs--user-home-directory))
+(defcustom kittymacs-org-directory
+  (expand-file-name "Documents/org/" (kittymacs--user-home-directory))
   "Portable starter Org directory."
   :type 'directory)
 #+end_src
@@ -109,9 +109,9 @@ and [[file:34-terminal.org][the terminal chapter]] offers its shell on =SPC o m=
 ordinary Windows shell. Set =MSYS2_ROOT= in the environment, or this option in
 =private.el=, when MSYS2 is not at its default location.
 
-#+name: uwumacs-platform-06-2
+#+name: kittymacs-platform-06-2
 #+begin_src emacs-lisp
-(defcustom uwumacs-msys2-root
+(defcustom kittymacs-msys2-root
   (file-name-as-directory (or (getenv "MSYS2_ROOT") "C:/msys64/"))
   "Root directory of the MSYS2 installation on Windows."
   :type 'directory)
@@ -121,9 +121,9 @@ ordinary Windows shell. Set =MSYS2_ROOT= in the environment, or this option in
 
 Trying candidates in order lets the same configuration use a suitable installed shell across machines.
 
-#+name: uwumacs-platform-07-1
+#+name: kittymacs-platform-07-1
 #+begin_src emacs-lisp
-(defun uwumacs--first-executable (&rest programs)
+(defun kittymacs--first-executable (&rest programs)
   "Return the first executable found in PROGRAMS."
   (seq-some #'executable-find programs))
 #+end_src
@@ -132,9 +132,9 @@ Trying candidates in order lets the same configuration use a suitable installed 
 
 The POSIX shell importer cannot ask PowerShell to evaluate Unix shell syntax. This adapter lets Windows keep its inherited process environment.
 
-#+name: uwumacs-platform-08-1
+#+name: kittymacs-platform-08-1
 #+begin_src emacs-lisp
-(defun uwumacs--skip-exec-path-from-shell-on-windows (&rest _)
+(defun kittymacs--skip-exec-path-from-shell-on-windows (&rest _)
   "Keep native Windows Emacs's inherited process environment unchanged."
   nil)
 #+end_src
@@ -145,9 +145,9 @@ The project assignment waits for Lambda's project module so its initialization c
 
 The following blocks are consecutive fragments of this source section. Some share an open Lisp form; edit them here and rebuild the whole chapter rather than evaluating a fragment on its own.
 
-#+name: uwumacs-platform-09-1
+#+name: kittymacs-platform-09-1
 #+begin_src emacs-lisp
-(defun uwumacs-platform-apply ()
+(defun kittymacs-platform-apply ()
   "Apply the currently configured portable platform defaults."
   ;; Choose a usable shell without assuming a username, Homebrew prefix, Nix profile,
   ;; or conventional Unix filesystem on Windows.
@@ -167,7 +167,7 @@ The following blocks are consecutive fragments of this source section. Some shar
        (setq explicit-shell-file-name (executable-find "cmd.exe")
              shell-command-switch "/c"))))
     ('darwin
-     (when-let ((shell (uwumacs--first-executable "zsh" "bash" "sh")))
+     (when-let ((shell (kittymacs--first-executable "zsh" "bash" "sh")))
        (setq-default shell-file-name shell)
        (setq explicit-shell-file-name shell
 #+end_src
@@ -176,11 +176,11 @@ The following blocks are consecutive fragments of this source section. Some shar
 
 Lambda configures exec-path-from-shell.  It supports POSIX shells, so native Windows keeps the environment inherited from Windows instead of asking PowerShell to evaluate Unix `printf' syntax.  Linux/macOS retain Lambda's
 
-#+name: uwumacs-platform-09-2
+#+name: kittymacs-platform-09-2
 #+begin_src emacs-lisp
              shell-command-switch "-c")))
     ('gnu/linux
-     (when-let ((shell (uwumacs--first-executable "zsh" "bash" "sh")))
+     (when-let ((shell (kittymacs--first-executable "zsh" "bash" "sh")))
        (setq-default shell-file-name shell)
        (setq explicit-shell-file-name shell
              shell-command-switch "-c"))))
@@ -192,16 +192,16 @@ Lambda configures exec-path-from-shell.  It supports POSIX shells, so native Win
   (if (eq system-type 'windows-nt)
       (with-eval-after-load 'exec-path-from-shell
         (unless (advice-member-p
-                 #'uwumacs--skip-exec-path-from-shell-on-windows
+                 #'kittymacs--skip-exec-path-from-shell-on-windows
                  #'exec-path-from-shell-initialize)
           (advice-add #'exec-path-from-shell-initialize :override
-                      #'uwumacs--skip-exec-path-from-shell-on-windows)))
+                      #'kittymacs--skip-exec-path-from-shell-on-windows)))
     (with-eval-after-load 'exec-path-from-shell
       (setopt exec-path-from-shell-variables
               '("PATH" "MANPATH" "LANG" "NIX_PATH" "NIX_PROFILES"))))
 
   (when (eq system-type 'darwin)
-    (uwumacs--platform-apply-macos)))
+    (kittymacs--platform-apply-macos)))
 #+end_src
 
 ** macOS
@@ -221,21 +221,21 @@ Option is Meta, Command is Super, and the right Option key is left to macOS
 so accented characters still type. Lambda also made the Fn key Hyper; that
 is not carried over, because it turns =Fn=-arrow paging into Hyper chords.
 
-#+name: uwumacs-platform-11-1
+#+name: kittymacs-platform-11-1
 #+begin_src emacs-lisp
 ;; Defined by the Cocoa build and by auth-source; declared so the module
 ;; byte-compiles cleanly on every platform.
 (defvar ns-use-native-fullscreen)
 (defvar auth-sources)
 
-(defcustom uwumacs-macos-modifiers
+(defcustom kittymacs-macos-modifiers
   '((ns-command-modifier . super)
     (ns-option-modifier . meta)
     (ns-right-option-modifier . none))
   "How the macOS modifier keys map to Emacs modifiers.
 Each entry pairs an NS modifier variable with the modifier it produces:
 `meta', `super', `hyper', `control', `alt', or `none' to leave the key
-to macOS.  Applied by `uwumacs-platform-apply' after `private.el'."
+to macOS.  Applied by `kittymacs-platform-apply' after `private.el'."
   :type '(alist :key-type symbol :value-type symbol))
 #+end_src
 
@@ -248,15 +248,15 @@ frames are this configuration's windows, and quits Emacs from the last one.
 The title bar takes the theme's light or dark appearance, now and on every
 theme change.
 
-#+name: uwumacs-platform-12-1
+#+name: kittymacs-platform-12-1
 #+begin_src emacs-lisp
-(defun uwumacs--macos-trash (path)
+(defun kittymacs--macos-trash (path)
   "Move PATH to the macOS Trash with the `trash' command-line tool."
   (let ((status (call-process "trash" nil nil nil (expand-file-name path))))
     (unless (eql status 0)
       (error "Failed to move %s to the Trash (exit code %s)" path status))))
 
-(defun uwumacs--macos-configure-trash ()
+(defun kittymacs--macos-configure-trash ()
   "Send deleted files to the Trash by the best available means.
 Return the means chosen: `native' when this Emacs moves files to the Trash
 itself, `trash-command' for the `trash' tool, or `directory' for ~/.Trash."
@@ -264,19 +264,19 @@ itself, `trash-command' for the `trash' tool, or `directory' for ~/.Trash."
   (cond ((fboundp 'system-move-file-to-trash) 'native)
         ((executable-find "trash")
          (setq trash-directory nil)
-         (defalias 'system-move-file-to-trash #'uwumacs--macos-trash)
+         (defalias 'system-move-file-to-trash #'kittymacs--macos-trash)
          'trash-command)
         (t (setq trash-directory "~/.Trash")
            'directory)))
 
-(defun uwumacs-delete-frame-or-quit ()
+(defun kittymacs-delete-frame-or-quit ()
   "Close this frame when other frames remain; from the last one, quit Emacs."
   (interactive)
   (if (cdr (frame-list))
       (delete-frame)
     (save-buffers-kill-emacs)))
 
-(defun uwumacs--macos-sync-titlebar (&rest _)
+(defun kittymacs--macos-sync-titlebar (&rest _)
   "Give every frame's title bar the theme's light or dark appearance."
   (when (display-graphic-p)
     (let* ((background (face-background 'default nil (selected-frame)))
@@ -290,31 +290,31 @@ itself, `trash-command' for the `trash' tool, or `directory' for ~/.Trash."
 
 *** Apply the macOS policy
 
-Called from =uwumacs-platform-apply=, after =private.el=, on macOS only.
+Called from =kittymacs-platform-apply=, after =private.el=, on macOS only.
 Full screen is non-native so a full-screen frame does not move to its own
 Space and leave every new frame behind. Subprocesses get a UTF-8 locale when
 the Dock started Emacs without one. Passwords in Keychain become visible to
 =auth-source=, which Magit, Forge and Tramp consult. The three key bindings
 fill gaps in the NS port's own: redo, a frame-aware =⌘Q=, and full screen.
 
-#+name: uwumacs-platform-13-1
+#+name: kittymacs-platform-13-1
 #+begin_src emacs-lisp
-(defun uwumacs--platform-apply-macos ()
+(defun kittymacs--platform-apply-macos ()
   "Apply the macOS policy: modifiers, Trash, locale, Keychain, keys, title bar."
-  (pcase-dolist (`(,variable . ,modifier) uwumacs-macos-modifiers)
+  (pcase-dolist (`(,variable . ,modifier) kittymacs-macos-modifiers)
     (set variable modifier))
   (setq ns-use-native-fullscreen nil)
   (unless (getenv "LANG")
     (setenv "LANG" "en_US.UTF-8"))
-  (uwumacs--macos-configure-trash)
+  (kittymacs--macos-configure-trash)
   (with-eval-after-load 'auth-source
     (dolist (source '(macos-keychain-internet macos-keychain-generic))
       (add-to-list 'auth-sources source t)))
   (keymap-global-set "s-Z" #'undo-redo)
-  (keymap-global-set "s-q" #'uwumacs-delete-frame-or-quit)
+  (keymap-global-set "s-q" #'kittymacs-delete-frame-or-quit)
   (keymap-global-set "C-s-f" #'toggle-frame-fullscreen)
-  (add-hook 'enable-theme-functions #'uwumacs--macos-sync-titlebar)
-  (uwumacs--macos-sync-titlebar))
+  (add-hook 'enable-theme-functions #'kittymacs--macos-sync-titlebar)
+  (kittymacs--macos-sync-titlebar))
 #+end_src
 
 ** Show a file in the desktop file manager
@@ -324,9 +324,9 @@ file), Explorer on Windows, and the desktop's default handler elsewhere.
 It takes the buffer's file, the file at point in Dired, or the current
 directory. [[file:42-keys.org][The keys chapter]] binds it to =SPC f o=.
 
-#+name: uwumacs-platform-14-1
+#+name: kittymacs-platform-14-1
 #+begin_src emacs-lisp
-(defun uwumacs-reveal-in-file-manager (&optional file)
+(defun kittymacs-reveal-in-file-manager (&optional file)
   "Show FILE in the desktop file manager, selected where the manager allows.
 FILE defaults to this buffer's file, the file at point in Dired, or the
 current directory."
@@ -360,46 +360,46 @@ reports once and is switched off rather than breaking every buffer. =SPC t s=
 toggles it.
 
 Only Emacs's own Flyspell is used here. This module is loaded by
-[[file:../tests/uwumacs-platform-tests.el][the platform tests]] with no packages available at all, so it must never declare
+[[file:../tests/kittymacs-platform-tests.el][the platform tests]] with no packages available at all, so it must never declare
 one; the two front ends that make corrections pleasant (=C-;= and =SPC s p=)
 are declared in [[file:60-completion.org][the completion chapter]] instead.
 
-#+name: uwumacs-platform-15-1
+#+name: kittymacs-platform-15-1
 #+begin_src emacs-lisp
-(defun uwumacs-spell-checker ()
+(defun kittymacs-spell-checker ()
   "Return the spell-checker program to use, or nil."
   (or (executable-find "hunspell")
       (executable-find "aspell")
-      (let ((msys2 (expand-file-name "ucrt64/bin/hunspell.exe" uwumacs-msys2-root)))
+      (let ((msys2 (expand-file-name "ucrt64/bin/hunspell.exe" kittymacs-msys2-root)))
         (and (eq system-type 'windows-nt) (file-executable-p msys2) msys2))))
 
 (with-eval-after-load 'ispell
-  (when-let* ((program (uwumacs-spell-checker)))
+  (when-let* ((program (kittymacs-spell-checker)))
     (setopt ispell-program-name program)
     (when (string-match-p "hunspell" program)
       ;; Hunspell needs a default dictionary name from the environment even
       ;; to list its dictionaries; Windows sets no LANG, so name it here.
       (unless (getenv "DICTIONARY") (setenv "DICTIONARY" "en_US"))
       (setopt ispell-dictionary "en_US")
-      (when (string-prefix-p (expand-file-name uwumacs-msys2-root) program)
-        (setenv "DICPATH" (expand-file-name "ucrt64/share/hunspell" uwumacs-msys2-root))))))
+      (when (string-prefix-p (expand-file-name kittymacs-msys2-root) program)
+        (setenv "DICPATH" (expand-file-name "ucrt64/share/hunspell" kittymacs-msys2-root))))))
 
 ;; A checker that exists but has no dictionary must never break startup:
 ;; enable Flyspell, and on any error say so once and carry on.
-(defvar uwumacs--spell-warned nil)
-(defun uwumacs--flyspell (mode-function)
+(defvar kittymacs--spell-warned nil)
+(defun kittymacs--flyspell (mode-function)
   "Enable Flyspell with MODE-FUNCTION, reporting a broken checker instead of failing."
   (condition-case err
       (funcall mode-function)
-    (error (unless uwumacs--spell-warned
-             (setq uwumacs--spell-warned t)
+    (error (unless kittymacs--spell-warned
+             (setq kittymacs--spell-warned t)
              (message "Spell checking off: %s" (error-message-string err))))))
-(defun uwumacs-flyspell-text () (uwumacs--flyspell #'flyspell-mode))
-(defun uwumacs-flyspell-prog () (uwumacs--flyspell #'flyspell-prog-mode))
+(defun kittymacs-flyspell-text () (kittymacs--flyspell #'flyspell-mode))
+(defun kittymacs-flyspell-prog () (kittymacs--flyspell #'flyspell-prog-mode))
 
-(when (uwumacs-spell-checker)
-  (add-hook 'text-mode-hook #'uwumacs-flyspell-text)
-  (add-hook 'prog-mode-hook #'uwumacs-flyspell-prog))
+(when (kittymacs-spell-checker)
+  (add-hook 'text-mode-hook #'kittymacs-flyspell-text)
+  (add-hook 'prog-mode-hook #'kittymacs-flyspell-prog))
 
 #+end_src
 
@@ -407,11 +407,11 @@ are declared in [[file:60-completion.org][the completion chapter]] instead.
 
 The core require/provide protocol records that this file loaded. Later requires can reuse the feature without evaluating the module again.
 
-#+name: uwumacs-platform-10-1
+#+name: kittymacs-platform-10-1
 #+begin_src emacs-lisp
 ;; Do not force a font here. Inheriting the platform default makes first boot robust.
 ;; Fonts are chosen in the appearance chapter.
 
-(provide 'uwumacs-platform)
-;;; uwumacs-platform.el ends here
+(provide 'kittymacs-platform)
+;;; kittymacs-platform.el ends here
 #+end_src

@@ -1,4 +1,4 @@
-;;; uwumacs-frames.el --- Desktop-managed Emacs frames -*- lexical-binding: t; -*-
+;;; kittymacs-frames.el --- Desktop-managed Emacs frames -*- lexical-binding: t; -*-
 ;; Generated from literate/45-frames.org; edit the Org source, then tangle.
 
 ;;; Code:
@@ -31,5 +31,5 @@
                  (dedicated . t)
                  (reusable-frames . visible))))
 
-(provide 'uwumacs-frames)
-;;; uwumacs-frames.el ends here
+(provide 'kittymacs-frames)
+;;; kittymacs-frames.el ends here

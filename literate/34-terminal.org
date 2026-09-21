@@ -1,7 +1,7 @@
 #+TITLE: The terminal: ghostel
 #+OPTIONS: toc:3 num:nil
 #+STARTUP: overview
-#+PROPERTY: header-args:emacs-lisp :tangle ../lisp/uwumacs-terminal.el :eval never :comments no :padline no :mkdirp yes
+#+PROPERTY: header-args:emacs-lisp :tangle ../lisp/kittymacs-terminal.el :eval never :comments no :padline no :mkdirp yes
 
 [[file:index.org][Reading guide]] · [[file:30-platform.org][Platform]] · [[file:35-shells.org][Shells]] · [[file:41-leader.org][Leader]]
 
@@ -25,7 +25,7 @@ download it — about a megabyte, once per machine. Everything else is Emacs
 Lisp.
 
 #+begin_src emacs-lisp
-;;; uwumacs-terminal.el --- The terminal -*- lexical-binding: t; -*-
+;;; kittymacs-terminal.el --- The terminal -*- lexical-binding: t; -*-
 ;; Generated from literate/34-terminal.org; edit the Org source, then tangle.
 
 ;;; Commentary:
@@ -36,9 +36,9 @@ Lisp.
 
 ;;; Code:
 
-(require 'uwumacs-defaults)
-(require 'uwumacs-leader)
-(require 'uwumacs-platform)
+(require 'kittymacs-defaults)
+(require 'kittymacs-leader)
+(require 'kittymacs-platform)
 
 (declare-function meow-insert-exit "meow-command" ())
 (declare-function ghostel-alt-screen-p "ghostel" ())
@@ -48,9 +48,9 @@ Lisp.
 (declare-function ghostel "ghostel" (&optional arg))
 (declare-function ghostel-project "ghostel" (&optional arg))
 
-(defgroup uwumacs-terminal nil
+(defgroup kittymacs-terminal nil
   "The integrated terminal."
-  :group 'uwumacs)
+  :group 'kittymacs)
 
 #+end_src
 
@@ -66,21 +66,21 @@ The module is downloaded on the first =SPC o e=, after asking. Nothing is
 fetched when Emacs starts, and nothing is fetched when this file loads.
 
 #+begin_src emacs-lisp
-(defcustom uwumacs-terminal-module-directory
-  (expand-file-name "ghostel/" uwumacs-var-dir)
+(defcustom kittymacs-terminal-module-directory
+  (expand-file-name "ghostel/" kittymacs-var-dir)
   "Directory holding ghostel's native module.
 Kept outside `package-user-dir' so upgrading the package never deletes a
 module file this Emacs has already loaded."
   :type 'directory)
 
-(defun uwumacs-terminal-module-installed-p ()
+(defun kittymacs-terminal-module-installed-p ()
   "Return non-nil when ghostel's native module has been downloaded or built.
 Nil also when this Emacs was built without dynamic module support, which
 is what the terminal needs."
   (and module-file-suffix
        (file-exists-p
         (expand-file-name (concat "ghostel-module" module-file-suffix)
-                          uwumacs-terminal-module-directory))))
+                          kittymacs-terminal-module-directory))))
 
 #+end_src
 
@@ -112,7 +112,7 @@ updates it. Move both to =:ensure t= when MELPA carries them.
   :commands (ghostel ghostel-project ghostel-other ghostel-list-buffers
              ghostel-create ghostel-exec ghostel-compile ghostel-recompile)
   :custom
-  (ghostel-module-directory uwumacs-terminal-module-directory)
+  (ghostel-module-directory kittymacs-terminal-module-directory)
   (ghostel-kill-buffer-on-exit t)
   (ghostel-query-before-killing 'auto)
   (ghostel-max-scrollback (* 5 1024 1024))
@@ -162,23 +162,23 @@ shell. The two hooks below are what keep those two ideas in step; they are
 buffer-local, so they only ever apply to a terminal.
 
 #+begin_src emacs-lisp
-(defun uwumacs-terminal--freeze ()
+(defun kittymacs-terminal--freeze ()
   "Freeze the terminal when Meow leaves Insert state.
 The buffer becomes read-only, so Meow's grammar can select its output."
   (when (and (derived-mode-p 'ghostel-mode) (not buffer-read-only))
     (ghostel-readonly-enter)))
 
-(defun uwumacs-terminal--thaw ()
+(defun kittymacs-terminal--thaw ()
   "Give the keyboard back to the terminal when Meow enters Insert state."
   (when (and (derived-mode-p 'ghostel-mode) buffer-read-only)
     (ghostel-semi-char-mode)))
 
-(defun uwumacs-terminal--meow-setup ()
+(defun kittymacs-terminal--meow-setup ()
   "Keep Meow's state and ghostel's input mode in step in this buffer."
-  (add-hook 'meow-insert-exit-hook #'uwumacs-terminal--freeze nil t)
-  (add-hook 'meow-insert-enter-hook #'uwumacs-terminal--thaw nil t))
+  (add-hook 'meow-insert-exit-hook #'kittymacs-terminal--freeze nil t)
+  (add-hook 'meow-insert-enter-hook #'kittymacs-terminal--thaw nil t))
 
-(add-hook 'ghostel-mode-hook #'uwumacs-terminal--meow-setup)
+(add-hook 'ghostel-mode-hook #'kittymacs-terminal--meow-setup)
 
 #+end_src
 
@@ -195,7 +195,7 @@ is running, and otherwise leaves Insert state. When the guess is wrong,
 this command is plain =meow-insert-exit=, so nothing else changes.
 
 #+begin_src emacs-lisp
-(defcustom uwumacs-terminal-escape 'auto
+(defcustom kittymacs-terminal-escape 'auto
   "Where the escape key goes in a terminal while Meow is in Insert state.
 `auto'     to the program while it is drawing a full-screen interface
            (vim, less, htop, a TUI agent), and to Meow otherwise.
@@ -205,33 +205,33 @@ this command is plain =meow-insert-exit=, so nothing else changes.
                  (const :tag "Always the terminal" terminal)
                  (const :tag "Always Meow" meow)))
 
-(defvar-local uwumacs-terminal--escape nil
-  "This buffer's override of `uwumacs-terminal-escape', or nil to follow it.")
+(defvar-local kittymacs-terminal--escape nil
+  "This buffer's override of `kittymacs-terminal-escape', or nil to follow it.")
 
-(defun uwumacs-terminal--escape-target ()
+(defun kittymacs-terminal--escape-target ()
   "Return `terminal' or `meow': where the escape key should go here."
-  (pcase (or uwumacs-terminal--escape uwumacs-terminal-escape)
+  (pcase (or kittymacs-terminal--escape kittymacs-terminal-escape)
     ('terminal 'terminal)
     ('meow 'meow)
     (_ (if (ghostel-alt-screen-p) 'terminal 'meow))))
 
-(defun uwumacs-terminal-escape-dwim ()
+(defun kittymacs-terminal-escape-dwim ()
   "Leave Meow's Insert state, or send escape to a full-screen program."
   (interactive)
   (if (and (derived-mode-p 'ghostel-mode)
-           (eq (uwumacs-terminal--escape-target) 'terminal))
+           (eq (kittymacs-terminal--escape-target) 'terminal))
       (ghostel-send-key "escape")
     (call-interactively #'meow-insert-exit)))
 
-(defun uwumacs-terminal-toggle-escape ()
+(defun kittymacs-terminal-toggle-escape ()
   "Switch where the escape key goes in this terminal, and say where."
   (interactive)
   (unless (derived-mode-p 'ghostel-mode)
     (user-error "This is not a terminal buffer"))
-  (setq uwumacs-terminal--escape
-        (if (eq (uwumacs-terminal--escape-target) 'terminal) 'meow 'terminal))
+  (setq kittymacs-terminal--escape
+        (if (eq (kittymacs-terminal--escape-target) 'terminal) 'meow 'terminal))
   (message "Escape %s"
-           (if (eq uwumacs-terminal--escape 'terminal)
+           (if (eq kittymacs-terminal--escape 'terminal)
                "now goes to the program in the terminal"
              "now leaves Insert state")))
 
@@ -247,7 +247,7 @@ an emulation map and is consulted before the terminal's own keys.
   (dolist (entry '((ghostel-mode . insert)
                    (ghostel-compile-view-mode . motion)))
     (add-to-list 'meow-mode-state-list entry))
-  (keymap-set meow-insert-state-keymap "<escape>" #'uwumacs-terminal-escape-dwim))
+  (keymap-set meow-insert-state-keymap "<escape>" #'kittymacs-terminal-escape-dwim))
 
 #+end_src
 
@@ -265,42 +265,42 @@ PowerShell stays the ordinary shell. =SPC o m= is the separate, explicit
 choice of an MSYS2 UCRT64 login shell, which is where a Windows machine keeps
 its Unix tools. =MSYSTEM= selects the environment and =CHERE_INVOKING= keeps the
 directory you were in; both are set for the child process only, so Emacs's own
-environment is untouched. [[file:30-platform.org][The platform chapter]] owns =uwumacs-msys2-root=.
+environment is untouched. [[file:30-platform.org][The platform chapter]] owns =kittymacs-msys2-root=.
 
 Unlike the terminal this replaces, nothing here has to translate paths or
 substitute a POSIX helper: ghostel talks to Windows ConPTY directly.
 
 #+begin_src emacs-lisp
-(defun uwumacs-terminal--without-module (error)
+(defun kittymacs-terminal--without-module (error)
   "Re-signal ERROR, or explain that the native module is missing."
-  (if (uwumacs-terminal-module-installed-p)
+  (if (kittymacs-terminal-module-installed-p)
       (signal (car error) (cdr error))
     (user-error "The terminal needs its native module: %s"
                 (substitute-command-keys "\\[ghostel-download-module]"))))
 
-(defun uwumacs-terminal-open (&optional arg)
+(defun kittymacs-terminal-open (&optional arg)
   "Open a terminal.  With prefix ARG, open another one.
 Ghostel offers to fetch its native module the first time; declining that
 offer leaves the terminal unavailable, so say so in words."
   (interactive "P")
   (condition-case error (ghostel arg)
-    (void-function (uwumacs-terminal--without-module error))))
+    (void-function (kittymacs-terminal--without-module error))))
 
-(defun uwumacs-terminal-project (&optional arg)
+(defun kittymacs-terminal-project (&optional arg)
   "Open a terminal at the current project's root.  ARG is passed through."
   (interactive "P")
   (condition-case error (ghostel-project arg)
-    (void-function (uwumacs-terminal--without-module error))))
+    (void-function (kittymacs-terminal--without-module error))))
 
-(defun uwumacs-terminal-msys2 (&optional arg)
+(defun kittymacs-terminal-msys2 (&optional arg)
   "Open an MSYS2 UCRT64 login shell in a terminal.
 With prefix ARG, create another one instead of reusing the existing buffer."
   (interactive "P")
   (unless (eq system-type 'windows-nt)
     (user-error "The MSYS2 terminal is for native Windows Emacs"))
-  (let ((bash (expand-file-name "usr/bin/bash.exe" uwumacs-msys2-root)))
+  (let ((bash (expand-file-name "usr/bin/bash.exe" kittymacs-msys2-root)))
     (unless (file-executable-p bash)
-      (user-error "MSYS2 Bash not found at %s; set `uwumacs-msys2-root' in private.el"
+      (user-error "MSYS2 Bash not found at %s; set `kittymacs-msys2-root' in private.el"
                   bash))
     (let ((ghostel-shell (list bash "--login" "-i"))
           (ghostel-environment (append '("MSYSTEM=UCRT64" "CHERE_INVOKING=1")
@@ -357,13 +357,13 @@ terminal keeps Emacs's own handling and nothing breaks.
   (when (require 'ghostel-eshell nil t)
     (ghostel-eshell-visual-command-mode 1)))
 
-(defun uwumacs-terminal-comint-colours ()
+(defun kittymacs-terminal-comint-colours ()
   "Render this comint buffer's output with ghostel's terminal parser."
-  (when (and (uwumacs-terminal-module-installed-p)
+  (when (and (kittymacs-terminal-module-installed-p)
              (require 'ghostel-comint nil t))
     (ghostel-comint-mode 1)))
 
-(add-hook 'shell-mode-hook #'uwumacs-terminal-comint-colours)
+(add-hook 'shell-mode-hook #'kittymacs-terminal-comint-colours)
 
 #+end_src
 
@@ -384,13 +384,13 @@ terminal too.
 (with-eval-after-load 'ghostel
   (require 'ghostel-compile nil t))
 
-;; `uwumacs-define-localleader' replaces a mode's whole map, and prog-mode's
+;; `kittymacs-define-localleader' replaces a mode's whole map, and prog-mode's
 ;; belongs to the programming chapter, so add to the map it built.
-(with-eval-after-load 'uwumacs-programming
-  (when-let* ((map (alist-get 'prog-mode uwumacs-localleader-alist)))
+(with-eval-after-load 'kittymacs-programming
+  (when-let* ((map (alist-get 'prog-mode kittymacs-localleader-alist)))
     (keymap-set map "t" (cons "compile in a terminal" #'ghostel-compile))
     (keymap-set map "T" (cons "recompile in a terminal" #'ghostel-recompile))
-    (uwumacs-refresh-localleaders)))
+    (kittymacs-refresh-localleaders)))
 
 #+end_src
 
@@ -409,7 +409,7 @@ entry here is also on a =C-c= key that works while you are typing, which is what
 ghostel's own manual documents; these are the labelled versions.
 
 #+begin_src emacs-lisp
-(uwumacs-define-localleader 'ghostel-mode
+(kittymacs-define-localleader 'ghostel-mode
   "i" (cons "type in the terminal" #'ghostel-semi-char-mode)
   "I" (cons "send every key (char mode)" #'ghostel-char-mode)
   "e" (cons "read live output" #'ghostel-emacs-mode)
@@ -426,11 +426,11 @@ ghostel's own manual documents; these are the labelled versions.
   "h" (cons "shell history" #'consult-ghostel-history)
   "b" (cons "another terminal" #'consult-ghostel)
   "q" (cons "send the next key literally" #'ghostel-send-next-key)
-  "<escape>" (cons "where escape goes" #'uwumacs-terminal-toggle-escape)
+  "<escape>" (cons "where escape goes" #'kittymacs-terminal-toggle-escape)
   "M" (cons "install the native module" #'ghostel-download-module))
 
-(provide 'uwumacs-terminal)
-;;; uwumacs-terminal.el ends here
+(provide 'kittymacs-terminal)
+;;; kittymacs-terminal.el ends here
 #+end_src
 
 * Try it

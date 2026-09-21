@@ -7,20 +7,20 @@
 
 Ownership: *subsequent development*. Tree-sitter integration, Eglot, Flymake and xref are Emacs facilities. Grammars, compilers and language-server executables are separate dependencies. This layer replaces Lambda's moving grammar recipes and unconditional remaps with pinned recipes and availability checks. Installing parsers and starting language servers remain explicit actions.
 
-* uwumacs-treesit
+* kittymacs-treesit
 :PROPERTIES:
-:header-args:emacs-lisp: :tangle ../lisp/uwumacs-treesit.el :eval never :comments no :padline no :mkdirp yes
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-treesit.el :eval never :comments no :padline no :mkdirp yes
 :END:
 
-Deployed file: [[file:../lisp/uwumacs-treesit.el][lisp/uwumacs-treesit.el]]. Edit the blocks here; generated Lisp is kept in Git for ordinary startup and review.
+Deployed file: [[file:../lisp/kittymacs-treesit.el][lisp/kittymacs-treesit.el]]. Edit the blocks here; generated Lisp is kept in Git for ordinary startup and review.
 
 ** Load cl-lib
 
 Load this dependency before evaluating the forms that use its functions or variables. This preserves the existing startup dependency order.
 
-#+name: uwumacs-treesit-01-1
+#+name: kittymacs-treesit-01-1
 #+begin_src emacs-lisp
-;;; uwumacs-treesit.el --- Portable Tree-sitter policy -*- lexical-binding: t; -*-
+;;; kittymacs-treesit.el --- Portable Tree-sitter policy -*- lexical-binding: t; -*-
 ;; Generated from literate/74-languages.org; edit the Org source, then tangle.
 
 ;;; Commentary:
@@ -38,7 +38,7 @@ Load this dependency before evaluating the forms that use its functions or varia
 
 Load this dependency before evaluating the forms that use its functions or variables. This preserves the existing startup dependency order.
 
-#+name: uwumacs-treesit-02-1
+#+name: kittymacs-treesit-02-1
 #+begin_src emacs-lisp
 (require 'rx)
 #+end_src
@@ -47,7 +47,7 @@ Load this dependency before evaluating the forms that use its functions or varia
 
 Load this dependency before evaluating the forms that use its functions or variables. This preserves the existing startup dependency order.
 
-#+name: uwumacs-treesit-03-1
+#+name: kittymacs-treesit-03-1
 #+begin_src emacs-lisp
 (require 'treesit)
 #+end_src
@@ -56,11 +56,11 @@ Load this dependency before evaluating the forms that use its functions or varia
 
 This Custom group gives the following settings a discoverable home in Emacs's built-in customization interface.
 
-#+name: uwumacs-treesit-04-1
+#+name: kittymacs-treesit-04-1
 #+begin_src emacs-lisp
-(defgroup uwumacs-treesit nil
+(defgroup kittymacs-treesit nil
   "Portable Tree-sitter policy for the starter configuration."
-  :group 'uwumacs)
+  :group 'kittymacs)
 #+end_src
 
 ** Pin compatible grammar revisions
@@ -69,9 +69,9 @@ Exact source revisions keep the chosen generated parsers within the intended Ema
 
 The following blocks are consecutive fragments of this source section. Some share an open Lisp form; edit them here and rebuild the whole chapter rather than evaluating a fragment on its own.
 
-#+name: uwumacs-treesit-05-1
+#+name: kittymacs-treesit-05-1
 #+begin_src emacs-lisp
-(defcustom uwumacs-treesit-language-source-alist
+(defcustom kittymacs-treesit-language-source-alist
   '((bash "https://github.com/tree-sitter/tree-sitter-bash"
           "8509e3229b863c255ab6b61f3bf74ad0bf14e8bc")
     (cmake "https://github.com/uyha/tree-sitter-cmake"
@@ -105,7 +105,7 @@ The following blocks are consecutive fragments of this source section. Some shar
 
 Continue the same definition in its original scope. This fragment follows the preceding block directly in the deployed file.
 
-#+name: uwumacs-treesit-05-2
+#+name: kittymacs-treesit-05-2
 #+begin_src emacs-lisp
                 "75b3874edb2dc714fb1fd77a32013d0f8699989f"
                 "typescript/src")
@@ -119,16 +119,16 @@ Those ABIs are loadable by Emacs 30 as well as newer Emacs releases.  Each
 entry has the same shape accepted by `treesit-language-source-alist':
 (LANGUAGE REPOSITORY REVISION &optional SOURCE-DIRECTORY CC CXX)."
   :type '(repeat sexp)
-  :group 'uwumacs-treesit)
+  :group 'kittymacs-treesit)
 #+end_src
 
 ** Describe candidate mode replacements
 
 This table is a set of possibilities. The availability check below decides which remaps can actually be installed.
 
-#+name: uwumacs-treesit-06-1
+#+name: kittymacs-treesit-06-1
 #+begin_src emacs-lisp
-(defconst uwumacs-treesit-mode-remaps
+(defconst kittymacs-treesit-mode-remaps
   '((yaml-mode yaml-ts-mode yaml)
     (bash-mode bash-ts-mode bash)
     (typescript-mode typescript-ts-mode typescript)
@@ -143,9 +143,9 @@ This table is a set of possibilities. The availability check below decides which
 
 A grammar recipe alone is not a usable parser. Ask Emacs whether it can load the language before selecting a Tree-sitter major mode.
 
-#+name: uwumacs-treesit-07-1
+#+name: kittymacs-treesit-07-1
 #+begin_src emacs-lisp
-(defun uwumacs-treesit--language-available-p (language)
+(defun kittymacs-treesit--language-available-p (language)
   "Return non-nil when LANGUAGE can be loaded by this Emacs build."
   (and (treesit-available-p)
        (condition-case nil
@@ -157,11 +157,11 @@ A grammar recipe alone is not a usable parser. Ask Emacs whether it can load the
 
 Apply the local recipes after Lambda has populated its defaults, making the local policy authoritative for these languages.
 
-#+name: uwumacs-treesit-08-1
+#+name: kittymacs-treesit-08-1
 #+begin_src emacs-lisp
-(defun uwumacs-treesit-apply-pinned-sources ()
+(defun kittymacs-treesit-apply-pinned-sources ()
   "Replace Lambda's moving grammar recipes with pinned recipes."
-  (dolist (source uwumacs-treesit-language-source-alist)
+  (dolist (source kittymacs-treesit-language-source-alist)
     (setf (alist-get (car source) treesit-language-source-alist)
           (cdr source))))
 #+end_src
@@ -170,9 +170,9 @@ Apply the local recipes after Lambda has populated its defaults, making the loca
 
 Some Emacs versions treat a revision like a branch during shallow clone. The local adapter handles raw commit identifiers with a detached fetch and retains the ordinary path for other references.
 
-#+name: uwumacs-treesit-09-1
+#+name: kittymacs-treesit-09-1
 #+begin_src emacs-lisp
-(defun uwumacs-treesit--git-clone-revision
+(defun kittymacs-treesit--git-clone-revision
     (original-function url revision workdir)
   "Clone URL at exact REVISION into WORKDIR for `treesit'.
 
@@ -203,23 +203,23 @@ ORIGINAL-FUNCTION unchanged."
 
 A replacement is installed only when both the target mode and its grammar work. Refreshing removes stale choices if a parser becomes unavailable.
 
-#+name: uwumacs-treesit-10-1
+#+name: kittymacs-treesit-10-1
 #+begin_src emacs-lisp
-(defun uwumacs-treesit-refresh-mode-remaps (&rest _)
+(defun kittymacs-treesit-refresh-mode-remaps (&rest _)
   "Refresh managed mode remaps for the grammars available right now.
 
 Any unconditional remaps inherited from Lambda are removed first.  A remap is
 then added only when its target mode exists and its grammar loads successfully."
   (interactive)
-  (let ((managed-modes (mapcar #'car uwumacs-treesit-mode-remaps)))
+  (let ((managed-modes (mapcar #'car kittymacs-treesit-mode-remaps)))
     (setq major-mode-remap-alist
           (cl-remove-if
            (lambda (remap) (memq (car remap) managed-modes))
            major-mode-remap-alist)))
-  (dolist (spec uwumacs-treesit-mode-remaps)
+  (dolist (spec kittymacs-treesit-mode-remaps)
     (pcase-let ((`(,classic-mode ,treesit-mode ,language) spec))
       (when (and (fboundp treesit-mode)
-                 (uwumacs-treesit--language-available-p language))
+                 (kittymacs-treesit--language-available-p language))
         (add-to-list 'major-mode-remap-alist
                      (cons classic-mode treesit-mode) t))))
   major-mode-remap-alist)
@@ -229,9 +229,9 @@ then added only when its target mode exists and its grammar loads successfully."
 
 This interactive command checks the selected recipe and delegates compilation to Emacs. Git and a working compiler must already be available.
 
-#+name: uwumacs-treesit-11-1
+#+name: kittymacs-treesit-11-1
 #+begin_src emacs-lisp
-(defun uwumacs-treesit-install-language-grammar (language)
+(defun kittymacs-treesit-install-language-grammar (language)
   "Install pinned grammar LANGUAGE, then refresh conditional remaps."
   (interactive
    (list
@@ -239,103 +239,103 @@ This interactive command checks the selected recipe and delegates compilation to
      (completing-read
       "Install pinned grammar: "
       (mapcar (lambda (source) (symbol-name (car source)))
-              uwumacs-treesit-language-source-alist)
+              kittymacs-treesit-language-source-alist)
       nil t))))
-  (unless (assq language uwumacs-treesit-language-source-alist)
+  (unless (assq language kittymacs-treesit-language-source-alist)
     (user-error "No pinned Tree-sitter recipe for %s" language))
-  (uwumacs-treesit-apply-pinned-sources)
+  (kittymacs-treesit-apply-pinned-sources)
   (treesit-install-language-grammar language)
-  (uwumacs-treesit-refresh-mode-remaps))
+  (kittymacs-treesit-refresh-mode-remaps))
 #+end_src
 
 ** Install the pinned set on request
 
 This bulk command is an explicit maintenance action. Normal startup only configures recipes and checks availability.
 
-#+name: uwumacs-treesit-12-1
+#+name: kittymacs-treesit-12-1
 #+begin_src emacs-lisp
-(defun uwumacs-treesit-install-all-grammars ()
+(defun kittymacs-treesit-install-all-grammars ()
   "Install every missing pinned grammar and refresh mode remaps."
   (interactive)
   (unless (treesit-available-p)
     (user-error "This Emacs build does not include Tree-sitter support"))
-  (uwumacs-treesit-apply-pinned-sources)
-  (dolist (source uwumacs-treesit-language-source-alist)
+  (kittymacs-treesit-apply-pinned-sources)
+  (dolist (source kittymacs-treesit-language-source-alist)
     (let ((language (car source)))
-      (unless (uwumacs-treesit--language-available-p language)
+      (unless (kittymacs-treesit--language-available-p language)
         (treesit-install-language-grammar language))))
-  (uwumacs-treesit-refresh-mode-remaps))
+  (kittymacs-treesit-refresh-mode-remaps))
 #+end_src
 
 ** Apply the pinned recipe policy now
 
 Replace the relevant Lambda recipes after its programming layer has loaded. This configures source locations without installing parsers.
 
-#+name: uwumacs-treesit-13-1
+#+name: kittymacs-treesit-13-1
 #+begin_src emacs-lisp
-(uwumacs-treesit-apply-pinned-sources)
+(kittymacs-treesit-apply-pinned-sources)
 #+end_src
 
 ** Select currently usable modes
 
 Recompute remaps from the parsers and major modes available on this machine at startup.
 
-#+name: uwumacs-treesit-14-1
+#+name: kittymacs-treesit-14-1
 #+begin_src emacs-lisp
-(uwumacs-treesit-refresh-mode-remaps)
+(kittymacs-treesit-refresh-mode-remaps)
 #+end_src
 
 ** Install the exact-revision adapter once
 
 Guard the advice so reloading the module cannot stack duplicate wrappers around the grammar clone helper.
 
-#+name: uwumacs-treesit-15-1
+#+name: kittymacs-treesit-15-1
 #+begin_src emacs-lisp
-(unless (advice-member-p #'uwumacs-treesit--git-clone-revision
+(unless (advice-member-p #'kittymacs-treesit--git-clone-revision
                          #'treesit--git-clone-repo)
   (advice-add #'treesit--git-clone-repo :around
-              #'uwumacs-treesit--git-clone-revision))
+              #'kittymacs-treesit--git-clone-revision))
 #+end_src
 
 ** Recheck modes after a parser installation
 
 Once a requested grammar installs, refresh remaps immediately so its Tree-sitter mode can become available without a restart.
 
-#+name: uwumacs-treesit-16-1
+#+name: kittymacs-treesit-16-1
 #+begin_src emacs-lisp
 ;; Lambda's bulk command calls the built-in installer directly.  Refresh after
 ;; each successful installation so a restart is not required before the remap
 ;; becomes active.
-(unless (advice-member-p #'uwumacs-treesit-refresh-mode-remaps
+(unless (advice-member-p #'kittymacs-treesit-refresh-mode-remaps
                          #'treesit-install-language-grammar)
   (advice-add #'treesit-install-language-grammar :after
-              #'uwumacs-treesit-refresh-mode-remaps))
+              #'kittymacs-treesit-refresh-mode-remaps))
 #+end_src
 
 ** Publish the module
 
 The core require/provide protocol records that this file loaded. Later requires can reuse the feature without evaluating the module again.
 
-#+name: uwumacs-treesit-17-1
+#+name: kittymacs-treesit-17-1
 #+begin_src emacs-lisp
-(provide 'uwumacs-treesit)
-;;; uwumacs-treesit.el ends here
+(provide 'kittymacs-treesit)
+;;; kittymacs-treesit.el ends here
 #+end_src
 
-* uwumacs-languages
+* kittymacs-languages
 :PROPERTIES:
-:header-args:emacs-lisp: :tangle ../lisp/uwumacs-languages.el :eval never :comments no :padline no :mkdirp yes
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-languages.el :eval never :comments no :padline no :mkdirp yes
 :END:
 
-Deployed file: [[file:../lisp/uwumacs-languages.el][lisp/uwumacs-languages.el]]. Edit the blocks here; generated Lisp is kept in Git for ordinary startup and review.
+Deployed file: [[file:../lisp/kittymacs-languages.el][lisp/kittymacs-languages.el]]. Edit the blocks here; generated Lisp is kept in Git for ordinary startup and review.
 
 ** Group customization options
 
 This Custom group gives the following settings a discoverable home in Emacs's built-in customization interface.
 
-#+name: uwumacs-languages-01-1
+#+name: kittymacs-languages-01-1
 #+begin_src emacs-lisp
-;;; uwumacs-languages.el --- Selective language tooling -*- lexical-binding: t; -*-
+;;; kittymacs-languages.el --- Selective language tooling -*- lexical-binding: t; -*-
 ;; Generated from literate/74-languages.org; edit the Org source, then tangle.
 
 ;;; Commentary:
@@ -345,46 +345,46 @@ This Custom group gives the following settings a discoverable home in Emacs's bu
 
 ;;; Code:
 
-(defgroup uwumacs-languages nil
+(defgroup kittymacs-languages nil
   "Selective language tooling for the starter configuration."
-  :group 'uwumacs)
+  :group 'kittymacs)
 #+end_src
 
 ** Opt into language editing packages
 
 The default is empty. Nix, Racket and Guile package choices can be made locally without assuming their runtimes exist on every machine.
 
-#+name: uwumacs-languages-02-1
+#+name: kittymacs-languages-02-1
 #+begin_src emacs-lisp
-(defcustom uwumacs-language-packages nil
+(defcustom kittymacs-language-packages nil
   "Optional language packages to install and configure.
 
 Supported values are `nix', `racket', and `guile'.  Built-in modes and Eglot do
 not need to be listed here."
   :type '(set (const nix) (const racket) (const guile))
-  :group 'uwumacs-languages)
+  :group 'kittymacs-languages)
 #+end_src
 
 ** Keep automatic servers opt-in
 
 An empty list means buffers do not start language servers merely by opening a file. Add modes only after installing their server executables.
 
-#+name: uwumacs-languages-03-1
+#+name: kittymacs-languages-03-1
 #+begin_src emacs-lisp
-(defcustom uwumacs-eglot-auto-start-modes nil
+(defcustom kittymacs-eglot-auto-start-modes nil
   "Major modes in which `eglot-ensure' should run automatically.
 
-The default is nil: start Eglot explicitly with `uwumacs-eglot' or `M-x eglot'
+The default is nil: start Eglot explicitly with `kittymacs-eglot' or `M-x eglot'
 until the language server for a mode is deliberately installed on each machine."
   :type '(repeat symbol)
-  :group 'uwumacs-languages)
+  :group 'kittymacs-languages)
 #+end_src
 
 ** Use the built-in LSP client
 
 Eglot supplies server communication while core xref and Flymake expose navigation and diagnostics. Commands are available without enabling Lambda's broader automatic LSP layer.
 
-#+name: uwumacs-languages-04-1
+#+name: kittymacs-languages-04-1
 #+begin_src emacs-lisp
 (use-package eglot
   :ensure nil
@@ -398,39 +398,39 @@ Eglot supplies server communication while core xref and Flymake expose navigatio
 
 **  eglot auto start hooks
 
-Mode hooks currently managed by `uwumacs-eglot-apply-auto-start-modes'.
+Mode hooks currently managed by `kittymacs-eglot-apply-auto-start-modes'.
 
-#+name: uwumacs-languages-05-1
+#+name: kittymacs-languages-05-1
 #+begin_src emacs-lisp
-(defvar uwumacs--eglot-auto-start-hooks nil
-  "Mode hooks currently managed by `uwumacs-eglot-apply-auto-start-modes'.")
+(defvar kittymacs--eglot-auto-start-hooks nil
+  "Mode hooks currently managed by `kittymacs-eglot-apply-auto-start-modes'.")
 #+end_src
 
 ** Reconcile opt-in hooks
 
 Track the hooks installed by this module so changing the opt-in list removes obsolete hooks as well as adding new ones.
 
-#+name: uwumacs-languages-06-1
+#+name: kittymacs-languages-06-1
 #+begin_src emacs-lisp
-(defun uwumacs-eglot-apply-auto-start-modes ()
-  "Apply `uwumacs-eglot-auto-start-modes' to their corresponding hooks."
+(defun kittymacs-eglot-apply-auto-start-modes ()
+  "Apply `kittymacs-eglot-auto-start-modes' to their corresponding hooks."
   (interactive)
-  (dolist (hook uwumacs--eglot-auto-start-hooks)
+  (dolist (hook kittymacs--eglot-auto-start-hooks)
     (remove-hook hook #'eglot-ensure))
-  (setq uwumacs--eglot-auto-start-hooks nil)
-  (dolist (mode uwumacs-eglot-auto-start-modes)
+  (setq kittymacs--eglot-auto-start-hooks nil)
+  (dolist (mode kittymacs-eglot-auto-start-modes)
     (let ((hook (intern (format "%s-hook" mode))))
       (add-hook hook #'eglot-ensure)
-      (push hook uwumacs--eglot-auto-start-hooks))))
+      (push hook kittymacs--eglot-auto-start-hooks))))
 #+end_src
 
 ** Start language assistance deliberately
 
 The interactive entry point loads the client and starts or manages the server for the current buffer.
 
-#+name: uwumacs-languages-07-1
+#+name: kittymacs-languages-07-1
 #+begin_src emacs-lisp
-(defun uwumacs-eglot ()
+(defun kittymacs-eglot ()
   "Interactively start or manage Eglot for the current project."
   (interactive)
   (require 'eglot)
@@ -441,7 +441,7 @@ The interactive entry point loads the client and starts or manages the server fo
 
 This namespace exposes Eglot actions and core navigation in Lambda's leader map. The separate cheat sheet lists the final bindings after all modules load.
 
-#+name: uwumacs-languages-08-1
+#+name: kittymacs-languages-08-1
 #+begin_src emacs-lisp
 #+end_src
 
@@ -449,20 +449,20 @@ This namespace exposes Eglot actions and core navigation in Lambda's leader map.
 
 Install only the auto-start hooks explicitly named by user policy. The empty default starts no servers.
 
-#+name: uwumacs-languages-10-1
+#+name: kittymacs-languages-10-1
 #+begin_src emacs-lisp
-(uwumacs-eglot-apply-auto-start-modes)
+(kittymacs-eglot-apply-auto-start-modes)
 #+end_src
 
 ** Opt into Nix editing
 
-Only request nix-mode when the user includes nix in uwumacs-language-packages. This does not install the Nix runtime or a language server.
+Only request nix-mode when the user includes nix in kittymacs-language-packages. This does not install the Nix runtime or a language server.
 
-#+name: uwumacs-languages-11-1
+#+name: kittymacs-languages-11-1
 #+begin_src emacs-lisp
 ;; Keep non-built-in language modes deliberate.  Set
-;; `uwumacs-language-packages' in private.el before startup to enable these.
-(when (memq 'nix uwumacs-language-packages)
+;; `kittymacs-language-packages' in private.el before startup to enable these.
+(when (memq 'nix kittymacs-language-packages)
   (use-package nix-mode
     :ensure t
     :mode "\\.nix\\'"))
@@ -472,9 +472,9 @@ Only request nix-mode when the user includes nix in uwumacs-language-packages. T
 
 Only request racket-mode when selected. The Racket runtime remains a separate platform dependency.
 
-#+name: uwumacs-languages-12-1
+#+name: kittymacs-languages-12-1
 #+begin_src emacs-lisp
-(when (memq 'racket uwumacs-language-packages)
+(when (memq 'racket kittymacs-language-packages)
   (use-package racket-mode
     :ensure t
     :mode "\\.rkt\\'"))
@@ -484,9 +484,9 @@ Only request racket-mode when selected. The Racket runtime remains a separate pl
 
 Geiser and its Guile adapter are conditional editing packages, independent of installing Guile itself.
 
-#+name: uwumacs-languages-13-1
+#+name: kittymacs-languages-13-1
 #+begin_src emacs-lisp
-(when (memq 'guile uwumacs-language-packages)
+(when (memq 'guile kittymacs-language-packages)
   (use-package geiser
     :ensure t
     :defer t)
@@ -499,9 +499,9 @@ Geiser and its Guile adapter are conditional editing packages, independent of in
 
 The core require/provide protocol records that this file loaded. Later requires can reuse the feature without evaluating the module again.
 
-#+name: uwumacs-languages-14-1
+#+name: kittymacs-languages-14-1
 #+begin_src emacs-lisp
-(provide 'uwumacs-languages)
-;;; uwumacs-languages.el ends here
+(provide 'kittymacs-languages)
+;;; kittymacs-languages.el ends here
 #+end_src
 

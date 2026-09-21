@@ -1,4 +1,4 @@
-;;; tangle.el --- Build UwUmacs from Org without loading the config -*- lexical-binding: t; -*-
+;;; tangle.el --- Build kittymacs from Org without loading the config -*- lexical-binding: t; -*-
 ;; Run from any directory: emacs -Q --batch -l /path/to/tools/tangle.el -- --check
 ;; Replace --check with --write to regenerate the deployed Lisp files.
 (require 'cl-lib)

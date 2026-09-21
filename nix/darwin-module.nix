@@ -1,10 +1,10 @@
-# nix-darwin module: Emacs, the tools UwUmacs discovers, and the icon font.
+# nix-darwin module: Emacs, the tools kittymacs discovers, and the icon font.
 #
-#   inputs.uwumacs.url = "github:Mihir-Null/UwUmacs";
-#   inputs.uwumacs.inputs.nixpkgs.follows = "nixpkgs";
+#   inputs.kittymacs.url = "github:Mihir-Null/kittymacs";
+#   inputs.kittymacs.inputs.nixpkgs.follows = "nixpkgs";
 #   ...
-#   imports = [ inputs.uwumacs.darwinModules.default ];
-#   programs.uwumacs.enable = true;
+#   imports = [ inputs.kittymacs.darwinModules.default ];
+#   programs.kittymacs.enable = true;
 #
 # The configuration itself is not put in the Nix store: it writes packages,
 # caches and private.el under its own directory, so clone it somewhere
@@ -12,19 +12,19 @@
 { config, lib, pkgs, ... }:
 
 let
-  cfg = config.programs.uwumacs;
+  cfg = config.programs.kittymacs;
   tools = import ./tools.nix { inherit pkgs; emacs = cfg.package; };
 in
 {
-  options.programs.uwumacs = {
-    enable = lib.mkEnableOption "UwUmacs: Emacs with the tools its configuration looks for";
+  options.programs.kittymacs = {
+    enable = lib.mkEnableOption "kittymacs: Emacs with the tools its configuration looks for";
 
     package = lib.mkOption {
       type = lib.types.package;
       default = pkgs.emacs;
       defaultText = lib.literalExpression "pkgs.emacs";
       description = ''
-        The Emacs to install.  UwUmacs needs 30.1 or later.  `pkgs.emacs` is
+        The Emacs to install.  kittymacs needs 30.1 or later.  `pkgs.emacs` is
         nixpkgs' current release as the Cocoa build; `pkgs.emacs-macport` is
         the Mitsuharu port.
       '';

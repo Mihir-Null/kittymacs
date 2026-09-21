@@ -1,12 +1,12 @@
-;;; uwumacs-shell.el --- Eshell and Tramp -*- lexical-binding: t; -*-
+;;; kittymacs-shell.el --- Eshell and Tramp -*- lexical-binding: t; -*-
 ;; Generated from literate/35-shells.org; edit the Org source, then tangle.
 
 ;; Distilled from Lambda-Emacs by Colin McLear (GPL-3.0-or-later).
 
 ;;; Code:
 
-(require 'uwumacs-defaults)
-(require 'uwumacs-leader)
+(require 'kittymacs-defaults)
+(require 'kittymacs-leader)
 
 (declare-function consult-history "consult" (&optional history))
 
@@ -21,13 +21,13 @@
   :config
   (when (or window-system (daemonp))
     (exec-path-from-shell-initialize)))
-(defvar uwumacs-eshell-dir (expand-file-name "eshell/" uwumacs-etc-dir)
+(defvar kittymacs-eshell-dir (expand-file-name "eshell/" kittymacs-etc-dir)
   "Directory for Eshell history, aliases and the directory ring.")
 
-(setopt eshell-directory-name uwumacs-eshell-dir
-        eshell-history-file-name (expand-file-name "history" uwumacs-eshell-dir)
-        eshell-last-dir-ring-file-name (expand-file-name "lastdir" uwumacs-eshell-dir)
-        eshell-aliases-file (expand-file-name "alias" uwumacs-eshell-dir)
+(setopt eshell-directory-name kittymacs-eshell-dir
+        eshell-history-file-name (expand-file-name "history" kittymacs-eshell-dir)
+        eshell-last-dir-ring-file-name (expand-file-name "lastdir" kittymacs-eshell-dir)
+        eshell-aliases-file (expand-file-name "alias" kittymacs-eshell-dir)
         eshell-buffer-maximum-lines 20000
         eshell-scroll-to-bottom-on-input 'all
         eshell-scroll-to-bottom-on-output 'all
@@ -48,23 +48,23 @@
     (add-to-list 'eshell-visual-commands command))
   (add-to-list 'eshell-visual-subcommands '("git" "log" "diff" "show")))
 
-(defun uwumacs--eshell-git-branch ()
+(defun kittymacs--eshell-git-branch ()
   "Return the current Git branch for the prompt, or nil."
   (when (and (not (file-remote-p default-directory))
              (locate-dominating-file default-directory ".git"))
     (car (vc-git-branches))))
 
-(defun uwumacs-eshell-prompt ()
+(defun kittymacs-eshell-prompt ()
   "A two-line prompt: directory and branch, then λ."
-  (let ((branch (uwumacs--eshell-git-branch)))
+  (let ((branch (kittymacs--eshell-git-branch)))
     (concat "\n"
             (propertize (abbreviate-file-name (eshell/pwd)) 'face 'font-lock-constant-face)
             (when branch (propertize (format " (%s)" branch) 'face 'font-lock-comment-face))
             "\n"
             (propertize "λ" 'face 'font-lock-keyword-face)
             (propertize " " 'face 'default))))
-(setopt eshell-prompt-function #'uwumacs-eshell-prompt)
-(defvar uwumacs-eshell-aliases
+(setopt eshell-prompt-function #'kittymacs-eshell-prompt)
+(defvar kittymacs-eshell-aliases
   '(("g" "git --no-pager $*")
     ("gs" "magit-status")
     ("gd" "git diff --color $*")
@@ -85,7 +85,7 @@
 
 (with-eval-after-load 'em-alias
   (advice-add #'eshell-write-aliases-list :override #'ignore)
-  (setq eshell-command-aliases-list (append eshell-command-aliases-list uwumacs-eshell-aliases)))
+  (setq eshell-command-aliases-list (append eshell-command-aliases-list kittymacs-eshell-aliases)))
 
 (defun eshell/z (&optional regexp)
   "Change to a previously visited directory chosen with completion.
@@ -95,14 +95,14 @@ With REGEXP, go to the most recent directory matching it."
                    (eshell-find-previous-directory regexp)
                  (completing-read "Directory: " dirs nil t)))))
 
-(defun uwumacs-eshell-clear ()
+(defun kittymacs-eshell-clear ()
   "Clear the Eshell buffer."
   (interactive)
   (let ((inhibit-read-only t))
     (erase-buffer)
     (eshell-send-input)))
 
-(defun uwumacs-eshell-project ()
+(defun kittymacs-eshell-project ()
   "Open an Eshell for the current project, or for this directory."
   (interactive)
   (require 'eshell)
@@ -112,13 +112,13 @@ With REGEXP, go to the most recent directory matching it."
          (default-directory root))
     (eshell)))
 
-(defun uwumacs--eshell-setup ()
+(defun kittymacs--eshell-setup ()
   "Per-buffer Eshell settings."
-  (keymap-local-set "C-l" #'uwumacs-eshell-clear)
+  (keymap-local-set "C-l" #'kittymacs-eshell-clear)
   (setq-local imenu-generic-expression '(("Prompt" "^λ \\(.*\\)" 1)))
   (hl-line-mode -1)
   (visual-line-mode 1))
-(add-hook 'eshell-mode-hook #'uwumacs--eshell-setup)
+(add-hook 'eshell-mode-hook #'kittymacs--eshell-setup)
 
 (use-package eshell-syntax-highlighting
   :ensure t
@@ -140,7 +140,7 @@ With REGEXP, go to the most recent directory matching it."
 
 (use-package pcmpl-args :ensure t :after eshell)
 (use-package pcomplete-extension :ensure t :after eshell)
-(setopt tramp-persistency-file-name (expand-file-name "tramp" uwumacs-cache-dir)
+(setopt tramp-persistency-file-name (expand-file-name "tramp" kittymacs-cache-dir)
         tramp-default-method "ssh"
         tramp-copy-size-limit nil
         tramp-use-ssh-controlmaster-options nil)
@@ -148,8 +148,8 @@ With REGEXP, go to the most recent directory matching it."
   (dolist (entry '((eshell-mode . insert) (shell-mode . insert) (term-mode . insert)))
     (add-to-list 'meow-mode-state-list entry)))
 
-(uwumacs-define-localleader 'eshell-mode
-  "c" (cons "clear" #'uwumacs-eshell-clear)
+(kittymacs-define-localleader 'eshell-mode
+  "c" (cons "clear" #'kittymacs-eshell-clear)
   "h" (cons "history" #'consult-history)
   "d" (cons "directory" #'consult-dir)
   "p" (cons "previous prompt" #'eshell-previous-prompt)
@@ -157,5 +157,5 @@ With REGEXP, go to the most recent directory matching it."
   "i" (cons "insert" #'meow-insert)
   "?" (cons "menu" #'casual-eshell-tmenu))
 
-(provide 'uwumacs-shell)
-;;; uwumacs-shell.el ends here
+(provide 'kittymacs-shell)
+;;; kittymacs-shell.el ends here

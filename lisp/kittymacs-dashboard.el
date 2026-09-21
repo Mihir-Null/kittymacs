@@ -1,4 +1,4 @@
-;;; uwumacs-dashboard.el --- Doom-like home page -*- lexical-binding: t; -*-
+;;; kittymacs-dashboard.el --- Doom-like home page -*- lexical-binding: t; -*-
 ;; Generated from literate/55-dashboard.org; edit the Org source, then tangle.
 
 ;;; Commentary:
@@ -7,43 +7,43 @@
 
 ;;; Code:
 
-(require 'uwumacs-ui)
-(defun uwumacs-dashboard-open-cheatsheet (&rest _)
+(require 'kittymacs-ui)
+(defun kittymacs-dashboard-open-cheatsheet (&rest _)
   "Open the local keybindings and commands cheat sheet."
   (interactive)
-  (find-file (expand-file-name "keybindings.org" uwumacs-lisp-dir)))
-(defun uwumacs-dashboard-open-tutor (&rest _)
+  (find-file (expand-file-name "keybindings.org" kittymacs-lisp-dir)))
+(defun kittymacs-dashboard-open-tutor (&rest _)
   "Start Meow's interactive tutorial."
   (interactive)
   (call-interactively #'meow-tutor))
 
-(defun uwumacs-dashboard-open-keys-chapter (&rest _)
+(defun kittymacs-dashboard-open-keys-chapter (&rest _)
   "Open the keys chapter: the whole SPC tree, group by group."
   (interactive)
   (find-file (expand-file-name "literate/42-keys.org" user-emacs-directory)))
-(defun uwumacs-dashboard-open-file (&rest _)
+(defun kittymacs-dashboard-open-file (&rest _)
   "Prompt for a file from a dashboard button."
   (interactive)
   (call-interactively #'find-file))
-(defun uwumacs-dashboard-open-config (&rest _)
+(defun kittymacs-dashboard-open-config (&rest _)
   "Open the documented literate configuration."
   (interactive)
-  (uwumacs-literate-open))
-(defun uwumacs-dashboard-open-project (&rest _)
+  (kittymacs-literate-open))
+(defun kittymacs-dashboard-open-project (&rest _)
   "Choose a project using Emacs project.el."
   (interactive)
   (call-interactively #'project-switch-project))
-(defun uwumacs-dashboard-open-recent (&rest _)
+(defun kittymacs-dashboard-open-recent (&rest _)
   "Choose a recently opened file."
   (interactive)
   (if (fboundp 'consult-recent-file)
       (call-interactively #'consult-recent-file)
     (call-interactively #'recentf-open-files)))
-(defun uwumacs-dashboard-open-agenda (&rest _)
+(defun kittymacs-dashboard-open-agenda (&rest _)
   "Open the Org agenda."
   (interactive)
   (call-interactively #'org-agenda))
-(defun uwumacs-dashboard-center-lines ()
+(defun kittymacs-dashboard-center-lines ()
   "Center each visible dashboard line using its rendered pixel width.
 Measure the actual buffer so heading display overlays and icon faces count.
 Exclude trailing padding and compensate for leading indentation."
@@ -78,22 +78,22 @@ Exclude trailing padding and compensate for leading indentation."
                   (add-text-properties start end
                                        `(line-prefix ,prefix wrap-prefix ,prefix)))))
             (forward-line)))))))
-(defun uwumacs-dashboard-recenter (&rest _)
+(defun kittymacs-dashboard-recenter (&rest _)
   "Recompute visible dashboard text metrics after a font or theme change."
   (when-let* ((window (get-buffer-window dashboard-buffer-name t)))
     (with-selected-window window
       (with-current-buffer dashboard-buffer-name
-        (uwumacs-dashboard-center-lines)))))
-(defvar uwumacs-dashboard-key-guide
+        (kittymacs-dashboard-center-lines)))))
+(defvar kittymacs-dashboard-key-guide
   '(("SPC SPC" "run a command by name" "SPC h ?" "the cheat sheet")
     ("SPC f f" "open a file"           "SPC h t" "Meow's tutorial")
     ("SPC m"   "menu for this mode"    "SPC C c" "the reading guide"))
   "Rows of (KEY WHAT KEY WHAT) shown at the bottom of the home page.")
 
-(defun uwumacs-dashboard-insert-key-guide ()
+(defun kittymacs-dashboard-insert-key-guide ()
   "Insert the short guide to the first keys."
   (insert "\n")
-  (dolist (row uwumacs-dashboard-key-guide)
+  (dolist (row kittymacs-dashboard-key-guide)
     (pcase-let ((`(,left-key ,left-what ,right-key ,right-what) row))
       (insert (propertize (format "%-8s" left-key) 'face 'dashboard-navigator)
               (propertize (format "%-24s" left-what) 'face 'font-lock-comment-face)
@@ -110,7 +110,7 @@ Exclude trailing padding and compensate for leading indentation."
         (mapconcat #'identity
                    '("╭────────────────────────────╮"
                      "│                            │"
-                     "│     U w U m a c s   :3     │"
+                     "│   k i t t y m a c s   :3   │"
                      "│                            │"
                      "╰────────────────────────────╯")
                    "\n")
@@ -122,7 +122,7 @@ Exclude trailing padding and compensate for leading indentation."
         dashboard-icon-type 'nerd-icons
         dashboard-set-heading-icons t
         dashboard-set-file-icons t
-        dashboard-display-icons-p #'uwumacs-icons-available-p
+        dashboard-display-icons-p #'kittymacs-icons-available-p
         dashboard-heading-icon-height 1.0
         dashboard-show-shortcuts t
         dashboard-projects-backend 'project-el
@@ -144,28 +144,28 @@ Exclude trailing padding and compensate for leading indentation."
                                     dashboard-insert-newline
                                     dashboard-insert-init-info
                                     dashboard-insert-items
-                                    uwumacs-dashboard-insert-key-guide
-                                    uwumacs-dashboard-center-lines)
+                                    kittymacs-dashboard-insert-key-guide
+                                    kittymacs-dashboard-center-lines)
         dashboard-init-info
         (lambda ()
           (format "Emacs %s · ready in %s"
                   emacs-version
                   (emacs-init-time)))
         dashboard-navigator-buttons
-        '((("+" "File" "Open a file" uwumacs-dashboard-open-file)
-           ("◆" "Project" "Switch project" uwumacs-dashboard-open-project)
-           ("↺" "Recent" "Open a recent file" uwumacs-dashboard-open-recent))
-          (("◎" "Agenda" "Open the Org agenda" uwumacs-dashboard-open-agenda)
+        '((("+" "File" "Open a file" kittymacs-dashboard-open-file)
+           ("◆" "Project" "Switch project" kittymacs-dashboard-open-project)
+           ("↺" "Recent" "Open a recent file" kittymacs-dashboard-open-recent))
+          (("◎" "Agenda" "Open the Org agenda" kittymacs-dashboard-open-agenda)
            ("*" "Scratch" "Open the scratch buffer"
             (lambda (&rest _) (switch-to-buffer "*scratch*")))
-           ("λ" "Config" "Open the UwUmacs reading guide (SPC C c)"
-            uwumacs-dashboard-open-config))
+           ("λ" "Config" "Open the kittymacs reading guide (SPC C c)"
+            kittymacs-dashboard-open-config))
           (("?" "Keys & commands" "Open the local cheat sheet (SPC h ?, or ? here)"
-            uwumacs-dashboard-open-cheatsheet)
+            kittymacs-dashboard-open-cheatsheet)
            ("»" "Meow tutor" "Learn select, extend, act (SPC h t)"
-            uwumacs-dashboard-open-tutor)
+            kittymacs-dashboard-open-tutor)
            ("§" "Leader tree" "Every SPC key, group by group"
-            uwumacs-dashboard-open-keys-chapter))))
+            kittymacs-dashboard-open-keys-chapter))))
   :config
   (set-face-attribute 'dashboard-text-banner nil
                       :inherit 'font-lock-keyword-face
@@ -180,16 +180,16 @@ Exclude trailing padding and compensate for leading indentation."
                       :inherit 'font-lock-keyword-face
                       :weight 'semi-bold)
 
-  (define-key dashboard-mode-map (kbd "?") #'uwumacs-dashboard-open-cheatsheet)
+  (define-key dashboard-mode-map (kbd "?") #'kittymacs-dashboard-open-cheatsheet)
 
-  (add-hook 'window-setup-hook #'uwumacs-dashboard-recenter 100)
-  (add-hook 'after-setting-font-hook #'uwumacs-dashboard-recenter 100)
-  (add-hook 'enable-theme-functions #'uwumacs-dashboard-recenter 100)
+  (add-hook 'window-setup-hook #'kittymacs-dashboard-recenter 100)
+  (add-hook 'after-setting-font-hook #'kittymacs-dashboard-recenter 100)
+  (add-hook 'enable-theme-functions #'kittymacs-dashboard-recenter 100)
 
   ;; Skip the home page when Emacs was invoked with a file argument.
   (dashboard-setup-startup-hook))
 ;; Keep r/p/b/? and dashboard item shortcuts alongside Meow j/k and SPC.
 (with-eval-after-load 'meow
   (add-to-list 'meow-mode-state-list '(dashboard-mode . motion)))
-(provide 'uwumacs-dashboard)
-;;; uwumacs-dashboard.el ends here
+(provide 'kittymacs-dashboard)
+;;; kittymacs-dashboard.el ends here

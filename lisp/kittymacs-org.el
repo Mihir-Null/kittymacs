@@ -1,19 +1,19 @@
-;;; uwumacs-org.el --- Notes, tasks and the agenda -*- lexical-binding: t; -*-
+;;; kittymacs-org.el --- Notes, tasks and the agenda -*- lexical-binding: t; -*-
 ;; Generated from literate/70-org.org; edit the Org source, then tangle.
 
 ;; Defaults distilled from Lambda-Emacs by Colin McLear (GPL-3.0-or-later).
 
 ;;; Code:
 
-(require 'uwumacs-platform)
-(require 'uwumacs-defaults)
-(require 'uwumacs-leader)
-(make-directory uwumacs-org-directory t)
-(setopt org-directory uwumacs-org-directory
-        org-default-notes-file (expand-file-name "inbox.org" uwumacs-org-directory)
-        org-agenda-files (list uwumacs-org-directory)
-        org-archive-location (expand-file-name "archive.org::datetree/" uwumacs-org-directory)
-        org-id-locations-file (expand-file-name "org-id-locations" uwumacs-cache-dir)
+(require 'kittymacs-platform)
+(require 'kittymacs-defaults)
+(require 'kittymacs-leader)
+(make-directory kittymacs-org-directory t)
+(setopt org-directory kittymacs-org-directory
+        org-default-notes-file (expand-file-name "inbox.org" kittymacs-org-directory)
+        org-agenda-files (list kittymacs-org-directory)
+        org-archive-location (expand-file-name "archive.org::datetree/" kittymacs-org-directory)
+        org-id-locations-file (expand-file-name "org-id-locations" kittymacs-cache-dir)
         org-id-method 'ts
         org-id-link-to-org-use-id 'create-if-interactive)
 
@@ -53,12 +53,12 @@
 (with-eval-after-load 'org
   (add-to-list 'org-modules 'org-habit t)
   (add-to-list 'org-modules 'org-tempo t)
-  (defun uwumacs--org-no-angle-pairs ()
+  (defun kittymacs--org-no-angle-pairs ()
     "Do not auto-pair < in Org: it starts structure templates like <s."
     (setq-local electric-pair-inhibit-predicate
                 (let ((inherited electric-pair-inhibit-predicate))
                   (lambda (char) (or (char-equal char ?<) (funcall inherited char))))))
-  (add-hook 'org-mode-hook #'uwumacs--org-no-angle-pairs))
+  (add-hook 'org-mode-hook #'kittymacs--org-no-angle-pairs))
 (setopt org-todo-keywords '((sequence "TODO(t)" "NEXT(n)" "WAITING(w@/!)" "|" "DONE(d)" "CANCELED(c@)"))
         org-use-fast-todo-selection 'expert
         org-enforce-todo-dependencies t
@@ -97,12 +97,12 @@
         org-outline-path-complete-in-steps nil
         org-refile-allow-creating-parent-nodes 'confirm)
 
-(defun uwumacs-org-dashboard ()
+(defun kittymacs-org-dashboard ()
   "Open the agenda dashboard: today, due soon and next actions."
   (interactive)
   (org-agenda nil "d"))
 
-(defun uwumacs-org-archive-done ()
+(defun kittymacs-org-archive-done ()
   "Archive every DONE or CANCELED entry in this file."
   (interactive)
   (dolist (match '("/DONE" "/CANCELED"))
@@ -111,11 +111,11 @@
                        (setq org-map-continue-from (outline-previous-heading)))
                      match 'file)))
 
-(defun uwumacs--org-agenda-refresh ()
+(defun kittymacs--org-agenda-refresh ()
   "Refresh an open agenda after a capture."
   (when-let* ((buffer (get-buffer "*Org Agenda*")))
     (with-current-buffer buffer (org-agenda-redo))))
-(add-hook 'org-capture-after-finalize-hook #'uwumacs--org-agenda-refresh)
+(add-hook 'org-capture-after-finalize-hook #'kittymacs--org-agenda-refresh)
 (setopt org-export-with-smart-quotes t
         org-export-with-broken-links t
         org-html-postamble nil
@@ -133,7 +133,7 @@
   (require 'ox-extra)
   (ox-extras-activate '(ignore-headlines)))
 
-(defun uwumacs-org-block-wrap ()
+(defun kittymacs-org-block-wrap ()
   "Wrap the region, or insert at point, an Org block of a chosen type."
   (interactive)
   (let* ((choices '(("s" . "src") ("e" . "example") ("q" . "quote") ("c" . "comment")
@@ -170,8 +170,8 @@
 (with-eval-after-load 'org
   (modify-syntax-entry ?@ "_" org-mode-syntax-table))
 
-(uwumacs-define-localleader 'org-mode
-  "a" (cons "agenda" #'uwumacs-org-dashboard)
+(kittymacs-define-localleader 'org-mode
+  "a" (cons "agenda" #'kittymacs-org-dashboard)
   "c" (cons "capture" #'org-capture)
   "t" (cons "todo state" #'org-todo)
   "s" (cons "schedule" #'org-schedule)
@@ -190,12 +190,12 @@
   "." (cons "time stamp" #'org-time-stamp)
   "b" (cons "run source block" #'org-babel-execute-src-block)
   "'" (cons "edit source block" #'org-edit-special)
-  "w" (cons "wrap in block" #'uwumacs-org-block-wrap)
+  "w" (cons "wrap in block" #'kittymacs-org-block-wrap)
   "e" (cons "export" #'org-export-dispatch)
   "i" (cons "insert heading" #'org-insert-heading-respect-content)
   "?" (cons "menu" #'casual-org-tmenu))
 
-(uwumacs-define-localleader 'org-agenda-mode
+(kittymacs-define-localleader 'org-agenda-mode
   "t" (cons "todo state" #'org-agenda-todo)
   "s" (cons "schedule" #'org-agenda-schedule)
   "d" (cons "deadline" #'org-agenda-deadline)
@@ -206,5 +206,5 @@
   "q" (cons "quit" #'org-agenda-quit)
   "?" (cons "menu" #'casual-agenda-tmenu))
 
-(provide 'uwumacs-org)
-;;; uwumacs-org.el ends here
+(provide 'kittymacs-org)
+;;; kittymacs-org.el ends here
