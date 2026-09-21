@@ -47,6 +47,9 @@ Lisp.
 (declare-function ghostel-readonly-enter "ghostel" ())
 (declare-function ghostel "ghostel" (&optional arg))
 (declare-function ghostel-project "ghostel" (&optional arg))
+;; The Eshell fallback below: `kittymacs-shell' is loaded before this module
+;; by `init.el', but this module does not require it.
+(declare-function kittymacs-eshell-project "kittymacs-shell" ())
 
 (defgroup kittymacs-terminal nil
   "The integrated terminal."
@@ -84,6 +87,31 @@ is what the terminal needs."
 
 #+end_src
 
+** Not on Android
+
+Ghostel asks two things of a platform that Android does not grant. It is
+installed with =:vc=, so the first start clones it with =git=, which the Android
+port does not ship. And it is a native module: upstream publishes prebuilt
+modules for the desktop platforms, none for =android-aarch64=, and the Android
+port is commonly built without dynamic module support at all — in which case
+=module-file-suffix= is nil and no module could be loaded however it arrived.
+
+Neither is worth an error message on every start, so ghostel is simply not
+installed there and Eshell takes =SPC o e=. Eshell is Lisp, needs no module and
+no subprocess to start, and where Termux is paired it runs Termux's programs
+like any other shell. That is a genuine loss — Eshell is not a terminal and
+will not run =htop= or a full-screen editor — and it is the honest one to take.
+
+#+begin_src emacs-lisp
+(defcustom kittymacs-terminal-ghostel
+  (not (eq system-type 'android))
+  "Whether ghostel provides the terminal.
+Off on Android, which has neither `git' for ghostel's `:vc' checkout nor a
+prebuilt native module.  `kittymacs-terminal-open' falls back to Eshell
+whenever this is nil."
+  :type 'boolean)
+#+end_src
+
 * The terminal
 
 A terminal closes its buffer when the shell exits, but asks first if a command
@@ -108,6 +136,7 @@ updates it. Move both to =:ensure t= when MELPA carries them.
 #+begin_src emacs-lisp
 (use-package ghostel
   :vc (:url "https://github.com/dakra/ghostel" :lisp-dir "lisp" :rev :newest)
+  :if kittymacs-terminal-ghostel
   :defer t
   :commands (ghostel ghostel-project ghostel-other ghostel-list-buffers
              ghostel-create ghostel-exec ghostel-compile ghostel-recompile)
@@ -281,16 +310,21 @@ substitute a POSIX helper: ghostel talks to Windows ConPTY directly.
 (defun kittymacs-terminal-open (&optional arg)
   "Open a terminal.  With prefix ARG, open another one.
 Ghostel offers to fetch its native module the first time; declining that
-offer leaves the terminal unavailable, so say so in words."
+offer leaves the terminal unavailable, so say so in words.  Where ghostel
+is not used at all, Eshell answers this key instead."
   (interactive "P")
-  (condition-case error (ghostel arg)
-    (void-function (kittymacs-terminal--without-module error))))
+  (if (not kittymacs-terminal-ghostel)
+      (eshell arg)
+    (condition-case error (ghostel arg)
+      (void-function (kittymacs-terminal--without-module error)))))
 
 (defun kittymacs-terminal-project (&optional arg)
   "Open a terminal at the current project's root.  ARG is passed through."
   (interactive "P")
-  (condition-case error (ghostel-project arg)
-    (void-function (kittymacs-terminal--without-module error))))
+  (if (not kittymacs-terminal-ghostel)
+      (kittymacs-eshell-project)
+    (condition-case error (ghostel-project arg)
+      (void-function (kittymacs-terminal--without-module error)))))
 
 (defun kittymacs-terminal-msys2 (&optional arg)
   "Open an MSYS2 UCRT64 login shell in a terminal.
@@ -326,12 +360,14 @@ teaches =consult-line= about soft-wrapped terminal rows, so a path that wrapped
 mid-word is still findable.
 
 #+begin_src emacs-lisp
-(with-eval-after-load 'project
-  (add-to-list 'project-switch-commands '(ghostel-project "Terminal") t))
+(when kittymacs-terminal-ghostel
+  (with-eval-after-load 'project
+    (add-to-list 'project-switch-commands '(ghostel-project "Terminal") t)))
 
 (use-package consult-ghostel
   :vc (:url "https://github.com/dakra/ghostel"
        :lisp-dir "extensions/consult-ghostel" :rev :newest)
+  :if kittymacs-terminal-ghostel
   :after (ghostel consult)
   :demand t
   :bind (:map ghostel-semi-char-mode-map
@@ -386,11 +422,12 @@ terminal too.
 
 ;; `kittymacs-define-localleader' replaces a mode's whole map, and prog-mode's
 ;; belongs to the programming chapter, so add to the map it built.
-(with-eval-after-load 'kittymacs-programming
-  (when-let* ((map (alist-get 'prog-mode kittymacs-localleader-alist)))
-    (keymap-set map "t" (cons "compile in a terminal" #'ghostel-compile))
-    (keymap-set map "T" (cons "recompile in a terminal" #'ghostel-recompile))
-    (kittymacs-refresh-localleaders)))
+(when kittymacs-terminal-ghostel
+  (with-eval-after-load 'kittymacs-programming
+    (when-let* ((map (alist-get 'prog-mode kittymacs-localleader-alist)))
+      (keymap-set map "t" (cons "compile in a terminal" #'ghostel-compile))
+      (keymap-set map "T" (cons "recompile in a terminal" #'ghostel-recompile))
+      (kittymacs-refresh-localleaders))))
 
 #+end_src
 

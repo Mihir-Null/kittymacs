@@ -17,6 +17,9 @@
 (defvar ns-option-modifier)
 (defvar ns-right-option-modifier)
 (defvar ns-use-native-fullscreen)
+(defvar meow-insert-enter-hook)
+(defvar meow-insert-exit-hook)
+(defvar android-pass-multimedia-buttons-to-system)
 
 (defmacro kittymacs-platform-test-with (system executables &rest body)
   "Run BODY as SYSTEM with only EXECUTABLES findable and no global side effects."
@@ -127,5 +130,170 @@
                    (list "explorer.exe" (concat "/select," (subst-char-in-string ?/ ?\\ file)))))
     (should (equal (kittymacs-platform-test-reveal 'gnu/linux file)
                    (list "xdg-open" (file-name-directory file))))))
+
+
+;;; Android.  The port's `system-type' is `android', so every branch above
+;;; falls through to its default unless it names the platform.  Termux lives
+;;; in another application's data directory, readable only when the two share
+;;; a user ID, so the tests cover both the paired and the unpaired device.
+
+(defmacro kittymacs-platform-test-android (termux &rest body)
+  "Run BODY as Android with TERMUX programs installed under Termux's root.
+TERMUX is a list of program names; nil means Termux is not reachable,
+which is what an unpaired installation looks like from Emacs."
+  (declare (indent 1))
+  `(kittymacs-platform-test-with 'android '()
+     (let ((kittymacs-termux-root "/data/data/com.termux/files/usr/")
+           (kittymacs-android-volume-keys nil)
+           (kittymacs-android-modal-text-conversion t)
+           (exec-path (copy-sequence exec-path))
+           (programs ,termux)
+           android-pass-multimedia-buttons-to-system
+           meow-insert-enter-hook meow-insert-exit-hook)
+       (cl-letf (((symbol-function 'file-executable-p)
+                  (lambda (path)
+                    (and (string-prefix-p kittymacs-termux-root path)
+                         (member (file-name-nondirectory path) programs)
+                         t)))
+                 ((symbol-function 'file-accessible-directory-p)
+                  (lambda (path)
+                    (and (string-prefix-p kittymacs-termux-root path)
+                         (consp programs)))))
+         ,@body))))
+
+(ert-deftest kittymacs-platform-android-prefers-termux-shell ()
+  (kittymacs-platform-test-android '("bash" "sh")
+    (kittymacs-platform-apply)
+    (should (equal explicit-shell-file-name
+                   "/data/data/com.termux/files/usr/bin/bash"))
+    (should (equal shell-command-switch "-c")))
+  ;; Only `sh': Termux is paired but minimal.
+  (kittymacs-platform-test-android '("sh")
+    (kittymacs-platform-apply)
+    (should (equal explicit-shell-file-name
+                   "/data/data/com.termux/files/usr/bin/sh"))))
+
+(ert-deftest kittymacs-platform-android-falls-back-to-the-system-shell ()
+  ;; No Termux at all.  Emacs's compiled-in /bin/sh does not exist on
+  ;; Android, so a fallback that is always present is the point.
+  (kittymacs-platform-test-android nil
+    (kittymacs-platform-apply)
+    (should (equal explicit-shell-file-name "/system/bin/sh"))
+    (should (equal shell-file-name "/system/bin/sh"))
+    (should (equal shell-command-switch "-c"))))
+
+(ert-deftest kittymacs-platform-android-puts-termux-first-on-the-path ()
+  (kittymacs-platform-test-android '("bash" "git" "rg")
+    (setenv "PATH" "/system/bin")
+    (setenv "LD_LIBRARY_PATH" "/vendor/lib64")
+    (kittymacs-platform-apply)
+    (let ((bin "/data/data/com.termux/files/usr/bin"))
+      (should (equal (getenv "PATH") (concat bin path-separator "/system/bin")))
+      (should (equal (car exec-path) bin))
+      ;; Termux's programs find their own libraries; an inherited library
+      ;; path interposes Android's system libraries of the same names.
+      (should-not (getenv "LD_LIBRARY_PATH"))
+      ;; Applying twice must not stack the entry up.
+      (kittymacs-platform-apply)
+      (should (equal (getenv "PATH") (concat bin path-separator "/system/bin"))))))
+
+(ert-deftest kittymacs-platform-android-leaves-the-path-alone-without-termux ()
+  (kittymacs-platform-test-android nil
+    (setenv "PATH" "/system/bin")
+    (setenv "LD_LIBRARY_PATH" "/vendor/lib64")
+    (kittymacs-platform-apply)
+    (should (equal (getenv "PATH") "/system/bin"))
+    (should (equal (getenv "LD_LIBRARY_PATH") "/vendor/lib64"))))
+
+(ert-deftest kittymacs-platform-android-keeps-its-inherited-environment ()
+  ;; The POSIX importer would succeed here and report a `PATH' without
+  ;; Termux, so it is overridden exactly as it is on Windows.  The override
+  ;; waits on `with-eval-after-load', so the package has to look loaded.
+  (kittymacs-platform-test-android '("bash")
+    ;; `featurep' reads the C-level list, which `let' does not rebind, so
+    ;; the feature is really provided and really taken away again.
+    (unwind-protect
+        (progn
+          (defalias 'exec-path-from-shell-initialize #'ignore)
+          (provide 'exec-path-from-shell)
+          (kittymacs-platform-apply)
+          (should (advice-member-p #'kittymacs--skip-exec-path-from-shell
+                                   #'exec-path-from-shell-initialize)))
+      (setq features (delq 'exec-path-from-shell features))
+      (fmakunbound 'exec-path-from-shell-initialize))))
+
+(ert-deftest kittymacs-platform-android-sets-a-utf8-locale-only-when-missing ()
+  (kittymacs-platform-test-android nil
+    (setenv "LANG" nil)
+    (kittymacs-platform-apply)
+    (should (equal (getenv "LANG") "en_US.UTF-8")))
+  (kittymacs-platform-test-android nil
+    (setenv "LANG" "de_DE.UTF-8")
+    (kittymacs-platform-apply)
+    (should (equal (getenv "LANG") "de_DE.UTF-8"))))
+
+(ert-deftest kittymacs-platform-android-volume-keys-are-customizable ()
+  (kittymacs-platform-test-android nil
+    (kittymacs-platform-apply)
+    ;; Default: Emacs keeps them, so quitting without a keyboard still works.
+    (should-not android-pass-multimedia-buttons-to-system))
+  (kittymacs-platform-test-android nil
+    (let ((kittymacs-android-volume-keys t))
+      (kittymacs-platform-apply)
+      (should android-pass-multimedia-buttons-to-system))))
+
+(ert-deftest kittymacs-platform-android-leaves-macos-settings-alone ()
+  (kittymacs-platform-test-android '("bash")
+    (kittymacs-platform-apply)
+    (should-not ns-command-modifier)
+    (should-not delete-by-moving-to-trash)
+    (should-not (keymap-lookup (current-global-map) "s-q"))))
+
+(ert-deftest kittymacs-platform-android-follows-meow-with-text-conversion ()
+  (kittymacs-platform-test-android nil
+    (kittymacs-platform-apply)
+    (should (memq #'kittymacs-android-suspend-text-conversion meow-insert-exit-hook))
+    (should (memq #'kittymacs-android-resume-text-conversion meow-insert-enter-hook)))
+  ;; Leaving Insert state takes the buffer away from the input method, and
+  ;; entering it hands back the style that was in force.
+  (let (style)
+    (cl-letf (((symbol-function 'set-text-conversion-style)
+               (lambda (value) (setq style value))))
+      (with-temp-buffer
+        (setq-local text-conversion-style 'action)
+        (setq style 'action)
+        (kittymacs-android-suspend-text-conversion)
+        (should-not style)
+        (should (eq kittymacs--android-text-conversion 'action))
+        (kittymacs-android-resume-text-conversion)
+        (should (eq style 'action))
+        (should-not kittymacs--android-text-conversion)))))
+
+(ert-deftest kittymacs-platform-android-text-conversion-can-be-turned-off ()
+  (let ((kittymacs-android-modal-text-conversion nil)
+        (style 'action))
+    (cl-letf (((symbol-function 'set-text-conversion-style)
+               (lambda (value) (setq style value))))
+      (with-temp-buffer
+        (setq-local text-conversion-style 'action)
+        (kittymacs-android-suspend-text-conversion)
+        (should (eq style 'action))
+        (should-not kittymacs--android-text-conversion)))))
+
+(ert-deftest kittymacs-platform-android-reveal-opens-dired ()
+  ;; No `xdg-open', and the document picker addresses files by content URI
+  ;; rather than by path, so Dired is the file manager that is here.
+  ;; Only `dired' is mocked.  Redefining a primitive such as
+  ;; `file-directory-p' makes native compilation build a subr trampoline,
+  ;; which it does by starting Emacs in a subprocess -- so a test that
+  ;; mocked one alongside `call-process' would catch the compiler instead
+  ;; of the code under test.  The path below does not exist, so the real
+  ;; `file-directory-p' already answers nil.
+  (let ((system-type 'android)
+        (buffer-file-name "/sdcard/Documents/todo.org")
+        opened)
+    (cl-letf (((symbol-function 'dired) (lambda (directory) (setq opened directory))))
+      (kittymacs-reveal-in-file-manager)
+      (should (equal opened "/sdcard/Documents/")))))
 
 ;;; kittymacs-platform-tests.el ends here

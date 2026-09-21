@@ -25,6 +25,29 @@ commands that would pop up an auxiliary buffer can create a separate frame.
 
 #+end_src
 
+* Android has no window manager to delegate to
+
+This chapter's premise is that /the desktop window manager arranges Emacs/.
+Android has no such thing. It does map frames one-to-one onto activities, so
+the policy technically works — and the result is that every Help buffer, Magit
+status and completion panel becomes a separate full-screen entry in the task
+switcher, which the user then has to dismiss by hand. The premise fails, so the
+policy is off by default and Emacs's own windows do the arranging.
+
+The option is real rather than a hard-coded refusal: a tablet in desktop mode,
+or a device driving an external display, is a plausible place to want it back.
+
+#+begin_src emacs-lisp
+(defcustom kittymacs-frames-only
+  (not (eq system-type 'android))
+  "Whether every auxiliary buffer becomes its own operating-system window.
+Off on Android, where an Emacs frame is an activity in the task switcher
+rather than a window some desktop window manager arranges for you.  Set
+it in `private.el', before this module is loaded, to override."
+  :type 'boolean
+  :group 'kittymacs)
+#+end_src
+
 * Magit gets a frame
 
 [[file:66-vc.org][The version-control chapter]] sets Magit's display function: a frame while
@@ -53,6 +76,7 @@ disabled. The leader's =SPC w h= and =SPC w v= remain real in-frame splits.
 #+begin_src emacs-lisp
 (use-package frames-only-mode
   :ensure t
+  :if kittymacs-frames-only
   :demand t
   :custom
   (frames-only-mode-use-windows-for-completion t)

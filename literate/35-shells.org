@@ -49,10 +49,16 @@ line in =~/.zprofile= run; the startup chapter already put Homebrew on
 =exec-path= so this import only refines it. Windows inherits its environment
 correctly, and [[file:30-platform.org][the platform chapter]] turns this off there.
 
+Android is excluded for the opposite reason to Windows: the import would
+succeed, and that is the problem. =/system/bin/sh= evaluates the POSIX syntax
+quite happily and reports a =PATH= that has never heard of Termux, replacing
+the entries the platform chapter just added. The package is not even installed
+there, so a broken graphical session cannot be caused by it.
+
 #+begin_src emacs-lisp
 (use-package exec-path-from-shell
   :ensure t
-  :if (not (eq system-type 'windows-nt))
+  :if (not (memq system-type '(windows-nt android)))
   :custom
   (exec-path-from-shell-arguments (and (eq system-type 'darwin) '("-l")))
   :config

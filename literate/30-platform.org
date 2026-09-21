@@ -1,4 +1,4 @@
-#+TITLE: Platform: shells, paths, spelling and macOS
+#+TITLE: Platform: shells, paths, spelling, macOS and Android
 #+OPTIONS: toc:3 num:nil
 #+STARTUP: overview
 #+PROPERTY: header-args:emacs-lisp :eval never :comments no :padline no :mkdirp yes
@@ -31,10 +31,10 @@ Load this dependency before evaluating the forms that use its functions or varia
 ;; Generated from literate/30-platform.org; edit the Org source, then tangle.
 
 ;;; Commentary:
-;; Safe defaults for Windows, GNU/Linux/Nix, and macOS.  Prefer discovery with
-;; `executable-find' and platform-provided home locations over machine-specific
-;; paths.  The macOS section is distilled from Lambda-Emacs by Colin McLear
-;; (`lem-setup-macos', GPL-3.0-or-later).
+;; Safe defaults for Windows, GNU/Linux/Nix, macOS and Android.  Prefer
+;; discovery with `executable-find' and platform-provided home locations over
+;; machine-specific paths.  The macOS section is distilled from Lambda-Emacs by
+;; Colin McLear (`lem-setup-macos', GPL-3.0-or-later).
 
 ;;; Code:
 
@@ -117,6 +117,49 @@ ordinary Windows shell. Set =MSYS2_ROOT= in the environment, or this option in
   :type 'directory)
 #+end_src
 
+** Locate Termux on Android
+
+The Android port is a self-contained application. Its home directory is the
+application's own data directory, and Android 10 and later forbid it from
+executing anything stored there, so Emacs runs subprocesses through an
+executable loader instead. What it cannot do at all is reach into *another*
+application's data directory: =git=, =ripgrep=, a spell checker and the language
+servers all live in [[https://termux.dev][Termux]], under a different user.
+
+The two applications can nevertheless share a user when they are installed from
+builds whose =sharedUserId= and signature match; [[https://sourceforge.net/projects/android-ports-for-gnu-emacs/files/termux/][Jianwei Hu's Android ports]]
+publish exactly such a pair. Everything below therefore *discovers* Termux
+rather than assuming it: =kittymacs-termux-program= returns nil when the
+directory is unreadable, which is what a plain, unpaired installation looks
+like, and every dependent decision degrades to the Android system's own tools.
+
+#+name: kittymacs-platform-06-3
+#+begin_src emacs-lisp
+(defun kittymacs-android-p ()
+  "Return non-nil when this Emacs is the Android port.
+A function rather than a constant so the tests can exercise the Android
+branches by binding `system-type' on any machine."
+  (eq system-type 'android))
+
+(defcustom kittymacs-termux-root
+  (file-name-as-directory
+   (or (getenv "TERMUX_ROOT") "/data/data/com.termux/files/usr/"))
+  "Root of the Termux installation whose programs Emacs may run on Android.
+Reachable only when Emacs and Termux share a user ID; otherwise Android
+denies access and every lookup below quietly returns nil."
+  :type 'directory)
+
+(defun kittymacs-termux-program (name)
+  "Return Termux's NAME program when Emacs is allowed to run it, else nil."
+  (let ((program (expand-file-name (concat "bin/" name) kittymacs-termux-root)))
+    (and (file-executable-p program) program)))
+
+(defun kittymacs-termux-bin-directory ()
+  "Return Termux's program directory, without a trailing slash, or nil."
+  (let ((bin (expand-file-name "bin" kittymacs-termux-root)))
+    (and (file-accessible-directory-p bin) bin)))
+#+end_src
+
 ** Discover available programs
 
 Trying candidates in order lets the same configuration use a suitable installed shell across machines.
@@ -128,14 +171,20 @@ Trying candidates in order lets the same configuration use a suitable installed 
   (seq-some #'executable-find programs))
 #+end_src
 
-** Preserve the Windows environment
+** Preserve the inherited environment
 
-The POSIX shell importer cannot ask PowerShell to evaluate Unix shell syntax. This adapter lets Windows keep its inherited process environment.
+The POSIX shell importer cannot ask PowerShell to evaluate Unix shell syntax,
+and on Android it would be worse than useless: it asks the login shell what
+=PATH= should be and installs the answer, but Android's =/system/bin/sh= has
+never heard of Termux, so the import would erase the very entries the Android
+policy has just added. Both platforms keep the environment Emacs inherited.
 
 #+name: kittymacs-platform-08-1
 #+begin_src emacs-lisp
-(defun kittymacs--skip-exec-path-from-shell-on-windows (&rest _)
-  "Keep native Windows Emacs's inherited process environment unchanged."
+(defun kittymacs--skip-exec-path-from-shell (&rest _)
+  "Keep the inherited process environment unchanged.
+Used on native Windows, whose shell cannot evaluate POSIX syntax, and on
+Android, where the system shell would report a `PATH' without Termux."
   nil)
 #+end_src
 
@@ -183,25 +232,40 @@ Lambda configures exec-path-from-shell.  It supports POSIX shells, so native Win
      (when-let ((shell (kittymacs--first-executable "zsh" "bash" "sh")))
        (setq-default shell-file-name shell)
        (setq explicit-shell-file-name shell
+             shell-command-switch "-c")))
+    ;; Android has no /bin, so Emacs's compiled-in /bin/sh does not exist.
+    ;; Termux's shells are preferred because they can see Termux's programs;
+    ;; /system/bin/sh is always present, which makes it a real fallback
+    ;; rather than a hopeful one.
+    ('android
+     (let ((shell (or (kittymacs-termux-program "bash")
+                      (kittymacs-termux-program "sh")
+                      "/system/bin/sh")))
+       (setq-default shell-file-name shell)
+       (setq explicit-shell-file-name shell
              shell-command-switch "-c"))))
 
   ;; Lambda configures exec-path-from-shell.  It supports POSIX shells, so native
   ;; Windows keeps the environment inherited from Windows instead of asking
-  ;; PowerShell to evaluate Unix `printf' syntax.  Linux/macOS retain Lambda's
-  ;; intended login-shell import without assuming a particular Nix profile path.
-  (if (eq system-type 'windows-nt)
+  ;; PowerShell to evaluate Unix `printf' syntax.  Android keeps it too, because
+  ;; its system shell would report a `PATH' without Termux and overwrite ours.
+  ;; Linux/macOS retain Lambda's intended login-shell import without assuming a
+  ;; particular Nix profile path.
+  (if (memq system-type '(windows-nt android))
       (with-eval-after-load 'exec-path-from-shell
         (unless (advice-member-p
-                 #'kittymacs--skip-exec-path-from-shell-on-windows
+                 #'kittymacs--skip-exec-path-from-shell
                  #'exec-path-from-shell-initialize)
           (advice-add #'exec-path-from-shell-initialize :override
-                      #'kittymacs--skip-exec-path-from-shell-on-windows)))
+                      #'kittymacs--skip-exec-path-from-shell)))
     (with-eval-after-load 'exec-path-from-shell
       (setopt exec-path-from-shell-variables
               '("PATH" "MANPATH" "LANG" "NIX_PATH" "NIX_PROFILES"))))
 
   (when (eq system-type 'darwin)
-    (kittymacs--platform-apply-macos)))
+    (kittymacs--platform-apply-macos))
+  (when (kittymacs-android-p)
+    (kittymacs--platform-apply-android)))
 #+end_src
 
 ** macOS
@@ -317,6 +381,113 @@ fill gaps in the NS port's own: redo, a frame-aware =⌘Q=, and full screen.
   (kittymacs--macos-sync-titlebar))
 #+end_src
 
+** Android
+
+Emacs on Android is a real GUI Emacs, not a terminal in a shell app: frames are
+graphical, fonts are fonts, and =display-graphic-p= is true. Three things about
+the platform nevertheless reach up into this configuration.
+
+*Programs live in another application.* Covered above: Termux, discovered and
+optional. The one subtlety is =LD_LIBRARY_PATH=. Termux's programs record where
+their own shared libraries are, so an inherited library path interposes
+Android's system libraries of the same names ahead of Termux's and produces
+failures that look like nothing at all. The fix is to clear it, not to set it.
+
+*Volume keys are Emacs's escape hatch.* With no physical keyboard there is no
+=C-g=, so the Android port reserves the volume keys: two rapid presses of volume
+down quit. With a keyboard attached that is mostly a nuisance, so
+=kittymacs-android-volume-keys= can hand them back to the system. It defaults to
+Emacs's own behaviour, because losing the only way to interrupt a runaway
+command is a poor thing to discover by accident.
+
+*Virtual keyboards edit the buffer directly.* This is the one that genuinely
+conflicts with Meow. A desktop input method composes text and then sends key
+events; an Android one performs /text conversion/, editing the selected window
+itself, and Emacs enables it wherever the buffer-local =text-conversion-style= is
+non-nil — which is to say in every =text-mode= and =prog-mode= derivative. In
+Meow's Insert state that is exactly right. In Normal state it is a disaster:
+autocorrect and suggestions rewrite a buffer whose keys are supposed to be
+commands. So the style is suspended on the way out of Insert state and restored
+on the way back in. Emacs only reads the variable afresh when a buffer becomes
+selected, which is a whole state transition too late, so the change is pushed
+through =set-text-conversion-style=; its documentation warns that resetting an
+input method is not cheap, which is why this is a per-state action and not a
+per-command one, and why =kittymacs-android-modal-text-conversion= can switch it
+off entirely if a particular keyboard misbehaves.
+
+A physical keyboard reports one irregularity worth knowing: Android swaps =Alt=
+and =Meta=, so the =Alt= key produces Emacs's =Meta= modifier, which is what you
+want anyway. =Super= is labelled =SYM=. =C-SPC= is intercepted before input
+methods can swallow it, so Meow's leader and =set-mark-command= both survive.
+
+#+name: kittymacs-platform-16-1
+#+begin_src emacs-lisp
+;; Defined by the Android build; declared so the module byte-compiles cleanly
+;; on every platform, as the NS variables above are.
+(defvar android-pass-multimedia-buttons-to-system)
+(defvar text-conversion-style)
+
+(defcustom kittymacs-android-volume-keys nil
+  "Who receives the volume keys on Android.
+Nil leaves them to Emacs, which quits on two rapid presses of volume
+down and is the only way to interrupt Emacs without a physical keyboard.
+Non-nil returns them to the system so they adjust the volume."
+  :type 'boolean)
+
+(defcustom kittymacs-android-modal-text-conversion t
+  "Whether Android's on-screen keyboard follows Meow's Insert state.
+Android input methods edit the buffer directly rather than sending keys.
+That suits Insert state and corrupts every other one, so when this is
+non-nil the conversion style is suspended outside Insert state.  Set it
+to nil to leave the input method alone."
+  :type 'boolean)
+#+end_src
+
+*** Android: suspend text conversion outside Insert state
+
+#+name: kittymacs-platform-16-2
+#+begin_src emacs-lisp
+(defvar-local kittymacs--android-text-conversion nil
+  "The `text-conversion-style' suspended when Meow left Insert state.")
+
+(defun kittymacs-android-suspend-text-conversion ()
+  "Stop the on-screen keyboard editing this buffer outside Insert state."
+  (when (and kittymacs-android-modal-text-conversion
+             (fboundp 'set-text-conversion-style)
+             (bound-and-true-p text-conversion-style))
+    (setq kittymacs--android-text-conversion text-conversion-style)
+    (set-text-conversion-style nil)))
+
+(defun kittymacs-android-resume-text-conversion ()
+  "Give the on-screen keyboard this buffer back on entering Insert state."
+  (when (and kittymacs-android-modal-text-conversion
+             (fboundp 'set-text-conversion-style)
+             kittymacs--android-text-conversion)
+    (set-text-conversion-style kittymacs--android-text-conversion)
+    (setq kittymacs--android-text-conversion nil)))
+#+end_src
+
+*** Android: apply the policy
+
+#+name: kittymacs-platform-16-3
+#+begin_src emacs-lisp
+(defun kittymacs--platform-apply-android ()
+  "Apply the Android policy: Termux tools, locale, volume keys, keyboard."
+  (when-let* ((bin (kittymacs-termux-bin-directory)))
+    (unless (member bin (split-string (or (getenv "PATH") "") path-separator t))
+      (setenv "PATH" (concat bin path-separator (getenv "PATH"))))
+    (add-to-list 'exec-path bin)
+    ;; Termux's programs know where their own libraries are.  An inherited
+    ;; library path puts Android's system libraries of the same names first
+    ;; and breaks them in ways that are very hard to read.
+    (setenv "LD_LIBRARY_PATH" nil))
+  (unless (getenv "LANG")
+    (setenv "LANG" "en_US.UTF-8"))
+  (setq android-pass-multimedia-buttons-to-system kittymacs-android-volume-keys)
+  (add-hook 'meow-insert-exit-hook #'kittymacs-android-suspend-text-conversion)
+  (add-hook 'meow-insert-enter-hook #'kittymacs-android-resume-text-conversion))
+#+end_src
+
 ** Show a file in the desktop file manager
 
 One command for every platform: Finder on macOS (=open -R= selects the
@@ -348,6 +519,10 @@ current directory."
       ;; anywhere by binding `system-type'.
       ('windows-nt (call-process "explorer.exe" nil 0 nil
                                  (concat "/select," (subst-char-in-string ?/ ?\\ file))))
+      ;; Android has no `xdg-open', and its document picker addresses files
+      ;; by content URI rather than by path, so there is nothing to hand a
+      ;; file manager.  Dired is the file manager that is actually here.
+      ('android (dired directory))
       (_ (call-process "xdg-open" nil 0 nil directory)))))
 #+end_src
 
