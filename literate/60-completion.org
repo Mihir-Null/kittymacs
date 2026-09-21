@@ -343,9 +343,14 @@ the margin come from [[file:50-appearance.org][the appearance chapter]].
 
 Cape adds completion *sources*. File names and language keywords are always
 on. The rest are on =SPC c p= as explicit commands for when you want a
-particular kind of candidate.
+particular kind of candidate. Emacs 30's own text-mode source, the spell
+checker's dictionary, is off: with =corfu-auto= it would run Hunspell a few
+times per word, and on Windows there is no word list for it to read, so every
+attempt costs a process and logs an error. =SPC c p w= asks for it explicitly.
 
 #+begin_src emacs-lisp
+(setopt text-mode-ispell-word-completion nil)
+
 (use-package cape
   :ensure t
   :init
