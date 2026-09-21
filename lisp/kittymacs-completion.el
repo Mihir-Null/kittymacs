@@ -225,6 +225,8 @@
 
 (keymap-global-set "M-/" #'dabbrev-completion)
 (keymap-global-set "C-M-/" #'dabbrev-expand)
+(setopt text-mode-ispell-word-completion nil)
+
 (use-package cape
   :ensure t
   :init

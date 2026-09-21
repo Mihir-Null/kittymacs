@@ -296,4 +296,83 @@ which is what an unpaired installation looks like from Emacs."
       (kittymacs-reveal-in-file-manager)
       (should (equal opened "/sdcard/Documents/")))))
 
+;;; Spell checking.  The option's setter is what talks to Hunspell, so the
+;;; tests replace it and watch what it would have seen.
+
+(require 'ispell)
+
+(ert-deftest kittymacs-platform-ispell-is-told-its-dictionary-before-it-is-asked ()
+  (kittymacs-platform-test-with 'windows-nt '("hunspell")
+    (let ((ispell-program-name ispell-program-name)
+          (ispell-dictionary ispell-dictionary)
+          (kittymacs--spell-warned nil)
+          seen)
+      (setenv "DICTIONARY" nil)
+      (cl-letf (((symbol-function 'ispell-set-spellchecker-params)
+                 (lambda () (setq seen (getenv "DICTIONARY")))))
+        (kittymacs--configure-ispell))
+      (should (equal seen "en_US"))
+      (should (equal ispell-program-name "/mock/bin/hunspell"))
+      (should (equal ispell-dictionary "en_US"))
+      (should-not kittymacs--spell-warned))))
+
+(ert-deftest kittymacs-platform-ispell-keeps-an-inherited-dictionary ()
+  (kittymacs-platform-test-with 'gnu/linux '("hunspell")
+    (let ((ispell-program-name ispell-program-name)
+          (ispell-dictionary ispell-dictionary)
+          seen)
+      (setenv "DICTIONARY" "de_DE")
+      (cl-letf (((symbol-function 'ispell-set-spellchecker-params)
+                 (lambda () (setq seen (getenv "DICTIONARY")))))
+        (kittymacs--configure-ispell))
+      (should (equal seen "de_DE")))))
+
+(ert-deftest kittymacs-platform-a-broken-checker-does-not-abort-ispell ()
+  ;; An error escaping here would abort the load of Ispell itself.
+  (kittymacs-platform-test-with 'windows-nt '("hunspell")
+    (let ((ispell-program-name ispell-program-name)
+          (ispell-dictionary ispell-dictionary)
+          (kittymacs--spell-warned nil))
+      (cl-letf (((symbol-function 'ispell-set-spellchecker-params)
+                 (lambda () (user-error "Hunspell error (is $LANG unset?)"))))
+        (kittymacs--configure-ispell))
+      (should kittymacs--spell-warned))))
+
+(ert-deftest kittymacs-platform-no-checker-leaves-ispell-alone ()
+  (kittymacs-platform-test-with 'gnu/linux '()
+    (let ((ispell-program-name ispell-program-name) called)
+      (cl-letf (((symbol-function 'ispell-set-spellchecker-params)
+                 (lambda () (setq called t))))
+        (kittymacs--configure-ispell))
+      (should-not called))))
+
+;;; Unix tools on Windows.
+
+(ert-deftest kittymacs-platform-windows-puts-gits-unix-tools-last ()
+  (kittymacs-platform-test-with 'windows-nt '("pwsh.exe" "git")
+    (let ((exec-path (list "C:/Windows/system32")))
+      (cl-letf (((symbol-function 'file-executable-p)
+                 (lambda (path) (string-suffix-p "/mock/usr/bin/diff.exe" path))))
+        (kittymacs-platform-apply)
+        (should (equal (car exec-path) "C:/Windows/system32"))
+        (should (= (length exec-path) 2))
+        (should (string-suffix-p "/mock/usr/bin" (cadr exec-path)))
+        ;; Applying twice must not stack the entry up.
+        (kittymacs-platform-apply)
+        (should (= (length exec-path) 2))))))
+
+(ert-deftest kittymacs-platform-windows-leaves-exec-path-alone-without-tools ()
+  (kittymacs-platform-test-with 'windows-nt '("pwsh.exe")
+    (let ((exec-path (list "C:/Windows/system32")))
+      (cl-letf (((symbol-function 'file-executable-p) #'ignore))
+        (kittymacs-platform-apply)
+        (should (equal exec-path '("C:/Windows/system32")))))))
+
+(ert-deftest kittymacs-platform-linux-does-not-look-for-windows-tools ()
+  (kittymacs-platform-test-with 'gnu/linux '("bash" "git")
+    (let ((exec-path (list "/usr/bin")))
+      (cl-letf (((symbol-function 'file-executable-p) (lambda (_) t)))
+        (kittymacs-platform-apply)
+        (should (equal exec-path '("/usr/bin")))))))
+
 ;;; kittymacs-platform-tests.el ends here

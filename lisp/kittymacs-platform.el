@@ -65,6 +65,21 @@ denies access and every lookup below quietly returns nil."
 Used on native Windows, whose shell cannot evaluate POSIX syntax, and on
 Android, where the system shell would report a `PATH' without Termux."
   nil)
+(defun kittymacs--windows-unix-tools ()
+  "Return the directory holding Git for Windows' or MSYS2's Unix tools, or nil.
+Magit's hunk refinement, Ediff and diff-hl ask for `diff', `diff3' and
+`patch' by name, and Windows has none.  Git for Windows ships them
+beside its own `git'; MSYS2 keeps them under `usr/bin'."
+  (let ((git (file-name-directory (or (executable-find "git") ""))))
+    (seq-find (lambda (dir) (file-executable-p (expand-file-name "diff.exe" dir)))
+              (delq nil
+                    (list
+                     ;; git in Git/cmd or Git/bin: the tools are in Git/usr/bin.
+                     ;; git found in Git/usr/bin itself: they are beside it.
+                     (and git (expand-file-name "../usr/bin" git))
+                     git
+                     (expand-file-name "usr/bin" kittymacs-msys2-root))))))
+
 (defun kittymacs-platform-apply ()
   "Apply the currently configured portable platform defaults."
   ;; Choose a usable shell without assuming a username, Homebrew prefix, Nix profile,
@@ -105,6 +120,13 @@ Android, where the system shell would report a `PATH' without Termux."
        (setq-default shell-file-name shell)
        (setq explicit-shell-file-name shell
              shell-command-switch "-c"))))
+
+  ;; Windows borrows Git's Unix tools.  They go last on `exec-path' so every
+  ;; native program still wins, and `PATH' itself is left alone, so
+  ;; subprocesses see no change.
+  (when (eq system-type 'windows-nt)
+    (when-let* ((tools (kittymacs--windows-unix-tools)))
+      (add-to-list 'exec-path tools t)))
 
   ;; Lambda configures exec-path-from-shell.  It supports POSIX shells, so native
   ;; Windows keeps the environment inherited from Windows instead of asking
@@ -279,27 +301,43 @@ current directory."
       (let ((msys2 (expand-file-name "ucrt64/bin/hunspell.exe" kittymacs-msys2-root)))
         (and (eq system-type 'windows-nt) (file-executable-p msys2) msys2))))
 
-(with-eval-after-load 'ispell
-  (when-let* ((program (kittymacs-spell-checker)))
-    (setopt ispell-program-name program)
-    (when (string-match-p "hunspell" program)
-      ;; Hunspell needs a default dictionary name from the environment even
-      ;; to list its dictionaries; Windows sets no LANG, so name it here.
-      (unless (getenv "DICTIONARY") (setenv "DICTIONARY" "en_US"))
-      (setopt ispell-dictionary "en_US")
-      (when (string-prefix-p (expand-file-name kittymacs-msys2-root) program)
-        (setenv "DICPATH" (expand-file-name "ucrt64/share/hunspell" kittymacs-msys2-root))))))
-
-;; A checker that exists but has no dictionary must never break startup:
-;; enable Flyspell, and on any error say so once and carry on.
+;; A checker that exists but has no dictionary must never break anything:
+;; say so once and carry on.
 (defvar kittymacs--spell-warned nil)
+(defun kittymacs--spell-off (err)
+  "Report once that spell checking is off because of ERR."
+  (unless kittymacs--spell-warned
+    (setq kittymacs--spell-warned t)
+    (message "Spell checking off: %s" (error-message-string err))))
+
+(defun kittymacs--configure-ispell ()
+  "Point Ispell at the machine's checker; runs once, when Ispell loads.
+Setting `ispell-program-name' with `setopt' runs its setter, which asks
+Hunspell to list its dictionaries, and Hunspell needs a default
+dictionary name from the environment even for that; Windows sets no
+LANG.  So the environment comes first.  The whole thing is guarded
+because an error here aborts the load of Ispell itself: Emacs then
+restores Ispell's autoload stubs, and every later call reloads the
+library, runs the checker and fails again."
+  (when-let* ((program (kittymacs-spell-checker)))
+    (condition-case err
+        (progn
+          (when (string-match-p "hunspell" program)
+            (unless (getenv "DICTIONARY") (setenv "DICTIONARY" "en_US"))
+            (when (string-prefix-p (expand-file-name kittymacs-msys2-root) program)
+              (setenv "DICPATH" (expand-file-name "ucrt64/share/hunspell" kittymacs-msys2-root)))
+            (setopt ispell-dictionary "en_US"))
+          (setopt ispell-program-name program))
+      (error (kittymacs--spell-off err)))))
+
+(with-eval-after-load 'ispell (kittymacs--configure-ispell))
+
+;; Enable Flyspell the same way: on any error say so once and carry on.
 (defun kittymacs--flyspell (mode-function)
   "Enable Flyspell with MODE-FUNCTION, reporting a broken checker instead of failing."
   (condition-case err
       (funcall mode-function)
-    (error (unless kittymacs--spell-warned
-             (setq kittymacs--spell-warned t)
-             (message "Spell checking off: %s" (error-message-string err))))))
+    (error (kittymacs--spell-off err))))
 (defun kittymacs-flyspell-text () (kittymacs--flyspell #'flyspell-mode))
 (defun kittymacs-flyspell-prog () (kittymacs--flyspell #'flyspell-prog-mode))
 
