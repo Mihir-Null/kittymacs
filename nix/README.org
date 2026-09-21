@@ -73,7 +73,54 @@ home-manager.users.me = {
 #+end_src
 
 Without nix-darwin, leave =installPackages= on and the same tools go into
-the user profile. [[file:example/flake.nix][example/flake.nix]] is a complete host with both modules.
+the user profile. =installFonts= follows =installPackages= and can be turned
+off on its own for a terminal Emacs, which has no use for the icon font.
+[[file:example/flake.nix][example/flake.nix]] is a complete host with both modules.
+
+* nix-on-droid
+
+nix-on-droid runs Nix on Android, and it consumes home-manager modules, so
+the module above is the whole integration: no Android-specific Nix code
+exists in this repository. [[file:example-nix-on-droid/flake.nix][example-nix-on-droid/flake.nix]] is a complete
+device; =nix-on-droid switch --flake .#default= applies it. Use
+=pkgs.emacs-pgtk=, which serves Wayland and X11 both, with [[https://github.com/termux/termux-x11][Termux:X11]] for a
+display; or =pkgs.emacs-nox= with =installFonts = false= to stay in the
+console.
+
+Inside nix-on-droid, =system-type= is =gnu/linux=. This is an ordinary
+GNU/Linux Emacs that happens to be on a telephone, so *none* of the
+configuration's Android branches apply and nothing degrades: every package
+works, ghostel included. What you pay is the PRoot, which is slow, and the
+need for a display server to be graphical.
+
+One thing to set in =private.el=: this repository's frame policy hands
+window arrangement to a desktop window manager, and Termux:X11 does not have
+one unless you install one. Either run a window manager, or turn the policy
+off:
+
+#+begin_src emacs-lisp
+(setq kittymacs-frames-only nil)
+#+end_src
+
+** It cannot feed the Android port of Emacs
+
+The appealing idea — run the Android application and let nix-on-droid supply
+=git=, =ripgrep= and the language servers — does not work, and it is worth
+knowing why rather than trying it. Three separate things stop it, any one of
+them sufficient:
+
+1. =/nix= does not exist. nix-on-droid fakes it with PRoot; the store really
+   lives inside the application's private directory. Every binary's ELF
+   interpreter is baked in as =/nix/store/…-glibc/lib/ld-linux-aarch64.so.1=,
+   which resolves only inside that PRoot, so the kernel cannot start the
+   program at all from outside it.
+2. The two applications are different users. nix-on-droid is =com.termux.nix=;
+   the Emacs builds that share a user ID share it with =com.termux=.
+3. Android 10 and later forbid executing anything in another application's
+   data directory regardless.
+
+For the Android port, pair it with Termux; [[file:../README.md][the README]] has that path. The
+two are alternatives, not layers.
 
 * Without a module
 
@@ -92,9 +139,13 @@ nix flake check --no-build
 nix eval --no-write-lock-file --override-input kittymacs path:$PWD \
   --json ./nix/example#darwinConfigurations.example.config.environment.systemPackages \
   --apply 'ps: map (p: p.name) ps'
+nix eval --no-write-lock-file --override-input kittymacs path:$PWD \
+  --json ./nix/example-nix-on-droid#nixOnDroidConfigurations.default.activationPackage.drvPath
 #+end_src
 
-CI runs both on Linux; building the example needs a Mac. nixpkgs-unstable
+CI runs all of them on Linux; building the nix-darwin example needs a Mac
+and building the nix-on-droid one needs an =aarch64-linux= machine, so both
+are evaluated rather than built. nixpkgs-unstable
 dropped =x86_64-darwin= in 26.11, so an Intel Mac should point the flake's
 =nixpkgs= input at the =nixpkgs-26.05-darwin= branch.
 

@@ -36,7 +36,7 @@ The first start installs the Emacs Lisp packages it needs into `var/elpa/`. The 
 - `SPC SPC` runs any command by name. `SPC` then a letter opens a group; wait for the popup or press `C-h`.
 - `SPC h ?` opens the cheat sheet; `SPC h t` starts Meow's interactive tutorial; `SPC h k` explains any key.
 - `SPC f f` opens a file, `SPC b b` switches buffers, `SPC s s` searches lines, `SPC v s` opens Magit.
-- `SPC o e` opens a real terminal ([ghostel](https://github.com/dakra/ghostel)) and `SPC t d` the project tree ([Treemacs](https://github.com/Alexander-Miller/treemacs)).
+- `SPC o e` opens a real terminal ([ghostel](https://github.com/dakra/ghostel)), or Eshell on the Android port, and `SPC t d` the project tree ([Treemacs](https://github.com/Alexander-Miller/treemacs)).
 - `SPC m` is the menu for the current mode: in Org it schedules and captures, in Dired it copies and renames, in Magit it stages and commits.
 - `SPC C c` opens the reading guide when you want to change something.
 
@@ -49,7 +49,8 @@ The first start installs the Emacs Lisp packages it needs into `var/elpa/`. The 
   lisp/                    generated modules (kittymacs-*.el), cheat sheet, themes, private.el
   tests/                   tangle tests, startup verifier, leader tests, frame tests
   tools/tangle.el          the builder
-  flake.nix, nix/          Nix: a nix-darwin module, a home-manager module, a dev shell
+  flake.nix, nix/          Nix: a nix-darwin module, a home-manager module, a dev shell,
+                           example hosts for nix-darwin and nix-on-droid
   var/                     packages, caches, custom.el (ignored by Git)
 ```
 
@@ -84,7 +85,7 @@ EMACS_DOTS_TEST_PACKAGES=/path/to/var/elpa emacs -Q --batch -l tests/kittymacs-l
 EMACS_DOTS_TEST_PACKAGES=/path/to/var/elpa emacs -Q --batch -l tests/verify-config.el
 ```
 
-The verifier copies the configuration to a temporary directory, forbids package installation, starts it, and checks the leader, the localleader key, the dashboard buttons, the theme toggle and every `SPC` row of the cheat sheet against the live keymap. The platform tests bind `system-type` to each operating system in turn, so the macOS, Windows and Linux branches all run on any machine without packages. [GitHub Actions](.github/workflows/ci.yml) runs the same checks on every push: the tangle check, then a fresh clone that installs its packages and starts on Emacs 30.1 and 31.1 on Linux, plus informational Windows and macOS runs, and a Nix job that checks the flake and evaluates its nix-darwin example; a weekly run repeats the fresh install without the package cache to catch upstream breakage. `tests/frames-tests.el` covers frame policy and needs a graphical session: `M-x ert RET ^dots-frames- RET`.
+The verifier copies the configuration to a temporary directory, forbids package installation, starts it, and checks the leader, the localleader key, the dashboard buttons, the theme toggle and every `SPC` row of the cheat sheet against the live keymap. The platform tests bind `system-type` to each operating system in turn, so the macOS, Windows, Linux and Android branches all run on any machine without packages. [GitHub Actions](.github/workflows/ci.yml) runs the same checks on every push: the tangle check, then a fresh clone that installs its packages and starts on Emacs 30.1 and 31.1 on Linux, plus informational Windows and macOS runs, and a Nix job that checks the flake and evaluates its nix-darwin and nix-on-droid examples; a weekly run repeats the fresh install without the package cache to catch upstream breakage. `tests/frames-tests.el` covers frame policy and needs a graphical session: `M-x ert RET ^dots-frames- RET`.
 
 ## Windows notes
 
@@ -93,6 +94,23 @@ Windows Emacs resolves `~` to `AppData/Roaming` when `HOME` is unset, so a `.ema
 ## macOS notes
 
 Emacs from the Dock has no shell `PATH`, so the startup file puts the Nix profiles and Homebrew on `exec-path` when they exist, and the shells chapter then imports your login shell's environment (`~/.zprofile` included). Option is Meta and Command is Super, so `⌘C`, `⌘V`, `⌘S`, `⌘Z` and `⌘⇧Z` do what you expect; the right Option key still types accented characters. `⌘Q` closes the frame while others remain and quits Emacs from the last one, because frames are this configuration's windows. Deleting a file moves it to the Trash, through the `trash` command (`brew install trash`, or the Nix module) when present so Finder's Put Back works. The title bar follows the theme. `SPC f o` reveals the current file in Finder. Dired uses GNU `ls` as `gls` (`brew install coreutils`) when it is installed, for directories-first listings. `private.el` can change the modifier keys through `kittymacs-macos-modifiers`. The whole macOS policy is one section of [the platform chapter](literate/30-platform.org); deploying with nix-darwin is described in [nix/README.org](nix/README.org).
+
+
+## Android notes
+
+There are two ways to run this on Android, and they are alternatives rather than layers.
+
+**The Android port of Emacs** (the `org.gnu.emacs` application) is a real graphical Emacs, and the configuration starts on it unmodified. Its `system-type` is `android`, which every platform branch now knows about: the shell is `/system/bin/sh` rather than a `/bin/sh` that does not exist there, the POSIX environment importer is not installed, Dired lists directories with `ls-lisp` so no subprocess is started for a listing, and `frames-only-mode` is off — on Android an Emacs frame is an entry in the task switcher, so the desktop-window-manager premise this configuration's frame policy rests on does not hold. Set `kittymacs-frames-only` in `private.el` to get it back on a tablet.
+
+Emacs cannot run programs belonging to another Android application unless the two share a user ID, so `git`, `ripgrep`, `hunspell` and the language servers come from [Termux](https://termux.dev) — installed from builds whose `sharedUserId` and signature match, such as the pair published by [Jianwei Hu's Android ports](https://sourceforge.net/projects/android-ports-for-gnu-emacs/files/termux/). The configuration discovers Termux rather than assuming it: without the pairing everything that needs an external program simply switches itself off, and Emacs still starts. `kittymacs-termux-root` moves the search.
+
+What you lose: the terminal. Ghostel is installed with `:vc`, which needs `git` at first start, and it is a native module, for which upstream publishes no `android-aarch64` build — and the port is commonly built without dynamic module support at all. `SPC o e` opens Eshell there instead, which is Lisp, needs no module, and runs Termux's programs where Termux is paired. Spell checking, language servers and Magit all need Termux; without it they are quietly absent.
+
+With a physical keyboard the editing model is unchanged. Android reports `Alt` as Emacs's `Meta` (and labels `Super` as `SYM`), and intercepts `C-SPC` before input methods can swallow it, so the leader and `set-mark-command` both work. On the on-screen keyboard, Android input methods edit the buffer directly instead of sending keys — "text conversion" — which suits Meow's Insert state and corrupts every other one, so the conversion style follows Meow's state; `kittymacs-android-modal-text-conversion` turns that off if a particular keyboard misbehaves. The volume keys are the port's way to quit without a keyboard; `kittymacs-android-volume-keys` hands them back to the system.
+
+**nix-on-droid** is the other path, and a different machine. Emacs runs inside its PRoot as an ordinary GNU/Linux Emacs — `system-type` is `gnu/linux`, so no Android branch applies and nothing degrades, ghostel included — at the cost of PRoot overhead and needing [Termux:X11](https://github.com/termux/termux-x11) to be graphical. The existing home-manager module is the whole integration; [nix/example-nix-on-droid/flake.nix](nix/example-nix-on-droid/flake.nix) is a complete device.
+
+The two cannot be combined: Nix store paths exist only inside the PRoot, so a binary whose ELF interpreter is `/nix/store/…/ld-linux-aarch64.so.1` cannot be started from outside it, and the two applications are different users besides. [nix/README.org](nix/README.org) explains this at length.
 
 ## Licence
 
