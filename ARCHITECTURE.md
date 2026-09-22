@@ -198,3 +198,36 @@ case on visiting it. Capture validates the nearest existing writable parent and
 creates permitted intermediate directories before Org opens the target; excluded
 and out-of-root directories remain untouched. Real tests cover capture followed
 by sync retaining one node, one physical file record and one root connection.
+
+### Native Windows path boundary (2026-09-22)
+
+Use the already installed native CPython stdlib realpath(ALLOW_MISSING) for
+NTFS junctions rather than implementing a Win32 bridge. The capability is
+feature-probed only on graph use. kittymacs-org-roam-python-executable permits
+an absolute trusted interpreter override; the default discovers python.exe
+on absolute local exec-path entries. Windows default DB selection is lazy so
+startup does not need Python; an explicit upstream external DB stays authoritative.
+
+A bounded, dynamically owned JSON pipe runs fixed isolated code and resolves
+each request afresh. It validates the nearest existing ancestor to reject the
+Windows file-as-parent edge. One child serves an entire sync and nested DB
+queries, with timeout/protocol errors, reentry rejection and unwind cleanup.
+No global filename advice, path cache, daemon, custom DLL or project execution.
+
+The Org-roam list boundary walks only allowed physical directories before
+upstream content hashing, canonicalizes/deduplicates files, and tracks visited
+directories to avoid traversal loops. The update-file boundary validates before
+reading and binds canonical buffer filenames even when native visiting restores
+case or reuses an alias buffer. All DB access validates physical root and external
+DB placement; direct force-sync gets that scope before closing/deleting its DB.
+Configured alias roots are not overwritten during scope lookup, so subsequent
+operations observe retargeting. Captures and panels retain their originating
+physical scope and the upstream schema and source positions stay unchanged.
+
+A dangling link to an inside-graph missing target is a permitted capture path
+with a writable directory ancestor; graph roots themselves must exist. Resolution
+errors never become lexical fallback identities. Remote/UNC graphs are explicitly
+unsupported. This provides fresh operation-time validation, not atomic protection
+against concurrent hostile filesystem retargeting. Native junction integration
+tests accompany the WSL symlink regressions; real ACL denial, mounted volumes
+and long-path acceptance remain outside the tested host cases.
