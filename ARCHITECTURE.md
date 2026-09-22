@@ -147,3 +147,40 @@ All on branch `dev/kittymacs-config-review-dc1bee`, each commit verified with th
 | (this branch) | ghostel replaces EAT in a new `34-terminal.org`; MSYS2 root and spelling move to the platform chapter |
 | (this branch) | `65-treemacs.org` adds the project tree and retires `dired-sidebar` |
 | (this branch) | Magit's commit hooks wait for `git-commit`; diagnostics stay inside the frame; `magit-status` prefers the project |
+
+## Scoped linked notes (2026-09-22)
+
+Org-roam loads after Org and before frames, with its package declaration in
+`71-org-roam.org`. A graph is the upstream `org-roam-directory` /
+`org-roam-db-location` pair. There is no graph registry, custom schema, project
+loader or architecture inventory. Physical roots are canonicalized; the default
+DB filename hashes that identity under `kittymacs-cache-dir/org-roam`. Aliases
+share a cache, distinct worktrees do not. A supplied external DB remains valid;
+all buffers for one root must use the same DB because upstream keys connections
+by root. Directory locals should set both variables for persistent project scope.
+
+A small scoped-call adapter binds both the originating buffer's variables and
+non-local defaults. Binding only buffer-local values failed real SQLite tests:
+Org-roam parses in temporary buffers, which otherwise see the personal root.
+Commands retain their originating scope and insert position through completion.
+Project find/insert require existing nodes; explicit capture displays its root.
+Capture saves the pair on its target, indirect buffer and capture plist; an
+around-finalize binding protects callbacks after Org changes buffers. Resolved
+capture paths are checked before Org writes headers. Upstream panel refresh
+reinitializes its major mode, so a permanent panel scope is restored by its mode
+hook before backlink queries. The panel uses a side window and Meow Motion;
+editing nodes use upstream `org-roam-node-open` and the existing frame policy.
+
+Native SQLite is mandatory for graph operations but not startup. No startup DB
+sync or global autosync: enabling upstream autosync itself rebuilds the graph.
+Scoped note saves update only their graph; explicit sync covers external edits,
+renames and deletions. Sync adds IDs to Org's global ID location index without
+importing destination nodes into other graph databases. Destination directory
+locals establish scope across sessions; existing upstream connection roots also
+identify graphs already used during this session. Default membership excludes
+legacy, Git, secrets and cache folders, plus out-of-root symlinks.
+
+Verification includes real Org-roam/SQLite indexing, links, capture finalization,
+completion buffer switches, panel rerender, independent global ID navigation,
+physical alias identity and missing SQLite degradation. Native Windows junction
+and GUI frame behavior require host validation beyond the Linux batch fixture.

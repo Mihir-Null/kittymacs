@@ -74,6 +74,10 @@ jobs:
         run: emacs -Q --batch -l tests/kittymacs-leader-tests.el -f ert-run-tests-batch-and-exit
         env:
           EMACS_DOTS_TEST_PACKAGES: ${{ github.workspace }}/var/elpa
+      - name: Scoped Org-roam tests
+        run: emacs -Q --batch -l tests/kittymacs-org-roam-tests.el -f ert-run-tests-batch-and-exit
+        env:
+          EMACS_DOTS_TEST_PACKAGES: ${{ github.workspace }}/var/elpa
       - name: Startup verifier
         run: emacs -Q --batch -l tests/verify-config.el
         env:
@@ -106,6 +110,10 @@ jobs:
             --eval '(princ (format "%d packages active, command is %S, trash via %S\n" (length package-activated-list) ns-command-modifier (or trash-directory (symbol-function (quote system-move-file-to-trash)))))'
       - name: Leader tests
         run: emacs -Q --batch -l tests/kittymacs-leader-tests.el -f ert-run-tests-batch-and-exit
+        env:
+          EMACS_DOTS_TEST_PACKAGES: ${{ github.workspace }}/var/elpa
+      - name: Scoped Org-roam tests
+        run: emacs -Q --batch -l tests/kittymacs-org-roam-tests.el -f ert-run-tests-batch-and-exit
         env:
           EMACS_DOTS_TEST_PACKAGES: ${{ github.workspace }}/var/elpa
       - name: Startup verifier
@@ -162,6 +170,10 @@ jobs:
       - name: Leader tests
         shell: pwsh
         run: emacs -Q --batch -l tests/kittymacs-leader-tests.el -f ert-run-tests-batch-and-exit
+        env:
+          EMACS_DOTS_TEST_PACKAGES: ${{ github.workspace }}/var/elpa
+      - name: Scoped Org-roam tests
+        run: emacs -Q --batch -l tests/kittymacs-org-roam-tests.el -f ert-run-tests-batch-and-exit
         env:
           EMACS_DOTS_TEST_PACKAGES: ${{ github.workspace }}/var/elpa
       - name: Startup verifier

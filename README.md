@@ -119,3 +119,12 @@ GPL-3.0-or-later. Copyright (C) 2026 Mihir Talati. Portions are distilled from L
 ## Credits
 
 Much of the policy is distilled from [Lambda-Emacs](https://codeberg.org/Lambda-Emacs/lambda-emacs) and [Colin McLear's configuration](https://codeberg.org/mclear-tools/dotemacs) (GPL-3.0-or-later); each chapter outlines what it took. The Meow grammar follows Meow's documented layout. The Sonokai theme is a tracked port in `lisp/themes/`. Everything else is the work of the packages' authors, declared in the chapters that use them.
+
+## Linked notes
+
+`SPC n` opens the Org-roam menu: find (`f`), insert (`i`), explicit capture (`c`),
+backlinks (`b`) and sync (`s`). The personal graph defaults to the Org directory.
+Projects can bind the ordinary Org-roam root and external database buffer-locally;
+project find/insert only choose existing notes. Run sync once per graph; startup
+never scans notes. Native SQLite support is required for graph commands.
+See [the Org-roam chapter](literate/71-org-roam.org) for scope and capture policy.

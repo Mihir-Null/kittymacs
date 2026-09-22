@@ -38,6 +38,7 @@
 (require 'kittymacs-languages)
 (require 'kittymacs-terminal)
 (require 'kittymacs-org)
+(require 'kittymacs-org-roam)
 (require 'kittymacs-frames)
 
 ;;; init.el ends here

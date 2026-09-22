@@ -224,3 +224,13 @@ New editing surfaces are OS windows (frames); your window manager arranges them.
 | =C-h B=             | every key that works right now     |
 | =M-`=               | toggle the last popup              |
 | =C-x C-+= / =C-x C-0= | text bigger / reset                |
+
+* Linked notes (current graph)
+
+| Key | Action | Command |
+|-----+--------+---------|
+| SPC n f | Find node | kittymacs-org-roam-find |
+| SPC n i | Insert ID link | kittymacs-org-roam-insert |
+| SPC n c | Capture with destination | kittymacs-org-roam-capture |
+| SPC n b | Backlinks side panel | kittymacs-org-roam-backlinks |
+| SPC n s | Sync graph | kittymacs-org-roam-sync |
