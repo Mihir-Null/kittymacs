@@ -184,3 +184,16 @@ Verification includes real Org-roam/SQLite indexing, links, capture finalization
 completion buffer switches, panel rerender, independent global ID navigation,
 physical alias identity and missing SQLite degradation. Native Windows junction
 and GUI frame behavior require host validation beyond the Linux batch fixture.
+
+### Org-roam review fixes (2026-09-22)
+
+Canonical connection identity also applies at the upstream DB boundary, so
+ordinary Org ID lookups and raw package queries cannot reopen a personal alias
+as a second connection. ID results refresh the destination scope even when its
+buffer predates the graph connection; explicitly established local root/DB pairs
+are retained. Membership checks canonicalize both file and root because upstream
+only folds Windows drive letters, while Emacs restores the filename's actual
+case on visiting it. Capture validates the nearest existing writable parent and
+creates permitted intermediate directories before Org opens the target; excluded
+and out-of-root directories remain untouched. Real tests cover capture followed
+by sync retaining one node, one physical file record and one root connection.

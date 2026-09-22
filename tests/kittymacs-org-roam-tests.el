@@ -349,3 +349,82 @@
           (should (derived-mode-p 'org-mode))
           (should (file-equal-p org-roam-directory project))
           (should (eq (window-parameter window 'window-side) 'right)))))))
+
+(ert-deftest kittymacs-roam-nested-capture-target ()
+  (kittymacs-roam-test
+    (kittymacs-roam-test-project
+      (let ((org-roam-capture-templates
+             '(("d" "nested" plain "%?" :target (file+head "topics/new.org" "#+title: ${title}\n") :unnarrowed t))))
+        (cl-letf (((symbol-function 'completing-read) (lambda (&rest _) "Nested")))
+          (kittymacs-org-roam-capture))
+        (with-current-buffer (window-buffer) (org-capture-finalize))
+        (should (file-exists-p (expand-file-name "topics/new.org" project)))))))
+(ert-deftest kittymacs-roam-personal-alias-id-connection ()
+  (kittymacs-roam-test
+    (let* ((alias (expand-file-name "personal-alias/" base))
+           (kittymacs-org-roam-directory alias)
+           (org-roam-directory alias))
+      (kittymacs-roam-test-symlink personal (directory-file-name alias))
+      (kittymacs-roam-test-note personal "p.org" "p" "Personal")
+      (kittymacs-org-roam-sync)
+      (should (= 1 (hash-table-count org-roam-db--connection)))
+      (org-id-find "p")
+      (princ (format "\nConnections after ID: %S\n" (hash-table-keys org-roam-db--connection)))
+      (should (= 1 (hash-table-count org-roam-db--connection))))))
+(ert-deftest kittymacs-roam-cross-graph-id-already-open-destination ()
+  (kittymacs-roam-test
+    (let* ((file (kittymacs-roam-test-note project "a.org" "a" "Alpha"))
+           (buffer (find-file-noselect file)))
+      (kittymacs-roam-test-project (kittymacs-org-roam-sync))
+      (let ((marker (org-id-find "a" t)))
+        (should (eq buffer (marker-buffer marker)))
+        (with-current-buffer (marker-buffer marker)
+          (princ (format "\nDestination scope: %S, expected: %S\n" org-roam-directory project))
+          (should (file-equal-p org-roam-directory project)))
+        (set-marker marker nil)))))
+
+(ert-deftest kittymacs-roam-capture-then-sync-keeps-one-physical-record ()
+  "Capture save, ordinary DB/ID access and sync must agree on path identity."
+  (kittymacs-roam-test
+    (let ((org-roam-capture-templates
+           '(("d" "default" plain "%?" :target (file+head "MixedCase.org" "#+title: ${title}\n") :unnarrowed t))))
+      (cl-letf (((symbol-function 'completing-read) (lambda (&rest _) "Unique")))
+        (kittymacs-org-roam-capture))
+      (with-current-buffer (window-buffer) (org-capture-finalize))
+      (should (equal (org-roam-db-query [:select title :from nodes]) '(("Unique"))))
+      (let ((id (caar (org-roam-db-query [:select id :from nodes]))))
+        (should (org-id-find id)))
+      (should (= 1 (hash-table-count org-roam-db--connection)))
+      (kittymacs-org-roam-sync)
+      (should (equal (org-roam-db-query [:select title :from nodes]) '(("Unique"))))
+      (should (= 1 (length (org-roam-db-query [:select file :from files]))))
+      (should (= 1 (hash-table-count org-roam-db--connection)))
+      (dolist (row (org-roam-db-query [:select file :from files]))
+        (should (file-equal-p (car row) (expand-file-name "MixedCase.org" personal)))))))
+
+(ert-deftest kittymacs-roam-nested-capture-does-not-create-excluded-parents ()
+  (kittymacs-roam-test
+    (kittymacs-roam-test-project
+      (dolist (target '("secrets/nested/new.org" "../outside/new.org"))
+        (let ((org-roam-capture-templates
+               `(("d" "blocked" plain "%?" :target (file+head ,target "#+title: ${title}\n")))))
+          (cl-letf (((symbol-function 'completing-read) (lambda (&rest _) "Blocked")))
+            (should-error (kittymacs-org-roam-capture)))))
+      (should-not (file-exists-p (expand-file-name "secrets" project)))
+      (should-not (file-exists-p (expand-file-name "outside" base))))))
+
+(ert-deftest kittymacs-roam-id-preserves-established-destination-pair ()
+  (kittymacs-roam-test
+    (let* ((file (kittymacs-roam-test-note project "a.org" "a" "Alpha"))
+           (buffer (find-file-noselect file))
+           (external (expand-file-name "custom.sqlite" kittymacs-cache-dir)))
+      (with-current-buffer buffer
+        (setq-local org-roam-directory project org-roam-db-location external)
+        (kittymacs-org-roam-sync))
+      (let ((marker (org-id-find "a" t)))
+        (should (eq buffer (marker-buffer marker)))
+        (with-current-buffer buffer
+          (should (file-equal-p org-roam-directory project))
+          (should (equal org-roam-db-location external))
+          (should (equal (org-roam-db-query [:select id :from nodes]) '(("a")))))
+        (set-marker marker nil)))))

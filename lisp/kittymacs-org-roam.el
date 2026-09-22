@@ -17,10 +17,14 @@
   "Directory components excluded from graph indexing and capture."
   :type '(repeat string) :group 'kittymacs-org-roam)
 
+(defun kittymacs--org-roam-path (path)
+  "Return physical PATH, case folded only on a case-insensitive filesystem."
+  (let ((true (file-truename (expand-file-name path))))
+    (if (file-name-case-insensitive-p true) (downcase true) true)))
+
 (defun kittymacs--org-roam-root (root)
   "Return the physical directory identity of ROOT."
-  (let ((path (file-name-as-directory (file-truename (expand-file-name root)))))
-    (if (file-name-case-insensitive-p path) (downcase path) path)))
+  (file-name-as-directory (kittymacs--org-roam-path root)))
 
 (defun kittymacs-org-roam-db-path (root)
   "Return the external cache database path for canonical ROOT."
@@ -91,9 +95,11 @@ Org-roam's parser uses temporary buffers, which need the default binding."
 
 (defun kittymacs--org-roam-file-filter (original &optional file)
   "Limit ORIGINAL membership check for FILE to safe graph paths."
-  (and (kittymacs--org-roam-allowed-p
-        (or file (buffer-file-name (or (buffer-base-buffer) (current-buffer)))))
-       (funcall original file)))
+  (let ((path (or file (buffer-file-name (or (buffer-base-buffer) (current-buffer)))))
+        (org-roam-directory (kittymacs--org-roam-root org-roam-directory)))
+    (and (kittymacs--org-roam-allowed-p path)
+         ;; Upstream only folds the drive letter in its prefix comparison.
+         (funcall original (kittymacs--org-roam-path path)))))
 
 (defun kittymacs--org-roam-save ()
   "Update this buffer's graph after a save without starting a global scan."
@@ -143,19 +149,41 @@ Use upstream connections to recognize known roots; there is no graph registry."
                  (apply original args))))
     (apply original args)))
 
+(defun kittymacs--org-roam-writable-target-p (file)
+  "Whether FILE or its nearest existing parent permits capture creation."
+  (let ((existing file))
+    (while (not (file-exists-p existing))
+      (setq existing (file-name-directory (directory-file-name existing))))
+    (and (or (equal existing file) (file-directory-p existing))
+         (file-writable-p existing))))
+
 (defun kittymacs--org-roam-capture-target (original path)
   "Validate ORIGINAL's resolved PATH before Org writes capture headers."
   (let ((file (funcall original path)))
     (when kittymacs--org-roam-capture-scope
       (unless (and (kittymacs--org-roam-allowed-p file)
-                   (file-writable-p file))
-        (user-error "Org-roam capture destination is excluded, outside the graph, or read-only: %s" file)))
+                   (kittymacs--org-roam-writable-target-p file))
+        (user-error "Org-roam capture destination is excluded, outside the graph, or read-only: %s" file))
+      (make-directory (file-name-directory file) t))
     file))
 
 (defun kittymacs--org-roam-panel-restore ()
   "Restore the graph before sections query the DB on every panel render."
   (when kittymacs--org-roam-panel-scope
     (kittymacs--org-roam-set-scope kittymacs--org-roam-panel-scope)))
+
+(defun kittymacs--org-roam-db-canonical (original &rest args)
+  "Call ORIGINAL with ARGS using canonical root identity for every DB access."
+  (kittymacs--org-roam-capability)
+  (let ((org-roam-directory (kittymacs--org-roam-root org-roam-directory)))
+    (apply original args)))
+
+(defun kittymacs--org-roam-id-destination (location)
+  "Restore graph scope on an already open ID destination LOCATION."
+  (when-let* ((buffer (cond ((markerp location) (marker-buffer location))
+                           ((consp location) (find-buffer-visiting (car location))))))
+    (with-current-buffer buffer (kittymacs--org-roam-visit-scope)))
+  location)
 
 (defun kittymacs--org-roam-id-available (original &rest args)
   "Let ordinary Org ID navigation work without SQLite; otherwise call ORIGINAL."
@@ -166,7 +194,8 @@ Use upstream connections to recognize known roots; there is no graph registry."
   :ensure t
   :demand t
   :config
-  (advice-add 'org-roam-db :before #'kittymacs--org-roam-capability)
+  (advice-add 'org-roam-db :around #'kittymacs--org-roam-db-canonical)
+  (advice-add 'org-id-find :filter-return #'kittymacs--org-roam-id-destination)
   (advice-add 'org-roam-file-p :around #'kittymacs--org-roam-file-filter)
   (advice-add 'org-roam-id-find :around #'kittymacs--org-roam-id-available)
   (advice-add 'org-roam-capture--prepare-buffer :after #'kittymacs--org-roam-capture-prepared)
