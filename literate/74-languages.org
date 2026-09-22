@@ -65,7 +65,7 @@ This Custom group gives the following settings a discoverable home in Emacs's bu
 
 ** Keep compiled grammars in the writable cache
 
-The configuration checkout stays source-only. Compiled parser libraries belong under the disposable kittymacs cache, and the directory is added before any grammar availability checks. Set this option in =private.el= to use another writable location.
+The configuration checkout stays source-only. Compiled parser libraries belong under the disposable kittymacs cache. The current directory is placed first before every grammar availability check and explicit installation, so changing this option through Customize or =setopt= after startup takes effect immediately. Set it in =private.el= to choose the location before startup.
 
 #+name: kittymacs-treesit-cache-1
 #+begin_src emacs-lisp
@@ -75,7 +75,14 @@ The configuration checkout stays source-only. Compiled parser libraries belong u
   :type 'directory
   :group 'kittymacs-treesit)
 
-(add-to-list 'treesit-extra-load-path kittymacs-treesit-grammar-directory)
+(defun kittymacs-treesit--sync-grammar-directory ()
+  "Put the currently configured grammar directory first in the search path."
+  (setq treesit-extra-load-path
+        (cons kittymacs-treesit-grammar-directory
+              (delete kittymacs-treesit-grammar-directory
+                      treesit-extra-load-path))))
+
+(kittymacs-treesit--sync-grammar-directory)
 #+end_src
 
 ** Select a native Windows compiler locally
@@ -183,6 +190,7 @@ A grammar recipe alone is not a usable parser. Ask Emacs whether it can load the
 #+begin_src emacs-lisp
 (defun kittymacs-treesit--language-available-p (language)
   "Return non-nil when LANGUAGE can be loaded by this Emacs build."
+  (kittymacs-treesit--sync-grammar-directory)
   (and (treesit-available-p)
        (condition-case nil
            (treesit-language-available-p language)
@@ -279,6 +287,7 @@ This interactive command checks the selected recipe and delegates compilation to
       nil t))))
   (unless (assq language kittymacs-treesit-language-source-alist)
     (user-error "No pinned Tree-sitter recipe for %s" language))
+  (kittymacs-treesit--sync-grammar-directory)
   (unless (treesit-available-p)
     (user-error "This Emacs build does not include Tree-sitter support"))
   (kittymacs-treesit-apply-pinned-sources)
@@ -296,6 +305,7 @@ This bulk command is an explicit maintenance action. Normal startup only configu
 (defun kittymacs-treesit-install-all-grammars ()
   "Install every missing pinned grammar and refresh mode remaps."
   (interactive)
+  (kittymacs-treesit--sync-grammar-directory)
   (unless (treesit-available-p)
     (user-error "This Emacs build does not include Tree-sitter support"))
   (kittymacs-treesit-apply-pinned-sources)

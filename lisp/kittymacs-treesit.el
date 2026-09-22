@@ -21,7 +21,14 @@
   :type 'directory
   :group 'kittymacs-treesit)
 
-(add-to-list 'treesit-extra-load-path kittymacs-treesit-grammar-directory)
+(defun kittymacs-treesit--sync-grammar-directory ()
+  "Put the currently configured grammar directory first in the search path."
+  (setq treesit-extra-load-path
+        (cons kittymacs-treesit-grammar-directory
+              (delete kittymacs-treesit-grammar-directory
+                      treesit-extra-load-path))))
+
+(kittymacs-treesit--sync-grammar-directory)
 (defun kittymacs-treesit--nix-source ()
   "Return the pinned Nix recipe, with a local Windows compiler when present."
   (let ((compiler
@@ -87,6 +94,7 @@ entry has the same shape accepted by `treesit-language-source-alist':
   "Classic mode, Tree-sitter mode, and grammar triples managed here.")
 (defun kittymacs-treesit--language-available-p (language)
   "Return non-nil when LANGUAGE can be loaded by this Emacs build."
+  (kittymacs-treesit--sync-grammar-directory)
   (and (treesit-available-p)
        (condition-case nil
            (treesit-language-available-p language)
@@ -151,6 +159,7 @@ then added only when its target mode exists and its grammar loads successfully."
       nil t))))
   (unless (assq language kittymacs-treesit-language-source-alist)
     (user-error "No pinned Tree-sitter recipe for %s" language))
+  (kittymacs-treesit--sync-grammar-directory)
   (unless (treesit-available-p)
     (user-error "This Emacs build does not include Tree-sitter support"))
   (kittymacs-treesit-apply-pinned-sources)
@@ -160,6 +169,7 @@ then added only when its target mode exists and its grammar loads successfully."
 (defun kittymacs-treesit-install-all-grammars ()
   "Install every missing pinned grammar and refresh mode remaps."
   (interactive)
+  (kittymacs-treesit--sync-grammar-directory)
   (unless (treesit-available-p)
     (user-error "This Emacs build does not include Tree-sitter support"))
   (kittymacs-treesit-apply-pinned-sources)
