@@ -396,12 +396,15 @@ Use upstream connections to recognize known roots; there is no graph registry."
   "Restore graph scope on an already open ID destination LOCATION."
   (when-let* ((buffer (cond ((markerp location) (marker-buffer location))
                            ((consp location) (find-buffer-visiting (car location))))))
-    (with-current-buffer buffer (kittymacs--org-roam-visit-scope)))
+    (with-current-buffer buffer (kittymacs--org-roam-visit-if-available)))
   location)
 
 (defun kittymacs--org-roam-id-available (original &rest args)
-  "Let ordinary Org ID navigation work without SQLite; otherwise call ORIGINAL."
-  (when (and (fboundp 'sqlite-available-p) (sqlite-available-p))
+  "Let Org's own ID index handle lookups when graph scope is unavailable.
+Only the optional graph preflight is tolerant; errors from ORIGINAL after
+successful validation remain visible."
+  (when (condition-case nil (kittymacs--org-roam-scope)
+          (user-error nil))
     (apply original args)))
 
 (defun kittymacs--org-roam-visit-if-available ()

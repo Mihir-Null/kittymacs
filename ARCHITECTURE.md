@@ -231,3 +231,16 @@ unsupported. This provides fresh operation-time validation, not atomic protectio
 against concurrent hostile filesystem retargeting. Native junction integration
 tests accompany the WSL symlink regressions; real ACL denial, mounted volumes
 and long-path acceptance remain outside the tested host cases.
+
+### Ordinary Org ID fallback (2026-09-22)
+
+Org-roam's global before-until advice on org-id-find is an optional lookup,
+not an explicit graph command. Preflight its current graph scope and return
+nil when root/backend validation is unavailable, allowing Org's independent
+registered-ID lookup to run. Only that preflight tolerates user errors; errors
+during an otherwise valid graph query remain visible. Destination-return scope
+restoration uses the same best-effort adapter as passive Org visits, including
+already-open ordinary files. Explicit graph commands, indexing and capture
+retain strict physical path/root/DB validation. Real registered ordinary IDs
+outside all graphs cover missing roots and missing native Python independently
+from the existing cross-graph destination/capture/panel acceptance tests.
