@@ -16,8 +16,7 @@ Matching delimiters in rainbow colours, pairs that close themselves, and
 structural editing that never leaves a paren unbalanced. Flymake shows
 problems in the fringe as you type. =SPC m= in any programming buffer
 offers compile, recompile, the error list and a formatter; in Emacs Lisp
-it adds evaluation and debugging. =SPC p j= runs a recipe from the
-project's =justfile=, if it has one.
+it adds evaluation and debugging.
 
 #+begin_src emacs-lisp
 ;;; kittymacs-programming.el --- What every programming buffer gets -*- lexical-binding: t; -*-
@@ -164,87 +163,6 @@ to the first error.
 
 #+end_src
 
-* Project commands: justfiles
-
-A =justfile= lists the commands a project actually uses, and it describes
-itself: =just --summary= prints its recipe names. One command therefore
-covers every project that has one. =SPC p j= offers the recipes of the
-justfile above the current buffer and runs the one you pick; add a recipe
-to the file and it appears, with nothing to change here.
-
-The binding goes into Emacs's own =project-prefix-map=, which [[file:42-keys.org][the keys
-chapter]] binds to =SPC p=, so the same command answers to =C-x p j=. It is
-also offered when you switch projects.
-
-Recipes that ask a question — a =sudo= password, a confirmation — cannot
-run in a =compile= buffer, so a prefix argument routes the run through
-[[file:34-terminal.org][a real terminal]] instead. =C-u SPC p j= is the one to use for a recipe that
-deploys something.
-
-Nothing here assumes =just= is installed: the recipe list is empty when it
-is missing and you can still type a recipe name. =kittymacs-just-program=
-names the binary, so a machine that reaches it through a wrapper can say
-so in =private.el=. =just-mode= edits the file itself and loads only when
-one is opened.
-
-#+begin_src emacs-lisp
-(defcustom kittymacs-just-program "just"
-  "Program used to run justfile recipes."
-  :type 'string
-  :group 'kittymacs)
-
-(use-package just-mode
-  :ensure t
-  :mode ("/\\.?[Jj]ustfile\\'" "\\.just\\'"))
-
-(defun kittymacs-just-root ()
-  "Return the directory of the justfile governing `default-directory', or nil."
-  (or (locate-dominating-file default-directory "justfile")
-      (locate-dominating-file default-directory "Justfile")
-      (locate-dominating-file default-directory ".justfile")))
-
-(defun kittymacs-just-recipes (root)
-  "Return the recipe names offered by the justfile at ROOT.
-Nil when `kittymacs-just-program' cannot be run, so the prompt degrades to
-free text rather than failing."
-  (let ((default-directory root))
-    (with-temp-buffer
-      (ignore-errors
-        (when (zerop (call-process kittymacs-just-program nil t nil "--summary"))
-          (split-string (buffer-string) nil t))))))
-
-(defun kittymacs-just (recipe &optional terminal)
-  "Run RECIPE from the justfile above `default-directory'.
-With a prefix argument, or when TERMINAL is non-nil, run it in a terminal
-so a recipe that prompts for a password can be answered."
-  (interactive
-   (let ((root (or (kittymacs-just-root)
-                   (user-error "No justfile above %s" default-directory))))
-     (list (completing-read "just: " (kittymacs-just-recipes root))
-           current-prefix-arg)))
-  (let* ((default-directory (or (kittymacs-just-root)
-                                (user-error "No justfile above %s" default-directory)))
-         (command (format "%s %s" kittymacs-just-program recipe)))
-    (if (and terminal (fboundp 'ghostel-compile))
-        (ghostel-compile command)
-      (compile command))))
-
-(with-eval-after-load 'project
-  (keymap-set project-prefix-map "j" (cons "just" #'kittymacs-just))
-  (add-to-list 'project-switch-commands '(kittymacs-just "Just recipe") t))
-
-#+end_src
-
-[[file:../tests/kittymacs-just-tests.el][kittymacs-just-tests.el]] checks the promises above without running =just= itself:
-the search walks up to the justfile and stops, a summary is split into
-recipes, a missing binary leaves the prompt empty instead of failing, the
-command runs in the justfile's own directory, a prefix argument reaches the
-terminal, and the key is on =project-prefix-map=. It needs no packages:
-
-#+begin_src sh :tangle no
-emacs -Q --batch -l tests/kittymacs-just-tests.el -f ert-run-tests-batch-and-exit
-#+end_src
-
 * Emacs Lisp
 
 Lisp buffers get documentation in the echo area at once, =elisp-def= for
@@ -313,4 +231,3 @@ on top; a language chapter can add more for its own mode.
 - In a Lisp buffer, put point after a form and press =SPC m e=.
 - Type =(= inside code: the =)= appears. Select an expression with =o=, press =d=: it is gone, balanced.
 - Break something on purpose: the fringe marks it; =SPC m e= lists it.
-- In a project with a =justfile=, =SPC p j= lists its recipes. =C-u SPC p j= runs the one you pick in a terminal, so it can ask you for a password.

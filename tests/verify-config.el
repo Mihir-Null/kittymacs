@@ -36,6 +36,9 @@
   (insert "(unless (boundp 'kittymacs-project-directory) (error \"Private loaded before platform\"))\n"
           "(setq dots-test-private-loads (1+ (if (boundp 'dots-test-private-loads) dots-test-private-loads 0)))\n"
           "(setopt kittymacs-project-directory (expand-file-name \"test-projects/\" user-emacs-directory))\n"))
+(with-temp-buffer
+  (insert "(setq kittymacs-org-roam-directory (expand-file-name \"test-roam/\" user-emacs-directory) kittymacs-org-roam-excluded-directories '(\"test-excluded\"))\n")
+  (append-to-file (point-min) (point-max) (expand-file-name "lisp/private.el" user-emacs-directory)))
 (when (getenv "EMACS_DOTS_TEST_PACKAGES")
   (advice-add 'package-initialize :before
               (lambda (&rest _)
@@ -57,9 +60,20 @@
                        "Customize file is not in persistent state")
       (dolist (feature '(kittymacs-literate kittymacs-dashboard kittymacs-meow
                         kittymacs-leader kittymacs-keys kittymacs-treesit kittymacs-languages
-                        kittymacs-terminal kittymacs-treemacs kittymacs-org kittymacs-ui
+                        kittymacs-terminal kittymacs-treemacs kittymacs-org kittymacs-org-roam kittymacs-ui
                         kittymacs-frames))
         (dots-test-check (featurep feature) (format "Missing feature %s" feature)))
+      (dots-test-check (equal kittymacs-org-roam-directory
+                              (expand-file-name "test-roam/" user-emacs-directory))
+                       "Personal graph private override was overwritten")
+      (dots-test-check (equal kittymacs-org-roam-excluded-directories '("test-excluded"))
+                       "Graph exclusion private override was overwritten")
+      (dots-test-check (equal org-roam-directory kittymacs-org-roam-directory)
+                       "Upstream root does not reflect personal graph override")
+      (dots-test-check (not (file-exists-p kittymacs-org-roam-directory))
+                       "Startup created the graph root")
+      (dots-test-check (not org-roam-db-autosync-mode) "Org-roam must not rebuild at startup")
+      (dots-test-check (= (hash-table-count org-roam-db--connection) 0) "Startup opened a graph database")
       (dots-test-check (equal custom-enabled-themes '(doom-sonokai)) "Theme changed")
       ;; Exercise the real loader in both directions: themes must not stack.
       (kittymacs-toggle-theme)

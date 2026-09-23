@@ -14,6 +14,14 @@
 ;; (setopt kittymacs-project-directory (expand-file-name "~/src/"))
 ;; (setopt kittymacs-org-directory (expand-file-name "~/Documents/my-org/"))
 
+;; Linked notes: prebind these before the Org-roam chapter loads.
+;; (setq kittymacs-org-roam-directory (expand-file-name "~/notes/"))
+;; (setq kittymacs-org-roam-excluded-directories
+;;       '("legacy" ".git" "secrets" "cache" "caches" ".cache" "var"))
+;; For a project, establish buffer-local org-roam-directory and
+;; org-roam-db-location; compute the latter with kittymacs-org-roam-db-path.
+;; The database must stay outside the graph. See literate/71-org-roam.org.
+
 ;; Terminal
 ;; MSYS2's location, when it is not the normal C:/msys64/.  The platform
 ;; chapter defines this before private.el loads, so `setopt' works.
@@ -57,24 +65,3 @@
 ;; separate. `kittymacs-font-family' changes only the default face family, preserving
 ;; the platform's existing point size. If the family is absent, the starter keeps the
 ;; platform default rather than failing startup.
-;; Project commands
-;; A project with a justfile needs nothing here: SPC p j lists its recipes.
-;; Name a wrapper when the binary is not on PATH -- a Nix development shell, or
-;; WSL.  `kittymacs-programming' loads later, so `setq' is the form to use.
-;; (setq kittymacs-just-program "/home/you/.nix-profile/bin/just")
-;;
-;; To give one project commands under their own names, define a minor mode for
-;; it and name that mode in each command's `interactive' form.  M-x then offers
-;; them only where the mode is on; the completion chapter explains why.
-;; (define-minor-mode my-project-mode
-;;   "Commands for one project."
-;;   :lighter " Proj")
-;;
-;; (defun my-project-switch ()
-;;   "Deploy this project.  Runs in a terminal so sudo can prompt."
-;;   (interactive nil my-project-mode)
-;;   (kittymacs-just "switch" t))
-;;
-;; Switch the mode on from the project's own .dir-locals.el, so the knowledge
-;; travels with the repository instead of living on this machine:
-;;   ((nil . ((mode . my-project))))

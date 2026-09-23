@@ -118,3 +118,8 @@ yourself.
   tools/tangle.el          the builder
   var/                     packages, caches, custom.el: ignored by Git
 #+end_example
+
+* Linked notes
+
+[[file:71-org-roam.org][Org-roam]] explains =SPC n=, personal and project scopes, external caches,
+explicit capture, graph-local backlinks and intentional cross-graph ID links.

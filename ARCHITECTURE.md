@@ -62,6 +62,7 @@ Agent decisions, with the reason:
 - **macOS is a section of the platform chapter, not a module** (2026-09-14). Lambda's `lem-setup-macos` was the model and its choices were kept where they still fit a frames-first Meow configuration: Option is Meta and Command is Super with the right Option left to macOS (one `kittymacs-macos-modifiers` option), non-native full screen so a full-screen frame does not take its own Space, a UTF-8 `LANG` when the Dock supplied none, the Trash through the `trash` tool or `~/.Trash`, Keychain in `auth-sources`, `⌘⇧Z` redo, `⌘Q` that closes a frame while others remain, and `C-⌘-f` full screen. Not carried: Fn as Hyper (it turns Fn-arrow paging into Hyper chords), `reveal-in-osx-finder`, `grab-mac-link` and `osx-lib` (a twelve-line `kittymacs-reveal-in-file-manager` covers Finder, Explorer and xdg-open on `SPC f o`), and the Mitsuharu-only anti-aliasing flag. "macOS appearance sync" stays dropped in the sense it was dropped (the theme does not follow the system); the reverse, the title bar following the theme, is small and is in. Zero packages were added. Because `system-type` is a plain variable, `tests/kittymacs-platform-tests.el` binds it per test and exercises every operating system's branch on any machine without packages.
 - **A Dock-launched Emacs.app sees no shell `PATH`**, so `early-init.el` puts the Nix profiles and Homebrew on `exec-path` on macOS before the GNU ELPA signature check, the same way it puts Gpg4win first on Windows, and `exec-path-from-shell` asks a login shell there (where `path_helper` and Homebrew's `shellenv` run) rather than the plain shell it asks on Linux. Dired uses GNU `ls` as `gls` when coreutils is installed, since BSD `ls` has no `--group-directories-first`.
 - **Nix installs what surrounds the configuration, never the configuration.** `flake.nix` exposes a nix-darwin module, a home-manager module, a `tools` environment and a dev shell, all drawing from one list in `nix/tools.nix` (Emacs, git, ripgrep, fd, gnupg, hunspell with a dictionary, and on macOS `gls` and `trash`, plus the Nerd symbols font). The configuration itself is cloned somewhere writable, because it installs packages under `var/` and keeps `private.el` beside the modules; the home-manager module links that clone to `~/.config/emacs` through an out-of-store symlink. `nix/example/flake.nix` is a full nix-darwin host that CI evaluates on Linux with the `kittymacs` input overridden to the checkout, so the module's option set is exercised without a Mac. `x86_64-darwin` is not in the flake's systems: nixpkgs-unstable dropped it in 26.11.
+- **Pinned Tree-sitter grammars live in the writable cache and install only on request** (2026-09-22). `kittymacs-treesit-grammar-directory` defaults to `var/cache/tree-sitter/`, is synchronized to the front of `treesit-extra-load-path` before every availability check and explicit install, and is passed to both installer commands; post-load Customize or `setopt` changes therefore apply without a restart, while startup only registers recipes and conditional remaps. Nix uses nix-community/tree-sitter-nix commit `ea1d87f7996be1329ef6555dcacfa63a69bd55c6` (v0.3.0, ABI 13). On Windows its recipe selects UCRT64 GCC beneath `kittymacs-msys2-root` by absolute path when present, without changing `PATH` or `exec-path`. The `nix-mode` to `nix-ts-mode` remap remains optional and requires both the mode function and a loadable grammar.
 - **ghostel replaces EAT as the terminal** (2026-09-18). The user asked for it by name. It is a thin Emacs layer over `libghostty-vt`, so a program in the terminal cannot tell it from a terminal window: the Kitty keyboard and graphics protocols, OSC 8 links, OSC 7 directory tracking, synchronised output and true colour all work, and shell integration for bash/zsh/fish/nushell is automatic. Three consequences beyond the swap. *The Windows adapter is gone*: EAT launches its child through `/usr/bin/env sh`, which native Windows cannot resolve, so the old module wrapped `make-process` and substituted MSYS2's `env.exe`; ghostel uses ConPTY directly and none of that is needed, leaving `SPC o m` a plain choice of MSYS2's bash. *The terminal chapter is its own chapter* (`34-terminal.org`), because the terminal is no longer a footnote to the platform; `kittymacs-msys2-root` and the spell-checker discovery moved into `30-platform.org`, where they were always platform questions. *The native module lives in `var/ghostel/`*, not the package directory, so `package-upgrade` cannot delete a library this Emacs has mapped; it is downloaded on the first `SPC o e`, never at startup.
 - **The terminal is installed from its repository, not an archive** (2026-09-18). CI found both halves of this the hard way. MELPA's `ghostel` build is broken — the index advertises `ghostel-20260914.1114.tar` and the file answers 404 — and `consult-ghostel` has no MELPA recipe at all, so `:ensure t` could install neither. Both now use `:vc`, which is upstream's own documented method: an ordinary Git checkout under `var/elpa/`, about ten megabytes, cloned once and updated with `package-vc-upgrade`. Move them back to `:ensure t` when MELPA carries them. Everything else, Treemacs and its three extensions included, installs from MELPA normally.
 - **Meow's states drive ghostel's input modes.** Terminals start in Insert, ghostel's semi-char mode forwards the keys, and `C-c` reaches Emacs, so `C-c C-SPC` still opens the leader. Leaving Insert freezes the terminal into copy mode (buffer-local `meow-insert-exit-hook`), which makes the whole scrollback an ordinary read-only buffer the selection grammar works on; entering Insert thaws it. The one ambiguous key is `ESC`, which a full-screen program needs and Meow also wants: `kittymacs-terminal-escape` defaults to `auto`, sending it to the program exactly while the alternate screen is active, with `SPC m ESC` to override per buffer. This is the same problem `evil-ghostel` solves for Evil; there is no `meow-ghostel`, so the bridge is ours. Implementing it means rebinding `<escape>` in `meow-insert-state-keymap`, the only map consulted before a terminal's own keys — outside a terminal the command is plain `meow-insert-exit`.
@@ -147,3 +148,111 @@ All on branch `dev/kittymacs-config-review-dc1bee`, each commit verified with th
 | (this branch) | ghostel replaces EAT in a new `34-terminal.org`; MSYS2 root and spelling move to the platform chapter |
 | (this branch) | `65-treemacs.org` adds the project tree and retires `dired-sidebar` |
 | (this branch) | Magit's commit hooks wait for `git-commit`; diagnostics stay inside the frame; `magit-status` prefers the project |
+
+## Scoped linked notes (2026-09-22)
+
+Org-roam loads after Org and before frames, with its package declaration in
+`71-org-roam.org`. A graph is the upstream `org-roam-directory` /
+`org-roam-db-location` pair. There is no graph registry, custom schema, project
+loader or architecture inventory. Physical roots are canonicalized; the default
+DB filename hashes that identity under `kittymacs-cache-dir/org-roam`. Aliases
+share a cache, distinct worktrees do not. A supplied external DB remains valid;
+all buffers for one root must use the same DB because upstream keys connections
+by root. Directory locals should set both variables for persistent project scope.
+
+A small scoped-call adapter binds both the originating buffer's variables and
+non-local defaults. Binding only buffer-local values failed real SQLite tests:
+Org-roam parses in temporary buffers, which otherwise see the personal root.
+Commands retain their originating scope and insert position through completion.
+Project find/insert require existing nodes; explicit capture displays its root.
+Capture saves the pair on its target, indirect buffer and capture plist; an
+around-finalize binding protects callbacks after Org changes buffers. Resolved
+capture paths are checked before Org writes headers. Upstream panel refresh
+reinitializes its major mode, so a permanent panel scope is restored by its mode
+hook before backlink queries. The panel uses a side window and Meow Motion;
+editing nodes use upstream `org-roam-node-open` and the existing frame policy.
+
+Native SQLite is mandatory for graph operations but not startup. No startup DB
+sync or global autosync: enabling upstream autosync itself rebuilds the graph.
+Scoped note saves update only their graph; explicit sync covers external edits,
+renames and deletions. Sync adds IDs to Org's global ID location index without
+importing destination nodes into other graph databases. Destination directory
+locals establish scope across sessions; existing upstream connection roots also
+identify graphs already used during this session. Default membership excludes
+legacy, Git, secrets and cache folders, plus out-of-root symlinks.
+
+Verification includes real Org-roam/SQLite indexing, links, capture finalization,
+completion buffer switches, panel rerender, independent global ID navigation,
+physical alias identity and missing SQLite degradation. Native Windows junction
+and GUI frame behavior require host validation beyond the Linux batch fixture.
+
+### Org-roam review fixes (2026-09-22)
+
+Canonical connection identity also applies at the upstream DB boundary, so
+ordinary Org ID lookups and raw package queries cannot reopen a personal alias
+as a second connection. ID results refresh the destination scope even when its
+buffer predates the graph connection; explicitly established local root/DB pairs
+are retained. Membership checks canonicalize both file and root because upstream
+only folds Windows drive letters, while Emacs restores the filename's actual
+case on visiting it. Capture validates the nearest existing writable parent and
+creates permitted intermediate directories before Org opens the target; excluded
+and out-of-root directories remain untouched. Real tests cover capture followed
+by sync retaining one node, one physical file record and one root connection.
+
+### Native Windows path boundary (2026-09-22)
+
+Use the already installed native CPython stdlib realpath(ALLOW_MISSING) for
+NTFS junctions rather than implementing a Win32 bridge. The capability is
+feature-probed only on graph use. kittymacs-org-roam-python-executable permits
+an absolute trusted interpreter override; the default discovers python.exe
+on absolute local exec-path entries. Windows default DB selection is lazy so
+startup does not need Python; an explicit upstream external DB stays authoritative.
+
+A bounded, dynamically owned JSON pipe runs fixed isolated code and resolves
+each request afresh. It validates the nearest existing ancestor to reject the
+Windows file-as-parent edge. One child serves an entire sync and nested DB
+queries, with timeout/protocol errors, reentry rejection and unwind cleanup.
+No global filename advice, path cache, daemon, custom DLL or project execution.
+
+The Org-roam list boundary walks only allowed physical directories before
+upstream content hashing, canonicalizes/deduplicates files, and tracks visited
+directories to avoid traversal loops. The update-file boundary validates before
+reading and binds canonical buffer filenames even when native visiting restores
+case or reuses an alias buffer. All DB access validates physical root and external
+DB placement; direct force-sync gets that scope before closing/deleting its DB.
+Configured alias roots are not overwritten during scope lookup, so subsequent
+operations observe retargeting. Captures and panels retain their originating
+physical scope and the upstream schema and source positions stay unchanged.
+
+A dangling link to an inside-graph missing target is a permitted capture path
+with a writable directory ancestor; graph roots themselves must exist. Resolution
+errors never become lexical fallback identities. Remote/UNC graphs are explicitly
+unsupported. This provides fresh operation-time validation, not atomic protection
+against concurrent hostile filesystem retargeting. Native junction integration
+tests accompany the WSL symlink regressions; real ACL denial, mounted volumes
+and long-path acceptance remain outside the tested host cases.
+
+### Ordinary Org ID fallback (2026-09-22)
+
+Org-roam's global before-until advice on org-id-find is an optional lookup,
+not an explicit graph command. Preflight its current graph scope and return
+nil when root/backend validation is unavailable, allowing Org's independent
+registered-ID lookup to run. Only that preflight tolerates user errors; errors
+during an otherwise valid graph query remain visible. Destination-return scope
+restoration uses the same best-effort adapter as passive Org visits, including
+already-open ordinary files. Explicit graph commands, indexing and capture
+retain strict physical path/root/DB validation. Real registered ordinary IDs
+outside all graphs cover missing roots and missing native Python independently
+from the existing cross-graph destination/capture/panel acceptance tests.
+
+## Shared and personal configuration boundary (2026-09-22)
+
+The shared configuration owns reusable editor behavior: Org-roam's personal and project graph scopes, native physical-path checks, writable grammar policy, and portable platform integration. It does not load a particular project's explorer or choose that project's checkout.
+
+The project recipe runner introduced by the already-merged `claude/just-recipe-runner` branch is retained in the separate personal checkout. Its `SPC p j` command, just-mode declaration, project command examples, mode-filtered M-x policy, and runner tests are removed from the shared configuration together. Ordinary compile/project commands and completion stay available. The personal branch restores that feature and owns the explicitly trusted NixNet explorer loader.
+
+This split preserves the historical development branches; it does not replay commits already merged into main. Personal machine settings, packages, caches and notes remain outside the public repository. MSYS2 supplies Windows command-line dependencies; editor graph identity and containment remain editor policy rather than shell path conversion.
+
+CI refreshes package archive metadata after restoring the package cache and before loading the configuration, using a noninteractive call because Emacs 31 refreshes asynchronously when invoked as a command. Cached MELPA metadata can name tarballs that the archive has replaced; keeping installed packages does not make that index current. The install step explicitly requires Org-roam so a caught use-package installation failure stops there rather than cascading into graph tests. Ordinary editor startup keeps its existing refresh policy.
+
+The Windows CI job provisions native CPython 3.14 and checks win32 plus os.path.ALLOW_MISSING in isolated mode before graph tests. It exercises the documented resolver requirement rather than depending on the runner's incidental Python version.

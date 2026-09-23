@@ -19,6 +19,7 @@
     "68-navigation.org",
     "74-languages.org",
     "70-org.org",
+    "71-org-roam.org",
     "72-programming.org",
     "80-maintenance.org"
   ],
@@ -44,6 +45,7 @@
     "lisp/kittymacs-treesit.el",
     "lisp/kittymacs-languages.el",
     "lisp/kittymacs-org.el",
+    "lisp/kittymacs-org-roam.el",
     "lisp/kittymacs-programming.el",
     "lisp/private.example.el",
     "lisp/kittymacs-literate.el"

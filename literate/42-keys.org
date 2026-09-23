@@ -269,6 +269,14 @@ when you want that.
   (interactive)
   (find-file org-default-notes-file))
 
+(defvar-keymap kittymacs-notes-map
+  :doc "Linked notes in the current graph."
+  "f" (cons "find node" #'kittymacs-org-roam-find)
+  "i" (cons "insert ID link" #'kittymacs-org-roam-insert)
+  "c" (cons "capture (show destination)" #'kittymacs-org-roam-capture)
+  "b" (cons "backlinks panel" #'kittymacs-org-roam-backlinks)
+  "s" (cons "sync graph" #'kittymacs-org-roam-sync))
+
 (defvar-keymap kittymacs-open-map
   :doc "Open applications."
   "e" (cons "terminal" #'kittymacs-terminal-open)
@@ -395,6 +403,7 @@ when you want that.
 (keymap-set kittymacs-leader-map "l" (cons "language server" kittymacs-lsp-map))
 (keymap-set kittymacs-leader-map "F" (cons "diagnostics" kittymacs-diagnostics-map))
 (keymap-set kittymacs-leader-map "i" (cons "insert" kittymacs-insert-map))
+(keymap-set kittymacs-leader-map "n" (cons "notes" kittymacs-notes-map))
 (keymap-set kittymacs-leader-map "o" (cons "open" kittymacs-open-map))
 (keymap-set kittymacs-leader-map "t" (cons "toggle" kittymacs-toggle-map))
 (keymap-set kittymacs-leader-map "C" (cons "config" kittymacs-config-map))

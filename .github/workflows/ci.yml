@@ -41,8 +41,8 @@ jobs:
         run: emacs -Q --batch -l tests/tangle-tests.el -f ert-run-tests-batch-and-exit
       - name: Platform tests (every operating system's branch, no packages)
         run: emacs -Q --batch -l tests/kittymacs-platform-tests.el -f ert-run-tests-batch-and-exit
-      - name: Justfile runner tests (no packages, just is never run)
-        run: emacs -Q --batch -l tests/kittymacs-just-tests.el -f ert-run-tests-batch-and-exit
+      - name: Tree-sitter policy tests (offline)
+        run: emacs -Q --batch -l tests/kittymacs-treesit-tests.el -f ert-run-tests-batch-and-exit
 
   startup:
     name: Fresh install and startup (Emacs ${{ matrix.emacs }})
@@ -68,10 +68,15 @@ jobs:
           emacs -Q --batch \
             --eval '(setq user-emacs-directory (file-name-as-directory (expand-file-name ".")))' \
             --eval '(setq native-comp-jit-compilation nil package-native-compile nil)' \
-            -l early-init.el -l init.el \
+            -l early-init.el --eval '(package-refresh-contents)' -l init.el \
+            --eval '(require (quote org-roam))' \
             --eval '(princ (format "%d packages active, leader bound: %S\n" (length package-activated-list) (keymapp (keymap-lookup meow-normal-state-keymap "SPC"))))'
       - name: Leader tests
         run: emacs -Q --batch -l tests/kittymacs-leader-tests.el -f ert-run-tests-batch-and-exit
+        env:
+          EMACS_DOTS_TEST_PACKAGES: ${{ github.workspace }}/var/elpa
+      - name: Scoped Org-roam tests
+        run: emacs -Q --batch -l tests/kittymacs-org-roam-tests.el -f ert-run-tests-batch-and-exit
         env:
           EMACS_DOTS_TEST_PACKAGES: ${{ github.workspace }}/var/elpa
       - name: Startup verifier
@@ -102,10 +107,15 @@ jobs:
           emacs -Q --batch \
             --eval '(setq user-emacs-directory (file-name-as-directory (expand-file-name ".")))' \
             --eval '(setq native-comp-jit-compilation nil package-native-compile nil)' \
-            -l early-init.el -l init.el \
+            -l early-init.el --eval '(package-refresh-contents)' -l init.el \
+            --eval '(require (quote org-roam))' \
             --eval '(princ (format "%d packages active, command is %S, trash via %S\n" (length package-activated-list) ns-command-modifier (or trash-directory (symbol-function (quote system-move-file-to-trash)))))'
       - name: Leader tests
         run: emacs -Q --batch -l tests/kittymacs-leader-tests.el -f ert-run-tests-batch-and-exit
+        env:
+          EMACS_DOTS_TEST_PACKAGES: ${{ github.workspace }}/var/elpa
+      - name: Scoped Org-roam tests
+        run: emacs -Q --batch -l tests/kittymacs-org-roam-tests.el -f ert-run-tests-batch-and-exit
         env:
           EMACS_DOTS_TEST_PACKAGES: ${{ github.workspace }}/var/elpa
       - name: Startup verifier
@@ -144,6 +154,13 @@ jobs:
       - uses: jcs090218/setup-emacs@master
         with:
           version: "30.1"
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.14"
+      - name: Verify native physical-path capability
+        shell: pwsh
+        run: |
+          python -I -S -B -c "import os, sys; assert sys.platform == 'win32'; assert hasattr(os.path, 'ALLOW_MISSING'); print(sys.executable)"
       - name: Restore the package directory
         if: github.event_name != 'schedule'
         uses: actions/cache@v6
@@ -157,11 +174,16 @@ jobs:
           emacs -Q --batch `
             --eval '(setq user-emacs-directory (file-name-as-directory (expand-file-name ".")))' `
             --eval '(setq native-comp-jit-compilation nil package-native-compile nil)' `
-            -l early-init.el -l init.el `
+            -l early-init.el --eval '(package-refresh-contents)' -l init.el `
+            --eval '(require (quote org-roam))' `
             --eval '(princ (format "%d packages active\n" (length package-activated-list)))'
       - name: Leader tests
         shell: pwsh
         run: emacs -Q --batch -l tests/kittymacs-leader-tests.el -f ert-run-tests-batch-and-exit
+        env:
+          EMACS_DOTS_TEST_PACKAGES: ${{ github.workspace }}/var/elpa
+      - name: Scoped Org-roam tests
+        run: emacs -Q --batch -l tests/kittymacs-org-roam-tests.el -f ert-run-tests-batch-and-exit
         env:
           EMACS_DOTS_TEST_PACKAGES: ${{ github.workspace }}/var/elpa
       - name: Startup verifier

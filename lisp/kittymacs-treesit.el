@@ -15,8 +15,33 @@
 (defgroup kittymacs-treesit nil
   "Portable Tree-sitter policy for the starter configuration."
   :group 'kittymacs)
+(defcustom kittymacs-treesit-grammar-directory
+  (expand-file-name "tree-sitter/" kittymacs-cache-dir)
+  "Writable directory for compiled Tree-sitter grammar libraries."
+  :type 'directory
+  :group 'kittymacs-treesit)
+
+(defun kittymacs-treesit--sync-grammar-directory ()
+  "Put the currently configured grammar directory first in the search path."
+  (setq treesit-extra-load-path
+        (cons kittymacs-treesit-grammar-directory
+              (delete kittymacs-treesit-grammar-directory
+                      treesit-extra-load-path))))
+
+(kittymacs-treesit--sync-grammar-directory)
+(defun kittymacs-treesit--nix-source ()
+  "Return the pinned Nix recipe, with a local Windows compiler when present."
+  (let ((compiler
+         (when (and (eq system-type 'windows-nt)
+                    (boundp 'kittymacs-msys2-root))
+           (file-name-concat kittymacs-msys2-root "ucrt64" "bin" "gcc.exe"))))
+    (append
+     '(nix "https://github.com/nix-community/tree-sitter-nix"
+           "ea1d87f7996be1329ef6555dcacfa63a69bd55c6")
+     (when (and compiler (file-executable-p compiler))
+       (list "src" compiler)))))
 (defcustom kittymacs-treesit-language-source-alist
-  '((bash "https://github.com/tree-sitter/tree-sitter-bash"
+  `((bash "https://github.com/tree-sitter/tree-sitter-bash"
           "8509e3229b863c255ab6b61f3bf74ad0bf14e8bc")
     (cmake "https://github.com/uyha/tree-sitter-cmake"
            "ca627bb5828616b6246aafdc3c3222789e728e37")
@@ -36,6 +61,7 @@
           "a4b9187417d6be349ee5fd4b6e77b4172c6827dd")
     (markdown "https://github.com/ikatyang/tree-sitter-markdown"
               "8b8b77af0493e26d378135a3e7f5ae25b555b375")
+    ,(kittymacs-treesit--nix-source)
     (python "https://github.com/tree-sitter/tree-sitter-python"
             "c5fca1a186e8e528115196178c28eefa8d86b0b0")
     (toml "https://github.com/tree-sitter/tree-sitter-toml"
@@ -63,10 +89,12 @@ entry has the same shape accepted by `treesit-language-source-alist':
     (json-mode json-ts-mode json)
     (css-mode css-ts-mode css)
     (python-mode python-ts-mode python)
-    (typst-mode typst-ts-mode typst))
+    (typst-mode typst-ts-mode typst)
+    (nix-mode nix-ts-mode nix))
   "Classic mode, Tree-sitter mode, and grammar triples managed here.")
 (defun kittymacs-treesit--language-available-p (language)
   "Return non-nil when LANGUAGE can be loaded by this Emacs build."
+  (kittymacs-treesit--sync-grammar-directory)
   (and (treesit-available-p)
        (condition-case nil
            (treesit-language-available-p language)
@@ -131,19 +159,25 @@ then added only when its target mode exists and its grammar loads successfully."
       nil t))))
   (unless (assq language kittymacs-treesit-language-source-alist)
     (user-error "No pinned Tree-sitter recipe for %s" language))
+  (kittymacs-treesit--sync-grammar-directory)
+  (unless (treesit-available-p)
+    (user-error "This Emacs build does not include Tree-sitter support"))
   (kittymacs-treesit-apply-pinned-sources)
-  (treesit-install-language-grammar language)
+  (treesit-install-language-grammar
+   language kittymacs-treesit-grammar-directory)
   (kittymacs-treesit-refresh-mode-remaps))
 (defun kittymacs-treesit-install-all-grammars ()
   "Install every missing pinned grammar and refresh mode remaps."
   (interactive)
+  (kittymacs-treesit--sync-grammar-directory)
   (unless (treesit-available-p)
     (user-error "This Emacs build does not include Tree-sitter support"))
   (kittymacs-treesit-apply-pinned-sources)
   (dolist (source kittymacs-treesit-language-source-alist)
     (let ((language (car source)))
       (unless (kittymacs-treesit--language-available-p language)
-        (treesit-install-language-grammar language))))
+        (treesit-install-language-grammar
+         language kittymacs-treesit-grammar-directory))))
   (kittymacs-treesit-refresh-mode-remaps))
 (kittymacs-treesit-apply-pinned-sources)
 (kittymacs-treesit-refresh-mode-remaps)
