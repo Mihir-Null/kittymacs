@@ -68,7 +68,8 @@ jobs:
           emacs -Q --batch \
             --eval '(setq user-emacs-directory (file-name-as-directory (expand-file-name ".")))' \
             --eval '(setq native-comp-jit-compilation nil package-native-compile nil)' \
-            -l early-init.el -l init.el \
+            -l early-init.el -f package-refresh-contents -l init.el \
+            --eval '(require (quote org-roam))' \
             --eval '(princ (format "%d packages active, leader bound: %S\n" (length package-activated-list) (keymapp (keymap-lookup meow-normal-state-keymap "SPC"))))'
       - name: Leader tests
         run: emacs -Q --batch -l tests/kittymacs-leader-tests.el -f ert-run-tests-batch-and-exit
@@ -106,7 +107,8 @@ jobs:
           emacs -Q --batch \
             --eval '(setq user-emacs-directory (file-name-as-directory (expand-file-name ".")))' \
             --eval '(setq native-comp-jit-compilation nil package-native-compile nil)' \
-            -l early-init.el -l init.el \
+            -l early-init.el -f package-refresh-contents -l init.el \
+            --eval '(require (quote org-roam))' \
             --eval '(princ (format "%d packages active, command is %S, trash via %S\n" (length package-activated-list) ns-command-modifier (or trash-directory (symbol-function (quote system-move-file-to-trash)))))'
       - name: Leader tests
         run: emacs -Q --batch -l tests/kittymacs-leader-tests.el -f ert-run-tests-batch-and-exit
@@ -165,7 +167,8 @@ jobs:
           emacs -Q --batch `
             --eval '(setq user-emacs-directory (file-name-as-directory (expand-file-name ".")))' `
             --eval '(setq native-comp-jit-compilation nil package-native-compile nil)' `
-            -l early-init.el -l init.el `
+            -l early-init.el -f package-refresh-contents -l init.el `
+            --eval '(require (quote org-roam))' `
             --eval '(princ (format "%d packages active\n" (length package-activated-list)))'
       - name: Leader tests
         shell: pwsh
