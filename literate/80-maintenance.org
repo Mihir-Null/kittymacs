@@ -99,36 +99,6 @@ UI preserve these pre-bound values. kittymacs-ui-light-theme 'doom-one-light
 ;; platform default rather than failing startup.
 #+end_src
 
-*** Keep account and machine choices local: continued 3
-
-Project commands. A justfile needs nothing here; a project that wants its own named commands defines them here and switches them on from its own directory.
-
-#+name: private.example-01-3
-#+begin_src emacs-lisp
-
-;; Project commands
-;; A project with a justfile needs nothing here: SPC p j lists its recipes.
-;; Name a wrapper when the binary is not on PATH -- a Nix development shell, or
-;; WSL.  `kittymacs-programming' loads later, so `setq' is the form to use.
-;; (setq kittymacs-just-program "/home/you/.nix-profile/bin/just")
-;;
-;; To give one project commands under their own names, define a minor mode for
-;; it and name that mode in each command's `interactive' form.  M-x then offers
-;; them only where the mode is on; the completion chapter explains why.
-;; (define-minor-mode my-project-mode
-;;   "Commands for one project."
-;;   :lighter " Proj")
-;;
-;; (defun my-project-switch ()
-;;   "Deploy this project.  Runs in a terminal so sudo can prompt."
-;;   (interactive nil my-project-mode)
-;;   (kittymacs-just "switch" t))
-;;
-;; Switch the mode on from the project's own .dir-locals.el, so the knowledge
-;; travels with the repository instead of living on this machine:
-;;   ((nil . ((mode . my-project))))
-#+end_src
-
 * kittymacs-literate
 :PROPERTIES:
 :header-args:emacs-lisp: :tangle ../lisp/kittymacs-literate.el :eval never :comments no :padline no :mkdirp yes

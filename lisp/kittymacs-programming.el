@@ -94,50 +94,6 @@
         compilation-scroll-output 'first-error)
 (with-eval-after-load 'compile
   (add-hook 'compilation-filter-hook #'comint-truncate-buffer))
-(defcustom kittymacs-just-program "just"
-  "Program used to run justfile recipes."
-  :type 'string
-  :group 'kittymacs)
-
-(use-package just-mode
-  :ensure t
-  :mode ("/\\.?[Jj]ustfile\\'" "\\.just\\'"))
-
-(defun kittymacs-just-root ()
-  "Return the directory of the justfile governing `default-directory', or nil."
-  (or (locate-dominating-file default-directory "justfile")
-      (locate-dominating-file default-directory "Justfile")
-      (locate-dominating-file default-directory ".justfile")))
-
-(defun kittymacs-just-recipes (root)
-  "Return the recipe names offered by the justfile at ROOT.
-Nil when `kittymacs-just-program' cannot be run, so the prompt degrades to
-free text rather than failing."
-  (let ((default-directory root))
-    (with-temp-buffer
-      (ignore-errors
-        (when (zerop (call-process kittymacs-just-program nil t nil "--summary"))
-          (split-string (buffer-string) nil t))))))
-
-(defun kittymacs-just (recipe &optional terminal)
-  "Run RECIPE from the justfile above `default-directory'.
-With a prefix argument, or when TERMINAL is non-nil, run it in a terminal
-so a recipe that prompts for a password can be answered."
-  (interactive
-   (let ((root (or (kittymacs-just-root)
-                   (user-error "No justfile above %s" default-directory))))
-     (list (completing-read "just: " (kittymacs-just-recipes root))
-           current-prefix-arg)))
-  (let* ((default-directory (or (kittymacs-just-root)
-                                (user-error "No justfile above %s" default-directory)))
-         (command (format "%s %s" kittymacs-just-program recipe)))
-    (if (and terminal (fboundp 'ghostel-compile))
-        (ghostel-compile command)
-      (compile command))))
-
-(with-eval-after-load 'project
-  (keymap-set project-prefix-map "j" (cons "just" #'kittymacs-just))
-  (add-to-list 'project-switch-commands '(kittymacs-just "Just recipe") t))
 (setopt eldoc-idle-delay 0)
 
 (use-package elisp-def

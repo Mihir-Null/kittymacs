@@ -43,8 +43,6 @@ jobs:
         run: emacs -Q --batch -l tests/kittymacs-platform-tests.el -f ert-run-tests-batch-and-exit
       - name: Tree-sitter policy tests (offline)
         run: emacs -Q --batch -l tests/kittymacs-treesit-tests.el -f ert-run-tests-batch-and-exit
-      - name: Justfile runner tests (no packages, just is never run)
-        run: emacs -Q --batch -l tests/kittymacs-just-tests.el -f ert-run-tests-batch-and-exit
 
   startup:
     name: Fresh install and startup (Emacs ${{ matrix.emacs }})
