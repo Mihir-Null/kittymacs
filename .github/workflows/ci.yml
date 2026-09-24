@@ -1,15 +1,18 @@
 name: CI
 
 # Three questions, answered on every push and pull request:
-#   1. Do the literate chapters still match the generated Lisp?  (tangle)
+#   1. Do the literate chapters still match the generated Lisp, and do the
+#      tests that need no packages pass?                             (tangle)
 #   2. Does a fresh clone install its packages and start, on the oldest
-#      supported Emacs and the current one?                        (startup)
-#   3. Does the same hold on Windows, the machine this is written on? (windows)
-#   4. And on macOS?                                                    (macos)
-#   5. Does the Nix flake still evaluate, with its nix-darwin and
-#      nix-on-droid examples?  (nix)
+#      supported Emacs and the current one?  And on macOS, and on Windows,
+#      the machine this is written on?                              (startup)
+#   3. Does the Nix flake still evaluate, with its nix-darwin and
+#      nix-on-droid examples?                                           (nix)
 # The weekly run skips the package cache so upstream package breakage
 # shows up even when nothing here changed.
+#
+# tests/kittymacs-frames-tests.el is the one suite not run here: it needs a
+# graphical session, and README.md says how to run it by hand.
 
 on:
   push:
@@ -32,7 +35,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - uses: purcell/setup-emacs@master
+      - uses: purcell/setup-emacs@34c6ded44899fd1bf74d2889558befd1750e61a7 # master as of 2026-09-24
         with:
           version: "31.1"
       - name: Tangle check
@@ -45,15 +48,46 @@ jobs:
         run: emacs -Q --batch -l tests/kittymacs-treesit-tests.el -f ert-run-tests-batch-and-exit
 
   startup:
-    name: Fresh install and startup (Emacs ${{ matrix.emacs }})
-    runs-on: ubuntu-latest
+    name: Fresh install and startup (${{ matrix.system }}, Emacs ${{ matrix.emacs }})
+    runs-on: ${{ matrix.os }}
+    # The macOS and Windows runs are informational until their runners have
+    # proven stable here; the platform tests above already exercise those
+    # branches on Linux.
+    continue-on-error: ${{ matrix.informational }}
     strategy:
       fail-fast: false
       matrix:
-        emacs: ["30.1", "31.1"]
+        include:
+          - os: ubuntu-latest
+            system: Linux
+            emacs: "30.1"
+            informational: false
+          - os: ubuntu-latest
+            system: Linux
+            emacs: "31.1"
+            informational: false
+          - os: macos-latest
+            system: macOS
+            emacs: "31.1"
+            informational: true
+          - os: windows-latest
+            system: Windows
+            emacs: "30.1"
+            informational: true
+    # Git Bash on Windows, so every step is written once.
+    defaults:
+      run:
+        shell: bash
+    env:
+      KITTYMACS_TEST_PACKAGES: ${{ github.workspace }}/var/elpa
     steps:
       - uses: actions/checkout@v7
-      - uses: purcell/setup-emacs@master
+      - if: runner.os != 'Windows'
+        uses: purcell/setup-emacs@34c6ded44899fd1bf74d2889558befd1750e61a7 # master as of 2026-09-24
+        with:
+          version: ${{ matrix.emacs }}
+      - if: runner.os == 'Windows'
+        uses: jcs090218/setup-emacs@54b61ac9c1d7011a54d2b6d66dedbcddf20e2fb9 # master as of 2026-09-24
         with:
           version: ${{ matrix.emacs }}
       - name: Restore the package directory
@@ -73,55 +107,10 @@ jobs:
             --eval '(princ (format "%d packages active, leader bound: %S\n" (length package-activated-list) (keymapp (keymap-lookup meow-normal-state-keymap "SPC"))))'
       - name: Leader tests
         run: emacs -Q --batch -l tests/kittymacs-leader-tests.el -f ert-run-tests-batch-and-exit
-        env:
-          KITTYMACS_TEST_PACKAGES: ${{ github.workspace }}/var/elpa
       - name: Scoped Org-roam tests
         run: emacs -Q --batch -l tests/kittymacs-org-roam-tests.el -f ert-run-tests-batch-and-exit
-        env:
-          KITTYMACS_TEST_PACKAGES: ${{ github.workspace }}/var/elpa
       - name: Startup verifier
         run: emacs -Q --batch -l tests/verify-config.el
-        env:
-          KITTYMACS_TEST_PACKAGES: ${{ github.workspace }}/var/elpa
-
-  macos:
-    name: Fresh install and startup (macOS, Emacs 31.1)
-    runs-on: macos-latest
-    # Informational until the macOS runner has proven stable here; the
-    # platform tests above already exercise the macOS branches on Linux.
-    continue-on-error: true
-    steps:
-      - uses: actions/checkout@v7
-      - uses: purcell/setup-emacs@master
-        with:
-          version: "31.1"
-      - name: Restore the package directory
-        if: github.event_name != 'schedule'
-        uses: actions/cache@v6
-        with:
-          path: var/elpa
-          key: elpa-${{ runner.os }}-31.1-${{ hashFiles('lisp/*.el', 'early-init.el', 'init.el') }}
-          restore-keys: elpa-${{ runner.os }}-31.1-
-      - name: Install packages by starting the configuration
-        run: |
-          emacs -Q --batch \
-            --eval '(setq user-emacs-directory (file-name-as-directory (expand-file-name ".")))' \
-            --eval '(setq native-comp-jit-compilation nil package-native-compile nil)' \
-            -l early-init.el --eval '(package-refresh-contents)' -l init.el \
-            --eval '(require (quote org-roam))' \
-            --eval '(princ (format "%d packages active, command is %S, trash via %S\n" (length package-activated-list) ns-command-modifier (or trash-directory (symbol-function (quote system-move-file-to-trash)))))'
-      - name: Leader tests
-        run: emacs -Q --batch -l tests/kittymacs-leader-tests.el -f ert-run-tests-batch-and-exit
-        env:
-          KITTYMACS_TEST_PACKAGES: ${{ github.workspace }}/var/elpa
-      - name: Scoped Org-roam tests
-        run: emacs -Q --batch -l tests/kittymacs-org-roam-tests.el -f ert-run-tests-batch-and-exit
-        env:
-          KITTYMACS_TEST_PACKAGES: ${{ github.workspace }}/var/elpa
-      - name: Startup verifier
-        run: emacs -Q --batch -l tests/verify-config.el
-        env:
-          KITTYMACS_TEST_PACKAGES: ${{ github.workspace }}/var/elpa
 
   nix:
     name: Flake evaluates, with its example hosts
@@ -143,44 +132,3 @@ jobs:
           nix eval --no-write-lock-file --override-input kittymacs "path:$PWD" \
             --json ./nix/example-nix-on-droid#nixOnDroidConfigurations.default.config.home-manager.config.home.packages \
             --apply 'ps: map (p: p.name) ps'
-
-  windows:
-    name: Fresh install and startup (Windows, Emacs 30.1)
-    runs-on: windows-latest
-    # Informational until the Windows Emacs action has proven stable here.
-    continue-on-error: true
-    steps:
-      - uses: actions/checkout@v7
-      - uses: jcs090218/setup-emacs@master
-        with:
-          version: "30.1"
-      - name: Restore the package directory
-        if: github.event_name != 'schedule'
-        uses: actions/cache@v6
-        with:
-          path: var/elpa
-          key: elpa-${{ runner.os }}-30.1-${{ hashFiles('lisp/*.el', 'early-init.el', 'init.el') }}
-          restore-keys: elpa-${{ runner.os }}-30.1-
-      - name: Install packages by starting the configuration
-        shell: pwsh
-        run: |
-          emacs -Q --batch `
-            --eval '(setq user-emacs-directory (file-name-as-directory (expand-file-name ".")))' `
-            --eval '(setq native-comp-jit-compilation nil package-native-compile nil)' `
-            -l early-init.el --eval '(package-refresh-contents)' -l init.el `
-            --eval '(require (quote org-roam))' `
-            --eval '(princ (format "%d packages active\n" (length package-activated-list)))'
-      - name: Leader tests
-        shell: pwsh
-        run: emacs -Q --batch -l tests/kittymacs-leader-tests.el -f ert-run-tests-batch-and-exit
-        env:
-          KITTYMACS_TEST_PACKAGES: ${{ github.workspace }}/var/elpa
-      - name: Scoped Org-roam tests
-        run: emacs -Q --batch -l tests/kittymacs-org-roam-tests.el -f ert-run-tests-batch-and-exit
-        env:
-          KITTYMACS_TEST_PACKAGES: ${{ github.workspace }}/var/elpa
-      - name: Startup verifier
-        shell: pwsh
-        run: emacs -Q --batch -l tests/verify-config.el
-        env:
-          KITTYMACS_TEST_PACKAGES: ${{ github.workspace }}/var/elpa
