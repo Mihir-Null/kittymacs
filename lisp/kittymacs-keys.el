@@ -74,8 +74,16 @@
   "t" (cons "todo keywords" #'hl-todo-occur)
   "p" (cons "spelling" #'consult-flyspell)
   "l" (cons "last completion" #'vertico-repeat))
-(with-eval-after-load 'project
-  (keymap-set project-prefix-map "C" #'recompile))
+(defvar-keymap kittymacs-project-map
+  :doc "Project commands: Emacs's `project-prefix-map' plus a few more."
+  :parent project-prefix-map
+  "p" (cons "open in a workspace" #'tabspaces-open-or-create-project-and-workspace)
+  "b" (cons "project buffer" #'consult-project-buffer)
+  "m" (cons "bookmark" #'consult-bookmark)
+  "G" (cons "Magit status" #'kittymacs-project-magit)
+  "t" (cons "projects directory" #'kittymacs-projects-directory)
+  "R" (cons "remember projects under" #'project-remember-projects-under)
+  "C" (cons "recompile" #'recompile))
 
 (defvar-keymap kittymacs-jump-map
   :doc "Jump with on-screen hints."
@@ -324,7 +332,7 @@
 (keymap-set kittymacs-leader-map "f" (cons "files" kittymacs-file-map))
 (keymap-set kittymacs-leader-map "s" (cons "search" kittymacs-search-map))
 (keymap-set kittymacs-leader-map "j" (cons "jump" kittymacs-jump-map))
-(keymap-set kittymacs-leader-map "p" (cons "project" project-prefix-map))
+(keymap-set kittymacs-leader-map "p" (cons "project" kittymacs-project-map))
 (keymap-set kittymacs-leader-map "v" (cons "version control" kittymacs-vc-map))
 (keymap-set kittymacs-leader-map "w" (cons "windows" kittymacs-window-map))
 (keymap-set kittymacs-leader-map "W" (cons "workspaces" kittymacs-workspace-map))

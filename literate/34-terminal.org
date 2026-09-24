@@ -348,7 +348,9 @@ With prefix ARG, create another one instead of reusing the existing buffer."
 
 *Projects.* =ghostel-project= opens a terminal at the project root and names it
 after the project, so =SPC o p= in any file lands where builds are run. It
-joins the menu =SPC p p= offers when you switch project.
+joins the menu =C-x p p= offers when you switch project, on =t=; the key is
+named here because =ghostel-project= has none in =project-prefix-map=, and
+without one the menu shows the entry but cannot run it.
 
 *Consult.* =consult-ghostel= picks a terminal with live preview, the way
 =SPC b b= picks a buffer, and creates one when you type a name that does not
@@ -362,7 +364,7 @@ mid-word is still findable.
 #+begin_src emacs-lisp
 (when kittymacs-terminal-ghostel
   (with-eval-after-load 'project
-    (add-to-list 'project-switch-commands '(ghostel-project "Terminal") t)))
+    (add-to-list 'project-switch-commands '(ghostel-project "Terminal" ?t) t)))
 
 (use-package consult-ghostel
   :vc (:url "https://github.com/dakra/ghostel"

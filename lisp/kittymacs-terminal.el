@@ -191,7 +191,7 @@ With prefix ARG, create another one instead of reusing the existing buffer."
       (ghostel arg))))
 (when kittymacs-terminal-ghostel
   (with-eval-after-load 'project
-    (add-to-list 'project-switch-commands '(ghostel-project "Terminal") t)))
+    (add-to-list 'project-switch-commands '(ghostel-project "Terminal" ?t) t)))
 
 (use-package consult-ghostel
   :vc (:url "https://github.com/dakra/ghostel"

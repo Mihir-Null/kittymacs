@@ -117,14 +117,28 @@ pause at the top of the frame, and =C-h= inside any prefix shows them at once.
 
 * Projects, version control, windows, workspaces
 
-The project group is Emacs's own =project-prefix-map=, so =C-x p= and
-=SPC p= are the same menu. Windows are frames here: =SPC w n= makes a new
-OS window, and the lowercase split keys split inside the current frame
-when you want that.
+=SPC p= is =kittymacs-project-map=, whose /parent/ is Emacs's own
+=project-prefix-map=. A key that is not found in a keymap is looked up in its
+parent, so every =C-x p= command works under =SPC p= as well, and the map
+below only adds to it or overrides a key. The additions live here rather than
+being written into Emacs's map, so =C-x p= stays exactly the menu the Emacs
+manual describes. One key is overridden: =SPC p p= opens the project in its
+own workspace, while =C-x p p= still switches project in the current one.
+
+Windows are frames here: =SPC w n= makes a new OS window, and the lowercase
+split keys split inside the current frame when you want that.
 
 #+begin_src emacs-lisp
-(with-eval-after-load 'project
-  (keymap-set project-prefix-map "C" #'recompile))
+(defvar-keymap kittymacs-project-map
+  :doc "Project commands: Emacs's `project-prefix-map' plus a few more."
+  :parent project-prefix-map
+  "p" (cons "open in a workspace" #'tabspaces-open-or-create-project-and-workspace)
+  "b" (cons "project buffer" #'consult-project-buffer)
+  "m" (cons "bookmark" #'consult-bookmark)
+  "G" (cons "Magit status" #'kittymacs-project-magit)
+  "t" (cons "projects directory" #'kittymacs-projects-directory)
+  "R" (cons "remember projects under" #'project-remember-projects-under)
+  "C" (cons "recompile" #'recompile))
 
 (defvar-keymap kittymacs-jump-map
   :doc "Jump with on-screen hints."
@@ -394,7 +408,7 @@ when you want that.
 (keymap-set kittymacs-leader-map "f" (cons "files" kittymacs-file-map))
 (keymap-set kittymacs-leader-map "s" (cons "search" kittymacs-search-map))
 (keymap-set kittymacs-leader-map "j" (cons "jump" kittymacs-jump-map))
-(keymap-set kittymacs-leader-map "p" (cons "project" project-prefix-map))
+(keymap-set kittymacs-leader-map "p" (cons "project" kittymacs-project-map))
 (keymap-set kittymacs-leader-map "v" (cons "version control" kittymacs-vc-map))
 (keymap-set kittymacs-leader-map "w" (cons "windows" kittymacs-window-map))
 (keymap-set kittymacs-leader-map "W" (cons "workspaces" kittymacs-workspace-map))

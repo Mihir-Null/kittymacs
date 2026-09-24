@@ -63,17 +63,13 @@
 
 (use-package project
   :ensure nil
-  :bind (:map project-prefix-map
-         ("G" . kittymacs-project-magit)
-         ("t" . kittymacs-projects-directory)
-         ("R" . project-remember-projects-under))
   :custom
   (project-list-file (expand-file-name "projects" kittymacs-cache-dir))
   (project-switch-commands '((project-find-file "Find file")
                              (project-find-regexp "Find regexp")
                              (project-find-dir "Find directory")
                              (project-vc-dir "VC-Dir")
-                             (kittymacs-project-magit "Magit status")))
+                             (kittymacs-project-magit "Magit status" ?G)))
   (project-vc-extra-root-markers '(".dir-locals.el" ".project.el" "package.json" "requirements.txt" "autogen.sh"))
   :config
   (when (executable-find "rg")
@@ -107,8 +103,6 @@
 (use-package tabspaces
   :ensure t
   :hook (emacs-startup . tabspaces-mode)
-  :bind (:map project-prefix-map
-         ("p" . tabspaces-open-or-create-project-and-workspace))
   :custom
   (tabspaces-use-filtered-buffers-as-default t)
   (tabspaces-default-tab "Home")

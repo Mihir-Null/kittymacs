@@ -80,10 +80,7 @@
   :bind (("C-x b" . consult-buffer)
          ("M-y" . consult-yank-pop)
          ("M-g g" . consult-goto-line)
-         ("M-g i" . consult-imenu)
-         :map project-prefix-map
-         ("b" . consult-project-buffer)
-         ("m" . consult-bookmark))
+         ("M-g i" . consult-imenu))
   :hook (completion-list-mode . consult-preview-at-point-mode)
   :custom
   (consult-async-min-input 2)

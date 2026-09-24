@@ -97,7 +97,9 @@ line, =SPC j w= a word. It works across every window of the frame.
 * Projects
 
 =project.el= is Emacs's project layer. Switching to a project asks what to
-do there; the menu includes Magit. Extra root markers let non-Git
+do there; the menu includes Magit on =G=. A command in that menu names its
+key when the key is not already in =project-prefix-map=, which [[file:42-keys.org][the keys
+chapter]] leaves as Emacs defines it. Extra root markers let non-Git
 directories count as projects. Ripgrep backs =xref= searches.
 
 #+begin_src emacs-lisp
@@ -113,17 +115,13 @@ directories count as projects. Ripgrep backs =xref= searches.
 
 (use-package project
   :ensure nil
-  :bind (:map project-prefix-map
-         ("G" . kittymacs-project-magit)
-         ("t" . kittymacs-projects-directory)
-         ("R" . project-remember-projects-under))
   :custom
   (project-list-file (expand-file-name "projects" kittymacs-cache-dir))
   (project-switch-commands '((project-find-file "Find file")
                              (project-find-regexp "Find regexp")
                              (project-find-dir "Find directory")
                              (project-vc-dir "VC-Dir")
-                             (kittymacs-project-magit "Magit status")))
+                             (kittymacs-project-magit "Magit status" ?G)))
   (project-vc-extra-root-markers '(".dir-locals.el" ".project.el" "package.json" "requirements.txt" "autogen.sh"))
   :config
   (when (executable-find "rg")
@@ -178,8 +176,6 @@ is a narrow key away. A new tab starts on the scratch buffer.
 (use-package tabspaces
   :ensure t
   :hook (emacs-startup . tabspaces-mode)
-  :bind (:map project-prefix-map
-         ("p" . tabspaces-open-or-create-project-and-workspace))
   :custom
   (tabspaces-use-filtered-buffers-as-default t)
   (tabspaces-default-tab "Home")
