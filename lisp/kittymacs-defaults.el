@@ -44,11 +44,11 @@
 (savehist-mode 1)
 (global-so-long-mode 1)
 (setopt multisession-directory (expand-file-name "multisession/" kittymacs-cache-dir))
-(setq-default indent-tabs-mode nil
-              tab-width 4
-              fill-column 80
-              tab-always-indent 'complete)
-(setopt completion-cycle-threshold 3
+(setopt indent-tabs-mode nil
+        tab-width 4
+        fill-column 80
+        tab-always-indent 'complete
+        completion-cycle-threshold 3
         sentence-end-double-space nil
         global-mark-ring-max 8
         mark-ring-max 8)
@@ -103,7 +103,7 @@
       (fundamental-mode)
     (let ((buffer-file-name (buffer-name)))
       (set-auto-mode))))
-(setq-default major-mode #'kittymacs-guess-major-mode)
+(setopt major-mode #'kittymacs-guess-major-mode)
 (fset 'undo-auto-amalgamate #'ignore)
 (setopt undo-limit 67108864
         undo-strong-limit 100663296

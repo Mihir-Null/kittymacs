@@ -60,11 +60,27 @@ denies access and every lookup below quietly returns nil."
 (defun kittymacs--first-executable (&rest programs)
   "Return the first executable found in PROGRAMS."
   (seq-some #'executable-find programs))
+(defun kittymacs--platform-shell ()
+  "Return (PROGRAM . SWITCH) for this platform's shell, or nil if none is found."
+  (pcase system-type
+    ('windows-nt
+     (if-let* ((powershell (kittymacs--first-executable "pwsh.exe" "powershell.exe")))
+         (cons powershell "-Command")
+       (when-let* ((cmd (executable-find "cmd.exe")))
+         (cons cmd "/c"))))
+    ((or 'darwin 'gnu/linux)
+     (when-let* ((shell (kittymacs--first-executable "zsh" "bash" "sh")))
+       (cons shell "-c")))
+    ('android
+     (cons (or (kittymacs-termux-program "bash")
+               (kittymacs-termux-program "sh")
+               "/system/bin/sh")
+           "-c"))))
+
 (defun kittymacs--windows-unix-tools ()
   "Return the directory holding Git for Windows' or MSYS2's Unix tools, or nil.
-Magit's hunk refinement, Ediff and diff-hl ask for `diff', `diff3' and
-`patch' by name, and Windows has none.  Git for Windows ships them
-beside its own `git'; MSYS2 keeps them under `usr/bin'."
+Git for Windows ships `diff', `diff3' and `patch' beside its own `git';
+MSYS2 keeps them under `usr/bin'."
   (let ((git (file-name-directory (or (executable-find "git") ""))))
     (seq-find (lambda (dir) (file-executable-p (expand-file-name "diff.exe" dir)))
               (delq nil
@@ -77,52 +93,13 @@ beside its own `git'; MSYS2 keeps them under `usr/bin'."
 
 (defun kittymacs-platform-apply ()
   "Apply the currently configured portable platform defaults."
-  ;; Choose a usable shell without assuming a username, Homebrew prefix, Nix profile,
-  ;; or conventional Unix filesystem on Windows.
-  (pcase system-type
-    ('windows-nt
-     (cond
-      ((executable-find "pwsh.exe")
-       (setq-default shell-file-name (executable-find "pwsh.exe"))
-       (setq explicit-shell-file-name (executable-find "pwsh.exe")
-             shell-command-switch "-Command"))
-      ((executable-find "powershell.exe")
-       (setq-default shell-file-name (executable-find "powershell.exe"))
-       (setq explicit-shell-file-name (executable-find "powershell.exe")
-             shell-command-switch "-Command"))
-      ((executable-find "cmd.exe")
-       (setq-default shell-file-name (executable-find "cmd.exe"))
-       (setq explicit-shell-file-name (executable-find "cmd.exe")
-             shell-command-switch "/c"))))
-    ('darwin
-     (when-let ((shell (kittymacs--first-executable "zsh" "bash" "sh")))
-       (setq-default shell-file-name shell)
-       (setq explicit-shell-file-name shell
-             shell-command-switch "-c")))
-    ('gnu/linux
-     (when-let ((shell (kittymacs--first-executable "zsh" "bash" "sh")))
-       (setq-default shell-file-name shell)
-       (setq explicit-shell-file-name shell
-             shell-command-switch "-c")))
-    ;; Android has no /bin, so Emacs's compiled-in /bin/sh does not exist.
-    ;; Termux's shells are preferred because they can see Termux's programs;
-    ;; /system/bin/sh is always present, which makes it a real fallback
-    ;; rather than a hopeful one.
-    ('android
-     (let ((shell (or (kittymacs-termux-program "bash")
-                      (kittymacs-termux-program "sh")
-                      "/system/bin/sh")))
-       (setq-default shell-file-name shell)
-       (setq explicit-shell-file-name shell
-             shell-command-switch "-c"))))
-
-  ;; Windows borrows Git's Unix tools.  They go last on `exec-path' so every
-  ;; native program still wins, and `PATH' itself is left alone, so
-  ;; subprocesses see no change.
+  (when-let* ((shell (kittymacs--platform-shell)))
+    (setopt shell-file-name (car shell)
+            explicit-shell-file-name (car shell))
+    (setq shell-command-switch (cdr shell)))
   (when (eq system-type 'windows-nt)
     (when-let* ((tools (kittymacs--windows-unix-tools)))
       (add-to-list 'exec-path tools t)))
-
   (when (eq system-type 'darwin)
     (kittymacs--platform-apply-macos))
   (when (kittymacs-android-p)
@@ -151,13 +128,13 @@ to macOS.  Applied by `kittymacs-platform-apply' after `private.el'."
   "Send deleted files to the Trash by the best available means.
 Return the means chosen: `native' when this Emacs moves files to the Trash
 itself, `trash-command' for the `trash' tool, or `directory' for ~/.Trash."
-  (setq delete-by-moving-to-trash t)
+  (setopt delete-by-moving-to-trash t)
   (cond ((fboundp 'system-move-file-to-trash) 'native)
         ((executable-find "trash")
-         (setq trash-directory nil)
+         (setopt trash-directory nil)
          (defalias 'system-move-file-to-trash #'kittymacs--macos-trash)
          'trash-command)
-        (t (setq trash-directory "~/.Trash")
+        (t (setopt trash-directory "~/.Trash")
            'directory)))
 
 (defun kittymacs-delete-frame-or-quit ()
@@ -181,7 +158,7 @@ itself, `trash-command' for the `trash' tool, or `directory' for ~/.Trash."
   "Apply the macOS policy: modifiers, Trash, locale, Keychain, keys, title bar."
   (pcase-dolist (`(,variable . ,modifier) kittymacs-macos-modifiers)
     (set variable modifier))
-  (setq ns-use-native-fullscreen nil)
+  (setopt ns-use-native-fullscreen nil)
   (unless (getenv "LANG")
     (setenv "LANG" "en_US.UTF-8"))
   (kittymacs--macos-configure-trash)
@@ -248,7 +225,7 @@ to nil to leave the input method alone."
     (setenv "LD_LIBRARY_PATH" nil))
   (unless (getenv "LANG")
     (setenv "LANG" "en_US.UTF-8"))
-  (setq android-pass-multimedia-buttons-to-system kittymacs-android-volume-keys)
+  (setopt android-pass-multimedia-buttons-to-system kittymacs-android-volume-keys)
   (add-hook 'meow-insert-exit-hook #'kittymacs-android-suspend-text-conversion)
   (add-hook 'meow-insert-enter-hook #'kittymacs-android-resume-text-conversion))
 (defun kittymacs-reveal-in-file-manager (&optional file)

@@ -114,18 +114,20 @@ keeps Emacs responsive when a file has enormous lines.
 
 * Text and indentation
 
-Spaces, not tabs, four columns wide, and lines wrapped at eighty. =TAB=
+Spaces, not tabs, four columns wide, and lines wrapped at eighty. The first
+three are /buffer-local/ options: every buffer can have its own value, and
+=setopt= sets the default that each new buffer starts with. =TAB=
 indents and, if the line is already indented, completes. Sentences end with
 one space. UTF-8 everywhere. =subword-mode= lets word commands stop inside
 =CamelCase=, and =visual-line-mode= wraps long lines at the window edge
 instead of scrolling sideways.
 
 #+begin_src emacs-lisp
-(setq-default indent-tabs-mode nil
-              tab-width 4
-              fill-column 80
-              tab-always-indent 'complete)
-(setopt completion-cycle-threshold 3
+(setopt indent-tabs-mode nil
+        tab-width 4
+        fill-column 80
+        tab-always-indent 'complete
+        completion-cycle-threshold 3
         sentence-end-double-space nil
         global-mark-ring-max 8
         mark-ring-max 8)
@@ -200,7 +202,7 @@ right click opens a context menu.
       (fundamental-mode)
     (let ((buffer-file-name (buffer-name)))
       (set-auto-mode))))
-(setq-default major-mode #'kittymacs-guess-major-mode)
+(setopt major-mode #'kittymacs-guess-major-mode)
 
 #+end_src
 

@@ -76,8 +76,8 @@ Use t for a terminal configured with a Nerd Font, or nil to disable icons."
         (set-fontset-font t 'symbol symbols nil))
       (kittymacs--apply-icon-font))))
 
-(setq-default line-spacing 0.1)
-(setopt text-scale-mode-step 1.08)
+(setopt line-spacing 0.1
+        text-scale-mode-step 1.08)
 
 (use-package nerd-icons
   :ensure t
