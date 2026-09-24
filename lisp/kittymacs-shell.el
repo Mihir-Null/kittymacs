@@ -11,8 +11,7 @@
 (declare-function consult-history "consult" (&optional history))
 
 (setopt comint-pager "cat")
-(setopt kill-buffer-query-functions
-        (delq #'process-kill-buffer-query-function kill-buffer-query-functions))
+(remove-hook 'kill-buffer-query-functions #'process-kill-buffer-query-function)
 (use-package exec-path-from-shell
   :ensure t
   :if (not (memq system-type '(windows-nt android)))

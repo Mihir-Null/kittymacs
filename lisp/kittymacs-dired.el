@@ -33,9 +33,11 @@
                 "-lahv --group-directories-first"
               "-lah"))))
 
-(with-eval-after-load 'dired
-  (keymap-set dired-mode-map "h" #'dired-up-directory)
-  (keymap-set dired-mode-map "l" #'dired-find-file))
+(use-package dired
+  :ensure nil
+  :bind (:map dired-mode-map
+         ("h" . dired-up-directory)
+         ("l" . dired-find-file)))
 (use-package diredfl
   :ensure t
   :hook (dired-mode . diredfl-mode))

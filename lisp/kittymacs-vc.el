@@ -25,8 +25,8 @@
         diff-font-lock-syntax 'hunk-also
         ediff-window-setup-function #'ediff-setup-windows-plain)
 
-;; Read once, when smerge-mode.el builds `smerge-mode-map'.
-(setopt smerge-command-prefix (kbd "C-c v"))
+(with-eval-after-load 'smerge-mode
+  (keymap-set smerge-mode-map "C-c v" smerge-basic-map))
 (defun kittymacs-magit-display-buffer (buffer)
   "Show Magit BUFFER in a frame under frames-only mode, otherwise traditionally."
   (if (and (bound-and-true-p frames-only-mode) (display-graphic-p))

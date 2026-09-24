@@ -27,6 +27,10 @@ those shells, and only them, to set =PAGER=cat= for the programs they start;
 Eshell honours the same option. A real terminal from [[file:34-terminal.org][the terminal chapter]]
 keeps your usual pager, because there =less= works as it does anywhere else.
 
+Killing a buffer whose process is still running normally asks first. For a
+shell that question is noise, since ending the process is why you are killing
+the buffer, so the function that asks is taken off =kill-buffer-query-functions=.
+
 #+begin_src emacs-lisp
 ;;; kittymacs-shell.el --- Eshell and Tramp -*- lexical-binding: t; -*-
 ;; Generated from literate/35-shells.org; edit the Org source, then tangle.
@@ -41,8 +45,7 @@ keeps your usual pager, because there =less= works as it does anywhere else.
 (declare-function consult-history "consult" (&optional history))
 
 (setopt comint-pager "cat")
-(setopt kill-buffer-query-functions
-        (delq #'process-kill-buffer-query-function kill-buffer-query-functions))
+(remove-hook 'kill-buffer-query-functions #'process-kill-buffer-query-function)
 
 #+end_src
 

@@ -19,9 +19,10 @@ word, and commit messages get wrapped at eighty columns.
 When a merge leaves conflict markers in a file, =smerge-mode= offers to keep
 one side or the other; its commands live under =C-c v= here rather than the
 default =C-c ^= (=C-c v n= next conflict, =C-c v u= keep upper, =C-c v l= keep
-lower). smerge reads =smerge-command-prefix= only once, when it builds its
-keymap as the library loads, so the prefix is set here, before that happens;
-setting it afterwards would change the variable and not the keys.
+lower). All of them are in =smerge-basic-map=, which =smerge-mode-map= puts
+under =C-c ^=; binding the same map under =C-c v= as well makes the shorter
+prefix work without changing anything else. =C-c ^= keeps working, as the
+Emacs manual describes.
 
 #+begin_src emacs-lisp
 ;;; kittymacs-vc.el --- Magit and version control -*- lexical-binding: t; -*-
@@ -51,8 +52,8 @@ setting it afterwards would change the variable and not the keys.
         diff-font-lock-syntax 'hunk-also
         ediff-window-setup-function #'ediff-setup-windows-plain)
 
-;; Read once, when smerge-mode.el builds `smerge-mode-map'.
-(setopt smerge-command-prefix (kbd "C-c v"))
+(with-eval-after-load 'smerge-mode
+  (keymap-set smerge-mode-map "C-c v" smerge-basic-map))
 
 #+end_src
 
