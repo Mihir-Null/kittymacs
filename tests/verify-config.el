@@ -63,15 +63,17 @@ Group maps are walked too.  Autoloaded commands count as commands."
   ;; Emacs 31 warns about a Lisp file without this cookie.
   (insert ";;; -*- lexical-binding: t; -*-\n"
           "(setq kittymacs-verify-custom-loaded t)\n"
-          ;; The completion chapter sets this to 100; Customize must win.
-          "(custom-set-variables '(corfu-max-width 80))\n"))
+          ;; The completion chapter sets this to 25 (Corfu's default is 15);
+          ;; Customize must win.
+          "(custom-set-variables '(corfu-min-width 20))\n"))
 (with-temp-file (expand-file-name "lisp/private.el" user-emacs-directory)
   (insert ";;; -*- lexical-binding: t; -*-\n"
           "(unless (boundp 'kittymacs-project-directory) (error \"Private loaded before platform\"))\n"
           "(setq kittymacs-verify-private-loads (1+ (if (boundp 'kittymacs-verify-private-loads) kittymacs-verify-private-loads 0)))\n"
           "(setopt kittymacs-project-directory (expand-file-name \"test-projects/\" user-emacs-directory))\n"
-          ;; The completion chapter sets this to 10; the late override must win.
-          "(add-hook 'after-init-hook (lambda () (setopt corfu-count 7)) 90)\n"))
+          ;; The completion chapter sets this to 5 (Corfu's default is 2);
+          ;; the late override must win.
+          "(add-hook 'after-init-hook (lambda () (setopt corfu-scroll-margin 3)) 90)\n"))
 (with-temp-buffer
   (insert "(setq kittymacs-org-roam-directory (expand-file-name \"test-roam/\" user-emacs-directory) kittymacs-org-roam-excluded-directories '(\"test-excluded\"))\n")
   (append-to-file (point-min) (point-max) (expand-file-name "lisp/private.el" user-emacs-directory)))
@@ -104,9 +106,9 @@ Group maps are walked too.  Autoloaded commands count as commands."
                        "Persistent Customize file was not loaded")
       (kittymacs-verify-check (string-suffix-p "var/etc/custom.el" custom-file)
                        "Customize file is not in persistent state")
-      (kittymacs-verify-check (eql corfu-max-width 80)
+      (kittymacs-verify-check (eql corfu-min-width 20)
                        "A chapter overwrote a value saved by Customize")
-      (kittymacs-verify-check (eql corfu-count 7)
+      (kittymacs-verify-check (eql corfu-scroll-margin 3)
                        "A chapter overwrote a private.el after-init-hook override")
       ;; Every generated module must have loaded: the list is the modules on disk.
       (dolist (file (directory-files (expand-file-name "lisp" kittymacs-verify-source)
