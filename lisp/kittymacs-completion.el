@@ -6,6 +6,12 @@
 ;;; Code:
 
 (require 'kittymacs-defaults)
+(defun kittymacs-vertico-directories-first (files)
+  "Sort FILES by history, length and name, then put directories first."
+  (let ((sorted (vertico-sort-history-length-alpha files)))
+    (nconc (seq-filter (lambda (file) (string-suffix-p "/" file)) sorted)
+           (seq-remove (lambda (file) (string-suffix-p "/" file)) sorted))))
+
 (use-package vertico
   :ensure t
   :demand t
@@ -15,14 +21,10 @@
   :custom
   (vertico-cycle t)
   (vertico-resize nil)
+  (vertico-multiform-categories
+   '((file (vertico-sort-function . kittymacs-vertico-directories-first))))
   :config
   (vertico-mode 1)
-  (defun kittymacs-vertico-directories-first (files)
-    "Sort FILES by history, length and name, then put directories first."
-    (let ((sorted (vertico-sort-history-length-alpha files)))
-      (nconc (seq-filter (lambda (file) (string-suffix-p "/" file)) sorted)
-             (seq-remove (lambda (file) (string-suffix-p "/" file)) sorted))))
-  (setopt vertico-multiform-categories '((file (vertico-sort-function . kittymacs-vertico-directories-first))))
   (vertico-multiform-mode 1))
 
 (use-package vertico-directory
@@ -117,6 +119,37 @@
          :map vertico-map
          ("C-x C-d" . consult-dir)
          ("C-x C-j" . consult-dir-jump-file)))
+;; Embark's variable, bound dynamically below even before Embark has loaded.
+(defvar embark-indicators)
+
+(defun kittymacs-embark-which-key-indicator ()
+  "Show Embark's action keymap with which-key."
+  (lambda (&optional keymap targets _prefix)
+    (if (null keymap)
+        (which-key-hide-popup)
+      (which-key-show-keymap
+       (if (eq (plist-get (car targets) :type) 'embark-become)
+           "Become"
+         (format "Act on %s '%s'%s"
+                 (plist-get (car targets) :type)
+                 (embark--truncate-target (plist-get (car targets) :target))
+                 (if (cdr targets) "..." "")))))))
+
+(defun kittymacs--embark-hide-which-key (function &rest args)
+  "Hide the which-key popup before the completing-read prompter takes over."
+  (which-key-hide-popup)
+  (let ((embark-indicators (remq #'kittymacs-embark-which-key-indicator embark-indicators)))
+    (apply function args)))
+
+(defun kittymacs-embark-dired-here (file)
+  "Open Dired in FILE's directory."
+  (dired (file-name-directory file)))
+
+(defun kittymacs-embark-ripgrep-here (file)
+  "Run ripgrep in FILE's directory."
+  (let ((default-directory (file-name-directory file)))
+    (consult-ripgrep)))
+
 (use-package embark
   :ensure t
   :bind (("C-." . embark-act)
@@ -130,39 +163,15 @@
   :custom
   (prefix-help-command #'embark-prefix-help-command)
   (embark-prompter #'embark-keymap-prompter)
+  (embark-indicators '(kittymacs-embark-which-key-indicator
+                       embark-highlight-indicator
+                       embark-isearch-highlight-indicator))
   :config
-  (defun kittymacs-embark-which-key-indicator ()
-    "Show Embark's action keymap with which-key."
-    (lambda (&optional keymap targets prefix)
-      (if (null keymap)
-          (which-key-hide-popup)
-        (which-key-show-keymap
-         (if (eq (plist-get (car targets) :type) 'embark-become)
-             "Become"
-           (format "Act on %s '%s'%s"
-                   (plist-get (car targets) :type)
-                   (embark--truncate-target (plist-get (car targets) :target))
-                   (if (cdr targets) "..." "")))))))
-  (setopt embark-indicators '(kittymacs-embark-which-key-indicator
-                              embark-highlight-indicator
-                              embark-isearch-highlight-indicator))
-  (defun kittymacs--embark-hide-which-key (function &rest args)
-    "Hide the which-key popup before the completing-read prompter takes over."
-    (which-key-hide-popup)
-    (let ((embark-indicators (remq #'kittymacs-embark-which-key-indicator embark-indicators)))
-      (apply function args)))
   (advice-add #'embark-completing-read-prompter :around #'kittymacs--embark-hide-which-key)
   (add-to-list 'display-buffer-alist
                '("\\`\\*Embark Collect \\(Live\\|Completions\\)\\*"
                  nil
                  (window-parameters (mode-line-format . none))))
-  (defun kittymacs-embark-dired-here (file)
-    "Open Dired in FILE's directory."
-    (dired (file-name-directory file)))
-  (defun kittymacs-embark-ripgrep-here (file)
-    "Run ripgrep in FILE's directory."
-    (let ((default-directory (file-name-directory file)))
-      (consult-ripgrep)))
   (keymap-set embark-file-map "x" #'embark-open-externally)
   (keymap-set embark-file-map "D" #'kittymacs-embark-dired-here)
   (keymap-set embark-file-map "g" #'kittymacs-embark-ripgrep-here)
@@ -172,6 +181,18 @@
   :ensure t
   :after (embark consult)
   :hook (embark-collect-mode . consult-preview-at-point-mode))
+(defun kittymacs--corfu-in-minibuffer ()
+  "Enable Corfu in minibuffers that offer completion at point, such as M-:."
+  (when (where-is-internal #'completion-at-point (list (current-local-map)))
+    (corfu-mode 1)))
+
+(defun kittymacs--corfu-in-shells ()
+  "In Eshell, complete only on request, like an ordinary shell."
+  (setq-local corfu-auto nil
+              corfu-quit-no-match t
+              corfu-quit-at-boundary t)
+  (corfu-mode 1))
+
 (use-package corfu
   :ensure t
   :demand t
@@ -201,17 +222,7 @@
   (global-corfu-mode 1)
   (corfu-history-mode 1)
   (corfu-popupinfo-mode 1)
-  (defun kittymacs--corfu-in-minibuffer ()
-    "Enable Corfu in minibuffers that offer completion at point, such as M-:."
-    (when (where-is-internal #'completion-at-point (list (current-local-map)))
-      (corfu-mode 1)))
   (add-hook 'minibuffer-setup-hook #'kittymacs--corfu-in-minibuffer)
-  (defun kittymacs--corfu-in-shells ()
-    "In Eshell, complete only on request, like an ordinary shell."
-    (setq-local corfu-auto nil
-                corfu-quit-no-match t
-                corfu-quit-at-boundary t)
-    (corfu-mode 1))
   (add-hook 'eshell-mode-hook #'kittymacs--corfu-in-shells))
 
 (keymap-global-set "M-/" #'dabbrev-completion)
@@ -236,6 +247,10 @@
 (defvar kittymacs-snippets-dir (expand-file-name "snippets/" kittymacs-etc-dir)
   "Directory of personal snippets, one subdirectory per major mode.")
 
+(defun kittymacs--yas-not-in-org-src ()
+  "Do not expand snippets inside Org source blocks."
+  (setq-local yas-buffer-local-condition '(not (org-in-src-block-p t))))
+
 (use-package yasnippet
   :ensure t
   :defer 1
@@ -245,9 +260,6 @@
   (yas-snippet-dirs (list kittymacs-snippets-dir))
   :config
   (make-directory kittymacs-snippets-dir t)
-  (defun kittymacs--yas-not-in-org-src ()
-    "Do not expand snippets inside Org source blocks."
-    (setq-local yas-buffer-local-condition '(not (org-in-src-block-p t))))
   (add-hook 'org-mode-hook #'kittymacs--yas-not-in-org-src)
   (with-eval-after-load 'warnings
     (push '(yasnippet backquote-change) warning-suppress-types))

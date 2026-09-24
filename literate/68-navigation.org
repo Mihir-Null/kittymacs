@@ -165,6 +165,30 @@ is a narrow key away. A new tab starts on the scratch buffer.
           ((= (length tabs) 1) (tab-next))
           (t (tab-bar-switch-to-tab (completing-read "Select tab: " tabs nil t))))))
 
+(defvar kittymacs-consult-source-workspace
+  (list :name "Workspace Buffers"
+        :narrow ?w
+        :history 'buffer-name-history
+        :category 'buffer
+        :state #'consult--buffer-state
+        :default t
+        :items (lambda () (consult--buffer-query
+                           :predicate #'tabspaces--local-buffer-p
+                           :sort 'visibility
+                           :as #'buffer-name)))
+  "Consult source listing only this workspace's buffers.")
+
+(defun kittymacs--consult-tabspaces ()
+  "Show workspace buffers first while tabspaces is on."
+  (if tabspaces-mode
+      (progn
+        (plist-put consult-source-buffer :hidden t)
+        (plist-put consult-source-buffer :default nil)
+        (add-to-list 'consult-buffer-sources 'kittymacs-consult-source-workspace))
+    (plist-put consult-source-buffer :hidden nil)
+    (plist-put consult-source-buffer :default t)
+    (setq consult-buffer-sources (remove 'kittymacs-consult-source-workspace consult-buffer-sources))))
+
 (use-package tabspaces
   :ensure t
   :demand t
@@ -172,32 +196,10 @@ is a narrow key away. A new tab starts on the scratch buffer.
   (tabspaces-use-filtered-buffers-as-default t)
   (tabspaces-default-tab "Home")
   :config
+  (tabspaces-mode 1)
   (with-eval-after-load 'consult
-    (defvar kittymacs-consult-source-workspace
-      (list :name "Workspace Buffers"
-            :narrow ?w
-            :history 'buffer-name-history
-            :category 'buffer
-            :state #'consult--buffer-state
-            :default t
-            :items (lambda () (consult--buffer-query
-                               :predicate #'tabspaces--local-buffer-p
-                               :sort 'visibility
-                               :as #'buffer-name)))
-      "Consult source listing only this workspace's buffers.")
-    (defun kittymacs--consult-tabspaces ()
-      "Show workspace buffers first while tabspaces is on."
-      (if tabspaces-mode
-          (progn
-            (plist-put consult-source-buffer :hidden t)
-            (plist-put consult-source-buffer :default nil)
-            (add-to-list 'consult-buffer-sources 'kittymacs-consult-source-workspace))
-        (plist-put consult-source-buffer :hidden nil)
-        (plist-put consult-source-buffer :default t)
-        (setq consult-buffer-sources (remove 'kittymacs-consult-source-workspace consult-buffer-sources))))
     (add-hook 'tabspaces-mode-hook #'kittymacs--consult-tabspaces)
-    (kittymacs--consult-tabspaces))
-  (tabspaces-mode 1))
+    (kittymacs--consult-tabspaces)))
 
 (provide 'kittymacs-navigation)
 ;;; kittymacs-navigation.el ends here

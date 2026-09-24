@@ -30,15 +30,16 @@
          ("C-{" . puni-barf-backward)
          ("C-}" . puni-barf-forward)))
 
+(defun kittymacs--embrace-markdown ()
+  "Markdown pairs for Embrace."
+  (dolist (pair '((?* "*" . "*") (?_ "_" . "_") (?` "`" . "`") (?$ "$" . "$")))
+    (embrace-add-pair (car pair) (cadr pair) (cddr pair))))
+
 (use-package embrace
   :ensure t
   :commands (embrace-commander embrace-add embrace-change embrace-delete)
   :hook (org-mode . embrace-org-mode-hook)
   :config
-  (defun kittymacs--embrace-markdown ()
-    "Markdown pairs for Embrace."
-    (dolist (pair '((?* "*" . "*") (?_ "_" . "_") (?` "`" . "`") (?$ "$" . "$")))
-      (embrace-add-pair (car pair) (cadr pair) (cddr pair))))
   (add-hook 'markdown-mode-hook #'kittymacs--embrace-markdown))
 
 (use-package iedit
