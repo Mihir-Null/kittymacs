@@ -1,8 +1,11 @@
 ;;; tangle.el --- Build kittymacs from Org without loading the config -*- lexical-binding: t; -*-
 ;; Run from any directory: emacs -Q --batch -l /path/to/tools/tangle.el -- --check
 ;; Replace --check with --write to regenerate the deployed Lisp files.
+;;
+;; The chapters are the files in literate/ whose names start with two digits
+;; and a dash (10-startup.org); the outputs are whatever their :tangle headers
+;; name.  There is no list to keep in step: adding a chapter file is enough.
 (require 'cl-lib)
-(require 'json)
 (require 'org)
 (require 'ob-tangle)
 
@@ -10,56 +13,62 @@
   (file-name-directory (directory-file-name (file-name-directory load-file-name))))
 (defvar kittymacs-tangle-library-only nil)
 
+(defconst kittymacs-tangle-chapter-regexp "\\`[0-9][0-9]-.*\\.org\\'"
+  "Names of the chapter files in literate/; index.org and the rest are prose only.")
+
 (defun kittymacs-tangle--read (file)
   "Read FILE as text with normalized line endings."
   (with-temp-buffer
     (insert-file-contents file)
     (buffer-string)))
 
-(defun kittymacs-tangle--manifest (root)
-  "Read and validate the explicit source/output manifest under ROOT."
-  (let ((manifest
-         (with-temp-buffer
-           (insert-file-contents (expand-file-name "literate/manifest.json" root))
-           (json-parse-buffer :object-type 'alist :array-type 'list))))
-    (dolist (source (alist-get 'sources manifest))
-      (unless (and (stringp source)
-                   (equal source (file-name-nondirectory source))
-                   (string-suffix-p ".org" source))
-        (error "Invalid literate source: %S" source)))
-    (let ((outputs (alist-get 'outputs manifest)))
-      (unless (= (length outputs) (length (delete-dups (copy-sequence outputs))))
-        (error "Duplicate tangled output"))
-      (dolist (output outputs)
-        (unless (and (stringp output)
-                     (not (file-name-absolute-p output))
-                     (not (member ".." (split-string output "/")))
-                     (or (member output '("early-init.el" "init.el"))
-                         (and (string-match-p
-                               "\\`lisp/[[:alnum:]_.-]+\\.el\\'" output)
-                              (not (string-suffix-p "/private.el" output)))))
-          (error "Output is outside generated configuration paths: %S" output))))
-    manifest))
+(defun kittymacs-tangle--output-p (output)
+  "Return non-nil when OUTPUT, relative to the root, may be generated.
+Only early-init.el, init.el and files directly in lisp/ qualify, and never
+lisp/private.el, which belongs to the user."
+  (and (not (file-name-absolute-p output))
+       (not (member ".." (split-string output "/")))
+       (or (member output '("early-init.el" "init.el"))
+           (and (string-match-p "\\`lisp/[[:alnum:]_.-]+\\.el\\'" output)
+                (not (equal output "lisp/private.el"))))))
 
-(defun kittymacs-tangle--validate-org (file outputs)
-  "Check that FILE tangles only Emacs Lisp to declared OUTPUTS."
-  (with-current-buffer (find-file-noselect file)
-    (org-babel-map-src-blocks nil
-      (let* ((info (org-babel-get-src-block-info 'light))
-             (target (cdr (assq :tangle (nth 2 info)))))
-        (unless (or (null target) (equal target "no"))
-          (unless (and (equal (car info) "emacs-lisp")
-                       (stringp target)
-                       (member target (mapcar (lambda (p) (concat "../" p)) outputs)))
-            (error "Undeclared tangle target in %s: %S" file target)))))))
+(defun kittymacs-tangle--outputs (file)
+  "Return the outputs chapter FILE tangles to, relative to the root.
+Every tangled block must be Emacs Lisp and name a target with `../' in
+front of an allowed output, since chapters live one level down in literate/."
+  (let (outputs)
+    (with-current-buffer (find-file-noselect file)
+      (org-babel-map-src-blocks nil
+        (let* ((info (org-babel-get-src-block-info 'light))
+               (target (cdr (assq :tangle (nth 2 info))))
+               (output (and (stringp target)
+                            (string-prefix-p "../" target)
+                            (substring target 3))))
+          (unless (or (null target) (equal target "no"))
+            (unless (and (equal (car info) "emacs-lisp")
+                         output
+                         (kittymacs-tangle--output-p output))
+              (error "Tangle target outside the generated configuration in %s: %S"
+                     (file-name-nondirectory file) target))
+            (cl-pushnew output outputs :test #'equal)))))
+    outputs))
+
+(defun kittymacs-tangle--orphans (root outputs)
+  "Return the lisp/kittymacs-*.el files under ROOT that no chapter generates.
+They are left over from a chapter that was deleted or retargeted, and
+startup would still load them."
+  (let ((lisp (expand-file-name "lisp" root)))
+    (when (file-directory-p lisp)
+      (seq-remove (lambda (file) (member file outputs))
+                  (mapcar (lambda (name) (concat "lisp/" name))
+                          (directory-files lisp nil "\\`kittymacs-.*\\.el\\'"))))))
 
 (defun kittymacs-tangle-build (root &optional write)
   "Tangle ROOT in temporary storage; check outputs or WRITE changed files.
 No personal startup, package installation, or source-block evaluation is run."
   (let* ((root (file-name-as-directory (expand-file-name root)))
-         (manifest (kittymacs-tangle--manifest root))
-         (sources (alist-get 'sources manifest))
-         (outputs (alist-get 'outputs manifest))
+         (sources (directory-files (expand-file-name "literate" root) nil
+                                   kittymacs-tangle-chapter-regexp))
          (stage (make-temp-file "kittymacs-tangle-" t))
          ;; Chapters and outputs are UTF-8 with LF line endings on every
          ;; platform; never let the host locale guess and double-encode.
@@ -71,23 +80,24 @@ No personal startup, package installation, or source-block evaluation is run."
          (enable-local-eval nil)
          (org-babel-pre-tangle-hook nil)
          (org-babel-post-tangle-hook nil)
-         generated changed)
+         outputs changed)
     (unwind-protect
         (progn
           (make-directory (expand-file-name "literate" stage))
+          ;; Read every chapter's targets before tangling any of them.
           (dolist (source sources)
             (let ((copy (expand-file-name (concat "literate/" source) stage)))
               (copy-file (expand-file-name (concat "literate/" source) root) copy)
-              (kittymacs-tangle--validate-org copy outputs)
-              (setq generated (append (org-babel-tangle-file copy) generated))))
-          (unless (= (length generated)
-                     (length (delete-dups (copy-sequence generated))))
-            (error "An output is tangled by more than one chapter"))
-          (unless (equal (sort (delete-dups
-                               (mapcar (lambda (p) (file-relative-name p stage)) generated))
-                              #'string<)
-                         (sort (copy-sequence outputs) #'string<))
-            (error "Tangled file set differs from literate/manifest.json"))
+              (dolist (output (kittymacs-tangle--outputs copy))
+                (when (member output outputs)
+                  (error "%s is tangled by more than one chapter" output))
+                (push output outputs))))
+          (setq outputs (sort outputs #'string<))
+          (when-let* ((orphans (kittymacs-tangle--orphans root outputs)))
+            (error "No chapter generates %s; delete it or restore its chapter"
+                   (mapconcat #'identity orphans ", ")))
+          (dolist (source sources)
+            (org-babel-tangle-file (expand-file-name (concat "literate/" source) stage)))
           ;; Validate every result before touching any deployed file.
           (dolist (output outputs)
             (let ((file (expand-file-name output stage)))

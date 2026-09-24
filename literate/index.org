@@ -101,19 +101,26 @@ read, and why a package option in =private.el= goes in a hook.
 * Add a chapter
 
 1. Create =literate/NN-name.org= with the header of any existing chapter,
-   changing the =:tangle= target to =../lisp/kittymacs-name.el=.
-2. Register the source and the output in [[file:manifest.json][manifest.json]].
-3. Add =(require 'kittymacs-name)= to =init.el= in the [[file:10-startup.org][startup chapter]] where
+   changing the =:tangle= target to =../lisp/kittymacs-name.el=. The two
+   digits and the dash matter: the builder treats every file named that way
+   as a chapter and reads its outputs from the =:tangle= headers, so there
+   is no list to register the chapter in.
+2. Add =(require 'kittymacs-name)= to =init.el= in the [[file:10-startup.org][startup chapter]] where
    it belongs in the order.
-4. Give the package a Meow section: which state its buffers start in, and a
+3. Give the package a Meow section: which state its buffers start in, and a
    =kittymacs-define-localleader= form for its =SPC m= menu.
+
+The builder also refuses to run when =lisp/= holds a =kittymacs-*.el= that
+no chapter produces, because startup would go on loading a module whose
+source is gone. After renaming or deleting a chapter, delete its old
+generated file too.
 
 * Where things are on disk
 
 #+begin_example
 .emacs.d/
   early-init.el, init.el   generated from literate/10-startup.org
-  literate/                these chapters and manifest.json
+  literate/                these chapters
   lisp/                    generated modules, the cheat sheet, themes/, private.el
   tests/                   tangle tests, startup verifier, leader tests, frame tests
   tools/tangle.el          the builder
