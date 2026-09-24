@@ -124,10 +124,17 @@ checks Emacs Lisp packages, and =flymake-collection= adds checkers for
 common tools. Problems show in the left fringe and in the mode line;
 =SPC F= lists them.
 
+Flymake's own commands carry no autoload cookie, so until some buffer has
+switched =flymake-mode= on, =flymake-start= and its neighbours are not
+defined and the =SPC F= keys would fail. =:commands= declares them as
+autoloads, which makes each key load Flymake the first time it is pressed.
+
 #+begin_src emacs-lisp
 (use-package flymake
   :ensure nil
   :hook (prog-mode . flymake-mode)
+  :commands (flymake-start flymake-goto-next-error flymake-goto-prev-error
+             flymake-show-buffer-diagnostics flymake-show-project-diagnostics)
   :custom
   (flymake-fringe-indicator-position 'left-fringe)
   (flymake-suppress-zero-counters t)

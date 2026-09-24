@@ -72,6 +72,8 @@ The package cannot derive its faces without a display."
 (use-package flymake
   :ensure nil
   :hook (prog-mode . flymake-mode)
+  :commands (flymake-start flymake-goto-next-error flymake-goto-prev-error
+             flymake-show-buffer-diagnostics flymake-show-project-diagnostics)
   :custom
   (flymake-fringe-indicator-position 'left-fringe)
   (flymake-suppress-zero-counters t)

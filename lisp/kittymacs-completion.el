@@ -256,6 +256,9 @@
 (use-package yasnippet
   :ensure t
   :defer 1
+  ;; No autoload cookies upstream: declare the two commands SPC i binds, so
+  ;; they work in the second before the deferred load has happened.
+  :commands (yas-insert-snippet yas-new-snippet)
   :bind (:map yas-minor-mode-map
          ("C-'" . yas-expand))
   :custom

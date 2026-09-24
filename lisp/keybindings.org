@@ -87,7 +87,7 @@ Press =SPC=, then:
 |---------+--------------------------------+--------------------------------|
 | SPC SPC | Run a command by name          | execute-extended-command       |
 | SPC /   | Describe the leader here       | kittymacs-describe-leader        |
-| SPC ?   | Search commands by description | consult-apropos                |
+| SPC ?   | Search commands by name        | apropos-command                |
 | SPC f f | Open a file                    | find-file                      |
 | SPC f s | Save                           | save-buffer                    |
 | SPC f r | Recent files                   | consult-recent-file            |
