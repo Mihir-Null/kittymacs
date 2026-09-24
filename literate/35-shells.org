@@ -19,6 +19,14 @@ cannot do is draw a full-screen program, so it hands those to [[file:34-terminal
 =htop=, =less= and =git log= open there and behave. Tramp opens files on remote
 machines over SSH as if they were local.
 
+Programs such as =git log= and =man= send long output through a /pager/ like
+=less=, which waits for keys and redraws the screen. In Eshell or =M-x shell=
+the output lands in an ordinary Emacs buffer that you can already scroll and
+search, so the pager only gets in the way. Emacs 30's =comint-pager= tells
+those shells, and only them, to set =PAGER=cat= for the programs they start;
+Eshell honours the same option. A real terminal from [[file:34-terminal.org][the terminal chapter]]
+keeps your usual pager, because there =less= works as it does anywhere else.
+
 #+begin_src emacs-lisp
 ;;; kittymacs-shell.el --- Eshell and Tramp -*- lexical-binding: t; -*-
 ;; Generated from literate/35-shells.org; edit the Org source, then tangle.
@@ -32,7 +40,7 @@ machines over SSH as if they were local.
 
 (declare-function consult-history "consult" (&optional history))
 
-(setenv "PAGER" "cat")
+(setopt comint-pager "cat")
 (setopt kill-buffer-query-functions
         (delq #'process-kill-buffer-query-function kill-buffer-query-functions))
 

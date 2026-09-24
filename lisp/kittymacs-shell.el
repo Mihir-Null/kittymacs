@@ -10,7 +10,7 @@
 
 (declare-function consult-history "consult" (&optional history))
 
-(setenv "PAGER" "cat")
+(setopt comint-pager "cat")
 (setopt kill-buffer-query-functions
         (delq #'process-kill-buffer-query-function kill-buffer-query-functions))
 (use-package exec-path-from-shell
