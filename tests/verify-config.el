@@ -4,6 +4,7 @@
 ;; No packages are installed, refreshed or upgraded by this check.
 (require 'cl-lib)
 (require 'package)
+(require 'warnings)
 (require 'package-vc)
 (defvar dots-test-source
   (file-name-directory (directory-file-name (file-name-directory load-file-name))))
@@ -11,6 +12,34 @@
 (defvar dots-test-failures nil)
 (defun dots-test-check (predicate description)
   (unless predicate (push description dots-test-failures)))
+(defvar dots-test-warnings nil
+  "Warnings displayed while the configuration starts.")
+(defun dots-test-record-warning (type message &optional level &rest _)
+  "Remember a startup warning of TYPE with MESSAGE at LEVEL.
+Types the configuration deliberately silences are left out."
+  (unless (or (eq level :debug)
+              (warning-suppress-p type warning-suppress-types))
+    (push (format "%S: %s" type message) dots-test-warnings)))
+(defun dots-test-uncallable-bindings (map prefix)
+  "Return the keys under PREFIX in MAP whose binding is not a command.
+Group maps are walked too.  Autoloaded commands count as commands."
+  (let (uncallable)
+    (map-keymap
+     (lambda (event binding)
+       (let ((key (vconcat prefix (vector event)))
+             (definition (pcase binding
+                           (`(menu-item ,_ ,definition . ,_) definition)
+                           (`(,(pred stringp) . ,definition) definition)
+                           (_ binding))))
+         (cond ((keymapp definition)
+                (setq uncallable
+                      (nconc uncallable
+                             (dots-test-uncallable-bindings definition key))))
+               ((and definition (not (commandp definition)))
+                (push (format "%s -> %S" (key-description key) definition)
+                      uncallable)))))
+     map)
+    uncallable))
 (defun dots-test-block-install (&rest args)
   (push (format "Unexpected package installation: %S" args) dots-test-failures)
   (error "Package installation disabled during verification"))
@@ -54,11 +83,15 @@
       ;; the time this file runs, so `after-init-time' is set; clear it so
       ;; code that asks "has init finished?" gets the answer it would get.
       (setq after-init-time nil)
+      (advice-add 'display-warning :before #'dots-test-record-warning)
       (load (expand-file-name "early-init.el" user-emacs-directory) nil t)
       (load user-init-file nil t)
       (setq after-init-time (current-time))
       (run-hooks 'after-init-hook 'delayed-warnings-hook)
       (run-hooks 'emacs-startup-hook)
+      (advice-remove 'display-warning #'dots-test-record-warning)
+      (dolist (warning (reverse dots-test-warnings))
+        (dots-test-check nil (format "Startup warning: %s" warning)))
       (require 'cus-edit)
       (dots-test-check (= dots-test-private-loads 1) "private.el must load once")
       (dots-test-check (equal kittymacs-project-directory
@@ -72,11 +105,14 @@
                        "A chapter overwrote a value saved by Customize")
       (dots-test-check (eql corfu-count 7)
                        "A chapter overwrote a private.el after-init-hook override")
-      (dolist (feature '(kittymacs-literate kittymacs-dashboard kittymacs-meow
-                        kittymacs-leader kittymacs-keys kittymacs-treesit kittymacs-languages
-                        kittymacs-terminal kittymacs-treemacs kittymacs-org kittymacs-org-roam kittymacs-ui
-                        kittymacs-frames))
-        (dots-test-check (featurep feature) (format "Missing feature %s" feature)))
+      ;; Every generated module must have loaded: the list is the modules on disk.
+      (dolist (file (directory-files (expand-file-name "lisp" dots-test-source)
+                                     nil "\\`kittymacs-.*\\.el\\'"))
+        (let ((feature (intern (file-name-sans-extension file))))
+          (dots-test-check (featurep feature) (format "Missing feature %s" feature))))
+      ;; Every key in the leader tree must run a command, not a void function.
+      (dolist (binding (dots-test-uncallable-bindings kittymacs-leader-map []))
+        (dots-test-check nil (format "SPC %s is not a command" binding)))
       (dots-test-check (equal kittymacs-org-roam-directory
                               (expand-file-name "test-roam/" user-emacs-directory))
                        "Personal graph private override was overwritten")
