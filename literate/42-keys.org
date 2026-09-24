@@ -73,8 +73,8 @@ pause at the top of the frame, and =C-h= inside any prefix shows them at once.
   "a" (cons "ibuffer" #'ibuffer)
   "x" (cons "scratch" #'scratch-buffer)
   "u" (cons "undo tree" #'vundo)
-  "[" (cons "previous" #'kittymacs-previous-user-buffer)
-  "]" (cons "next" #'kittymacs-next-user-buffer))
+  "[" (cons "previous" #'previous-buffer)
+  "]" (cons "next" #'next-buffer))
 
 (defvar-keymap kittymacs-file-map
   :doc "Files."
@@ -413,8 +413,8 @@ sheet and Meow's tutorial. Most entries are the Helpful versions that
 (keymap-set kittymacs-leader-map "d" (cons "directory" #'dired-jump))
 (keymap-set kittymacs-leader-map "x" (cons "scratch" #'scratch-buffer))
 (keymap-set kittymacs-leader-map "k" (cons "kill ring" #'consult-yank-from-kill-ring))
-(keymap-set kittymacs-leader-map "[" (cons "previous buffer" #'kittymacs-previous-user-buffer))
-(keymap-set kittymacs-leader-map "]" (cons "next buffer" #'kittymacs-next-user-buffer))
+(keymap-set kittymacs-leader-map "[" (cons "previous buffer" #'previous-buffer))
+(keymap-set kittymacs-leader-map "]" (cons "next buffer" #'next-buffer))
 (keymap-set kittymacs-leader-map "{" (cons "previous tab" #'tab-bar-switch-to-prev-tab))
 (keymap-set kittymacs-leader-map "}" (cons "next tab" #'tab-bar-switch-to-next-tab))
 (keymap-set kittymacs-leader-map "TAB" (cons "switch tab" #'kittymacs-tab-dwim))

@@ -97,8 +97,8 @@ Press =SPC=, then:
 | SPC b b | Switch buffer                  | consult-buffer                 |
 | SPC b k | Close this buffer              | kill-current-buffer            |
 | SPC b a | List all buffers               | ibuffer                        |
-| SPC [   | Previous buffer                | kittymacs-previous-user-buffer   |
-| SPC ]   | Next buffer                    | kittymacs-next-user-buffer       |
+| SPC [   | Previous buffer                | previous-buffer                  |
+| SPC ]   | Next buffer                    | next-buffer                      |
 | SPC d   | Directory of this file         | dired-jump                     |
 | SPC x   | Scratch buffer                 | scratch-buffer                 |
 | SPC s s | Search lines here              | consult-line                   |

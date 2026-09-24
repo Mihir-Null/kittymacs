@@ -191,28 +191,7 @@
   (setopt server-client-instructions nil)
   (unless (server-running-p)
     (server-start)))
-(defun kittymacs-user-buffer-p (&optional buffer)
-  "Return non-nil when BUFFER is one the user opened, not an internal one."
-  (not (string-match-p "\\`[ *]" (buffer-name buffer))))
-
-(defun kittymacs-next-user-buffer ()
-  "Switch to the next user buffer."
-  (interactive)
-  (next-buffer)
-  (let ((tries 0))
-    (while (and (< tries 20) (not (kittymacs-user-buffer-p)))
-      (next-buffer)
-      (setq tries (1+ tries)))))
-
-(defun kittymacs-previous-user-buffer ()
-  "Switch to the previous user buffer."
-  (interactive)
-  (previous-buffer)
-  (let ((tries 0))
-    (while (and (< tries 20) (not (kittymacs-user-buffer-p)))
-      (previous-buffer)
-      (setq tries (1+ tries)))))
-
+(setopt switch-to-prev-buffer-skip-regexp "\\`[ *]")
 (defun kittymacs-new-buffer (&optional frame)
   "Create an empty buffer; with FRAME (prefix argument), show it in a new frame."
   (interactive "P")
