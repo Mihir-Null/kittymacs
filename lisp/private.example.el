@@ -19,7 +19,7 @@
 ;; Linked notes, read when the Org-roam chapter loads.
 ;; (setopt kittymacs-org-roam-directory (expand-file-name "~/notes/"))
 ;; (setopt kittymacs-org-roam-excluded-directories
-;;         '("legacy" ".git" "secrets" "cache" "caches" ".cache" "var"))
+;;         '(".git" ".cache" "cache" "caches" "archive"))
 ;; For a project, establish buffer-local org-roam-directory and
 ;; org-roam-db-location; compute the latter with kittymacs-org-roam-db-path.
 ;; The database must stay outside the graph. See literate/71-org-roam.org.

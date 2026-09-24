@@ -46,7 +46,7 @@ support; ordinary Org and startup still work without it.
   "Personal graph root.  Prebind with `setq' in private.el."
   :type 'directory :group 'kittymacs-org-roam)
 (defcustom kittymacs-org-roam-excluded-directories
-  '("legacy" ".git" "secrets" "cache" "caches" ".cache" "var")
+  '(".git" ".cache" "cache" "caches")
   "Directory components excluded from graph indexing and capture."
   :type '(repeat string) :group 'kittymacs-org-roam)
 
@@ -426,8 +426,9 @@ project scope, use trusted directory locals with both upstream variables.
 Backlinks remain graph-local: the source database stores the outgoing link,
 not the destination node or its other backlinks. IDs must be globally unique.
 
-The default exclusions cover =legacy/=, =.git/=, =secrets/=, =cache/=,
-=caches/=, =.cache/= and =var/=. Symlinks leading out of the graph are excluded.
+The default exclusions are the folders a personal notes folder usually
+holds but that are not notes: =.git/=, =.cache/=, =cache/= and =caches/=.
+Symlinks leading out of the graph are excluded.
 A read-only checkout can be browsed using its writable external database;
 capture checks the root and resolved target before writing. Safe nested capture
 paths create missing parent directories after validating the nearest existing

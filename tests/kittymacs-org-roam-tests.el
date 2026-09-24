@@ -104,7 +104,7 @@
     (kittymacs-roam-test-note personal "p.org" "p" "Personal")
     (kittymacs-roam-test-note project "a.org" "a" "Alpha" "[[id:b][Beta]] [[id:p][Personal]]")
     (kittymacs-roam-test-note project "b.org" "b" "Beta")
-    (dolist (dir '("legacy" ".git" "secrets" "cache" "caches" "var"))
+    (dolist (dir '(".git" ".cache" "cache" "caches"))
       (kittymacs-roam-test-note project (concat dir "/excluded.org") dir dir))
     (kittymacs-roam-test-symlink (expand-file-name "p.org" personal) (expand-file-name "escape.org" project))
     (kittymacs-org-roam-sync)
@@ -114,6 +114,20 @@
       (should (equal (org-roam-db-query [:select id :from nodes :order-by id]) '(("a") ("b"))))
       (should (equal (org-roam-db-query [:select [source dest] :from links :order-by dest])
                      '(("a" "b") ("a" "p")))))))
+
+(ert-deftest kittymacs-roam-default-exclusions-are-generic ()
+  "The personal graph leaves out Git and cache folders, and nothing else."
+  (should (equal (eval (car (get 'kittymacs-org-roam-excluded-directories 'standard-value)))
+                 '(".git" ".cache" "cache" "caches")))
+  (kittymacs-roam-test
+    (kittymacs-roam-test-note personal "p.org" "p" "Personal")
+    (dolist (dir '(".git" ".cache" "cache" "caches" "deep/cache"))
+      (kittymacs-roam-test-note personal (concat dir "/excluded.org") dir dir))
+    (dolist (dir '("legacy" "secrets" "var" "cached"))
+      (kittymacs-roam-test-note personal (concat dir "/kept.org") dir dir))
+    (kittymacs-org-roam-sync)
+    (should (equal (org-roam-db-query [:select id :from nodes :order-by id])
+                   '(("cached") ("legacy") ("p") ("secrets") ("var"))))))
 
 (ert-deftest kittymacs-roam-project-find-and-insert-require-existing ()
   (kittymacs-roam-test
@@ -250,8 +264,8 @@
 
 (ert-deftest kittymacs-roam-internal-alias-cannot-bypass-exclusions ()
   (kittymacs-roam-test
-    (kittymacs-roam-test-note project "secrets/hidden.org" "secret" "Secret")
-    (kittymacs-roam-test-symlink (expand-file-name "secrets/hidden.org" project)
+    (kittymacs-roam-test-note project "cache/hidden.org" "secret" "Secret")
+    (kittymacs-roam-test-symlink (expand-file-name "cache/hidden.org" project)
                         (expand-file-name "public.org" project))
     (kittymacs-roam-test-project
       (kittymacs-org-roam-sync)
@@ -405,12 +419,12 @@
 (ert-deftest kittymacs-roam-nested-capture-does-not-create-excluded-parents ()
   (kittymacs-roam-test
     (kittymacs-roam-test-project
-      (dolist (target '("secrets/nested/new.org" "../outside/new.org"))
+      (dolist (target '("cache/nested/new.org" "../outside/new.org"))
         (let ((org-roam-capture-templates
                `(("d" "blocked" plain "%?" :target (file+head ,target "#+title: ${title}\n")))))
           (cl-letf (((symbol-function 'completing-read) (lambda (&rest _) "Blocked")))
             (should-error (kittymacs-org-roam-capture)))))
-      (should-not (file-exists-p (expand-file-name "secrets" project)))
+      (should-not (file-exists-p (expand-file-name "cache" project)))
       (should-not (file-exists-p (expand-file-name "outside" base))))))
 
 (ert-deftest kittymacs-roam-id-preserves-established-destination-pair ()

@@ -13,7 +13,7 @@
   "Personal graph root.  Prebind with `setq' in private.el."
   :type 'directory :group 'kittymacs-org-roam)
 (defcustom kittymacs-org-roam-excluded-directories
-  '("legacy" ".git" "secrets" "cache" "caches" ".cache" "var")
+  '(".git" ".cache" "cache" "caches")
   "Directory components excluded from graph indexing and capture."
   :type '(repeat string) :group 'kittymacs-org-roam)
 
