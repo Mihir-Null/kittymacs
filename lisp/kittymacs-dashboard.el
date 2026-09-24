@@ -12,37 +12,14 @@
   "Open the local keybindings and commands cheat sheet."
   (interactive)
   (find-file (expand-file-name "keybindings.org" kittymacs-lisp-dir)))
-(defun kittymacs-dashboard-open-tutor (&rest _)
-  "Start Meow's interactive tutorial."
-  (interactive)
-  (call-interactively #'meow-tutor))
+(defun kittymacs--dashboard-run (command)
+  "Return a dashboard button action that runs COMMAND interactively."
+  (lambda (&rest _) (call-interactively command)))
 
 (defun kittymacs-dashboard-open-keys-chapter (&rest _)
   "Open the keys chapter: the whole SPC tree, group by group."
   (interactive)
   (find-file (expand-file-name "literate/42-keys.org" user-emacs-directory)))
-(defun kittymacs-dashboard-open-file (&rest _)
-  "Prompt for a file from a dashboard button."
-  (interactive)
-  (call-interactively #'find-file))
-(defun kittymacs-dashboard-open-config (&rest _)
-  "Open the documented literate configuration."
-  (interactive)
-  (kittymacs-literate-open))
-(defun kittymacs-dashboard-open-project (&rest _)
-  "Choose a project using Emacs project.el."
-  (interactive)
-  (call-interactively #'project-switch-project))
-(defun kittymacs-dashboard-open-recent (&rest _)
-  "Choose a recently opened file."
-  (interactive)
-  (if (fboundp 'consult-recent-file)
-      (call-interactively #'consult-recent-file)
-    (call-interactively #'recentf-open-files)))
-(defun kittymacs-dashboard-open-agenda (&rest _)
-  "Open the Org agenda."
-  (interactive)
-  (call-interactively #'org-agenda))
 (defun kittymacs-dashboard-center-lines ()
   "Center each visible dashboard line using its rendered pixel width.
 Measure the actual buffer so heading display overlays and icon faces count.
@@ -145,18 +122,16 @@ Exclude trailing padding and compensate for leading indentation."
   (dashboard-init-info (lambda ()
                          (format "Emacs %s · ready in %s" emacs-version (emacs-init-time))))
   (dashboard-navigator-buttons
-   '((("+" "File" "Open a file" kittymacs-dashboard-open-file)
-      ("◆" "Project" "Switch project" kittymacs-dashboard-open-project)
-      ("↺" "Recent" "Open a recent file" kittymacs-dashboard-open-recent))
-     (("◎" "Agenda" "Open the Org agenda" kittymacs-dashboard-open-agenda)
-      ("*" "Scratch" "Open the scratch buffer"
-       (lambda (&rest _) (switch-to-buffer "*scratch*")))
-      ("λ" "Config" "Open the kittymacs reading guide (SPC C c)"
-       kittymacs-dashboard-open-config))
+   `((("+" "File" "Open a file" ,(kittymacs--dashboard-run #'find-file))
+      ("◆" "Project" "Switch project" ,(kittymacs--dashboard-run #'project-switch-project))
+      ("↺" "Recent" "Open a recent file" ,(kittymacs--dashboard-run #'consult-recent-file)))
+     (("◎" "Agenda" "Open the Org agenda" ,(kittymacs--dashboard-run #'org-agenda))
+      ("*" "Scratch" "Open the scratch buffer" ,(kittymacs--dashboard-run #'scratch-buffer))
+      ("λ" "Config" "Open the kittymacs reading guide (SPC C c)" kittymacs-literate-open))
      (("?" "Keys & commands" "Open the local cheat sheet (SPC h ?, or ? here)"
        kittymacs-dashboard-open-cheatsheet)
       ("»" "Meow tutor" "Learn select, extend, act (SPC h t)"
-       kittymacs-dashboard-open-tutor)
+       ,(kittymacs--dashboard-run #'meow-tutor))
       ("§" "Leader tree" "Every SPC key, group by group"
        kittymacs-dashboard-open-keys-chapter))))
   :config

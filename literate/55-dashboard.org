@@ -3,7 +3,7 @@
 #+STARTUP: overview
 #+PROPERTY: header-args:emacs-lisp :eval never :comments no :padline no :mkdirp yes
 
-[[file:index.org][Reading guide]] · [[file:framework.org][Framework provenance]]
+[[file:index.org][Reading guide]] · [[file:50-appearance.org][Appearance]] · [[file:42-keys.org][Keys]]
 
 Ownership: *subsequent development*. The external dashboard package presents core recentf, project.el and bookmarks. Our additions supply the kittymacs banner, the home layout, callbacks to the landing pages (the cheat sheet, the reading guide, the leader tree and Meow's tutor), a short guide to the first keys, font-aware centering and the literate Config destination. No second project or workspace database is introduced.
 
@@ -14,9 +14,10 @@ Ownership: *subsequent development*. The external dashboard package presents cor
 
 Deployed file: [[file:../lisp/kittymacs-dashboard.el][lisp/kittymacs-dashboard.el]]. Edit the blocks here; generated Lisp is kept in Git for ordinary startup and review.
 
-** Load kittymacs-fonts
+** The module needs the fonts first
 
-Load this dependency before evaluating the forms that use its functions or variables. This preserves the existing startup dependency order.
+The home page measures its text to centre it, so the appearance module,
+which chooses the fonts, is loaded before this one.
 
 #+name: kittymacs-dashboard-01-1
 #+begin_src emacs-lisp
@@ -34,7 +35,9 @@ Load this dependency before evaluating the forms that use its functions or varia
 
 ** Keep help available offline
 
-The dashboard callback accepts widget arguments and opens the local Org cheat sheet. The same command is reachable with ? at home and SPC H elsewhere.
+The cheat sheet is an Org file in =lisp/=, so it opens without a network.
+=?= on the home page, =SPC h ?= anywhere else, and the "Keys & commands"
+button all run this one command.
 
 #+name: kittymacs-dashboard-02-1
 #+begin_src emacs-lisp
@@ -44,86 +47,28 @@ The dashboard callback accepts widget arguments and opens the local Org cheat sh
   (find-file (expand-file-name "keybindings.org" kittymacs-lisp-dir)))
 #+end_src
 
-** The other landing pages
+** Buttons that run commands
 
-Three more buttons open the places a new user is sent to from the README
-and the reading guide: Meow's interactive tutorial, the [[file:42-keys.org][keys chapter]] that
-lists the whole =SPC= tree, and the reading guide itself (the Config button
-below). Each is a plain command so it also works from =M-x=.
+Each button on the home page runs a command: open a file, switch project,
+open a recent file, the agenda, the scratch buffer, the reading guide, the
+cheat sheet, Meow's tutorial, and the [[file:42-keys.org][keys chapter]] that lists the whole
+=SPC= tree. Dashboard calls a button's action with the button itself as its
+argument, so a command like =find-file= cannot be the action directly: it
+would take the button for a file name. =kittymacs--dashboard-run= wraps a
+command in a function that ignores the argument and runs the command as
+=M-x= would. The two commands written for this chapter and the literate
+one accept and ignore the argument themselves, so they need no wrapper.
 
 #+name: kittymacs-dashboard-02-2
 #+begin_src emacs-lisp
-(defun kittymacs-dashboard-open-tutor (&rest _)
-  "Start Meow's interactive tutorial."
-  (interactive)
-  (call-interactively #'meow-tutor))
+(defun kittymacs--dashboard-run (command)
+  "Return a dashboard button action that runs COMMAND interactively."
+  (lambda (&rest _) (call-interactively command)))
 
 (defun kittymacs-dashboard-open-keys-chapter (&rest _)
   "Open the keys chapter: the whole SPC tree, group by group."
   (interactive)
   (find-file (expand-file-name "literate/42-keys.org" user-emacs-directory)))
-#+end_src
-
-** Dashboard open file
-
-Prompt for a file from a dashboard button.
-
-#+name: kittymacs-dashboard-03-1
-#+begin_src emacs-lisp
-(defun kittymacs-dashboard-open-file (&rest _)
-  "Prompt for a file from a dashboard button."
-  (interactive)
-  (call-interactively #'find-file))
-#+end_src
-
-** Open the authoring entry point
-
-The Config button now opens literate/index.org. The generated config.el remains a runtime file, while the reading guide explains where to edit each choice.
-
-#+name: kittymacs-dashboard-04-1
-#+begin_src emacs-lisp
-(defun kittymacs-dashboard-open-config (&rest _)
-  "Open the documented literate configuration."
-  (interactive)
-  (kittymacs-literate-open))
-#+end_src
-
-** Dashboard open project
-
-Choose a project using Emacs project.el.
-
-#+name: kittymacs-dashboard-05-1
-#+begin_src emacs-lisp
-(defun kittymacs-dashboard-open-project (&rest _)
-  "Choose a project using Emacs project.el."
-  (interactive)
-  (call-interactively #'project-switch-project))
-#+end_src
-
-** Dashboard open recent
-
-Choose a recently opened file.
-
-#+name: kittymacs-dashboard-06-1
-#+begin_src emacs-lisp
-(defun kittymacs-dashboard-open-recent (&rest _)
-  "Choose a recently opened file."
-  (interactive)
-  (if (fboundp 'consult-recent-file)
-      (call-interactively #'consult-recent-file)
-    (call-interactively #'recentf-open-files)))
-#+end_src
-
-** Dashboard open agenda
-
-Open the Org agenda.
-
-#+name: kittymacs-dashboard-07-1
-#+begin_src emacs-lisp
-(defun kittymacs-dashboard-open-agenda (&rest _)
-  "Open the Org agenda."
-  (interactive)
-  (call-interactively #'org-agenda))
 #+end_src
 
 ** Center rendered text rather than character counts
@@ -278,18 +223,16 @@ with a file to open.
   (dashboard-init-info (lambda ()
                          (format "Emacs %s · ready in %s" emacs-version (emacs-init-time))))
   (dashboard-navigator-buttons
-   '((("+" "File" "Open a file" kittymacs-dashboard-open-file)
-      ("◆" "Project" "Switch project" kittymacs-dashboard-open-project)
-      ("↺" "Recent" "Open a recent file" kittymacs-dashboard-open-recent))
-     (("◎" "Agenda" "Open the Org agenda" kittymacs-dashboard-open-agenda)
-      ("*" "Scratch" "Open the scratch buffer"
-       (lambda (&rest _) (switch-to-buffer "*scratch*")))
-      ("λ" "Config" "Open the kittymacs reading guide (SPC C c)"
-       kittymacs-dashboard-open-config))
+   `((("+" "File" "Open a file" ,(kittymacs--dashboard-run #'find-file))
+      ("◆" "Project" "Switch project" ,(kittymacs--dashboard-run #'project-switch-project))
+      ("↺" "Recent" "Open a recent file" ,(kittymacs--dashboard-run #'consult-recent-file)))
+     (("◎" "Agenda" "Open the Org agenda" ,(kittymacs--dashboard-run #'org-agenda))
+      ("*" "Scratch" "Open the scratch buffer" ,(kittymacs--dashboard-run #'scratch-buffer))
+      ("λ" "Config" "Open the kittymacs reading guide (SPC C c)" kittymacs-literate-open))
      (("?" "Keys & commands" "Open the local cheat sheet (SPC h ?, or ? here)"
        kittymacs-dashboard-open-cheatsheet)
       ("»" "Meow tutor" "Learn select, extend, act (SPC h t)"
-       kittymacs-dashboard-open-tutor)
+       ,(kittymacs--dashboard-run #'meow-tutor))
       ("§" "Leader tree" "Every SPC key, group by group"
        kittymacs-dashboard-open-keys-chapter))))
   :config
