@@ -44,13 +44,14 @@ The first start installs the Emacs Lisp packages it needs into `var/elpa/`. The 
 
 ```
 .emacs.d/
-  early-init.el, init.el   the only files Emacs reads on its own, ~90 lines together
+  early-init.el, init.el   the only files Emacs reads on its own
   literate/                the chapters; edit these
   lisp/                    generated modules (kittymacs-*.el), cheat sheet, themes, private.el
-  tests/                   tangle tests, startup verifier, leader tests, frame tests
+  tests/                   the test suites and the startup verifier (see Verify)
   tools/tangle.el          the builder
-  flake.nix, nix/          Nix: a nix-darwin module, a home-manager module, a dev shell,
-                           example hosts for nix-darwin and nix-on-droid
+  flake.nix, nix/          Nix: a nix-darwin module, a home-manager module that clones
+                           the checkout, a dev shell, example nix-darwin and
+                           nix-on-droid hosts
   var/                     packages, caches, custom.el (ignored by Git)
 ```
 
@@ -75,17 +76,26 @@ Restart Emacs and commit the chapter with its generated file. Startup never tang
 
 ## Verify
 
-From the repository root, with an existing package directory:
+From the repository root. The first four need no packages:
 
 ```sh
 emacs -Q --batch -l tools/tangle.el -- --check
 emacs -Q --batch -l tests/kittymacs-tangle-tests.el -f ert-run-tests-batch-and-exit
 emacs -Q --batch -l tests/kittymacs-platform-tests.el -f ert-run-tests-batch-and-exit
+emacs -Q --batch -l tests/kittymacs-treesit-tests.el -f ert-run-tests-batch-and-exit
+```
+
+The rest load the installed packages, so point `KITTYMACS_TEST_PACKAGES` at an existing package directory:
+
+```sh
 KITTYMACS_TEST_PACKAGES=/path/to/var/elpa emacs -Q --batch -l tests/kittymacs-leader-tests.el -f ert-run-tests-batch-and-exit
+KITTYMACS_TEST_PACKAGES=/path/to/var/elpa emacs -Q --batch -l tests/kittymacs-org-roam-tests.el -f ert-run-tests-batch-and-exit
 KITTYMACS_TEST_PACKAGES=/path/to/var/elpa emacs -Q --batch -l tests/verify-config.el
 ```
 
-The verifier copies the configuration to a temporary directory, forbids package installation, starts it, and checks the leader, the localleader key, the dashboard buttons, the theme toggle and every `SPC` row of the cheat sheet against the live keymap. The platform tests bind `system-type` to each operating system in turn, so the macOS, Windows, Linux and Android branches all run on any machine without packages. [GitHub Actions](.github/workflows/ci.yml) runs the same checks on every push: the tangle check, then a fresh clone that installs its packages and starts on Emacs 30.1 and 31.1 on Linux, plus informational Windows and macOS runs, and a Nix job that checks the flake and evaluates its nix-darwin and nix-on-droid examples; a weekly run repeats the fresh install without the package cache to catch upstream breakage. `tests/kittymacs-frames-tests.el` covers frame policy and needs a graphical session: `M-x ert RET ^kittymacs-frames- RET`.
+The tangle tests check the builder; the platform tests bind `system-type` to each operating system in turn, so the macOS, Windows, Linux and Android branches all run on any machine; the Tree-sitter tests check the grammar policy offline, and also parse a real Nix file when `NIX_GRAMMAR_TEST_DIR` names a directory holding a built Nix grammar; the leader tests check the `SPC` and `SPC m` machinery; the Org-roam tests build real graphs in SQLite. The verifier copies the configuration to a temporary directory, forbids package installation, starts it in the order of a real startup, and fails on any warning. It checks that `private.el` and `custom.el` overrides survive the chapters, that every module loaded, that every key in the `SPC` tree runs a command, the dashboard buttons, the theme toggle, and every `SPC` row of the cheat sheet against the live keymap.
+
+[GitHub Actions](.github/workflows/ci.yml) runs all of this on every push: the tangle check and the package-free tests, then a fresh clone that installs its packages, byte-compiles every module and runs the leader tests, the Org-roam tests and the verifier on Emacs 30.1 and 31.1 on Linux, plus informational Windows and macOS runs, and a Nix job that checks the flake and evaluates its nix-darwin and nix-on-droid examples; a weekly run repeats the fresh install without the package cache to catch upstream breakage. `tests/kittymacs-frames-tests.el` covers frame policy and needs a graphical session, so it runs by hand: start Emacs normally, load `tests/kittymacs-frames-tests.el` with `M-x load-file`, then run `M-x ert RET ^kittymacs-frames- RET`.
 
 ## Windows notes
 
@@ -134,6 +144,7 @@ graph of its own with a `.dir-locals.el` at its root:
 
 Each graph's index is a SQLite database in the user cache, outside the graph, so
 Emacs must be built with SQLite. Run sync once per graph; startup never scans
-notes, and saving a note updates its entry. In a project graph, find and insert
+notes, and saving a note updates its entry. `C-u SPC n s` rebuilds a graph's
+index from nothing. In a project graph, find and insert
 offer only existing notes. See [the Org-roam chapter](literate/71-org-roam.org)
 for how a buffer's graph is chosen, exclusions and capture.
