@@ -126,6 +126,10 @@ Use t for a terminal configured with a Nerd Font, or nil to disable icons."
   :config
   (doom-modeline-mode 1))
 
+(use-package hide-mode-line
+  :ensure t
+  :commands hide-mode-line-mode)
+
 (defun kittymacs--tab-bar-faces (&rest _)
   "Give the tab bar a compact, mode-line-like look."
   (set-face-attribute 'tab-bar nil :inherit 'default :box nil)
@@ -216,6 +220,9 @@ Use t for a terminal configured with a Nerd Font, or nil to disable icons."
 (use-package outline-minor-faces
   :ensure t
   :hook ((emacs-lisp-mode lisp-interaction-mode lisp-mode) . outline-minor-faces-mode))
+(use-package writeroom-mode
+  :ensure t
+  :commands writeroom-mode)
 (defun kittymacs--programming-presentation ()
   "Visual aids for programming buffers."
   (when kittymacs-line-numbers-in-programming

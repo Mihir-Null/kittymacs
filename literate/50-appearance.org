@@ -166,6 +166,9 @@ Emacs's own =enable-theme-functions=.
 
 =doom-modeline= is compact and shows the Meow state. The built-in tab bar
 appears once a second workspace exists and borrows the mode line's faces.
+=SPC t H= hides the mode line of the current buffer with
+=hide-mode-line-mode=, which is handy for a screenshot or a presentation;
+pressing it again brings the mode line back.
 
 #+begin_src emacs-lisp
 (use-package doom-modeline
@@ -179,6 +182,10 @@ appears once a second workspace exists and borrows the mode line's faces.
   (doom-modeline-buffer-state-icon t)
   :config
   (doom-modeline-mode 1))
+
+(use-package hide-mode-line
+  :ensure t
+  :commands hide-mode-line-mode)
 
 (defun kittymacs--tab-bar-faces (&rest _)
   "Give the tab bar a compact, mode-line-like look."
@@ -292,6 +299,20 @@ so you see what a command changed.
 
 #+end_src
 
+* Distraction-free writing
+
+=SPC t w= toggles =writeroom-mode=: the frame goes full screen, the text sits
+in a centred column eighty characters wide, and the mode line and everything
+else around the text disappear until you press it again. It suits long prose
+more than code.
+
+#+begin_src emacs-lisp
+(use-package writeroom-mode
+  :ensure t
+  :commands writeroom-mode)
+
+#+end_src
+
 * Programming buffers
 
 Line numbers and a highlighted current line in code; neither in prose.
@@ -312,5 +333,7 @@ Line numbers and a highlighted current line in code; neither in prose.
 * Try it
 
 - =SPC t t= flips to the light theme and back.
+- =SPC t w= in an Org file hides everything but the text; =SPC t w= again
+  brings it back. =SPC t H= hides only the mode line.
 - =C-x C-+= grows the text one point at a time; =C-x C-0= resets.
 - Set =kittymacs-icons= to =nil= in =private.el= to run without icon fonts.
