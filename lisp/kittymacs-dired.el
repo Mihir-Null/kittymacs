@@ -6,7 +6,6 @@
 ;;; Code:
 
 (require 'kittymacs-leader)
-(require 'kittymacs-ui)
 (setopt dired-kill-when-opening-new-dired-buffer t
         dired-recursive-copies 'always
         dired-recursive-deletes 'always

@@ -25,7 +25,6 @@ you type. =SPC m= shows the actions that matter, labelled.
 ;;; Code:
 
 (require 'kittymacs-leader)
-(require 'kittymacs-ui)
 
 #+end_src
 

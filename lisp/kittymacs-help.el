@@ -8,13 +8,10 @@
 (require 'kittymacs-defaults)
 (require 'kittymacs-leader)
 
-(setopt use-file-dialog nil
-        use-dialog-box nil
-        confirm-nonexistent-file-or-buffer nil
+(setopt confirm-nonexistent-file-or-buffer nil
         help-window-select t
         help-at-pt-timer-delay 0.1
         help-at-pt-display-when-idle '(flymake-diagnostic))
-(menu-bar-mode -1)
 (use-package helpful
   :ensure t
   :bind (([remap display-local-help] . helpful-at-point)

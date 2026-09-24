@@ -16,8 +16,7 @@ function or variable. Helpful replaces those views with richer ones that
 include the source, examples and references. Info manuals get colour, and
 the leader's help menu, =SPC h= in [[file:42-keys.org][the keys chapter]], collects the commands a
 learner needs most. Popup
-menus (Transient, used by Magit) open at the top of the frame, and no OS
-dialog boxes ever appear.
+menus (Transient, used by Magit) open at the top of the frame.
 
 #+begin_src emacs-lisp
 ;;; kittymacs-help.el --- Help, Info and menus -*- lexical-binding: t; -*-
@@ -30,13 +29,10 @@ dialog boxes ever appear.
 (require 'kittymacs-defaults)
 (require 'kittymacs-leader)
 
-(setopt use-file-dialog nil
-        use-dialog-box nil
-        confirm-nonexistent-file-or-buffer nil
+(setopt confirm-nonexistent-file-or-buffer nil
         help-window-select t
         help-at-pt-timer-delay 0.1
         help-at-pt-display-when-idle '(flymake-diagnostic))
-(menu-bar-mode -1)
 
 #+end_src
 

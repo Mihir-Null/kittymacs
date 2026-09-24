@@ -159,14 +159,17 @@ in Insert state.
 
 * The interface
 
-Answer prompts with =y= or =n=. No bell, no blinking cursor, and the mouse
-pointer hides while you type. Scrolling moves one line at a time and keeps a
+Answer prompts with =y= or =n=, always in the minibuffer: even a command
+started from the mouse never opens an operating-system dialog box. No bell,
+no blinking cursor, and the mouse pointer hides while you type. Scrolling moves one line at a time and keeps a
 small margin. Buffers visiting files with the same name are told apart by
 their directory, files change on disk are reloaded automatically, and a
 right click opens a context menu.
 
 #+begin_src emacs-lisp
 (setopt use-short-answers t
+        use-file-dialog nil
+        use-dialog-box nil
         ring-bell-function #'ignore
         make-pointer-invisible t
         switch-to-buffer-preserve-window-point t

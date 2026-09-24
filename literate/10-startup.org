@@ -40,7 +40,8 @@ Everything Emacs writes goes under =var/=, which Git ignores: packages,
 caches, native-compiled files, saved settings. Package activation is left to
 =init.el= so it happens in one known place. Three settings make startup
 quicker: no garbage collection until the end, no implied frame resizing, and
-frames created without the toolbar rather than with one that is then removed.
+frames created without the toolbar and the menu bar rather than with ones that
+are then removed. =SPC t m= brings the menu bar back when you want it.
 
 #+begin_src emacs-lisp
 ;;; early-init.el --- Before the first frame -*- lexical-binding: t; -*-
@@ -108,6 +109,9 @@ frames created without the toolbar rather than with one that is then removed.
 (push '(tool-bar-lines . 0) default-frame-alist)
 (push '(menu-bar-lines . 0) default-frame-alist)
 (push '(vertical-scroll-bars) default-frame-alist)
+;; The frame parameter hides the menu bar; the mode has to agree, or the
+;; first `SPC t m' would switch a hidden menu bar "off" and show nothing.
+(menu-bar-mode -1)
 
 (when (eq system-type 'windows-nt)
   (setq w32-get-true-file-attributes nil

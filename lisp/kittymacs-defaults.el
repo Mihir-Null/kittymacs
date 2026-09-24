@@ -70,6 +70,8 @@
   :ensure t
   :defer t)
 (setopt use-short-answers t
+        use-file-dialog nil
+        use-dialog-box nil
         ring-bell-function #'ignore
         make-pointer-invisible t
         switch-to-buffer-preserve-window-point t

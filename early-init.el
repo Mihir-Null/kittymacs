@@ -63,6 +63,9 @@
 (push '(tool-bar-lines . 0) default-frame-alist)
 (push '(menu-bar-lines . 0) default-frame-alist)
 (push '(vertical-scroll-bars) default-frame-alist)
+;; The frame parameter hides the menu bar; the mode has to agree, or the
+;; first `SPC t m' would switch a hidden menu bar "off" and show nothing.
+(menu-bar-mode -1)
 
 (when (eq system-type 'windows-nt)
   (setq w32-get-true-file-attributes nil
