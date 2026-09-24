@@ -20,6 +20,11 @@
 (setopt org-capture-templates
         `(("t" "Inbox TODO" entry (file ,org-default-notes-file) "* TODO %?\n  %U\n")
           ("n" "Inbox note" entry (file ,org-default-notes-file) "* %?\n  %U\n")))
+
+(defun kittymacs-org-inbox ()
+  "Open the Org inbox file."
+  (interactive)
+  (find-file org-default-notes-file))
 (setopt org-hide-emphasis-markers t
         org-hide-leading-stars t
         org-startup-indented t

@@ -288,12 +288,12 @@ source, for the times Corfu's automatic popup is not offering what you want;
 
 * Open, toggle, configure, quit
 
-#+begin_src emacs-lisp
-(defun kittymacs-org-inbox ()
-  "Open the Org inbox file."
-  (interactive)
-  (find-file org-default-notes-file))
+The commands these groups call belong to the chapters they serve: the Org
+inbox to [[file:70-org.org][the Org chapter]], the linked-notes commands to [[file:71-org-roam.org][Org-roam]], and the
+=SPC C= commands that open and rebuild this configuration to [[file:80-maintenance.org][the
+maintenance chapter]].
 
+#+begin_src emacs-lisp
 (defvar-keymap kittymacs-notes-map
   :doc "Linked notes in the current graph."
   "f" (cons "find node" #'kittymacs-org-roam-find)
@@ -342,36 +342,6 @@ source, for the times Corfu's automatic popup is not offering what you want;
   "m" (cons "menu bar" #'menu-bar-mode)
   "p" (cons "structural editing" #'puni-mode)
   "z" (cons "zone out" #'zone))
-
-(defun kittymacs-find-config-file ()
-  "Open one of the literate chapters."
-  (interactive)
-  (let ((default-directory (expand-file-name "literate/" user-emacs-directory)))
-    (call-interactively #'find-file)))
-
-(defun kittymacs-search-config ()
-  "Search the configuration sources with ripgrep."
-  (interactive)
-  (consult-ripgrep (expand-file-name "literate/" user-emacs-directory)))
-
-(defun kittymacs-open-private-file ()
-  "Open private.el, creating it from the example if needed."
-  (interactive)
-  (let ((private (expand-file-name "private.el" kittymacs-lisp-dir))
-        (example (expand-file-name "private.example.el" kittymacs-lisp-dir)))
-    (when (and (not (file-exists-p private)) (file-exists-p example))
-      (copy-file example private))
-    (find-file private)))
-
-(defun kittymacs-open-custom-file ()
-  "Open the file where Customize saves settings."
-  (interactive)
-  (find-file custom-file))
-
-(defun kittymacs-open-architecture ()
-  "Open ARCHITECTURE.md, the design record."
-  (interactive)
-  (find-file (expand-file-name "ARCHITECTURE.md" user-emacs-directory)))
 
 (defvar-keymap kittymacs-config-map
   :doc "This configuration."

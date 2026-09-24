@@ -35,8 +35,8 @@ the structure commands; =SPC m a= opens the agenda from anywhere.
 * Where notes live
 
 =kittymacs-org-directory= comes from [[file:30-platform.org][the platform chapter]] so a machine can
-override it in =private.el=. Everything captured lands in =inbox.org=;
-the agenda reads every file in the directory. Done tasks are archived
+override it in =private.el=. Everything captured lands in =inbox.org=,
+which =SPC o i= opens; the agenda reads every file in the directory. Done tasks are archived
 into a dated tree in one archive file.
 
 #+begin_src emacs-lisp
@@ -52,6 +52,11 @@ into a dated tree in one archive file.
 (setopt org-capture-templates
         `(("t" "Inbox TODO" entry (file ,org-default-notes-file) "* TODO %?\n  %U\n")
           ("n" "Inbox note" entry (file ,org-default-notes-file) "* %?\n  %U\n")))
+
+(defun kittymacs-org-inbox ()
+  "Open the Org inbox file."
+  (interactive)
+  (find-file org-default-notes-file))
 
 #+end_src
 

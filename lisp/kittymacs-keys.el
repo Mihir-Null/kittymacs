@@ -217,11 +217,6 @@
   "c" (cons "character" #'insert-char)
   "e" (cons "emoji" #'emoji-insert)
   "d" (cons "date" #'kittymacs-insert-date))
-(defun kittymacs-org-inbox ()
-  "Open the Org inbox file."
-  (interactive)
-  (find-file org-default-notes-file))
-
 (defvar-keymap kittymacs-notes-map
   :doc "Linked notes in the current graph."
   "f" (cons "find node" #'kittymacs-org-roam-find)
@@ -270,36 +265,6 @@
   "m" (cons "menu bar" #'menu-bar-mode)
   "p" (cons "structural editing" #'puni-mode)
   "z" (cons "zone out" #'zone))
-
-(defun kittymacs-find-config-file ()
-  "Open one of the literate chapters."
-  (interactive)
-  (let ((default-directory (expand-file-name "literate/" user-emacs-directory)))
-    (call-interactively #'find-file)))
-
-(defun kittymacs-search-config ()
-  "Search the configuration sources with ripgrep."
-  (interactive)
-  (consult-ripgrep (expand-file-name "literate/" user-emacs-directory)))
-
-(defun kittymacs-open-private-file ()
-  "Open private.el, creating it from the example if needed."
-  (interactive)
-  (let ((private (expand-file-name "private.el" kittymacs-lisp-dir))
-        (example (expand-file-name "private.example.el" kittymacs-lisp-dir)))
-    (when (and (not (file-exists-p private)) (file-exists-p example))
-      (copy-file example private))
-    (find-file private)))
-
-(defun kittymacs-open-custom-file ()
-  "Open the file where Customize saves settings."
-  (interactive)
-  (find-file custom-file))
-
-(defun kittymacs-open-architecture ()
-  "Open ARCHITECTURE.md, the design record."
-  (interactive)
-  (find-file (expand-file-name "ARCHITECTURE.md" user-emacs-directory)))
 
 (defvar-keymap kittymacs-config-map
   :doc "This configuration."
