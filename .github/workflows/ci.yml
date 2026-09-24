@@ -7,7 +7,7 @@ name: CI
 #      the oldest supported Emacs and the current one?  And on macOS, and
 #      on Windows, the machine this is written on?                (startup)
 #   3. Does the Nix flake still evaluate, with its nix-darwin and
-#      nix-on-droid examples?                                           (nix)
+#      nix-on-droid examples and the home-manager module's clone step? (nix)
 # The weekly run skips the package cache so upstream package breakage
 # shows up even when nothing here changed.
 #
@@ -147,3 +147,16 @@ jobs:
           nix eval --no-write-lock-file --override-input kittymacs "path:$PWD" \
             --json ./nix/example-nix-on-droid#nixOnDroidConfigurations.default.config.home-manager.config.home.packages \
             --apply 'ps: map (p: p.name) ps'
+      # git+file rather than path:, because a path: input has no revision
+      # and the module would have nothing to pin.  The checkout is clean
+      # here, so the flake's revision is the commit under test, and the
+      # module's default must be that commit.
+      - name: Evaluate the home-manager module's clone options on the device
+        run: |
+          options=$(nix eval --no-write-lock-file \
+            --override-input kittymacs "git+file://$PWD?shallow=1" \
+            --json ./nix/example-nix-on-droid#nixOnDroidConfigurations.default.config.home-manager.config \
+            --apply 'c: { inherit (c.programs.kittymacs) repository revision daemon; clones = builtins.isString c.home.activation.cloneKittymacs.data; }')
+          echo "$options"
+          test "$(jq -r .revision <<<"$options")" = "$(git rev-parse HEAD)"
+          test "$(jq -r .clones <<<"$options")" = true
