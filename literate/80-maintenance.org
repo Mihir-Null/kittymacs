@@ -3,9 +3,9 @@
 #+STARTUP: overview
 #+PROPERTY: header-args:emacs-lisp :eval never :comments no :padline no :mkdirp yes
 
-[[file:index.org][Reading guide]] · [[file:framework.org][Framework provenance]]
+[[file:index.org][Reading guide]] · [[file:10-startup.org][Startup]]
 
-Ownership: *user configuration* for the example and *this literate refactor* for the authoring commands. The build uses the Org shipped with Emacs. Editing and generation are explicit, while normal startup continues to load plain Lisp. Read [[file:index.org::#editing-and-rebuilding][the workflow]] before changing these files.
+Ownership: *user configuration* for the example and *this literate refactor* for the authoring commands. The build uses the Org shipped with Emacs. Editing and generation are explicit, while normal startup continues to load plain Lisp. Read [[file:index.org::*Change something][the workflow]] before changing these files.
 
 * private.example
 :PROPERTIES:
@@ -151,7 +151,7 @@ Deployed file: [[file:../lisp/kittymacs-literate.el][lisp/kittymacs-literate.el]
 
 ** Open the reading guide
 
-The path is relative to Lambda's resolved configuration root, so it works from any buffer or working directory.
+The path is relative to =user-emacs-directory=, the configuration's root, so it works from any buffer or working directory.
 
 #+name: kittymacs-literate-01-1
 #+begin_src emacs-lisp

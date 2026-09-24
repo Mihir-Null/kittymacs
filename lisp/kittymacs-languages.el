@@ -45,7 +45,6 @@ until the language server for a mode is deliberately installed on each machine."
     (let ((hook (intern (format "%s-hook" mode))))
       (add-hook hook #'eglot-ensure)
       (push hook kittymacs--eglot-auto-start-hooks))))
-
 (kittymacs-eglot-apply-auto-start-modes)
 ;; Keep non-built-in language modes deliberate.  Set
 ;; `kittymacs-language-packages' in private.el before startup to enable these.

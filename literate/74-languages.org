@@ -3,9 +3,9 @@
 #+STARTUP: overview
 #+PROPERTY: header-args:emacs-lisp :eval never :comments no :padline no :mkdirp yes
 
-[[file:index.org][Reading guide]] · [[file:framework.org][Framework provenance]]
+[[file:index.org][Reading guide]] · [[file:72-programming.org][Programming]] · [[file:40-editing.org][Editing]]
 
-Ownership: *subsequent development*. Tree-sitter integration, Eglot, Flymake and xref are Emacs facilities. Grammars, compilers and language-server executables are separate dependencies. This layer replaces Lambda's moving grammar recipes and unconditional remaps with pinned recipes and availability checks. Installing parsers and starting language servers remain explicit actions.
+Ownership: *subsequent development*. Tree-sitter integration, Eglot, Flymake and xref are Emacs facilities. Grammars, compilers and language-server executables are separate dependencies. This layer pins each grammar recipe to an exact revision and switches a mode to its Tree-sitter version only when the grammar actually loads. Installing parsers and starting language servers remain explicit actions.
 
 * kittymacs-treesit
 :PROPERTIES:
@@ -24,10 +24,10 @@ Load this dependency before evaluating the forms that use its functions or varia
 ;; Generated from literate/74-languages.org; edit the Org source, then tangle.
 
 ;;; Commentary:
-;; Lambda supplies useful grammar recipes, but moving repository heads can start
-;; emitting a parser ABI newer than an older supported Emacs release can load.
-;; Keep the recipes reproducible here and only remap a classic major mode after
-;; Emacs has successfully loaded the corresponding grammar.
+;; A grammar recipe that follows a repository's moving head can start emitting
+;; a parser ABI newer than an older supported Emacs release can load.  Keep the
+;; recipes reproducible here and only remap a classic major mode after Emacs
+;; has successfully loaded the corresponding grammar.
 
 ;;; Code:
 
@@ -201,12 +201,12 @@ A grammar recipe alone is not a usable parser. Ask Emacs whether it can load the
 
 ** Replace moving recipes with pins
 
-Apply the local recipes after Lambda has populated its defaults, making the local policy authoritative for these languages.
+Write the pinned recipes into Emacs's own =treesit-language-source-alist=, replacing any entry it already has for the same language, so Emacs's installer uses them too.
 
 #+name: kittymacs-treesit-08-1
 #+begin_src emacs-lisp
 (defun kittymacs-treesit-apply-pinned-sources ()
-  "Replace Lambda's moving grammar recipes with pinned recipes."
+  "Put the pinned recipes into `treesit-language-source-alist'."
   (dolist (source kittymacs-treesit-language-source-alist)
     (setf (alist-get (car source) treesit-language-source-alist)
           (cdr source))))
@@ -254,8 +254,8 @@ A replacement is installed only when both the target mode and its grammar work. 
 (defun kittymacs-treesit-refresh-mode-remaps ()
   "Refresh managed mode remaps for the grammars available right now.
 
-Any unconditional remaps inherited from Lambda are removed first.  A remap is
-then added only when its target mode exists and its grammar loads successfully."
+Remaps for the managed modes are removed first.  A remap is then added
+only when its target mode exists and its grammar loads successfully."
   (interactive)
   (let ((managed-modes (mapcar #'car kittymacs-treesit-mode-remaps)))
     (setq major-mode-remap-alist
@@ -321,7 +321,7 @@ This bulk command is an explicit maintenance action. Normal startup only configu
 
 ** Apply the pinned recipe policy now
 
-Replace the relevant Lambda recipes after its programming layer has loaded. This configures source locations without installing parsers.
+Register the pinned recipes as the module loads. This configures source locations without installing parsers.
 
 #+name: kittymacs-treesit-13-1
 #+begin_src emacs-lisp
@@ -419,7 +419,7 @@ until the language server for a mode is deliberately installed on each machine."
 
 ** Use the built-in LSP client
 
-Eglot supplies server communication while core xref and Flymake expose navigation and diagnostics. Commands are available without enabling Lambda's broader automatic LSP layer.
+Eglot supplies server communication while core xref and Flymake expose navigation and diagnostics. Servers start only when asked, with =SPC l e=, unless a mode is listed in the option below.
 
 #+name: kittymacs-languages-04-1
 #+begin_src emacs-lisp
@@ -459,14 +459,6 @@ Track the hooks installed by this module so changing the opt-in list removes obs
     (let ((hook (intern (format "%s-hook" mode))))
       (add-hook hook #'eglot-ensure)
       (push hook kittymacs--eglot-auto-start-hooks))))
-#+end_src
-
-** Group language commands under SPC l
-
-This namespace exposes Eglot actions and core navigation in Lambda's leader map. The separate cheat sheet lists the final bindings after all modules load.
-
-#+name: kittymacs-languages-08-1
-#+begin_src emacs-lisp
 #+end_src
 
 ** Apply the current server opt-ins

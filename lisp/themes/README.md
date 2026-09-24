@@ -2,7 +2,7 @@
 
 `doom-sonokai-theme.el` is a standalone Doom Themes port of Sonokai's **default**
 style. It is maintained as ordinary theme source, not tangled from Org, so the
-same file can be contributed to `doomemacs/themes` without Lambda dependencies.
+same file can be contributed to `doomemacs/themes` without depending on this configuration.
 
 - Original: https://github.com/sainnhe/sonokai
 - Source revision: `b023c5280b16fe2366f5e779d8d2756b3e5ee9c3`

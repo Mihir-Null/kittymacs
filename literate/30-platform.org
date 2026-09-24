@@ -57,7 +57,7 @@ This Custom group gives the following settings a discoverable home in Emacs's bu
 #+name: kittymacs-platform-03-1
 #+begin_src emacs-lisp
 (defgroup kittymacs-platform nil
-  "Portable defaults for the Lambda learning configuration."
+  "Where this machine keeps things: paths, the shell, spelling, macOS and Android."
   :group 'kittymacs)
 #+end_src
 

@@ -8,7 +8,7 @@
 Ownership: *kittymacs core*. This is the smallest piece of the configuration and
 the most important one. It makes =SPC= an ordinary Emacs prefix keymap while
 Meow is in Normal or Motion state, and it gives every major mode its own menu
-under =SPC m=. Nothing here knows about Lambda, packages or this machine.
+under =SPC m=. Nothing here knows about other packages or this machine.
 
 * Why a real keymap instead of Meow's keypad
 

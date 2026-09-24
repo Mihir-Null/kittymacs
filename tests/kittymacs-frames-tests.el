@@ -71,7 +71,7 @@
       (should-not (frame-live-p frame))
       (should (frame-live-p original)))))
 (ert-deftest kittymacs-frames-split-command-remaps ()
-  "Both ordinary split keys and Lambda split-and-focus keys create OS frames."
+  "Both ordinary split keys and the leader's split keys create OS frames."
   (skip-unless (display-graphic-p))
   (kittymacs-frames-test-with-buffer
     (switch-to-buffer buffer)

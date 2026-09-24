@@ -3,7 +3,7 @@
 #+STARTUP: overview
 #+PROPERTY: header-args:emacs-lisp :tangle ../lisp/kittymacs-defaults.el :eval never :comments no :padline no :mkdirp yes
 
-[[file:index.org][Reading guide]] · [[file:20-user-policy.org][Startup policy]] · [[file:45-frames.org][Frames]]
+[[file:index.org][Reading guide]] · [[file:10-startup.org][Startup]] · [[file:45-frames.org][Frames]]
 
 Ownership: *user configuration*, distilled from Lambda-Emacs by Colin McLear
 (the =lem-setup-settings=, =-buffers=, =-windows=, =-scratch=, =-server= and

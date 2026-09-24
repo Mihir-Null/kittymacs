@@ -3,18 +3,17 @@
 #+STARTUP: overview
 #+PROPERTY: header-args:emacs-lisp :tangle ../lisp/kittymacs-frames.el :eval never :comments no :padline no :mkdirp yes
 
-[[file:index.org][Reading guide]] · [[file:20-user-policy.org][Startup policy]]
+[[file:index.org][Reading guide]] · [[file:10-startup.org][Startup]] · [[file:66-vc.org][Version control]]
 
 Ownership: *user configuration*. [[https://github.com/davidshepherd7/frames-only-mode][frames-only-mode]] supplies the frame lifecycle;
-this module integrates it with Lambda's deferred Magit setup and leader keys.
+this module fits it to the deferred Magit setup and the leader keys.
 An Emacs frame is an OS window; an Emacs window is a pane inside that frame.
 Load this module after Help and Org so their defaults cannot undo the policy.
 
 * Keep ordinary editor frames native
 
 Native decorations, positioning and sizing remain under the desktop window
-manager's control. This module does not load Lambda's undecorated, recentering
-frame module. Ordinary file and buffer switching still uses the current frame;
+manager's control. Ordinary file and buffer switching still uses the current frame;
 commands that would pop up an auxiliary buffer can create a separate frame.
 
 #+begin_src emacs-lisp
@@ -65,8 +64,9 @@ quitting their buffers. Vertico's top side window, Transient menus and Corfu's
 child-frame suggestions remain attached to their editor. These are temporary
 controls, so they should not become separate desktop editing windows.
 
-Lambda's Popper normally forces Help and compilation into top side windows.
-Turn off only its display control while frame mode is active; popup tracking
+Popper, from [[file:25-defaults.org][the defaults chapter]], normally shows Help and compilation
+buffers in a window of its own inside the frame. Turn off only its display
+control while frame mode is active; popup tracking
 and cycling remain available, and disabling frame mode restores its placement.
 
 The standard split keys (=C-x 2=, =C-x 3=) are remapped to frame creation

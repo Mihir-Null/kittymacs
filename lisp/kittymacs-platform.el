@@ -12,7 +12,7 @@
 (require 'seq)
 (require 'subr-x)
 (defgroup kittymacs-platform nil
-  "Portable defaults for the Lambda learning configuration."
+  "Where this machine keeps things: paths, the shell, spelling, macOS and Android."
   :group 'kittymacs)
 (defun kittymacs--user-home-directory ()
   "Return the user's ordinary home directory for configuration defaults.

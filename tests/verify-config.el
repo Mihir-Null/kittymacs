@@ -1,6 +1,6 @@
 ;;; verify-config.el --- Isolated startup regression check -*- lexical-binding: t; -*-
 ;; Run: emacs -Q --batch -l tests/verify-config.el
-;; Set KITTYMACS_TEST_PACKAGES to an existing Lambda var/elpa directory.
+;; Set KITTYMACS_TEST_PACKAGES to an existing var/elpa directory.
 ;; No packages are installed, refreshed or upgraded by this check.
 (require 'cl-lib)
 (require 'package)
