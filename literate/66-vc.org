@@ -16,6 +16,13 @@ from there: stage with =s=, commit with =c c=, push with =P p=, and every
 prefix opens a menu that lists its options. Diffs are refined word by
 word, and commit messages get wrapped at eighty columns.
 
+When a merge leaves conflict markers in a file, =smerge-mode= offers to keep
+one side or the other; its commands live under =C-c v= here rather than the
+default =C-c ^= (=C-c v n= next conflict, =C-c v u= keep upper, =C-c v l= keep
+lower). smerge reads =smerge-command-prefix= only once, when it builds its
+keymap as the library loads, so the prefix is set here, before that happens;
+setting it afterwards would change the variable and not the keys.
+
 #+begin_src emacs-lisp
 ;;; kittymacs-vc.el --- Magit and version control -*- lexical-binding: t; -*-
 ;; Generated from literate/66-vc.org; edit the Org source, then tangle.
@@ -44,8 +51,8 @@ word, and commit messages get wrapped at eighty columns.
         diff-font-lock-syntax 'hunk-also
         ediff-window-setup-function #'ediff-setup-windows-plain)
 
-(with-eval-after-load 'smerge-mode
-  (setopt smerge-command-prefix (kbd "C-c v")))
+;; Read once, when smerge-mode.el builds `smerge-mode-map'.
+(setopt smerge-command-prefix (kbd "C-c v"))
 
 #+end_src
 
