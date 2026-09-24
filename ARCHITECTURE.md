@@ -250,7 +250,7 @@ from the existing cross-graph destination/capture/panel acceptance tests.
 
 The shared configuration owns reusable editor behavior: Org-roam's personal and project graph scopes, native physical-path checks, writable grammar policy, and portable platform integration. It does not load a particular project's explorer or choose that project's checkout.
 
-The project recipe runner introduced by the already-merged `claude/just-recipe-runner` branch is retained in the separate personal checkout. Its `SPC p j` command, just-mode declaration, project command examples, mode-filtered M-x policy, and runner tests are removed from the shared configuration together. Ordinary compile/project commands and completion stay available. The personal branch restores that feature and owns the explicitly trusted NixNet explorer loader.
+The project recipe runner introduced by the already-merged `claude/just-recipe-runner` branch is retained in the separate personal checkout. Its `SPC p j` command, just-mode declaration, project command examples, mode-filtered M-x policy, and runner tests are removed from the shared configuration together. Ordinary compile/project commands and completion stay available. The personal branch restores that feature and owns the explicitly trusted EmptyNet explorer loader.
 
 This split preserves the historical development branches; it does not replay commits already merged into main. Personal machine settings, packages, caches and notes remain outside the public repository. MSYS2 supplies Windows command-line dependencies; editor graph identity and containment remain editor policy rather than shell path conversion.
 
