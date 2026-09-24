@@ -136,24 +136,24 @@ In the status buffer: =s= stage, =u= unstage, =c c= commit, =P p= push,
 
 New editing surfaces are OS windows (frames); your window manager arranges them.
 
-| Key     | Does                            | Command                      |
-|---------+---------------------------------+------------------------------|
-| SPC w n | New frame                       | make-frame-command           |
-| SPC w k | Close this frame                | delete-frame                 |
-| SPC w w | Jump to a window                | ace-window                   |
-| SPC w h | Split below, inside this frame  | split-window-below           |
-| SPC w v | Split right, inside this frame  | split-window-right           |
-| SPC w u | Undo the last layout change     | winner-undo                  |
-| SPC t f | Toggle frames-only mode         | frames-only-mode             |
-| SPC t d | File tree sidebar in this frame | treemacs                     |
-| SPC t o | Outline sidebar in this frame   | imenu-list-smart-toggle      |
-| SPC t g | Git gutter                      | diff-hl-mode                 |
-| SPC t k | Show keys as you press them     | keycast-header-line-mode     |
-| SPC j j | Jump to a character on screen   | avy-goto-char-timer          |
-| SPC j l | Jump to a line                  | avy-goto-line                |
-| SPC b u | Undo history as a tree          | vundo                        |
-| SPC c m | Menu of editing commands        | casual-editkit-main-tmenu    |
-| SPC s p | Spelling errors                 | consult-flyspell             |
+| Key     | Does                                      | Command                   |
+|---------+-------------------------------------------+---------------------------|
+| SPC w n | New frame                                 | make-frame-command        |
+| SPC w k | Close this frame                          | delete-frame              |
+| SPC w w | Jump to a window                          | ace-window                |
+| SPC w h | Split below (a frame in frames-only mode) | split-window-below        |
+| SPC w v | Split right (a frame in frames-only mode) | split-window-right        |
+| SPC w u | Undo the last layout change               | winner-undo               |
+| SPC t f | Toggle frames-only mode                   | frames-only-mode          |
+| SPC t d | File tree sidebar in this frame           | treemacs                  |
+| SPC t o | Outline sidebar in this frame             | imenu-list-smart-toggle   |
+| SPC t g | Git gutter                                | diff-hl-mode              |
+| SPC t k | Show keys as you press them               | keycast-header-line-mode  |
+| SPC j j | Jump to a character on screen             | avy-goto-char-timer       |
+| SPC j l | Jump to a line                            | avy-goto-line             |
+| SPC b u | Undo history as a tree                    | vundo                     |
+| SPC c m | Menu of editing commands                  | casual-editkit-main-tmenu |
+| SPC s p | Spelling errors                           | consult-flyspell          |
 
 * Open, code, help
 

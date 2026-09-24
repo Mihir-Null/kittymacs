@@ -377,5 +377,6 @@ names in place.
 
 - Open a file, edit, wait five seconds: it is saved. =C-x C-s= is rarely needed.
 - =M-x customize-variable RET fill-column=: the value persists in =var/etc/custom.el=.
-- Split with =C-x 2=, then =C-c <left>= (winner) brings the old layout back.
+- Split with =M-x split-window-below= (=C-x 2= makes a frame while frames-only
+  mode is on), then =C-c <left>= (winner) brings the old layout back.
 - =M-`= toggles the last popup; =SPC [= and =SPC ]= cycle your own buffers.

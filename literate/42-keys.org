@@ -122,8 +122,10 @@ being written into Emacs's map, so =C-x p= stays exactly the menu the Emacs
 manual describes. One key is overridden: =SPC p p= opens the project in its
 own workspace, while =C-x p p= still switches project in the current one.
 
-Windows are frames here: =SPC w n= makes a new OS window, and the lowercase
-split keys split inside the current frame when you want that.
+Windows are frames here: =SPC w n= makes a new OS window. =SPC w h= and
+=SPC w v= are bound to Emacs's own split commands, which [[file:45-frames.org][the frames chapter]]
+turns into frame creation while frames-only mode is on, so they make a new
+OS window too; with the mode off (=SPC t f=) they split the current frame.
 
 #+begin_src emacs-lisp
 (defvar-keymap kittymacs-project-map
@@ -463,7 +465,8 @@ modules used to add on their own. Sequences that changed:
 | =SPC l= completion history | =SPC s l= | =SPC l= is the language server |
 | =SPC m= mail | localleader | mail was never installed |
 | =SPC M= compile | =SPC p c= or =SPC m c= | project or mode menu |
-| =SPC n= notes, =SPC S= spelling | dropped | packages not in use; =SPC t s= toggles spelling |
-| =SPC w h= / =SPC w v= new frame | =SPC w n= | lowercase splits are real splits now |
+| =SPC n= notes | =SPC n= | same key, now [[file:71-org-roam.org][Org-roam]]'s linked notes |
+| =SPC S= spelling | dropped | =SPC t s= toggles spelling |
+| =SPC w h= / =SPC w v= new frame | =SPC w n= | =SPC w h= / =SPC w v= are the split commands, which make frames only while frames-only mode is on |
 | =SPC o e= EAT terminal | =SPC o e= | same key, [[file:34-terminal.org][ghostel]] instead of EAT |
 | =SPC t d= dired-sidebar | =SPC t d= | same key, [[file:65-treemacs.org][Treemacs]] instead |

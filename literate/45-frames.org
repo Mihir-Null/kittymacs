@@ -69,9 +69,12 @@ buffers in a window of its own inside the frame. Turn off only its display
 control while frame mode is active; popup tracking
 and cycling remain available, and disabling frame mode restores its placement.
 
-The standard split keys (=C-x 2=, =C-x 3=) are remapped to frame creation
-inside the minor mode map, so =M-x frames-only-mode= restores them when
-disabled. The leader's =SPC w h= and =SPC w v= remain real in-frame splits.
+The split commands themselves, =split-window-below= and =split-window-right=,
+are remapped to frame creation inside the minor mode map. A remap applies to
+every key bound to the command, so =C-x 2=, =C-x 3= and the leader's =SPC w h=
+and =SPC w v= all make a frame while the mode is on, and =M-x frames-only-mode=
+turns them back into splits when disabled. A remap is a property of keys, not
+of the command: =M-x split-window-below= still splits the current frame.
 
 #+begin_src emacs-lisp
 (use-package frames-only-mode
@@ -136,7 +139,8 @@ mode leaves alone.
 
 * Everyday commands and recovery
 
-- =C-x 2= / =C-x 3= and =SPC w n= create native frames; =SPC w h= / =SPC w v= split inside one.
+- =C-x 2=, =C-x 3=, =SPC w h=, =SPC w v= and =SPC w n= create native frames;
+  =M-x split-window-below= and =M-x split-window-right= split inside one.
 - =C-x 4= uses the other-frame commands normally under =C-x 5=.
 - =C-x 5 f= visits a file in another frame; =C-x 5 b= selects a buffer there.
 - =C-x 5 0= closes a frame. Desktop window-manager shortcuts can arrange it.
