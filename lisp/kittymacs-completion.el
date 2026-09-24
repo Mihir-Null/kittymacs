@@ -51,7 +51,8 @@
 (defun kittymacs--crm-indicator (args)
   "Prefix a `completing-read-multiple' prompt with [CRM]."
   (cons (concat "[CRM] " (car args)) (cdr args)))
-(advice-add #'completing-read-multiple :filter-args #'kittymacs--crm-indicator)
+(when (< emacs-major-version 31)
+  (advice-add #'completing-read-multiple :filter-args #'kittymacs--crm-indicator))
 
 (setopt resize-mini-windows t
         enable-recursive-minibuffers t

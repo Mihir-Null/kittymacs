@@ -92,11 +92,18 @@ A few minibuffer settings from the Vertico README: mark multi-selection
 prompts, keep the cursor out of the prompt text, and allow a minibuffer
 command to start another (Embark relies on that).
 
+A /multi-selection/ prompt, from =completing-read-multiple=, accepts several
+answers separated by commas, but on Emacs 30 nothing on screen says so. The
+advice below prefixes such prompts with =[CRM]=. Emacs 31 shows its own
+indicator (the option =crm-prompt=), so the advice is only added on older
+versions; otherwise the prompt would carry two.
+
 #+begin_src emacs-lisp
 (defun kittymacs--crm-indicator (args)
   "Prefix a `completing-read-multiple' prompt with [CRM]."
   (cons (concat "[CRM] " (car args)) (cdr args)))
-(advice-add #'completing-read-multiple :filter-args #'kittymacs--crm-indicator)
+(when (< emacs-major-version 31)
+  (advice-add #'completing-read-multiple :filter-args #'kittymacs--crm-indicator))
 
 (setopt resize-mini-windows t
         enable-recursive-minibuffers t
