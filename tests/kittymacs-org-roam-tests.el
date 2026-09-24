@@ -188,6 +188,23 @@
             (should (file-equal-p buffer-file-name file))
             (should (file-equal-p org-roam-directory project))))))))
 
+(ert-deftest kittymacs-roam-insert-keeps-region-text ()
+  "The selected text starts the prompt and becomes the link's description."
+  (kittymacs-roam-test
+    (kittymacs-roam-test-note personal "a.org" "a" "Alpha")
+    (kittymacs-org-roam-sync)
+    (with-temp-buffer
+      (let ((transient-mark-mode t))
+        (insert "see the first letter here")
+        (set-mark 5)
+        (goto-char 21)
+        (cl-letf (((symbol-function 'completing-read)
+                   (lambda (_prompt _table _pred _require-match initial &rest _)
+                     (should (equal initial "the first letter"))
+                     "Alpha")))
+          (kittymacs-org-roam-insert))
+        (should (equal (buffer-string) "see [[id:a][the first letter]] here"))))))
+
 (ert-deftest kittymacs-roam-capture-finalizes-in-originating-graph ()
   (kittymacs-roam-test
     (kittymacs-roam-test-note personal "p.org" "p" "Personal")

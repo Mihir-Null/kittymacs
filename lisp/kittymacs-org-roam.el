@@ -178,11 +178,12 @@ save that finishes the capture updates that graph's database."
    scope (lambda ()
            (let ((kittymacs--org-roam-capture-scope scope))
              (org-roam-capture- :node node :props props)))))
-(defun kittymacs--org-roam-read (scope &optional require-match)
-  "Read a node of the graph SCOPE; REQUIRE-MATCH allows only existing ones."
+(defun kittymacs--org-roam-read (scope &optional require-match initial)
+  "Read a node of the graph SCOPE, starting from INITIAL input.
+REQUIRE-MATCH allows only existing nodes."
   (kittymacs--org-roam-call
    scope (lambda ()
-           (org-roam-node-read nil nil nil require-match
+           (org-roam-node-read initial nil nil require-match
                                (format "Node (%s): " (car scope))))))
 
 (defun kittymacs--org-roam-project-p (scope)
@@ -204,13 +205,18 @@ save that finishes the capture updates that graph's database."
         (kittymacs--org-roam-capture-node scope node '(:finalize find-file))))))
 
 (defun kittymacs-org-roam-insert ()
-  "Insert an ID link to a note of this graph where the command started."
+  "Insert an ID link to a note of this graph where the command started.
+The active region's text is the prompt's input and the link's description."
   (interactive)
   (let* ((scope (kittymacs--org-roam-scope))
          (origin (point-marker))
          (region (when (use-region-p) (cons (copy-marker (region-beginning))
                                           (copy-marker (region-end)))))
-         (node (kittymacs--org-roam-read scope (kittymacs--org-roam-project-p scope))))
+         (text (when region
+                 (org-link-display-format
+                  (buffer-substring-no-properties (car region) (cdr region)))))
+         (node (kittymacs--org-roam-read scope (kittymacs--org-roam-project-p scope) text))
+         (description (or text (org-roam-node-formatted node))))
     (unwind-protect
         (with-current-buffer (marker-buffer origin)
           (goto-char origin)
@@ -218,12 +224,12 @@ save that finishes the capture updates that graph's database."
               (progn
                 (when region (delete-region (car region) (cdr region)))
                 (insert (org-link-make-string (concat "id:" (org-roam-node-id node))
-                                              (org-roam-node-title node)))
+                                              description))
                 (run-hook-with-args 'org-roam-post-node-insert-hook
-                                    (org-roam-node-id node) (org-roam-node-title node)))
+                                    (org-roam-node-id node) description))
             (kittymacs--org-roam-capture-node
              scope node (append (list :finalize 'insert-link
-                                      :link-description (org-roam-node-title node))
+                                      :link-description description)
                                 (when region (list :region region))))))
       (set-marker origin nil)
       (deactivate-mark))))
