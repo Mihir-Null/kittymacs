@@ -1,6 +1,6 @@
 # kittymacs — architecture and decisions
 
-Single source of truth for the design. Updated 2026-09-18, after the terminal, tree and Magit-hook work. The learner-facing explanation lives in [`literate/index.org`](literate/index.org); this file is for whoever changes the design.
+The single source of truth for the design: what the configuration is, how it is put together, and why. It describes the design as it is now; how it got here is in the Git history. The learner-facing explanation lives in [`literate/index.org`](literate/index.org); this file is for whoever changes the design.
 
 ## 1. Intent (the user's words)
 
@@ -9,18 +9,18 @@ kittymacs is a user-friendly, batteries-included, opinionated and extensible Ema
 ## 2. Shape
 
 ```
-early-init.el, init.el   generated from literate/10-startup.org (86 lines together)
-literate/*.org           21 chapters + index + manifest.json; the source of truth
-lisp/kittymacs-*.el        21 generated modules (3,330 lines); keybindings.org; themes/; private.el
-tests/                   tangle-tests (8), kittymacs-platform-tests (19), kittymacs-leader-tests (6), verify-config, frames-tests (5, GUI)
-tools/tangle.el          stages, validates and copies generated outputs (125 lines)
+early-init.el, init.el   generated from literate/10-startup.org
+literate/*.org           the chapters (NN-name.org) and the reading guide; the source of truth
+lisp/kittymacs-*.el      one generated module per chapter; keybindings.org (cheat sheet); themes/; private.el
+tests/                   kittymacs-tangle-tests, kittymacs-platform-tests, kittymacs-treesit-tests (no packages);
+                         kittymacs-leader-tests, kittymacs-org-roam-tests, verify-config (installed packages);
+                         kittymacs-frames-tests (graphical session, by hand)
+tools/tangle.el          finds the chapters, validates their targets, tangles and copies the outputs
 flake.nix, nix/          nix-darwin and home-manager modules, tool list, dev shell, nix-darwin and nix-on-droid example hosts
 var/                     packages, caches, custom.el; ignored
 ```
 
-Startup is a flat list of `require`s in `init.el`, ordered by dependency: defaults → platform → `private.el` → UI → literate commands → dashboard → completion → help → Dired → Treemacs → VC → navigation → Meow → keys → shells → programming → Tree-sitter → languages → terminal → Org → frames → `custom.el`. There are no staged hooks; modes that need `after-init-hook` add themselves.
-
-Before the refactor the same configuration was 853 lines of vendored Lambda startup, 9,913 lines of vendored Lambda modules (17 never loaded), 2,384 lines of user modules, a 954-line prototype core that was never loaded, 3,740 lines of tests and tooling, and 14,307 lines of process documentation. Net change against `main`: 122 files, +6,338 / −15,531.
+Startup is a flat list of `require`s in `init.el`, ordered by dependency: defaults → platform → `private.el` → UI → literate commands → dashboard → completion → help → Dired → Treemacs → VC → navigation → Meow → keys → shells → programming → Tree-sitter → languages → terminal → Org → Org-roam → frames → `custom.el`. There are no staged hooks; modes that need `after-init-hook` add themselves. The leader module is not in the list: the modules that define localleaders require it.
 
 ## 3. The Meow layer
 
@@ -30,230 +30,140 @@ Before the refactor the same configuration was 853 lines of vendored Lambda star
 
 **Integrations.** Each package chapter states which Meow state its buffers start in (`meow-mode-state-list`) and defines its localleader with labelled entries, evil-collection style but literate. Application buffers (Dired, Magit, Help, Info, the agenda, the dashboard) start in Motion so their own keys keep working; shells and commit messages start in Insert.
 
-**Keys.** `literate/42-keys.org` is the single owner of the tree: labelled group keymaps for buffers, files, search, VC, windows/frames, workspaces, code, eval, language server, diagnostics, insert, open, toggle, config, help, quit and a reserved user group. `SPC p` is Emacs's own `project-prefix-map`. The chapter carries the migration table from the old keys. `lisp/keybindings.org` is the learner cheat sheet; the startup verifier checks every `SPC` row in it against the live map.
+**Keys.** `literate/42-keys.org` is the single owner of the tree: labelled group keymaps for buffers, files, search, projects, VC, windows/frames, workspaces, code, eval, language server, diagnostics, insert, notes, open, toggle, config, help, quit and a reserved user group, including the help map and the Cape map. No other chapter adds a key under `SPC`; the commands those keys run live with their modules (the inbox command in the Org chapter, the `SPC C` commands in `kittymacs-literate.el`). `SPC p` is `kittymacs-project-map`, whose `:parent` is Emacs's `project-prefix-map`: every `C-x p` command works under `SPC p`, the map adds a few, and `SPC p p` opens the project in a tabspaces workspace, while `C-x p` stays exactly Emacs's own menu, so `C-x p p` is plain `project-switch-project`. The chapter carries the migration table from the old keys. `lisp/keybindings.org` is the learner cheat sheet; the startup verifier checks every `SPC` row in it against the live map.
 
 ## 4. Decisions
 
-User decisions (2026-09-14):
+User decisions:
 
-1. Extract the vendored Lambda tree fully into own literate chapters rather than trim it.
+1. Extract the vendored Lambda tree fully into our own literate chapters rather than trim it.
 2. Literal `SPC` leader; the keypad bound to nothing by default, with `kittymacs-keypad-key` as the opt-in.
-3. This file is the only decision record; the ADR folder, validator, inventory, progress ledger and catalogue were deleted.
+3. This file is the only decision record; there is no ADR folder, validator, inventory, progress ledger or catalogue.
 4. `early-init.el` and `init.el` are our own short files, tangled from a chapter.
-5. The GUI test runner was deleted; `tests/frames-tests.el` stays runnable by hand.
-6. First integrations: Magit, Dired, Org, EAT and Eshell, Vertico/Consult/Embark, Help and Info.
-7. The result lands as a pull request into `main`, superseding branch `uwumacs`.
+5. There is no GUI test runner; `tests/kittymacs-frames-tests.el` is run by hand in a graphical Emacs.
+6. First integrations: Magit, Dired, Org, the terminal and Eshell, Vertico/Consult/Embark, Help and Info.
+7. One `private.el` for machine settings, not a second, late file.
+8. The personal configuration is an overlay package, not a fork (see below).
 
-Agent decisions, with the reason:
+Design decisions, with the reason:
+
+### Structure and startup
 
 - **No registry, no transactions.** `with-eval-after-load`, hooks and `derived-mode-p` are the lazy-readiness and specificity mechanisms Emacs already has. The prototype's descriptor validation, readiness states and reentrancy guards solved problems the native design does not have.
+- **Tangle with tracked outputs.** Startup never tangles, a clone works without a build step, and `tools/tangle.el` stays proportionate.
+- **The chapter list is derived from file names.** Every `literate/NN-name.org` is a chapter and its `:tangle` headers name its outputs, so adding a chapter needs no second place to register it. The builder keeps its safety rules: a target must be Emacs Lisp and must be `early-init.el`, `init.el` or a file in `lisp/` other than `private.el`; no two chapters may write one file; all targets are read before anything is written; and a `lisp/kittymacs-*.el` that no chapter produces is an error, because startup would go on loading a module whose source is gone.
+- **`early-init.el` uses `setq`.** Everywhere else options are set with `setopt`, but in `early-init.el` it would load Customize and, for the package options, `package.el` with url and EIEIO, tens of milliseconds before the first frame. The file also calls `(menu-bar-mode -1)` next to the frame parameter that hides the menu bar, so the mode agrees with what is on screen and the first `SPC t m` shows the bar.
+- **Options are set with `setopt`, so values must satisfy the option's type.** A value the `:type` rejects raises a warning on every start (Org 9.7 spells "open unfolded" as `nofold`, and wants `org-agenda-start-with-log-mode` to be a list). When a warning names an option, read its `:type`. Only values that differ from Emacs's defaults are set; restating a default hides which choices are ours.
+- **The `kittymacs` option group is defined in the defaults module**, the first that loads, and every chapter's group hangs from it.
+- **Global modes are switched on one way.** A built-in mode is turned on with `(mode 1)` at top level; a package's global mode in the `:config` of its `use-package`, with `:demand t` when `:bind` or `:hook` would otherwise defer loading. No startup hook turns a mode on.
+- **Helpers are top-level functions.** Functions that a hook runs are defined at top level, not inside `:config`, and have the private `kittymacs--` prefix. Functions that are the value of an option (`kittymacs-eshell-prompt`, `kittymacs-magit-display-buffer`, `kittymacs-guess-major-mode` and the like) keep public names, since a user may name them in `private.el`.
+- **Built-in commands over wrappers.** Where Emacs or a package already has the command, the key runs it: `dired-up-directory`, `org-insert-structure-template`, `eglot`, `magit-project-status`. Buffer switching skips Emacs's own buffers through `switch-to-prev-buffer-skip-regexp` rather than helper functions, and the dashboard's buttons all go through one `kittymacs--dashboard-run`.
+- **Customize and `private.el` get the last word.** `init.el` loads `private.el` early, right after the platform chapter, because chapters read `kittymacs-*` options while they load, and it loads `custom-file` on its last line, so Customize overrides every chapter. A package option that a chapter also sets cannot be set at the top of `private.el`: the chapter runs later and replaces it. It goes in an `after-init-hook` function at depth 90, which runs once `init.el` has finished, and inside it in `with-eval-after-load` when the chapter sets the option only as the package loads. A top-level `with-eval-after-load` in `private.el` would not do: after-load forms run in the order they were registered, so it would run before the chapter's. The verifier replays a real startup and checks that both kinds of override survive.
+- **The personal configuration is an overlay package.** Features that are one person's rather than the configuration's (the project recipe runner on `SPC p j`, the trusted loader for EmptyNet's explorer, the just-mode declaration) live in a separate package, `kittymacs-personal`, which `private.el` loads from `after-init-hook`. It adds keys through the public maps (`kittymacs-leader-map`, `kittymacs-project-map`) and never edits this repository, so the shared configuration can change without a merge. Personal machine settings, packages, caches and notes stay out of the public repository.
+- **UI loads first.** Theme and fonts before the first frame is drawn, with one theme at startup. Theme-dependent faces hang on Emacs 29's `enable-theme-functions`.
+- **Packages declared where used** with `:ensure t`; `init.el` refreshes archives once when none are cached. One Corfu formatter, `nerd-icons-corfu`.
+- **The platform module may not declare a package.** `tests/kittymacs-platform-tests.el` loads it with no packages available, so `use-package … :ensure t` there would try to install at test time. Spell-checker discovery lives in the platform chapter because it is a property of the machine; its two front ends (`flyspell-correct`, `consult-flyspell`) are declared in the completion chapter.
+- **Never add to a hook that the package later aliases.** `defvaralias` discards the value of the variable it turns into an alias. Magit's `git-commit.el` makes `git-commit-mode-hook` an alias of `git-commit-setup-hook` when it loads, so a function added to the old name before that (as `:hook (git-commit-mode . flyspell-mode)` on a deferred Magit did) silently never runs, and the warning `defvaralias` prints raised a `*Warnings*` frame over the first Magit window. Functions for such a hook are added to its final name inside `with-eval-after-load` of the file that defines it.
+- **The default `major-mode` must be a symbol.** Every buffer made by `get-buffer-create` carries it, and `get`, `symbol-name` and `derived-mode-parent` all assume a mode name; `kittymacs-guess-major-mode` is a named function for that reason.
+- **Licence is GPL-3.0-or-later**, matching the sources the code is distilled from.
+
+### Keys and Meow
+
 - **Buffer-local emulation entry over a `menu-item :filter`.** Both work; only the emulation entry is visible to `where-is`, which Marginalia uses for M-x annotations.
-- **Motion state for Magit and Dired** (was Normal for Magit). In Normal state Meow's grammar shadows Magit's `s`, `u`, `c`; Motion keeps the package's keys and adds only `j`/`k` and the leader.
-- **UI loads first.** Theme and fonts before the first frame is drawn; the old two-theme startup (Lambda's dark fallback, then Sonokai) is gone. Theme-dependent faces hang on Emacs 29's `enable-theme-functions`.
-- **Meow colours its own expansion hints** (2026-09-14). `meow-use-dynamic-face-color` was `nil`, copied from a setup whose theme styled Meow's faces; doom-themes and the Sonokai port style none of them, so the numbered hints rendered as plain text. The option is back at its default: Meow derives the hint backgrounds from the cursor and region colours of the active theme and recomputes them through its `enable-theme` advice, so the light theme is covered without a kittymacs hook.
-- **Packages declared where used** with `:ensure t`; `init.el` refreshes archives once when none are cached. `embark-consult`, previously assumed to install transitively and absent, is now declared and installed. `kind-icon` dropped so `nerd-icons-corfu` is the one Corfu formatter.
-- **Tangle with tracked outputs** kept: startup never tangles, a clone works, and `tools/tangle.el` (125 lines) is proportionate.
-- **Frames mean full buffers, not panels.** The user's frames preference covers buffers you read or edit; sidebars, menus, gutters and the minibuffer stay inside each frame. Treemacs and `imenu-list` are kept as side windows and `diff-hl` is the git gutter (all under `SPC t`); the same rule now covers `*Warnings*` and the other buffers Emacs raises on its own.
-- **Dropped for good reasons:** icomplete fallback, `completion-preview`, the vertico-buffer internals override, the hand-rolled Info picker (`consult-info`), the help transient (a keymap shows in which-key), `peep-dired`, `vdiff-magit`, `git-gutter`, `mu4e`/`denote`/`citar` keys (not installed), `svg-tag-mode`, `reveal-mode`, `lambda-themes`, macOS appearance sync, Fuco's Lisp indent override, `multi-compile`, Homebrew and iTerm helpers, Colin's personal Org file openers and export helpers, `desktop`, time stamps, `anaphora`/`csetq`/`deftoggle`.
-- **Added after the first trial (2026-09-14):** `org-modern` and `org-appear` (hidden markers shown at point), `avy` under `SPC j`, `meow-tree-sitter` things (`f` function, `a` class, `t` test, `y` entry, `,` parameter, `/` comment; the angle-bracket thing moved to `<`), `vundo` on `SPC b u`, `keycast` on `SPC t k`/`K`, Casual's menus on `?` in every localleader and `C-o` in the built-ins' own maps, and spell checking wired to `hunspell`/`aspell` on `PATH` or MSYS2's hunspell.
-- **GNU ELPA needs a native gpg.** Emacs verifies the signed GNU ELPA index with the `gpg` that `gpgconf` reports; on Windows that is Git for Windows' MSYS `gpg`, which cannot open a Windows keyring directory, so the import yields nothing and every signature fails as "no public key" while the archive silently disappears. `epg` honours `epg-gpg-program` only when set through Customize and otherwise takes the first `gpg` on `exec-path`, so `early-init.el` puts Gpg4win's directory (the documented Windows dependency) first on `exec-path` and `PATH` when it is installed, and skips the check on Windows without it or anywhere without `gpg`. Verified: with that in place both GNU archives verify from a fresh keyring.
-- **Options are set with `setopt`, so values must satisfy the option's type.** Org 9.7 (Emacs 30/31) spells "open unfolded" as `nofold` and wants `org-agenda-start-with-log-mode` to be a list of items rather than `t`; the old values raised two `*Warnings*` on every start of a fresh Windows install. Fixed at the source in `70-org.org`; the rule is to read the `:type` when a warning names an option.
-- **The home page is the first landing page.** It carries the kittymacs `:3` banner, buttons for every place the README sends a new user (cheat sheet, reading guide, keys chapter, Meow tutor) and a six-key guide at the bottom, so a fresh install explains itself before anything is opened. The verifier still presses the Config and cheat-sheet buttons.
-- **macOS is a section of the platform chapter, not a module** (2026-09-14). Lambda's `lem-setup-macos` was the model and its choices were kept where they still fit a frames-first Meow configuration: Option is Meta and Command is Super with the right Option left to macOS (one `kittymacs-macos-modifiers` option), non-native full screen so a full-screen frame does not take its own Space, a UTF-8 `LANG` when the Dock supplied none, the Trash through the `trash` tool or `~/.Trash`, Keychain in `auth-sources`, `⌘⇧Z` redo, `⌘Q` that closes a frame while others remain, and `C-⌘-f` full screen. Not carried: Fn as Hyper (it turns Fn-arrow paging into Hyper chords), `reveal-in-osx-finder`, `grab-mac-link` and `osx-lib` (a twelve-line `kittymacs-reveal-in-file-manager` covers Finder, Explorer and xdg-open on `SPC f o`), and the Mitsuharu-only anti-aliasing flag. "macOS appearance sync" stays dropped in the sense it was dropped (the theme does not follow the system); the reverse, the title bar following the theme, is small and is in. Zero packages were added. Because `system-type` is a plain variable, `tests/kittymacs-platform-tests.el` binds it per test and exercises every operating system's branch on any machine without packages.
-- **A Dock-launched Emacs.app sees no shell `PATH`**, so `early-init.el` puts the Nix profiles and Homebrew on `exec-path` on macOS before the GNU ELPA signature check, the same way it puts Gpg4win first on Windows, and `exec-path-from-shell` asks a login shell there (where `path_helper` and Homebrew's `shellenv` run) rather than the plain shell it asks on Linux. Dired uses GNU `ls` as `gls` when coreutils is installed, since BSD `ls` has no `--group-directories-first`.
-- **Nix installs what surrounds the configuration, never the configuration.** `flake.nix` exposes a nix-darwin module, a home-manager module, a `tools` environment and a dev shell, all drawing from one list in `nix/tools.nix` (Emacs, git, ripgrep, fd, gnupg, hunspell with a dictionary, and on macOS `gls` and `trash`, plus the Nerd symbols font). The configuration itself is cloned somewhere writable, because it installs packages under `var/` and keeps `private.el` beside the modules; the home-manager module links that clone to `~/.config/emacs` through an out-of-store symlink. `nix/example/flake.nix` is a full nix-darwin host that CI evaluates on Linux with the `kittymacs` input overridden to the checkout, so the module's option set is exercised without a Mac. `x86_64-darwin` is not in the flake's systems: nixpkgs-unstable dropped it in 26.11.
-- **Pinned Tree-sitter grammars live in the writable cache and install only on request** (2026-09-22). `kittymacs-treesit-grammar-directory` defaults to `var/cache/tree-sitter/`, is synchronized to the front of `treesit-extra-load-path` before every availability check and explicit install, and is passed to both installer commands; post-load Customize or `setopt` changes therefore apply without a restart, while startup only registers recipes and conditional remaps. Nix uses nix-community/tree-sitter-nix commit `ea1d87f7996be1329ef6555dcacfa63a69bd55c6` (v0.3.0, ABI 13). On Windows its recipe selects UCRT64 GCC beneath `kittymacs-msys2-root` by absolute path when present, without changing `PATH` or `exec-path`. The `nix-mode` to `nix-ts-mode` remap remains optional and requires both the mode function and a loadable grammar.
-- **ghostel replaces EAT as the terminal** (2026-09-18). The user asked for it by name. It is a thin Emacs layer over `libghostty-vt`, so a program in the terminal cannot tell it from a terminal window: the Kitty keyboard and graphics protocols, OSC 8 links, OSC 7 directory tracking, synchronised output and true colour all work, and shell integration for bash/zsh/fish/nushell is automatic. Three consequences beyond the swap. *The Windows adapter is gone*: EAT launches its child through `/usr/bin/env sh`, which native Windows cannot resolve, so the old module wrapped `make-process` and substituted MSYS2's `env.exe`; ghostel uses ConPTY directly and none of that is needed, leaving `SPC o m` a plain choice of MSYS2's bash. *The terminal chapter is its own chapter* (`34-terminal.org`), because the terminal is no longer a footnote to the platform; `kittymacs-msys2-root` and the spell-checker discovery moved into `30-platform.org`, where they were always platform questions. *The native module lives in `var/ghostel/`*, not the package directory, so `package-upgrade` cannot delete a library this Emacs has mapped; it is downloaded on the first `SPC o e`, never at startup.
-- **The terminal is installed from its repository, not an archive** (2026-09-18). CI found both halves of this the hard way. MELPA's `ghostel` build is broken — the index advertises `ghostel-20260914.1114.tar` and the file answers 404 — and `consult-ghostel` has no MELPA recipe at all, so `:ensure t` could install neither. Both now use `:vc`, which is upstream's own documented method: an ordinary Git checkout under `var/elpa/`, about ten megabytes, cloned once and updated with `package-vc-upgrade`. Move them back to `:ensure t` when MELPA carries them. Everything else, Treemacs and its three extensions included, installs from MELPA normally.
-- **Meow's states drive ghostel's input modes.** Terminals start in Insert, ghostel's semi-char mode forwards the keys, and `C-c` reaches Emacs, so `C-c C-SPC` still opens the leader. Leaving Insert freezes the terminal into copy mode (buffer-local `meow-insert-exit-hook`), which makes the whole scrollback an ordinary read-only buffer the selection grammar works on; entering Insert thaws it. The one ambiguous key is `ESC`, which a full-screen program needs and Meow also wants: `kittymacs-terminal-escape` defaults to `auto`, sending it to the program exactly while the alternate screen is active, with `SPC m ESC` to override per buffer. This is the same problem `evil-ghostel` solves for Evil; there is no `meow-ghostel`, so the bridge is ours. Implementing it means rebinding `<escape>` in `meow-insert-state-keymap`, the only map consulted before a terminal's own keys — outside a terminal the command is plain `meow-insert-exit`.
-- **Which ghostel integrations are on.** Additive ones are on: Eshell's visual commands run in a terminal, `M-x shell` gets ghostel's VT parser (only when the native module is present, since the filter needs it and a machine that declined the download must still have a working shell), `ghostel:` Org links, bookmarks, desktop, input methods, `consult-ghostel` for picking terminals and completing the shell's own history, and `ghostel-project` in `project-switch-commands`. `ghostel-compile-global-mode` is *not*: it replaces `compilation-start` for `compile`, `recompile`, `project-compile` and every package built on them, and a silent global override of Emacs's own compile is more than "use the integration" should mean. `ghostel-compile` is on `SPC m t` instead and the global mode is one documented line in `private.el`.
-- **Treemacs is the file-tree sidebar; `dired-sidebar` is dropped** (2026-09-18). The user asked for a tree showing the project they are in, which is `treemacs-project-follow-mode` exactly. Keeping two file-tree sidebars on one key would be worse than either. Dired keeps its job — marking, renaming, copying between directories — and the two are cross-linked. Treemacs is a *panel*, so it uses a side window and stays inside the frame, which is the same rule `imenu-list` and the old sidebar followed; `treemacs-is-never-other-window` matters more here than in most configurations, because a frame normally holds one buffer and the tree, and without it every "other window" lands in the sidebar. State goes under `var/`, since Treemacs otherwise writes `.cache/` beside `init.el`, which Git does not ignore. `treemacs-tab-bar` scopes a tree per workspace to match tabspaces; `treemacs-magit` exists because staging changes Git's index rather than the files, so filesystem watching alone would not notice; `treemacs-nerd-icons` matches the icon font the rest of the configuration already checks for.
-- **Never add to a package's hook before the package has loaded** (2026-09-18). `:hook (git-commit-mode . flyspell-mode)` on a deferred Magit created `git-commit-mode-hook` hours before `git-commit.el` aliased it to `git-commit-setup-hook`; `defvaralias` discards the value it overwrites and warns while doing it. The spell checker it asked for never ran, and the warning displayed a buffer — which under frames-only mode is an *operating-system window*, so the first `SPC v s` of a session raised a `*Warnings*` window over the Magit window, which reads as the key having failed. Magit itself is defensive (`:get #'magit-hook-custom-get` merges a pre-set value with its defaults), so nothing of Magit's was lost; the rule still stands, and both the spelling and the Meow state now hang on `git-commit-setup-hook` inside `with-eval-after-load 'git-commit`.
-- **Diagnostics stay inside the frame.** `*Warnings*`, `*Backtrace*` and the compilation logs are things Emacs says, not buffers you work in, so `display-buffer-alist` gives them a window at the bottom of the current frame. Without it any warning, from any package, becomes a focus-stealing OS window. This is the "frames mean full buffers, not panels" rule applied to the buffers Emacs raises on its own.
-- **`magit-status` asks in a better order.** From a buffer with no file — the home page, a terminal, `*scratch*` — `default-directory` is wherever the buffer was born. When that is not a repository `magit-status` prompts, and offers to *create* one; declining leaves nothing on screen. `kittymacs-magit-status` tries this buffer's repository, then the current project's, and only then Magit's own prompt. The display function also gained `display-buffer-use-some-window` as a final fallback, because Magit selects whatever window it is handed and a `nil` there is an error, not a graceful degradation.
-- **The default `major-mode` must be a symbol.** It was a lambda, so every buffer made by `get-buffer-create` carried a function object where Emacs expects a mode name — `get`, `symbol-name` and `derived-mode-parent` all assume a symbol. It is now the named `kittymacs-guess-major-mode`, which does the same thing.
-- **The platform module may not declare a package.** `tests/kittymacs-platform-tests.el` loads it with no packages available, so `use-package … :ensure t` there would try to install at test time. The spell-checker discovery lives in the platform chapter because it is a property of the machine; its two front ends (`flyspell-correct`, `consult-flyspell`) are declared in the completion chapter.
-- **Android is a platform branch, not a port** (2026-09-21). The Android build of Emacs reports `system-type` as `android`, so every `pcase` and `eq` in this configuration that named a platform fell through to its default: the shell became the compiled-in `/bin/sh`, which does not exist there; `exec-path-from-shell` was installed and *succeeded*, replacing `PATH` with what `/system/bin/sh` reports, which is a `PATH` without Termux; and `frames-only-mode` turned every Help buffer into an entry in the task switcher, because the port maps frames one-to-one onto activities. The chapter structure made the fix a section beside the macOS one rather than a module, for the same reason macOS is a section: it is a set of answers to *where does this machine keep things*. Four answers are the whole of it. **The shell** prefers Termux's `bash`, then Termux's `sh`, then `/system/bin/sh`, which unlike `/bin/sh` is always present, so the fallback is real rather than hopeful. **Termux is discovered, never assumed**: Android forbids one application from reading another's data directory unless the two share a user ID, so `kittymacs-termux-program` returns nil on an unpaired device and every dependent decision degrades; `LD_LIBRARY_PATH` is *cleared* rather than set, because Termux's programs record where their own libraries are and an inherited path interposes Android's system libraries of the same names. **The volume keys** are the port's only way to quit without a physical keyboard, so `kittymacs-android-volume-keys` defaults to leaving them alone and the option exists to be found rather than to be used. **Text conversion follows Meow's state**: Android input methods edit the buffer directly instead of sending key events, which is right in Insert state and destructive in every other, so the buffer-local style is suspended on leaving Insert and restored on entering it — through `set-text-conversion-style`, because assigning the variable only takes effect when the buffer is next selected, which is a whole state transition too late. Elsewhere: Dired lists with `ls-lisp` (Windows' branch) since every Android subprocess goes through an executable loader that traces its children, and the cheapest listing starts no process at all; `kittymacs-frames-only` and `kittymacs-terminal-ghostel` are options rather than hard-coded refusals. Zero packages were added and no existing platform's behaviour changed. Thirteen tests bind `system-type` to `android` exactly as the macOS tests bind `darwin`.
-- **ghostel cannot follow to Android, and Eshell is the honest replacement** (2026-09-21). Ghostel is installed with `:vc`, so a first start clones it with `git`, which the Android port does not ship; and it is a native module, for which upstream publishes no `android-aarch64` build — and the port is commonly built with no dynamic module support at all, in which case `module-file-suffix` is nil and no module could load however it arrived. Two independent blockers, so `SPC o e` opens Eshell there: Lisp, no module, no subprocess to start, and it runs Termux's programs where Termux is paired. It is not a terminal and will not run `htop`; saying so is better than an error on every start.
-- **nix-on-droid is a second device, not a layer under the first** (2026-09-21). Nix on Android was the obvious way to supply the Android port with `git`, `ripgrep` and the language servers, and it cannot work. A Nix store path exists only inside nix-on-droid's PRoot: every binary's ELF interpreter is baked in as `/nix/store/…-glibc/lib/ld-linux-aarch64.so.1`, which does not resolve on the real Android filesystem, so the kernel cannot start the program from outside the PRoot at all. Two further blockers stand behind that one — nix-on-droid is `com.termux.nix` while the shared-user-ID Emacs builds pair with `com.termux`, and Android 10 forbids executing anything in another application's data directory regardless. So there are two Android deployments and they are alternatives: the port with Termux, or an ordinary GNU/Linux Emacs inside nix-on-droid, where `system-type` is `gnu/linux` and no Android branch applies. The second needed no new Nix code — nix-on-droid consumes home-manager modules, so `homeManagerModules.default` *is* the integration — only `installFonts`, split from `installPackages` because a console-only Emacs has no use for the icon font, and `nix/example-nix-on-droid/flake.nix`, which CI evaluates against the checkout exactly as it evaluates the nix-darwin host. CI evaluates the *package list the module produces*, not the activation package: nix-on-droid cannot build proot-static on a phone, so it hardcodes the store path of a pre-built one and reaches it through `builtins.storePath`, which pure evaluation forbids — every flake-based `nix-on-droid switch` needs `--impure`. Evaluating the package list keeps the check pure and aims it at what this repository actually contributes, which is what the nix-darwin check does too.
-- **Ispell is told its dictionary before it is asked for one** (2026-09-21). The platform chapter set `ispell-program-name` with `setopt` and only then set `DICTIONARY`; the option's setter asks Hunspell to list its dictionaries, Hunspell cannot without a default name, and the resulting error aborted the load of Ispell itself. Emacs restores a library's autoload stubs when its load fails, so Ispell never counted as loaded: Flyspell silently stayed off, and every Corfu auto-completion in a text-mode buffer reloaded Ispell, spawned Hunspell, failed, and logged a backtrace, a measured 250 ms stall per word. The environment is now set first and the whole configuration is guarded, so a broken checker reports once and Ispell stays loaded.
-- **Text-mode dictionary completion is off** (2026-09-21). Emacs 30 adds `ispell-completion-at-point` to every text-mode buffer. With `corfu-auto` it runs a few times per word, and on Windows there is no plain word list for it to read, so each run only costs a process and an error. `SPC c p w` (`cape-dict`) is the explicit version.
-- **Git for Windows' Unix tools go last on `exec-path`** (2026-09-21). Magit's hunk refinement, Ediff and diff-hl call `diff`, `diff3` and `patch` by name; Windows has none, so refinement raised an error in Magit's post-command hook. The platform policy appends Git's `usr/bin` (or MSYS2's) after every other entry, so native programs keep winning, and it leaves `PATH` alone, so subprocesses see no change.
-- **Customize and `private.el` get the last word** (2026-09-24). `custom.el` used to load inside the defaults chapter and `private.el` right after the platform chapter, so every later `setopt` or `use-package :custom` silently replaced them: `(setopt ghostel-enable-osc52 t)` in `private.el` was undone by the terminal chapter's `:custom`. The user chose to keep one `private.el`, still loaded early because chapters read `kittymacs-*` options while they load, and to put late settings in a hook. `custom-file` is still named in the defaults chapter but loaded on the last line of `init.el`. `private.el` sets `kittymacs-*` options at top level with `setopt`; options of packages that a chapter also sets go in `(add-hook 'after-init-hook (lambda () …) 90)`, and inside it in `with-eval-after-load` when the chapter sets them only as the package loads (after-load forms run in registration order, so a top-level one in `private.el` would run before the chapter's). The verifier replays a real startup (`after-init-time` nil during init, then `after-init-hook`) and checks that both kinds of override survive.
-- **Licence is GPL-3.0-or-later**, matching the sources the code is distilled from; the old MIT file from Colin's tooling is replaced.
-- **Kept from Lambda**, attributed per module header: sane defaults, scrolling and mouse settings, persistent scratch, the completion stack configuration, Helpful/Info setup, Dired extensions, Magit settings, project/tab/workspace setup with workspace-filtered buffers, Org display and agenda defaults, programming aids, Eshell settings and aliases, Tramp, the highlighting packages. Lambda's EAT setup is gone with EAT.
+- **Motion state for Magit and Dired.** In Normal state Meow's grammar shadows Magit's `s`, `u`, `c`; Motion keeps the package's keys and adds only `j`/`k` and the leader.
+- **Meow colours its own expansion hints.** `meow-use-dynamic-face-color` is at its default: Meow derives the hint backgrounds from the cursor and region colours of the active theme and recomputes them through its `enable-theme` advice. doom-themes and the Sonokai port style none of Meow's faces, so turning it off left the numbered hints as plain text.
+- **The home page is the first landing page.** It carries the kittymacs `:3` banner, buttons for every place the README sends a new user (cheat sheet, reading guide, keys chapter, Meow tutor) and a six-key guide at the bottom, so a fresh install explains itself before anything is opened.
+
+### Frames
+
+- **Frames mean full buffers, not panels.** The frames preference covers buffers you read or edit; sidebars, menus, gutters and the minibuffer stay inside each frame. Treemacs and `imenu-list` are side windows and `diff-hl` is the git gutter (all under `SPC t`). `frames-only-mode` remaps the split commands, so every key bound to them, `SPC w h`/`SPC w v` included, makes a frame while the mode is on.
+- **Diagnostics stay inside the frame.** `*Warnings*`, `*Backtrace*` and the compilation logs are things Emacs says, not buffers you work in, so `display-buffer-alist` gives them a window at the bottom of the current frame. Without it any warning, from any package, becomes a focus-stealing OS window.
+- **`magit-status` asks in a better order.** From a buffer with no file, `default-directory` is wherever the buffer was born, and `magit-status` there offers to create a repository. `kittymacs-magit-status` tries this buffer's repository, then the current project's, and only then Magit's own prompt. The display function ends with `display-buffer-use-some-window`, because Magit selects whatever window it is handed and a `nil` there is an error.
+
+### Platforms
+
+- **Each operating system is a section of the platform chapter, not a module.** A platform is a set of answers to *where does this machine keep things*. Because `system-type` is a plain variable, `tests/kittymacs-platform-tests.el` binds it per test and exercises every operating system's branch on any machine without packages.
+- **macOS.** Lambda's macOS choices were kept where they fit a frames-first Meow configuration: Option is Meta and Command is Super with the right Option left to macOS (one `kittymacs-macos-modifiers` option), non-native full screen, a UTF-8 `LANG` when the Dock supplied none, the Trash through the `trash` tool or `~/.Trash`, Keychain in `auth-sources`, `⌘⇧Z` redo, `⌘Q` that closes a frame while others remain, `C-⌘-f` full screen, and a title bar that follows the theme. Fn is not Hyper, because that turns Fn-arrow paging into Hyper chords; `kittymacs-reveal-in-file-manager` on `SPC f o` covers Finder, Explorer and xdg-open instead of three packages.
+- **A Dock-launched Emacs.app sees no shell `PATH`**, so `early-init.el` puts the Nix profiles and Homebrew on `exec-path` on macOS before the GNU ELPA signature check. `exec-path-from-shell` then imports the login shell's environment; its whole policy is the `:if` in the shells chapter, which leaves it out on Windows and Android. Dired uses GNU `ls` as `gls` when coreutils is installed, since BSD `ls` has no `--group-directories-first`.
+- **GNU ELPA needs a native gpg.** Emacs verifies the signed GNU ELPA index with the first `gpg` on `exec-path`. On Windows that is Git for Windows' MSYS `gpg`, which cannot open a Windows keyring directory, so every signature fails as "no public key" and the archive silently disappears. `early-init.el` puts Gpg4win's directory first on `exec-path` when it is installed, and leaves `PATH` alone, so subprocesses see no change; on Windows without it, or anywhere without `gpg`, it skips the check.
+- **Git for Windows' Unix tools go last on `exec-path`.** Magit's hunk refinement, Ediff and diff-hl call `diff`, `diff3` and `patch` by name, and Windows has none. The platform policy appends Git's `usr/bin` (or MSYS2's) after every other entry, so native programs keep winning, and leaves `PATH` alone.
+- **Spelling is decided per buffer, and Ispell is told its dictionary first.** The Flyspell hooks are always added and ask for a checker when a buffer opens, so a checker that `private.el` or `exec-path-from-shell` makes visible later is still found. `DICTIONARY` is set before `ispell-program-name`, whose setter asks Hunspell for its dictionaries; a checker that fails is reported once and Ispell stays loaded. Emacs 30's text-mode dictionary completion is off: with `corfu-auto` it would start a process a few times per word, and `SPC c p w` (`cape-dict`) is the explicit version.
+- **Android is a platform branch, not a port.** The Android build reports `system-type` as `android`. The shell prefers Termux's `bash`, then Termux's `sh`, then `/system/bin/sh`. Termux is discovered, never assumed, because Android lets one application read another's files only when they share a user ID; `LD_LIBRARY_PATH` is cleared rather than set. The volume keys stay the port's way to quit (`kittymacs-android-volume-keys` hands them back). Text conversion follows Meow's state through `set-text-conversion-style`, since input methods edit the buffer directly, which is right only in Insert. Dired lists with `ls-lisp`, and `kittymacs-frames-only` defaults to off, because an Android frame is an entry in the task switcher.
+- **The terminal cannot follow to Android, and Eshell stands in.** ghostel is installed with `git`, which the port does not ship, and is a native module with no `android-aarch64` build, so `SPC o e` opens Eshell there.
+
+### Terminal, tree and tools
+
+- **ghostel is the terminal.** It is a thin Emacs layer over `libghostty-vt`, so a program in it cannot tell it from a terminal window (Kitty keyboard and graphics protocols, OSC 8 and OSC 7, synchronised output, true colour, automatic shell integration). It uses ConPTY directly on Windows, so no POSIX helper is needed. It has its own chapter (`34-terminal.org`); the MSYS2 root and spell-checker discovery are platform questions and live in `30-platform.org`. The native module lives in `var/ghostel/`, not the package directory, so `package-upgrade` cannot delete a library this Emacs has mapped, and it is downloaded on the first `SPC o e`, never at startup.
+- **The terminal is installed from its repository, not an archive.** MELPA's `ghostel` build has been broken and `consult-ghostel` has no recipe, so both use `:vc`, upstream's documented method. Move them back to `:ensure t` when MELPA carries them.
+- **Meow's states drive ghostel's input modes.** Terminals start in Insert, where ghostel forwards the keys and `C-c` still reaches Emacs. Leaving Insert freezes the terminal into copy mode, so the scrollback is an ordinary buffer for the selection grammar; entering Insert thaws it. `ESC` goes to the program exactly while the alternate screen is active (`kittymacs-terminal-escape`, overridable with `SPC m ESC`); this bridge is ours because there is no `meow-ghostel`.
+- **Which ghostel integrations are on.** The additive ones: Eshell's visual commands, `M-x shell`'s VT parser (only when the native module is present), `ghostel:` Org links, bookmarks, desktop, input methods, `consult-ghostel` and `ghostel-project`. `ghostel-compile-global-mode` is not, because it replaces `compilation-start` for every command built on it; `ghostel-compile` is on `SPC m t` and the global mode is one line in `private.el`.
+- **Treemacs is the file-tree sidebar.** It is a panel, so it uses a side window, and `treemacs-is-never-other-window` keeps "other window" from landing in it. `treemacs-project-follow-mode` shows the project you are in, `treemacs-tab-bar` scopes a tree per workspace, `treemacs-magit` notices index changes that file watching cannot, and its state goes under `var/`. Git-ignored files stay visible.
+- **Pinned Tree-sitter grammars live in the writable cache and install only on request.** `kittymacs-treesit-grammar-directory` defaults to `var/cache/tree-sitter/` and is put at the front of `treesit-extra-load-path` before every availability check and install, so a later `setopt` applies without a restart. Each recipe is pinned to an exact commit, a mode is remapped to its Tree-sitter version only when both the mode and a loadable grammar exist, and on Windows the recipe uses MSYS2's UCRT64 GCC by absolute path.
+
+### Linked notes
+
+- **A graph is Org-roam's own pair of variables, set once per buffer.** `org-roam-directory` and `org-roam-db-location` are made buffer-local when the buffer's graph is decided, from `hack-local-variables-hook` for Org files, `org-roam-mode-hook` for the backlinks panel (whose major mode restarts on every refresh, so its graph is permanent-local) and `org-capture-mode-hook` for a capture. Org-roam's own code then finds the graph where it looks for it, without being wrapped. There is no graph registry, custom schema or project loader.
+- **Databases live in the user cache, named by the graph's real path.** A project checkout never contains a generated file and a read-only one can be indexed. The name is a hash of the `file-truename`, so aliases share an index and worktrees do not. The personal root is resolved with `file-truename` when the module loads, so direct upstream calls share its connection. Nothing syncs at startup and upstream's autosync mode stays off, because turning it on rebuilds the index; `C-u SPC n s` rebuilds a graph from nothing after the same checks as every command.
+- **A project graph is declared by the project.** A repository's `.dir-locals.el` sets `kittymacs-org-roam-project` (EmptyNet ships one), and the folder holding that file is the root. `kittymacs-org-roam-excluded-directories` is safe as a directory local, so a project names its own exclusions; they become `org-roam-file-exclude-regexp`, which upstream's listing already honours. The default exclusions are generic (Git's folder and cache folders).
+- **The only advice is `:before-while` on `org-roam-id-find`.** It lets Org's own ID index answer when the current graph cannot be used, because Emacs has no SQLite or the root does not exist.
+
+### Nix
+
+- **Nix installs what surrounds the configuration, never the configuration.** `flake.nix` exposes a nix-darwin module, a home-manager module, a `tools` environment and a dev shell, all drawing from one list in `nix/tools.nix`. The configuration installs packages under `var/` and keeps `private.el` beside the modules, so it must be a writable clone; the home-manager module links it to `~/.config/emacs` through an out-of-store symlink. `x86_64-darwin` is not in the flake's systems, because nixpkgs-unstable dropped it.
+- **The home-manager module clones a pinned revision, once.** When `source` is missing, activation fetches exactly `revision`, which defaults to the kittymacs revision the host's `flake.lock` records, from `repository`, and moves it into place only once `HEAD` is that commit. After that the checkout is user state: a later activation that finds another commit prints a notice and changes nothing. `daemon` turns on home-manager's `services.emacs` (systemd on Linux, launchd on macOS); the nix-darwin module keeps its own `daemon`, and a Mac should use one of the two. EmptyNet consumes this module as a contract.
+- **The sibling repository is EmptyNet**, formerly NixNet, renamed because it now manages many declarative systems across different boundaries rather than only NixOS machines. It imports the home-manager module and relies on its options (`source`, `repository`, `revision`, `daemon`), and its repository is a project graph through the `.dir-locals.el` described above.
+- **nix-on-droid is a second device, not a layer under the Android port.** A Nix store path exists only inside nix-on-droid's PRoot, so the Android port could not execute anything installed there; the two applications are also different users, and Android 10 forbids executing another application's files. nix-on-droid consumes home-manager modules, so `homeManagerModules.default` is the whole integration; `installFonts` is separate from `installPackages` because a console-only Emacs has no use for the icon font.
+- **CI evaluates, it does not build.** The example hosts are evaluated against the checkout with the `kittymacs` input overridden: the nix-darwin system needs a Mac to build, and nix-on-droid's activation needs `--impure`, so both checks read the package list the modules produce. The home-manager clone options are read with a `git+file` override, because a `path:` input has no revision to pin.
+
+### CI
+
+- **One startup job, every system.** A matrix runs the fresh install, a byte-compilation of every module, the package suites and the verifier on Linux with the oldest supported and the current Emacs, and informationally on macOS and Windows. Every step is written once in bash. The setup actions are pinned to commits and Dependabot proposes updates. The byte-compile step fails on errors only; its warnings are mostly about functions a module calls without loading them.
+- **CI refreshes archive metadata after restoring the package cache**, with a non-interactive call because Emacs 31 refreshes asynchronously when the command is called interactively: cached MELPA metadata can name tarballs the archive has since replaced. The install step requires Org-roam explicitly, so a failed installation stops there instead of cascading into the graph tests. A weekly run skips the cache.
+
+### Kept, added and dropped
+
+- **Kept from Lambda**, attributed per module header: sane defaults, scrolling and mouse settings, persistent scratch, the completion stack configuration, Helpful/Info setup, Dired extensions, Magit settings, project/tab/workspace setup with workspace-filtered buffers, Org display and agenda defaults, programming aids, Eshell settings and aliases, Tramp, the highlighting packages.
+- **Added after the first trial:** `org-modern` and `org-appear`, `avy` under `SPC j`, `meow-tree-sitter` things (`f` function, `a` class, `t` test, `y` entry, `,` parameter, `/` comment; the angle-bracket thing on `<`), `vundo` on `SPC b u`, `keycast` on `SPC t k`/`K`, Casual's menus on `?` in every localleader and `C-o` in the built-ins' own maps, and spell checking through `hunspell`/`aspell` or MSYS2's hunspell.
+- **Dropped for good reasons:** icomplete fallback, `completion-preview`, the vertico-buffer internals override, the hand-rolled Info picker (`consult-info`), the help transient (a keymap shows in which-key), `peep-dired`, `vdiff-magit`, `git-gutter`, `kind-icon` (one Corfu formatter), `mu4e`/`denote`/`citar` keys (not installed), `svg-tag-mode`, `reveal-mode`, `lambda-themes`, macOS appearance sync (the theme does not follow the system), Fuco's Lisp indent override, `multi-compile`, Homebrew and iTerm helpers, Colin's personal Org file openers and export helpers, `desktop`, time stamps, `anaphora`/`csetq`/`deftoggle`, EAT (ghostel replaced it, and with it the Windows `make-process` adapter), `dired-sidebar` (two file-tree sidebars on one key are worse than either), `expand-region` (never bound; Meow's selection does its job), `rg` (`deadgrep` does the same on `SPC s D`), `reveal-in-osx-finder`, `grab-mac-link` and `osx-lib`. From Org-roam: NTFS junction resolution through a CPython helper, the refusal of remote graph paths, and the check of where a capture template writes. Each needed advice on private upstream functions or a subprocess on every lookup; a junction now simply looks like a separate folder with its own index, and Emacs asks before creating a folder on save.
 
 ## 5. Verification
 
-Batch, from the repository root (`EMACS_DOTS_TEST_PACKAGES` points at an existing `var/elpa`):
+Batch, from the repository root. The first four need no packages; the last three need `KITTYMACS_TEST_PACKAGES` pointing at an existing `var/elpa`:
 
 ```sh
 emacs -Q --batch -l tools/tangle.el -- --check
-emacs -Q --batch -l tests/tangle-tests.el -f ert-run-tests-batch-and-exit
+emacs -Q --batch -l tests/kittymacs-tangle-tests.el -f ert-run-tests-batch-and-exit
 emacs -Q --batch -l tests/kittymacs-platform-tests.el -f ert-run-tests-batch-and-exit
+emacs -Q --batch -l tests/kittymacs-treesit-tests.el -f ert-run-tests-batch-and-exit
 emacs -Q --batch -l tests/kittymacs-leader-tests.el -f ert-run-tests-batch-and-exit
+emacs -Q --batch -l tests/kittymacs-org-roam-tests.el -f ert-run-tests-batch-and-exit
 emacs -Q --batch -l tests/verify-config.el
 ```
 
-All five pass at every commit on this branch, and `.github/workflows/ci.yml` runs them on GitHub for every push and pull request: the tangle check and the platform tests on Emacs 31.1, and a fresh clone that installs its packages by starting `init.el` in batch, then the leader tests and the verifier, on Emacs 30.1 and 31.1 (Linux) with informational Windows and macOS jobs; a Nix job runs `nix flake check` and evaluates the nix-darwin and nix-on-droid examples against the checkout; a weekly run skips the package cache. The verifier starts the real configuration in an isolated copy with installation forbidden, in the order of a real startup, and asserts: no warning is displayed, `private.el` loads once and its overrides survive (top-level and `after-init-hook` ones), `custom.el` loads from `var/etc` and wins over the chapters, every `lisp/kittymacs-*.el` module is loaded, every key in the `SPC` tree runs a command, `SPC` is `kittymacs-leader-map` in both Meow state maps, `SPC l` and `SPC s l` owners, the dashboard's two buttons open the guide and the cheat sheet, theme toggling never stacks themes, and every cheat-sheet `SPC` row resolves to its command.
+`.github/workflows/ci.yml` runs all of them on every push and pull request: the first four on Emacs 31.1; then, on Emacs 30.1 and 31.1 on Linux and informationally on macOS and Windows, a fresh clone that installs its packages by starting `init.el` in batch, a byte-compilation of `lisp/*.el`, and the last three. A Nix job runs `nix flake check`, evaluates the nix-darwin and nix-on-droid examples against the checkout, and checks the home-manager module's clone options; a weekly run skips the package cache.
 
-Not verified here, for the user to check on the real host:
+The verifier starts the real configuration in an isolated copy with installation forbidden, in the order of a real startup (`after-init-time` nil during init, then `after-init-hook` and `delayed-warnings-hook`), and prints `KITTYMACS-VERIFY` with its result. It asserts: no warning is displayed; `private.el` loads once and its overrides survive (top-level and `after-init-hook` ones); `custom.el` loads from `var/etc` and wins over the chapters; every `lisp/kittymacs-*.el` module is loaded; every key in the `SPC` tree runs a command; `SPC` is `kittymacs-leader-map` in both Meow state maps; `SPC l e` is `eglot` and `SPC s l` is `vertico-repeat`; Org-roam neither syncs nor opens a database at startup; the dashboard's two buttons open the guide and the cheat sheet; theme toggling never stacks themes; and every cheat-sheet `SPC` row resolves to its command.
 
-- A graphical startup and the five frame tests (`M-x ert RET ^dots-frames- RET`).
-- First start on a fresh clone (package installation path).
-- Emacs 30.1: the stated floor; only 31.1 exists on this machine.
-- macOS on a real Mac: the modifier keys, the Trash, the title bar and the Dock-launched `PATH`. The platform tests cover the branches with `system-type` bound to `darwin`; the informational macOS CI job covers batch startup; `darwin-rebuild switch` with the module has been evaluated on Linux but not built.
-- Android on a real device. The platform tests cover every branch with `system-type` bound to `android`, and they are the only coverage there is: no CI runner is an Android telephone. Specifically unverified, in rough order of how likely they are to want adjusting — whether a paired Termux's `bash` starts cleanly through the executable loader; whether `set-text-conversion-style` on each Meow state transition is quick enough to be invisible with a particular on-screen keyboard (its own documentation warns that resetting an input method is not cheap, which is why `kittymacs-android-modal-text-conversion` exists); whether the port in use has dynamic module support at all, which decides nothing here but would be worth knowing; and how the default 14-point font reads at phone density. `nix-on-droid switch` has been evaluated on Linux but not applied to a device.
+Not covered by CI, for the user to check on the real host:
+
+- A graphical startup and the frame tests (`M-x ert RET ^kittymacs-frames- RET` after loading `tests/kittymacs-frames-tests.el`).
+- macOS on a real Mac: the modifier keys, the Trash, the title bar and the Dock-launched `PATH`. The platform tests cover the branches with `system-type` bound to `darwin`, the informational macOS job covers batch startup, and the nix-darwin example is evaluated but not built.
+- The home-manager activation itself: CI evaluates the clone script but never runs it.
+- Android on a real device. The platform tests cover every branch with `system-type` bound to `android`, and no CI runner is an Android telephone. Unverified, in rough order of how likely they are to want adjusting: whether a paired Termux's `bash` starts cleanly through the executable loader; whether `set-text-conversion-style` on each Meow state transition is quick enough with a particular on-screen keyboard (`kittymacs-android-modal-text-conversion` exists for that); whether the port in use has dynamic module support; and how the default font size reads at phone density. `nix-on-droid switch` is evaluated but not applied to a device.
 
 ## 6. Open items
 
-- `main` carries the physical-hint adapter (PR #4). This branch removes it; merging makes the literal leader the deployed behaviour.
-- Installed packages that nothing declares any more remain in `var/elpa/` (for example `kind-icon`, `peep-dired`, `svg-tag-mode`, `lambda-themes`, the macOS, mail, notes, citation and LLM packages). Prune with `M-x package-autoremove` when convenient.
+- Packages that nothing declares any more stay in an existing `var/elpa/` (for example `kind-icon`, `expand-region`, `rg`, `lambda-themes`). Prune with `M-x package-autoremove` when convenient.
 - Beacon state is untouched by the leader (as intended); `SPC` in Beacon is Meow's default.
-- ghostel's native module is downloaded on first use, so the first `SPC o e` on a
-  new machine needs the network; `M-x ghostel-module-compile` builds it instead
-  with Zig 0.16.0. Neither path was exercised here, because this container
-  cannot reach GitHub releases: the terminal was verified up to the point where
-  it asks, and declining now reports what is missing instead of a void function.
-- `treemacs-git-mode` runs `deferred` where `python3` exists and `simple`
-  otherwise; only the `simple` path ran here.
+- ghostel's native module is downloaded on first use, so the first `SPC o e` on a new machine needs the network; `M-x ghostel-module-compile` builds it instead with Zig. Declining reports what is missing instead of a void function.
+- `treemacs-git-mode` runs `deferred` where `python3` exists and `simple` otherwise.
 - `kittymacs-leader-alt-key` is fixed at `C-c C-SPC` in the keys chapter; make it an option if it ever needs to change.
+- The `yaml-mode`, `typescript-mode` and `typst-mode` rows of `kittymacs-treesit-mode-remaps` name modes that nothing installs, so on a stock Emacs those remaps never fire.
+- `kittymacs--org-no-angle-pairs` is still defined inside the Org chapter's `:config`, so the byte compiler cannot see it.
 
 ## 7. Extending
 
-- **A key:** `(keymap-set kittymacs-leader-map "u x" #'my-command)` in `private.el`, or a group in `42-keys.org`. Labels: `(cons "label" #'command)`.
+- **A key:** `(keymap-set kittymacs-leader-map "u x" #'my-command)` in `private.el`, or a group in `42-keys.org`. Labels: `(cons "label" #'command)`. Project keys go in `kittymacs-project-map`, for example `(keymap-set kittymacs-project-map "j" #'my-project-command)`, which leaves `C-x p` alone.
 - **A mode menu:** `(kittymacs-define-localleader 'python-mode "r" (cons "run" #'python-shell-send-buffer))` next to the package.
-- **A package:** a chapter with a `use-package … :ensure t` block, a Meow section, a manifest entry and a `require` in the startup chapter.
-
-## 8. Refactor log
-
-All on branch `dev/kittymacs-config-review-dc1bee`, each commit verified with the four batch checks.
-
-| Commit | Step |
-|---|---|
-| `c0e7c97` | Delete the prototype core, GUI runner, unloaded Lambda modules and the process layer (−22,383 lines) |
-| `cad3cf4` | Literal leader and localleaders (`41-leader.org`); hint adapter retired; editing chapter rewritten |
-| `fc58c61` | Defaults chapter replaces eight Lambda modules |
-| `81bb5f5` | Completion and help chapters; `embark-consult` installed; one Corfu formatter |
-| `ddb2723` | Dired, VC and navigation chapters; Magit and Dired in Motion with localleaders |
-| `6c694a4` | Shells, Org and programming chapters |
-| `6bca85f` | Appearance chapter merges fonts, theme, mode line and faces |
-| `8785b63` | Keys chapter owns the whole tree; Lambda's last modules gone |
-| `0eea287` | Own 86-line startup replaces Lambda's bootstrap and the composition root |
-| `210f91a` | `lisp/` and `kittymacs-*` names throughout |
-| `cd0127a` | Sidebars restored and `diff-hl` gutter added after the user clarified that frames apply to full buffers, not panels |
-| `5e60d4a` | Org polish, avy, meow-tree-sitter, vundo, keycast, Casual menus, spelling wiring, GPL-3.0-or-later licence |
-| `d40cf20` | Gpg4win first on `exec-path` so GNU ELPA signatures verify on Windows |
-| (this branch) | macOS section of the platform chapter, `SPC f o`, platform tests, Nix flake with nix-darwin and home-manager modules |
-| (this branch) | Meow expansion hints coloured from the theme (`meow-use-dynamic-face-color` at its default) |
-| (this branch) | ghostel replaces EAT in a new `34-terminal.org`; MSYS2 root and spelling move to the platform chapter |
-| (this branch) | `65-treemacs.org` adds the project tree and retires `dired-sidebar` |
-| (this branch) | Magit's commit hooks wait for `git-commit`; diagnostics stay inside the frame; `magit-status` prefers the project |
-
-## Scoped linked notes (2026-09-22)
-
-Org-roam loads after Org and before frames, with its package declaration in
-`71-org-roam.org`. A graph is the upstream `org-roam-directory` /
-`org-roam-db-location` pair. There is no graph registry, custom schema, project
-loader or architecture inventory. Physical roots are canonicalized; the default
-DB filename hashes that identity under `kittymacs-cache-dir/org-roam`. Aliases
-share a cache, distinct worktrees do not. A supplied external DB remains valid;
-all buffers for one root must use the same DB because upstream keys connections
-by root. Directory locals should set both variables for persistent project scope.
-
-A small scoped-call adapter binds both the originating buffer's variables and
-non-local defaults. Binding only buffer-local values failed real SQLite tests:
-Org-roam parses in temporary buffers, which otherwise see the personal root.
-Commands retain their originating scope and insert position through completion.
-Project find/insert require existing nodes; explicit capture displays its root.
-Capture saves the pair on its target, indirect buffer and capture plist; an
-around-finalize binding protects callbacks after Org changes buffers. Resolved
-capture paths are checked before Org writes headers. Upstream panel refresh
-reinitializes its major mode, so a permanent panel scope is restored by its mode
-hook before backlink queries. The panel uses a side window and Meow Motion;
-editing nodes use upstream `org-roam-node-open` and the existing frame policy.
-
-Native SQLite is mandatory for graph operations but not startup. No startup DB
-sync or global autosync: enabling upstream autosync itself rebuilds the graph.
-Scoped note saves update only their graph; explicit sync covers external edits,
-renames and deletions. Sync adds IDs to Org's global ID location index without
-importing destination nodes into other graph databases. Destination directory
-locals establish scope across sessions; existing upstream connection roots also
-identify graphs already used during this session. Default membership excludes
-legacy, Git, secrets and cache folders, plus out-of-root symlinks.
-
-Verification includes real Org-roam/SQLite indexing, links, capture finalization,
-completion buffer switches, panel rerender, independent global ID navigation,
-physical alias identity and missing SQLite degradation. Native Windows junction
-and GUI frame behavior require host validation beyond the Linux batch fixture.
-
-### Org-roam review fixes (2026-09-22)
-
-Canonical connection identity also applies at the upstream DB boundary, so
-ordinary Org ID lookups and raw package queries cannot reopen a personal alias
-as a second connection. ID results refresh the destination scope even when its
-buffer predates the graph connection; explicitly established local root/DB pairs
-are retained. Membership checks canonicalize both file and root because upstream
-only folds Windows drive letters, while Emacs restores the filename's actual
-case on visiting it. Capture validates the nearest existing writable parent and
-creates permitted intermediate directories before Org opens the target; excluded
-and out-of-root directories remain untouched. Real tests cover capture followed
-by sync retaining one node, one physical file record and one root connection.
-
-### Native Windows path boundary (2026-09-22)
-
-Use the already installed native CPython stdlib realpath(ALLOW_MISSING) for
-NTFS junctions rather than implementing a Win32 bridge. The capability is
-feature-probed only on graph use. kittymacs-org-roam-python-executable permits
-an absolute trusted interpreter override; the default discovers python.exe
-on absolute local exec-path entries. Windows default DB selection is lazy so
-startup does not need Python; an explicit upstream external DB stays authoritative.
-
-A bounded, dynamically owned JSON pipe runs fixed isolated code and resolves
-each request afresh. It validates the nearest existing ancestor to reject the
-Windows file-as-parent edge. One child serves an entire sync and nested DB
-queries, with timeout/protocol errors, reentry rejection and unwind cleanup.
-No global filename advice, path cache, daemon, custom DLL or project execution.
-
-The Org-roam list boundary walks only allowed physical directories before
-upstream content hashing, canonicalizes/deduplicates files, and tracks visited
-directories to avoid traversal loops. The update-file boundary validates before
-reading and binds canonical buffer filenames even when native visiting restores
-case or reuses an alias buffer. All DB access validates physical root and external
-DB placement; direct force-sync gets that scope before closing/deleting its DB.
-Configured alias roots are not overwritten during scope lookup, so subsequent
-operations observe retargeting. Captures and panels retain their originating
-physical scope and the upstream schema and source positions stay unchanged.
-
-A dangling link to an inside-graph missing target is a permitted capture path
-with a writable directory ancestor; graph roots themselves must exist. Resolution
-errors never become lexical fallback identities. Remote/UNC graphs are explicitly
-unsupported. This provides fresh operation-time validation, not atomic protection
-against concurrent hostile filesystem retargeting. Native junction integration
-tests accompany the WSL symlink regressions; real ACL denial, mounted volumes
-and long-path acceptance remain outside the tested host cases.
-
-### Ordinary Org ID fallback (2026-09-22)
-
-Org-roam's global before-until advice on org-id-find is an optional lookup,
-not an explicit graph command. Preflight its current graph scope and return
-nil when root/backend validation is unavailable, allowing Org's independent
-registered-ID lookup to run. Only that preflight tolerates user errors; errors
-during an otherwise valid graph query remain visible. Destination-return scope
-restoration uses the same best-effort adapter as passive Org visits, including
-already-open ordinary files. Explicit graph commands, indexing and capture
-retain strict physical path/root/DB validation. Real registered ordinary IDs
-outside all graphs cover missing roots and missing native Python independently
-from the existing cross-graph destination/capture/panel acceptance tests.
-
-## Shared and personal configuration boundary (2026-09-22)
-
-The shared configuration owns reusable editor behavior: Org-roam's personal and project graph scopes, native physical-path checks, writable grammar policy, and portable platform integration. It does not load a particular project's explorer or choose that project's checkout.
-
-The project recipe runner introduced by the already-merged `claude/just-recipe-runner` branch is retained in the separate personal checkout. Its `SPC p j` command, just-mode declaration, project command examples, mode-filtered M-x policy, and runner tests are removed from the shared configuration together. Ordinary compile/project commands and completion stay available. The personal branch restores that feature and owns the explicitly trusted EmptyNet explorer loader.
-
-This split preserves the historical development branches; it does not replay commits already merged into main. Personal machine settings, packages, caches and notes remain outside the public repository. MSYS2 supplies Windows command-line dependencies; editor graph identity and containment remain editor policy rather than shell path conversion.
-
-CI refreshes package archive metadata after restoring the package cache and before loading the configuration, using a noninteractive call because Emacs 31 refreshes asynchronously when invoked as a command. Cached MELPA metadata can name tarballs that the archive has replaced; keeping installed packages does not make that index current. The install step explicitly requires Org-roam so a caught use-package installation failure stops there rather than cascading into graph tests. Ordinary editor startup keeps its existing refresh policy.
-
-The Windows CI job provisions native CPython 3.14 and checks win32 plus os.path.ALLOW_MISSING in isolated mode before graph tests. It exercises the documented resolver requirement rather than depending on the runner's incidental Python version.
+- **A package:** a chapter named `literate/NN-name.org` with a `use-package … :ensure t` block, a Meow section and a `require` in the startup chapter. The builder finds the chapter by its name; there is nothing else to register.
+- **Something personal:** the `kittymacs-personal` overlay, or `private.el` for a single machine, never a branch of this repository.
