@@ -224,17 +224,6 @@
   (add-to-list 'completion-at-point-functions #'cape-keyword)
   :config
   (advice-add 'pcomplete-completions-at-point :around #'cape-wrap-silent))
-
-(defvar-keymap kittymacs-cape-map
-  :doc "Complete with one particular source."
-  "p" #'completion-at-point
-  "d" #'cape-dabbrev
-  "f" #'cape-file
-  "k" #'cape-keyword
-  "l" #'cape-line
-  "a" #'cape-abbrev
-  "w" #'cape-dict
-  "e" #'cape-elisp-symbol)
 (use-package flyspell-correct
   :ensure t
   :after flyspell

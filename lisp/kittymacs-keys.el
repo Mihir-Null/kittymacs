@@ -4,8 +4,6 @@
 ;;; Code:
 
 (require 'kittymacs-leader)
-(require 'kittymacs-help)
-(require 'kittymacs-completion)
 (setopt which-key-idle-delay 0.45
         which-key-idle-secondary-delay 0.05
         which-key-show-early-on-C-h t
@@ -146,6 +144,17 @@
   "k" (cons "kill buffers and close" #'tabspaces-kill-buffers-close-workspace)
   "]" (cons "next tab" #'tab-next)
   "[" (cons "previous tab" #'tab-previous))
+(defvar-keymap kittymacs-cape-map
+  :doc "Complete with one particular source."
+  "p" (cons "everything (capf)" #'completion-at-point)
+  "d" (cons "words in buffers" #'cape-dabbrev)
+  "f" (cons "file name" #'cape-file)
+  "k" (cons "language keyword" #'cape-keyword)
+  "l" (cons "whole line" #'cape-line)
+  "a" (cons "abbrev" #'cape-abbrev)
+  "w" (cons "dictionary word" #'cape-dict)
+  "e" (cons "Emacs Lisp symbol" #'cape-elisp-symbol))
+
 (defvar-keymap kittymacs-code-map
   :doc "Change code."
   "c" (cons "comment" #'comment-dwim)
@@ -313,8 +322,31 @@
 
 (defvar-keymap kittymacs-user-map
   :doc "Your own keys. Add them here or in private.el.")
-
-(keymap-set kittymacs-help-map "?" (cons "cheat sheet" #'kittymacs-dashboard-open-cheatsheet))
+(defvar-keymap kittymacs-help-map
+  :doc "Help, documentation and tutorials."
+  "h" (cons "home" #'dashboard-open)
+  "?" (cons "cheat sheet" #'kittymacs-dashboard-open-cheatsheet)
+  "k" (cons "key" #'helpful-key)
+  "f" (cons "function" #'helpful-callable)
+  "v" (cons "variable" #'helpful-variable)
+  "o" (cons "symbol" #'helpful-symbol)
+  "c" (cons "command" #'helpful-command)
+  "." (cons "at point" #'helpful-at-point)
+  "m" (cons "mode" #'describe-mode)
+  "b" (cons "bindings here" #'embark-bindings)
+  "B" (cons "all bindings" #'describe-bindings)
+  "l" (cons "leader" #'kittymacs-describe-leader)
+  "F" (cons "face" #'describe-face)
+  "w" (cons "where is" #'where-is)
+  "e" (cons "messages" #'view-echo-area-messages)
+  "L" (cons "lossage" #'view-lossage)
+  "i" (cons "info" #'info)
+  "s" (cons "search manuals" #'kittymacs-search-manuals)
+  "S" (cons "find source" #'find-function)
+  "V" (cons "find variable" #'find-variable)
+  "K" (cons "find key" #'find-function-on-key)
+  "t" (cons "meow tutor" #'meow-tutor)
+  "C" (cons "meow cheatsheet" #'meow-cheatsheet))
 (keymap-set kittymacs-leader-map "SPC" (cons "M-x" #'execute-extended-command))
 (keymap-set kittymacs-leader-map "/" (cons "describe leader" #'kittymacs-describe-leader))
 (keymap-set kittymacs-leader-map "?" (cons "search commands" #'consult-apropos))

@@ -27,8 +27,6 @@ group reserved for your own keys.
 ;;; Code:
 
 (require 'kittymacs-leader)
-(require 'kittymacs-help)
-(require 'kittymacs-completion)
 
 #+end_src
 
@@ -207,9 +205,22 @@ split keys split inside the current frame when you want that.
 * Code, evaluation, diagnostics, insertion
 
 =SPC l= is the language-server menu; the servers themselves are opt-in in
-[[file:74-languages.org][the languages chapter]].
+[[file:74-languages.org][the languages chapter]]. =SPC c p= completes at point from one particular
+source, for the times Corfu's automatic popup is not offering what you want;
+[[file:60-completion.org][the completion chapter]] installs Cape, which provides most of them.
 
 #+begin_src emacs-lisp
+(defvar-keymap kittymacs-cape-map
+  :doc "Complete with one particular source."
+  "p" (cons "everything (capf)" #'completion-at-point)
+  "d" (cons "words in buffers" #'cape-dabbrev)
+  "f" (cons "file name" #'cape-file)
+  "k" (cons "language keyword" #'cape-keyword)
+  "l" (cons "whole line" #'cape-line)
+  "a" (cons "abbrev" #'cape-abbrev)
+  "w" (cons "dictionary word" #'cape-dict)
+  "e" (cons "Emacs Lisp symbol" #'cape-elisp-symbol))
+
 (defvar-keymap kittymacs-code-map
   :doc "Change code."
   "c" (cons "comment" #'comment-dwim)
@@ -384,7 +395,41 @@ split keys split inside the current frame when you want that.
 (defvar-keymap kittymacs-user-map
   :doc "Your own keys. Add them here or in private.el.")
 
-(keymap-set kittymacs-help-map "?" (cons "cheat sheet" #'kittymacs-dashboard-open-cheatsheet))
+#+end_src
+
+* Help
+
+The help group gathers the describe commands, source lookup, the manuals, and
+the three places a learner is sent: the home page, this configuration's cheat
+sheet and Meow's tutorial. Most entries are the Helpful versions that
+[[file:62-help.org][the help chapter]] installs.
+
+#+begin_src emacs-lisp
+(defvar-keymap kittymacs-help-map
+  :doc "Help, documentation and tutorials."
+  "h" (cons "home" #'dashboard-open)
+  "?" (cons "cheat sheet" #'kittymacs-dashboard-open-cheatsheet)
+  "k" (cons "key" #'helpful-key)
+  "f" (cons "function" #'helpful-callable)
+  "v" (cons "variable" #'helpful-variable)
+  "o" (cons "symbol" #'helpful-symbol)
+  "c" (cons "command" #'helpful-command)
+  "." (cons "at point" #'helpful-at-point)
+  "m" (cons "mode" #'describe-mode)
+  "b" (cons "bindings here" #'embark-bindings)
+  "B" (cons "all bindings" #'describe-bindings)
+  "l" (cons "leader" #'kittymacs-describe-leader)
+  "F" (cons "face" #'describe-face)
+  "w" (cons "where is" #'where-is)
+  "e" (cons "messages" #'view-echo-area-messages)
+  "L" (cons "lossage" #'view-lossage)
+  "i" (cons "info" #'info)
+  "s" (cons "search manuals" #'kittymacs-search-manuals)
+  "S" (cons "find source" #'find-function)
+  "V" (cons "find variable" #'find-variable)
+  "K" (cons "find key" #'find-function-on-key)
+  "t" (cons "meow tutor" #'meow-tutor)
+  "C" (cons "meow cheatsheet" #'meow-cheatsheet))
 
 #+end_src
 
