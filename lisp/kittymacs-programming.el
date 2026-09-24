@@ -100,12 +100,11 @@
   :ensure t
   :hook ((emacs-lisp-mode ielm-mode lisp-interaction-mode) . elisp-def-mode))
 
-(defun kittymacs--lisp-buffer-setup ()
-  "Visual aids for Lisp buffers."
-  (setq show-trailing-whitespace t)
-  (prettify-symbols-mode 1))
+(defun kittymacs--show-trailing-whitespace ()
+  "Mark trailing whitespace in this buffer."
+  (setq show-trailing-whitespace t))
 (dolist (hook '(emacs-lisp-mode-hook ielm-mode-hook lisp-interaction-mode-hook))
-  (add-hook hook #'kittymacs--lisp-buffer-setup))
+  (add-hook hook #'kittymacs--show-trailing-whitespace))
 
 (dolist (pattern '("\\.zsh\\'" "zlogin\\'" "zlogout\\'" "zprofile\\'" "zshenv\\'" "zshrc\\'"))
   (add-to-list 'auto-mode-alist (cons pattern 'sh-mode)))

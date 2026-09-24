@@ -199,8 +199,9 @@ Use t for a terminal configured with a Nerd Font, or nil to disable icons."
 (defun kittymacs-pulse-line (&rest _)
   "Briefly highlight the current line."
   (pulse-momentary-highlight-one-line (point)))
-(dolist (command '(scroll-up-command scroll-down-command recenter-top-bottom other-window))
+(dolist (command '(scroll-up-command scroll-down-command recenter-top-bottom))
   (advice-add command :after #'kittymacs-pulse-line))
+;; Every change of window, by `other-window', a mouse click or a leader key.
 (add-hook 'window-selection-change-functions #'kittymacs-pulse-line)
 
 (use-package hl-todo
