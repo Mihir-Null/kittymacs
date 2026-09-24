@@ -149,6 +149,18 @@ workspace whose buffer list only shows the buffers opened inside it, so
 =SPC b b= in a project's tab lists that project's buffers; the full list
 is a narrow key away. A new tab starts on the scratch buffer.
 
+Tabspaces is the one global mode this configuration does not switch on in
+=:config=. The mode reads some of its options only at the moment it turns
+on: whether =switch-to-buffer= shows the workspace's buffers
+(=tabspaces-use-filtered-buffers-as-default=), whether sessions are saved and
+restored (=tabspaces-session=, =tabspaces-session-auto-restore=) and whether
+the echo area names the workspace (=tabspaces-echo-area-enable=). Changing
+one of them later does nothing until the mode is turned off and on again. So
+the mode is turned on from =after-init-hook= at depth 95, after the
+Customize file and after the =private.el= function at depth 90 (see
+[[file:10-startup.org::*Machine-specific settings][Machine-specific settings]]),
+and a value set in either place is the one it reads.
+
 #+begin_src emacs-lisp
 (setopt tab-bar-tab-hints t
         tab-bar-new-tab-choice "*scratch*"
@@ -197,7 +209,7 @@ is a narrow key away. A new tab starts on the scratch buffer.
   (tabspaces-use-filtered-buffers-as-default t)
   (tabspaces-default-tab "Home")
   :config
-  (tabspaces-mode 1)
+  (add-hook 'after-init-hook #'tabspaces-mode 95)
   (with-eval-after-load 'consult
     (add-hook 'tabspaces-mode-hook #'kittymacs--consult-tabspaces)
     (kittymacs--consult-tabspaces)))

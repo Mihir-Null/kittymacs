@@ -27,7 +27,10 @@ order. Nothing else is special.
    =:config= of its =use-package=, which runs once the package has loaded.
    =:bind= and =:hook= would otherwise postpone loading until a key or hook
    is used, so a package whose mode must be on from the start also says
-   =:demand t=. GNU ELPA's index is signed, and Emacs verifies it with =gpg=;
+   =:demand t=. The one exception is Tabspaces, whose mode reads some of its
+   options only as it turns on; it is turned on after =init.el= finishes, so
+   your settings reach it (the navigation chapter explains). GNU ELPA's
+   index is signed, and Emacs verifies it with =gpg=;
    install [[https://gpg4win.org/][Gpg4win]] on Windows so that check can run; the startup file puts it
    first on =exec-path=, because the =gpg= that Git for Windows ships comes
    first otherwise and cannot use a Windows keyring directory. On macOS an

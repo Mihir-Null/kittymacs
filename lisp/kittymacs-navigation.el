@@ -124,7 +124,7 @@
   (tabspaces-use-filtered-buffers-as-default t)
   (tabspaces-default-tab "Home")
   :config
-  (tabspaces-mode 1)
+  (add-hook 'after-init-hook #'tabspaces-mode 95)
   (with-eval-after-load 'consult
     (add-hook 'tabspaces-mode-hook #'kittymacs--consult-tabspaces)
     (kittymacs--consult-tabspaces)))
