@@ -55,8 +55,8 @@
                (and treemacs-python-executable t))
     ('(t . t) (treemacs-git-mode 'deferred))
     ('(t . nil) (treemacs-git-mode 'simple)))
-  (when (fboundp 'treemacs-hide-gitignored-files-mode)
-    (treemacs-hide-gitignored-files-mode nil))
+  ;; Show files that Git ignores, too.
+  (treemacs-hide-gitignored-files-mode -1)
 
   ;; The sidebar is a panel that serves the buffer beside it; dimming it as
   ;; an "inactive window" only makes the tree harder to read.
