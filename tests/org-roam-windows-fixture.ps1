@@ -33,6 +33,6 @@ if ($LASTEXITCODE -ne 0) { throw 'Dangling fixture failed' }
 if ($LASTEXITCODE -ne 0) { throw 'Cycle fixture failed' }
 $env:KITTYMACS_JUNCTION_FIXTURE = $root
 $env:KITTYMACS_TEST_PYTHON = $Python
-$env:EMACS_DOTS_TEST_PACKAGES = $Packages
+$env:KITTYMACS_TEST_PACKAGES = $Packages
 & $Emacs -Q --batch -l (Join-Path $repo 'tests/kittymacs-org-roam-windows-tests.el') --eval '(ert-run-tests-batch-and-exit "^kittymacs-roam-windows-")'
 exit $LASTEXITCODE

@@ -1,11 +1,11 @@
 ;;; kittymacs-leader-tests.el --- Leader and localleader behaviour -*- lexical-binding: t; -*-
-;; Run: EMACS_DOTS_TEST_PACKAGES=/path/to/var/elpa emacs -Q --batch -l tests/kittymacs-leader-tests.el -f ert-run-tests-batch-and-exit
+;; Run: KITTYMACS_TEST_PACKAGES=/path/to/var/elpa emacs -Q --batch -l tests/kittymacs-leader-tests.el -f ert-run-tests-batch-and-exit
 ;; Loads only Meow and kittymacs-leader.el; the personal configuration is not loaded.
 
 ;;; Code:
 (require 'ert)
 (require 'package)
-(when-let* ((directory (getenv "EMACS_DOTS_TEST_PACKAGES")))
+(when-let* ((directory (getenv "KITTYMACS_TEST_PACKAGES")))
   (setq package-user-dir directory))
 (package-initialize)
 (add-to-list 'load-path

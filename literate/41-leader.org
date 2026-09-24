@@ -194,5 +194,5 @@ lineage, other buffers see nothing, and the keypad is unbound unless
 =kittymacs-keypad-key= is set. Run it from the repository root:
 
 #+begin_src sh :tangle no
-EMACS_DOTS_TEST_PACKAGES=/path/to/var/elpa emacs -Q --batch -l tests/kittymacs-leader-tests.el -f ert-run-tests-batch-and-exit
+KITTYMACS_TEST_PACKAGES=/path/to/var/elpa emacs -Q --batch -l tests/kittymacs-leader-tests.el -f ert-run-tests-batch-and-exit
 #+end_src

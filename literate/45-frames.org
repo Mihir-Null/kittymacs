@@ -144,7 +144,7 @@ mode leaves alone.
 - =M-x frames-only-mode= toggles this policy for the session. Internal panes
   already on screen are not deleted when enabling the mode.
 
-The graphical integration checks are in [[file:../tests/frames-tests.el][frames-tests.el]]. Load them after
-ordinary GUI startup and run =M-x ert RET ^dots-frames- RET=. They exercise
+The graphical integration checks are in [[file:../tests/kittymacs-frames-tests.el][kittymacs-frames-tests.el]]. Load them after
+ordinary GUI startup and run =M-x ert RET ^kittymacs-frames- RET=. They exercise
 auxiliary-frame creation and cleanup, the completion side window, and Magit's
 lazy load and return to internal splits when the mode is disabled.

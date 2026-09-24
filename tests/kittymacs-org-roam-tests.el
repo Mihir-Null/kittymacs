@@ -3,7 +3,7 @@
 (require 'cl-lib)
 (require 'package)
 (setq native-comp-jit-compilation nil)
-(when-let* ((directory (getenv "EMACS_DOTS_TEST_PACKAGES")))
+(when-let* ((directory (getenv "KITTYMACS_TEST_PACKAGES")))
   (setq package-user-dir directory))
 (package-initialize)
 (dolist (fn '(package-install package-refresh-contents))

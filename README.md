@@ -79,17 +79,17 @@ From the repository root, with an existing package directory:
 
 ```sh
 emacs -Q --batch -l tools/tangle.el -- --check
-emacs -Q --batch -l tests/tangle-tests.el -f ert-run-tests-batch-and-exit
+emacs -Q --batch -l tests/kittymacs-tangle-tests.el -f ert-run-tests-batch-and-exit
 emacs -Q --batch -l tests/kittymacs-platform-tests.el -f ert-run-tests-batch-and-exit
-EMACS_DOTS_TEST_PACKAGES=/path/to/var/elpa emacs -Q --batch -l tests/kittymacs-leader-tests.el -f ert-run-tests-batch-and-exit
-EMACS_DOTS_TEST_PACKAGES=/path/to/var/elpa emacs -Q --batch -l tests/verify-config.el
+KITTYMACS_TEST_PACKAGES=/path/to/var/elpa emacs -Q --batch -l tests/kittymacs-leader-tests.el -f ert-run-tests-batch-and-exit
+KITTYMACS_TEST_PACKAGES=/path/to/var/elpa emacs -Q --batch -l tests/verify-config.el
 ```
 
-The verifier copies the configuration to a temporary directory, forbids package installation, starts it, and checks the leader, the localleader key, the dashboard buttons, the theme toggle and every `SPC` row of the cheat sheet against the live keymap. The platform tests bind `system-type` to each operating system in turn, so the macOS, Windows, Linux and Android branches all run on any machine without packages. [GitHub Actions](.github/workflows/ci.yml) runs the same checks on every push: the tangle check, then a fresh clone that installs its packages and starts on Emacs 30.1 and 31.1 on Linux, plus informational Windows and macOS runs, and a Nix job that checks the flake and evaluates its nix-darwin and nix-on-droid examples; a weekly run repeats the fresh install without the package cache to catch upstream breakage. `tests/frames-tests.el` covers frame policy and needs a graphical session: `M-x ert RET ^dots-frames- RET`.
+The verifier copies the configuration to a temporary directory, forbids package installation, starts it, and checks the leader, the localleader key, the dashboard buttons, the theme toggle and every `SPC` row of the cheat sheet against the live keymap. The platform tests bind `system-type` to each operating system in turn, so the macOS, Windows, Linux and Android branches all run on any machine without packages. [GitHub Actions](.github/workflows/ci.yml) runs the same checks on every push: the tangle check, then a fresh clone that installs its packages and starts on Emacs 30.1 and 31.1 on Linux, plus informational Windows and macOS runs, and a Nix job that checks the flake and evaluates its nix-darwin and nix-on-droid examples; a weekly run repeats the fresh install without the package cache to catch upstream breakage. `tests/kittymacs-frames-tests.el` covers frame policy and needs a graphical session: `M-x ert RET ^kittymacs-frames- RET`.
 
 ## Windows notes
 
-Windows Emacs resolves `~` to `AppData/Roaming` when `HOME` is unset, so a `.emacs.d` under your profile folder is not found by default. On the machine this was built on, `AppData/Roaming/.emacs.d` is a directory junction to the repository at `C:/Users/walnu/.config/emacs-dots/`; `--init-directory` is the alternative. PowerShell is the default shell; `SPC o m` opens an MSYS2 UCRT64 shell when MSYS2 is at `C:/msys64/` (set `kittymacs-msys2-root` in `private.el` otherwise). The terminal talks to Windows ConPTY directly, so no POSIX helper is needed. Do not recursively delete a junction or its target.
+Windows Emacs resolves `~` to `AppData/Roaming` when `HOME` is unset, so a `.emacs.d` under your profile folder is not found by default. One way to point it at the clone is a directory junction from `AppData/Roaming/.emacs.d` to the repository, for example `C:/Users/you/.config/kittymacs/`; `--init-directory` is the alternative. PowerShell is the default shell; `SPC o m` opens an MSYS2 UCRT64 shell when MSYS2 is at `C:/msys64/` (set `kittymacs-msys2-root` in `private.el` otherwise). The terminal talks to Windows ConPTY directly, so no POSIX helper is needed. Do not recursively delete a junction or its target.
 
 ## macOS notes
 

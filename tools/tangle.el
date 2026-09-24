@@ -6,17 +6,17 @@
 (require 'org)
 (require 'ob-tangle)
 
-(defconst dots-literate-root
+(defconst kittymacs-tangle-root
   (file-name-directory (directory-file-name (file-name-directory load-file-name))))
-(defvar dots-literate-library-only nil)
+(defvar kittymacs-tangle-library-only nil)
 
-(defun dots-literate--read (file)
+(defun kittymacs-tangle--read (file)
   "Read FILE as text with normalized line endings."
   (with-temp-buffer
     (insert-file-contents file)
     (buffer-string)))
 
-(defun dots-literate--manifest (root)
+(defun kittymacs-tangle--manifest (root)
   "Read and validate the explicit source/output manifest under ROOT."
   (let ((manifest
          (with-temp-buffer
@@ -41,7 +41,7 @@
           (error "Output is outside generated configuration paths: %S" output))))
     manifest))
 
-(defun dots-literate--validate-org (file outputs)
+(defun kittymacs-tangle--validate-org (file outputs)
   "Check that FILE tangles only Emacs Lisp to declared OUTPUTS."
   (with-current-buffer (find-file-noselect file)
     (org-babel-map-src-blocks nil
@@ -53,14 +53,14 @@
                        (member target (mapcar (lambda (p) (concat "../" p)) outputs)))
             (error "Undeclared tangle target in %s: %S" file target)))))))
 
-(defun dots-literate-build (root &optional write)
+(defun kittymacs-tangle-build (root &optional write)
   "Tangle ROOT in temporary storage; check outputs or WRITE changed files.
 No personal startup, package installation, or source-block evaluation is run."
   (let* ((root (file-name-as-directory (expand-file-name root)))
-         (manifest (dots-literate--manifest root))
+         (manifest (kittymacs-tangle--manifest root))
          (sources (alist-get 'sources manifest))
          (outputs (alist-get 'outputs manifest))
-         (stage (make-temp-file "emacs-dots-tangle-" t))
+         (stage (make-temp-file "kittymacs-tangle-" t))
          ;; Chapters and outputs are UTF-8 with LF line endings on every
          ;; platform; never let the host locale guess and double-encode.
          (coding-system-for-read 'utf-8)
@@ -78,7 +78,7 @@ No personal startup, package installation, or source-block evaluation is run."
           (dolist (source sources)
             (let ((copy (expand-file-name (concat "literate/" source) stage)))
               (copy-file (expand-file-name (concat "literate/" source) root) copy)
-              (dots-literate--validate-org copy outputs)
+              (kittymacs-tangle--validate-org copy outputs)
               (setq generated (append (org-babel-tangle-file copy) generated))))
           (unless (= (length generated)
                      (length (delete-dups (copy-sequence generated))))
@@ -97,8 +97,8 @@ No personal startup, package installation, or source-block evaluation is run."
                 (check-parens))
               (let ((deployed (expand-file-name output root)))
                 (unless (and (file-exists-p deployed)
-                             (equal (dots-literate--read file)
-                                    (dots-literate--read deployed)))
+                             (equal (kittymacs-tangle--read file)
+                                    (kittymacs-tangle--read deployed)))
                   (push output changed)))))
           (setq changed (nreverse changed))
           (cond
@@ -121,9 +121,9 @@ No personal startup, package installation, or source-block evaluation is run."
       (when (file-in-directory-p stage temporary-file-directory)
         (delete-directory stage t)))))
 
-(when (and noninteractive (not dots-literate-library-only))
+(when (and noninteractive (not kittymacs-tangle-library-only))
   (let ((args (delete "--" command-line-args-left)))
     (setq command-line-args-left nil)
     (unless (or (null args) (equal args '("--check")) (equal args '("--write")))
       (error "Usage: emacs -Q --batch -l tools/tangle.el -- --check|--write"))
-    (dots-literate-build dots-literate-root (equal args '("--write")))))
+    (kittymacs-tangle-build kittymacs-tangle-root (equal args '("--write")))))
