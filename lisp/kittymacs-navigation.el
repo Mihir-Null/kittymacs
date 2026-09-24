@@ -11,8 +11,7 @@
 (save-place-mode 1)
 
 (setopt recentf-save-file (expand-file-name "recentf" kittymacs-cache-dir)
-        recentf-max-saved-items 500
-        recentf-max-menu-items 10)
+        recentf-max-saved-items 500)
 (recentf-mode 1)
 
 (setopt bookmark-default-file (expand-file-name "bookmarks" kittymacs-cache-dir))
@@ -79,7 +78,6 @@
   :after visual-regexp)
 (setopt tab-bar-tab-hints t
         tab-bar-new-tab-choice "*scratch*"
-        tab-bar-close-tab-select 'recent
         tab-bar-new-tab-to 'rightmost
         tab-bar-close-last-tab-choice 'tab-bar-mode-disable
         tab-bar-new-button-show nil

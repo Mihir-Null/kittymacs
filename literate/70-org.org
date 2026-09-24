@@ -63,16 +63,16 @@ into a dated tree in one archive file.
 * How Org looks and behaves
 
 Markup is hidden and headings are indented, so a document reads like a
-document. Editing inside folded text is refused rather than silently
+document; indenting also hides every star of a heading but the last. Editing inside folded text is refused rather than silently
 mangling it. New headings go after the current subtree's content, =RET=
-follows links, and =C-a=/=C-e= respect heading stars. Source blocks use
-their language's colours and indentation. Files open unfolded: Org 9.7
+follows links, and =C-a=/=C-e= respect heading stars. Source blocks already
+use their language's colours and =TAB= by default; here they also keep their
+indentation exactly as written. Files open unfolded: Org 9.7
 spells that =nofold= and no longer accepts =nil=, and =setopt= checks the
 type at startup, so the symbol matters.
 
 #+begin_src emacs-lisp
 (setopt org-hide-emphasis-markers t
-        org-hide-leading-stars t
         org-startup-indented t
         org-adapt-indentation t
         org-pretty-entities t
@@ -95,11 +95,8 @@ type at startup, so the symbol matters.
         org-footnote-section nil
         org-footnote-auto-adjust t
         org-imenu-depth 8
-        org-src-fontify-natively t
-        org-src-tab-acts-natively t
         org-src-preserve-indentation t
-        org-src-window-setup 'other-window
-        org-confirm-babel-evaluate t)
+        org-src-window-setup 'other-window)
 
 (with-eval-after-load 'org
   (add-to-list 'org-modules 'org-habit t)
@@ -130,9 +127,7 @@ every agenda file to eight levels deep.
         org-enforce-todo-dependencies t
         org-enforce-todo-checkbox-dependencies t
         org-log-done 'time
-        org-log-into-drawer t
-        org-log-redeadline nil
-        org-log-reschedule nil)
+        org-log-into-drawer t)
 
 (setopt org-agenda-start-with-log-mode '(closed clock)
         org-agenda-tags-column 0

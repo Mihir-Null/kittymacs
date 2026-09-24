@@ -31,22 +31,16 @@
   (setopt backup-directory-alist `(("." . ,backups))
           auto-save-file-name-transforms `((".*" ,auto-saves t))
           auto-save-list-file-prefix (expand-file-name ".saves-" auto-saves)))
-(setopt make-backup-files t
-        backup-by-copying t
+(setopt backup-by-copying t
         version-control t
         delete-old-versions t
         kept-new-versions 10
         kept-old-versions 0
         vc-make-backup-files t
-        create-lockfiles nil
-        auto-save-default t
-        auto-save-timeout 30
-        auto-save-interval 300)
+        create-lockfiles nil)
 (auto-save-visited-mode 1)
 
-(setopt savehist-file (expand-file-name "savehist" kittymacs-cache-dir)
-        savehist-save-minibuffer-history t
-        history-length 100)
+(setopt savehist-file (expand-file-name "savehist" kittymacs-cache-dir))
 (savehist-mode 1)
 (global-so-long-mode 1)
 (setopt multisession-directory (expand-file-name "multisession/" kittymacs-cache-dir))
@@ -56,7 +50,6 @@
               tab-always-indent 'complete)
 (setopt completion-cycle-threshold 3
         sentence-end-double-space nil
-        line-move-visual t
         global-mark-ring-max 8
         mark-ring-max 8)
 (prefer-coding-system 'utf-8)
@@ -69,8 +62,6 @@
         use-file-dialog nil
         use-dialog-box nil
         ring-bell-function #'ignore
-        make-pointer-invisible t
-        switch-to-buffer-preserve-window-point t
         display-line-numbers-type 'visual
         display-line-numbers-width-start t)
 (blink-cursor-mode -1)
@@ -86,7 +77,6 @@
         auto-window-vscroll nil
         hscroll-step 1
         hscroll-margin 1
-        mouse-wheel-follow-mouse t
         mouse-wheel-progressive-speed nil
         mouse-wheel-scroll-amount '(1 ((shift) . 2))
         mouse-autoselect-window t)
@@ -94,7 +84,6 @@
 
 (setopt uniquify-buffer-name-style 'reverse
         uniquify-separator " • "
-        uniquify-after-kill-buffer-p t
         uniquify-ignore-buffers-re "^\\*")
 
 (setopt auto-revert-verbose nil
@@ -132,8 +121,7 @@
 (winner-mode 1)
 (windmove-default-keybindings)
 (setopt window-divider-default-right-width 10
-        window-divider-default-bottom-width 10
-        window-divider-default-places 'right-only)
+        window-divider-default-bottom-width 10)
 (window-divider-mode 1)
 
 (use-package ace-window

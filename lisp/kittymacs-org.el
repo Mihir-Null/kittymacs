@@ -26,7 +26,6 @@
   (interactive)
   (find-file org-default-notes-file))
 (setopt org-hide-emphasis-markers t
-        org-hide-leading-stars t
         org-startup-indented t
         org-adapt-indentation t
         org-pretty-entities t
@@ -49,11 +48,8 @@
         org-footnote-section nil
         org-footnote-auto-adjust t
         org-imenu-depth 8
-        org-src-fontify-natively t
-        org-src-tab-acts-natively t
         org-src-preserve-indentation t
-        org-src-window-setup 'other-window
-        org-confirm-babel-evaluate t)
+        org-src-window-setup 'other-window)
 
 (with-eval-after-load 'org
   (add-to-list 'org-modules 'org-habit t)
@@ -69,9 +65,7 @@
         org-enforce-todo-dependencies t
         org-enforce-todo-checkbox-dependencies t
         org-log-done 'time
-        org-log-into-drawer t
-        org-log-redeadline nil
-        org-log-reschedule nil)
+        org-log-into-drawer t)
 
 (setopt org-agenda-start-with-log-mode '(closed clock)
         org-agenda-tags-column 0

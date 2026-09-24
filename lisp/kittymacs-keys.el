@@ -7,7 +7,6 @@
 (setopt which-key-idle-delay 0.45
         which-key-idle-secondary-delay 0.05
         which-key-show-early-on-C-h t
-        which-key-popup-type 'side-window
         which-key-side-window-location 'top
         which-key-side-window-max-height 0.5)
 (which-key-mode 1)

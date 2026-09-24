@@ -99,16 +99,13 @@ squeeze your command.
         eshell-buffer-maximum-lines 20000
         eshell-scroll-to-bottom-on-input 'all
         eshell-scroll-to-bottom-on-output 'all
-        eshell-list-files-after-cd nil
         eshell-cmpl-ignore-case t
-        eshell-cmpl-cycle-completions t
         eshell-history-size 10000
         eshell-hist-ignoredups t
         eshell-glob-case-insensitive t
         eshell-error-if-no-glob t
         eshell-destroy-buffer-when-process-dies t
         eshell-banner-message ""
-        eshell-highlight-prompt t
         eshell-prompt-regexp "^λ ")
 
 (with-eval-after-load 'em-term

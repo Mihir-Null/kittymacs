@@ -111,8 +111,7 @@ when Emacs runs as a daemon.
       (kittymacs--apply-icon-font))))
 
 (setq-default line-spacing 0.1)
-(setopt text-scale-mode-step 1.08
-        use-default-font-for-symbols t)
+(setopt text-scale-mode-step 1.08)
 
 (use-package nerd-icons
   :ensure t
