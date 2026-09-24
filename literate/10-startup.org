@@ -127,6 +127,9 @@ directories, the platform chapter defines the paths that =private.el= may
 override, the UI must exist before the dashboard measures text, Meow must be
 up before the keys chapter binds the leader, the terminal comes after the
 programming chapter whose mode menu it extends, and frames policy goes last.
+Two files of your own are read along the way: =private.el= early, right after
+the platform chapter, and the Customize file at the very end; the last
+section of this chapter explains why they sit where they do.
 
 #+begin_src emacs-lisp
 ;;; init.el --- kittymacs -*- lexical-binding: t; -*-
@@ -172,6 +175,9 @@ programming chapter whose mode menu it extends, and frames policy goes last.
 (require 'kittymacs-org-roam)
 (require 'kittymacs-frames)
 
+;; Settings saved by M-x customize come last, so they override the chapters.
+(load custom-file 'noerror 'nomessage)
+
 ;;; init.el ends here
 #+end_src
 
@@ -180,3 +186,45 @@ programming chapter whose mode menu it extends, and frames policy goes last.
 =private.el= next to the generated modules is loaded once, after the
 platform variables exist and before anything reads them. It is ignored by
 Git. Copy =private.example.el= to start one, or press =SPC C p=.
+
+Loading it early is deliberate, and it has one consequence worth
+understanding. Many chapters read a =kittymacs-= option /while they load/:
+the languages chapter looks at =kittymacs-language-packages= to decide which
+packages to install, and the appearance chapter loads =kittymacs-theme=. Those
+options must already have your value when the chapter runs, so =private.el=
+comes first. But the chapters that load afterwards also set options of the
+packages they configure, with =setopt= or =use-package ... :custom=, and a
+later setting simply replaces an earlier one. If =private.el= said
+=(setopt ghostel-enable-osc52 t)= at top level, the terminal chapter would
+set it back to =nil= a moment later and you would never know why.
+
+So =private.el= has two kinds of settings, written two ways:
+
+- *kittymacs options* go at top level with =setopt=. They are read while
+  the chapters load, which is exactly why the file is early.
+- *Options of packages that a chapter also sets* go in a function on
+  =after-init-hook=, which Emacs runs once =init.el= has finished:
+
+  #+begin_src emacs-lisp :tangle no
+  (add-hook 'after-init-hook
+            (lambda ()
+              (setopt ghostel-enable-osc52 t)
+              (with-eval-after-load 'ghostel
+                (setopt ghostel-shell '("/bin/zsh" "--login"))))
+            90)
+  #+end_src
+
+  The =90= is the hook's /depth/: functions run in order of depth, and the
+  chapters add theirs at the default of 0, so yours runs after them. The
+  =with-eval-after-load= inside is for the options a chapter sets only when
+  its package loads, in =:config= or its own =with-eval-after-load=. Emacs
+  runs the forms waiting for a package in the order they were registered;
+  registering yours inside the hook puts it after every chapter's, so it runs
+  last there too.
+
+Settings saved with =M-x customize= need none of this. The Customize file,
+=var/etc/custom.el=, is loaded on the last line of =init.el=, after every
+chapter, so what you set there wins over the chapters. Customize is the right
+place for package options; a =kittymacs-= option that a chapter reads while it
+loads belongs in =private.el=, because by the time the Customize file loads,
+that chapter has already made its decision.

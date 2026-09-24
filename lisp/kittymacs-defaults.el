@@ -14,9 +14,6 @@
   (make-directory directory t))
 
 (setopt custom-file (expand-file-name "custom.el" kittymacs-etc-dir))
-(unless (file-exists-p custom-file)
-  (make-empty-file custom-file t))
-(load custom-file nil t)
 (setopt require-final-newline t
         large-file-warning-threshold 100000000
         confirm-kill-processes nil

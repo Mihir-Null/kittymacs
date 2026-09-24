@@ -95,7 +95,8 @@ form; that changes the running Emacs without rebuilding anything.
 Copy =lisp/private.example.el= to =lisp/private.el= (=SPC C p= does it) and
 set paths, fonts, opt-in language servers or your own keys there. Git ignores
 it. =M-x customize= saves to =var/etc/custom.el=, also ignored. Back both up
-yourself.
+yourself. The last section of [[file:10-startup.org][the startup chapter]] explains when each file is
+read, and why a package option in =private.el= goes in a hook.
 
 * Add a chapter
 

@@ -31,11 +31,15 @@
       native-comp-jit-compilation nil)
 (make-directory (expand-file-name "var/etc" user-emacs-directory) t)
 (with-temp-file (expand-file-name "var/etc/custom.el" user-emacs-directory)
-  (insert "(setq dots-test-custom-loaded t)\n"))
+  (insert "(setq dots-test-custom-loaded t)\n"
+          ;; The completion chapter sets this to 100; Customize must win.
+          "(custom-set-variables '(corfu-max-width 80))\n"))
 (with-temp-file (expand-file-name "lisp/private.el" user-emacs-directory)
   (insert "(unless (boundp 'kittymacs-project-directory) (error \"Private loaded before platform\"))\n"
           "(setq dots-test-private-loads (1+ (if (boundp 'dots-test-private-loads) dots-test-private-loads 0)))\n"
-          "(setopt kittymacs-project-directory (expand-file-name \"test-projects/\" user-emacs-directory))\n"))
+          "(setopt kittymacs-project-directory (expand-file-name \"test-projects/\" user-emacs-directory))\n"
+          ;; The completion chapter sets this to 10; the late override must win.
+          "(add-hook 'after-init-hook (lambda () (setopt corfu-count 7)) 90)\n"))
 (with-temp-buffer
   (insert "(setq kittymacs-org-roam-directory (expand-file-name \"test-roam/\" user-emacs-directory) kittymacs-org-roam-excluded-directories '(\"test-excluded\"))\n")
   (append-to-file (point-min) (point-max) (expand-file-name "lisp/private.el" user-emacs-directory)))
@@ -45,9 +49,15 @@
                 (setq package-user-dir (getenv "EMACS_DOTS_TEST_PACKAGES")))))
 (condition-case err
     (progn
+      ;; Replay the order of a real startup (see `command-line' in
+      ;; startup.el).  Batch Emacs has already finished its own startup by
+      ;; the time this file runs, so `after-init-time' is set; clear it so
+      ;; code that asks "has init finished?" gets the answer it would get.
+      (setq after-init-time nil)
       (load (expand-file-name "early-init.el" user-emacs-directory) nil t)
       (load user-init-file nil t)
-      (run-hooks 'after-init-hook)
+      (setq after-init-time (current-time))
+      (run-hooks 'after-init-hook 'delayed-warnings-hook)
       (run-hooks 'emacs-startup-hook)
       (require 'cus-edit)
       (dots-test-check (= dots-test-private-loads 1) "private.el must load once")
@@ -58,6 +68,10 @@
                        "Persistent Customize file was not loaded")
       (dots-test-check (string-suffix-p "var/etc/custom.el" custom-file)
                        "Customize file is not in persistent state")
+      (dots-test-check (eql corfu-max-width 80)
+                       "A chapter overwrote a value saved by Customize")
+      (dots-test-check (eql corfu-count 7)
+                       "A chapter overwrote a private.el after-init-hook override")
       (dolist (feature '(kittymacs-literate kittymacs-dashboard kittymacs-meow
                         kittymacs-leader kittymacs-keys kittymacs-treesit kittymacs-languages
                         kittymacs-terminal kittymacs-treemacs kittymacs-org kittymacs-org-roam kittymacs-ui

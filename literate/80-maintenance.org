@@ -16,87 +16,130 @@ Deployed file: [[file:../lisp/private.example.el][lisp/private.example.el]]. Edi
 
 ** Keep account and machine choices local
 
-The generated example contains only comments. Copy it once to private.el and uncomment the settings you need. The real private.el is ignored by Git and excluded from every tangle output; rebuilding will never replace it.
+The generated example contains only comments. Copy it once to =private.el=
+(=SPC C p= does it) and uncomment the settings you need. The real =private.el=
+is ignored by Git and excluded from every tangle output, so rebuilding never
+replaces it.
 
-The following blocks are consecutive fragments of this source section. Some share an open Lisp form; edit them here and rebuild the whole chapter rather than evaluating a fragment on its own.
+=init.el= loads =private.el= early, right after the defaults and platform
+chapters, because most chapters read a =kittymacs-= option while they load: the
+languages chapter decides which packages to install from
+=kittymacs-language-packages=, the appearance chapter loads =kittymacs-theme=.
+Your value has to be in place before that happens.
+
+Early has a price. The chapters that load afterwards also set options of the
+packages they configure, and a later setting replaces an earlier one. The
+terminal chapter, for example, sets =ghostel-enable-osc52= to =nil=; a
+top-level =(setopt ghostel-enable-osc52 t)= here would be undone a moment
+later. So the example uses two forms, and the rule for choosing is simple:
+
+- A =kittymacs-= option goes at top level with =setopt=. =setopt= works even
+  for an option whose chapter has not loaded yet: it stores the value, and the
+  chapter's =defcustom= keeps a value that is already there.
+- Any other package's option goes inside the =after-init-hook= function at the
+  end of the example. Emacs runs that hook once =init.el= has finished, and
+  the depth of 90 puts it after the functions the chapters add. If a chapter
+  sets the option only when its package loads (in =:config= or a
+  =with-eval-after-load=), wrap your =setopt= in =with-eval-after-load= inside
+  the hook: Emacs runs the forms waiting for a package in the order they were
+  registered, and by the time the hook runs every chapter has registered its
+  own.
+
+Settings saved with =M-x customize= go to =var/etc/custom.el=, which =init.el=
+loads after every chapter, so they need neither form.
 
 #+name: private.example-01-1
 #+begin_src emacs-lisp
 ;;; private.example.el --- Example local overrides -*- lexical-binding: t; -*-
 ;; Generated from literate/80-maintenance.org; edit the Org source, then tangle.
 
-;; Copy to private.el for account/machine-specific values that should not be committed.
-;; init.el loads private.el after the portable platform variables are defined and
-;; before the later UI/programming modules consume their policy variables.
+;; Copy to private.el for account and machine settings that should not be
+;; committed.  init.el loads private.el early, before most chapters, because
+;; they read the kittymacs options below while they load.  Set those at top
+;; level with `setopt'.  A package option that a chapter also sets must go in
+;; the `after-init-hook' function at the end of this file instead: the chapter
+;; runs after this file and would replace a top-level value.
 
 ;; Identity
 ;; (setq user-full-name "Your Name"
 ;;       user-mail-address "you@example.com")
 
 ;; Paths
-;; These variables are already defined when private.el is loaded, so `setopt' is useful.
 ;; (setopt kittymacs-project-directory (expand-file-name "~/src/"))
 ;; (setopt kittymacs-org-directory (expand-file-name "~/Documents/my-org/"))
 
-;; Linked notes: prebind these before the Org-roam chapter loads.
-;; (setq kittymacs-org-roam-directory (expand-file-name "~/notes/"))
-;; (setq kittymacs-org-roam-excluded-directories
-;;       '("legacy" ".git" "secrets" "cache" "caches" ".cache" "var"))
+;; Linked notes, read when the Org-roam chapter loads.
+;; (setopt kittymacs-org-roam-directory (expand-file-name "~/notes/"))
+;; (setopt kittymacs-org-roam-excluded-directories
+;;         '("legacy" ".git" "secrets" "cache" "caches" ".cache" "var"))
 ;; For a project, establish buffer-local org-roam-directory and
 ;; org-roam-db-location; compute the latter with kittymacs-org-roam-db-path.
 ;; The database must stay outside the graph. See literate/71-org-roam.org.
 
 ;; Terminal
-;; MSYS2's location, when it is not the normal C:/msys64/.  The platform
-;; chapter defines this before private.el loads, so `setopt' works.
+;; MSYS2's location, when it is not the normal C:/msys64/.
 ;; (setopt kittymacs-msys2-root "D:/Tools/msys64/")
 ;;
-;; Which shell the terminal runs, and where the escape key goes while a
-;; full-screen program is drawing (`auto', `terminal' or `meow').
-;; (setopt ghostel-shell '("/bin/zsh" "--login"))
+;; Where the escape key goes while a full-screen program is drawing in the
+;; terminal (`auto', `terminal' or `meow').
 ;; (setopt kittymacs-terminal-escape 'terminal)
-;;
-;; Let programs in the terminal write the system clipboard (OSC 52).  Handy
-;; over SSH; it also lets anything you `cat' set your clipboard.
-;; (setopt ghostel-enable-osc52 t)
-;;
-;; Route every `compile', `recompile' and `project-compile' through a real
-;; terminal instead of Emacs's own compilation buffer.
-;; (with-eval-after-load 'ghostel (ghostel-compile-global-mode 1))
 
 ;; macOS
-;; Modifier keys are applied after this file loads, so `setopt' works here.
 ;; Swap Command and Option, or give the right Option key to Emacs too:
 ;; (setopt kittymacs-macos-modifiers '((ns-command-modifier . meta)
-;;                                   (ns-option-modifier . super)
-;;                                   (ns-right-option-modifier . meta)))
+;;                                     (ns-option-modifier . super)
+;;                                     (ns-right-option-modifier . meta)))
 
 ;; Language tooling
-;; Eglot is available manually through SPC l e. Automatic startup and external
-;; language packages are opt-in because their servers/runtimes are platform-owned.
-;; (setq kittymacs-eglot-auto-start-modes '(python-mode python-ts-mode)
-;;       kittymacs-language-packages '(nix racket guile))
+;; Eglot is available manually through SPC l e.  Automatic startup and
+;; external language packages are opt-in because their servers and runtimes
+;; belong to the platform.
+;; (setopt kittymacs-eglot-auto-start-modes '(python-mode python-ts-mode)
+;;         kittymacs-language-packages '(nix racket guile))
 #+end_src
 
-*** Keep account and machine choices local: continued 2
-
-UI preserve these pre-bound values. kittymacs-ui-light-theme 'doom-one-light
+The appearance options are ordinary =kittymacs-= options too. The font options
+change only the family of the default face and keep the platform's point
+size; if the family is not installed, the platform default stays rather than
+startup failing. The icon font is a separate option, used only for Nerd Font
+icons.
 
 #+name: private.example-01-2
-#+begin_src emacs-lisp
+#+begin_src emacs-lisp :padline yes
 ;; UI
-;; `kittymacs-ui' is loaded later, so use `setq' here; its `defcustom' forms will
-;; preserve these pre-bound values.
-;; (setq kittymacs-theme 'doom-dark+
-;;       kittymacs-light-theme 'doom-one-light
-;;       kittymacs-font-family "GoogleSansCode Nerd Font"
-;;       kittymacs-icons 'auto
-;;       kittymacs-nerd-font "Symbols Nerd Font Mono")
+;; (setopt kittymacs-theme 'doom-dark+
+;;         kittymacs-light-theme 'doom-one-light
+;;         kittymacs-font-family "GoogleSansCode Nerd Font"
+;;         kittymacs-icons 'auto
+;;         kittymacs-nerd-font "Symbols Nerd Font Mono")
+#+end_src
 
-;; The primary programming font and the dedicated Nerd Icons symbol font are kept
-;; separate. `kittymacs-font-family' changes only the default face family, preserving
-;; the platform's existing point size. If the family is absent, the starter keeps the
-;; platform default rather than failing startup.
+The last block is where package options go. Everything in it is an option or
+a mode that a chapter either sets or would load lazily, so it waits for the
+chapters to finish. =ghostel-enable-osc52= is set by the terminal chapter while
+it loads, so a plain =setopt= in the hook is enough. =ghostel-shell= is set by
+the same chapter on Windows only when ghostel loads, so it is wrapped in
+=with-eval-after-load=. =ghostel-compile-global-mode= is autoloaded, so turning
+it on here loads ghostel's compile support at startup and every =compile=
+from the first one on runs in a terminal.
+
+#+name: private.example-01-3
+#+begin_src emacs-lisp :padline yes
+;; Package options that a chapter also sets.  Depth 90 runs this after the
+;; chapters' own after-init functions.
+;; (add-hook 'after-init-hook
+;;           (lambda ()
+;;             ;; Let programs in the terminal write the system clipboard
+;;             ;; (OSC 52).  Handy over SSH; it also lets anything you `cat'
+;;             ;; set your clipboard.
+;;             (setopt ghostel-enable-osc52 t)
+;;             ;; Route `compile', `recompile' and `project-compile' through
+;;             ;; a real terminal instead of Emacs's compilation buffer.
+;;             (ghostel-compile-global-mode 1)
+;;             ;; Set when ghostel loads, so wait for it.
+;;             (with-eval-after-load 'ghostel
+;;               (setopt ghostel-shell '("/bin/zsh" "--login"))))
+;;           90)
 #+end_src
 
 * kittymacs-literate

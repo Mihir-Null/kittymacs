@@ -36,6 +36,12 @@ defines the three directories. Two subdirectories separate throwaway caches
 from state you might back up. The Customize file is state, not cache:
 preferences you set through =M-x customize= persist there across restarts.
 
+Only the file's /name/ is decided here. The file itself is loaded at the very
+end of =init.el=, after every chapter has run, because the chapters set many
+of the same options with =setopt= and =use-package ... :custom=, and whichever
+setting runs last wins. Loading your saved choices last means Customize
+always has the final word; [[file:10-startup.org][the startup chapter]] shows where.
+
 #+begin_src emacs-lisp
 ;; The three directories are defined in early-init.el (see the startup chapter);
 ;; these defaults only apply when a module is loaded on its own.
@@ -47,9 +53,6 @@ preferences you set through =M-x customize= persist there across restarts.
   (make-directory directory t))
 
 (setopt custom-file (expand-file-name "custom.el" kittymacs-etc-dir))
-(unless (file-exists-p custom-file)
-  (make-empty-file custom-file t))
-(load custom-file nil t)
 
 #+end_src
 
