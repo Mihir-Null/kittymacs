@@ -4,13 +4,12 @@
 ;; Development addition: keep authoring explicit and startup independent of Org.
 ;;; Code:
 
+(require 'kittymacs-defaults)
+
 (defun kittymacs-literate-open (&rest _)
   "Open the literate configuration's reading guide."
   (interactive)
   (find-file (expand-file-name "literate/index.org" user-emacs-directory)))
-;; Defined in early-init.el.
-(defvar kittymacs-lisp-dir)
-
 (defun kittymacs-find-config-file ()
   "Open one of the literate chapters."
   (interactive)

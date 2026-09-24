@@ -50,6 +50,13 @@ Lisp.
 ;; The Eshell fallback below: `kittymacs-shell' is loaded before this module
 ;; by `init.el', but this module does not require it.
 (declare-function kittymacs-eshell-project "kittymacs-shell" ())
+;; Ghostel's options, which `kittymacs-terminal-msys2' binds with `let'.  The
+;; first terminal of a session may be that one, before ghostel has loaded and
+;; declared them; without these a `let' would bind them lexically, and ghostel
+;; would never see the MSYS2 shell.
+(defvar ghostel-shell)
+(defvar ghostel-environment)
+(defvar ghostel-buffer-name)
 
 (defgroup kittymacs-terminal nil
   "The integrated terminal."

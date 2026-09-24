@@ -6,6 +6,7 @@
 ;;; Code:
 
 (require 'kittymacs-defaults)
+(require 'kittymacs-platform)
 (setopt save-place-file (expand-file-name "saved-places" kittymacs-cache-dir)
         save-place-forget-unreadable-files nil)
 (save-place-mode 1)

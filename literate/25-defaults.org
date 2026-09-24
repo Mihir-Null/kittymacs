@@ -60,8 +60,9 @@ setting runs last wins. Loading your saved choices last means Customize
 always has the final word; [[file:10-startup.org][the startup chapter]] shows where.
 
 #+begin_src emacs-lisp
-;; The three directories are defined in early-init.el (see the startup chapter);
+;; The directories are defined in early-init.el (see the startup chapter);
 ;; these defaults only apply when a module is loaded on its own.
+(defvar kittymacs-lisp-dir (expand-file-name "lisp/" user-emacs-directory))
 (defvar kittymacs-var-dir (expand-file-name "var/" user-emacs-directory))
 (defvar kittymacs-cache-dir (expand-file-name "cache/" kittymacs-var-dir))
 (defvar kittymacs-etc-dir (expand-file-name "etc/" kittymacs-var-dir))

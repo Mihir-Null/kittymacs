@@ -46,7 +46,8 @@
   :ensure t
   :commands iedit-mode)
 (defun kittymacs--indent-guides ()
-  "Indent guides in graphical frames; the package cannot derive faces without a display."
+  "Show indent guides in graphical frames.
+The package cannot derive its faces without a display."
   (when (display-graphic-p)
     (highlight-indent-guides-mode 1)))
 

@@ -9,6 +9,8 @@
 (require 'kittymacs-leader)
 
 (declare-function consult-history "consult" (&optional history))
+;; Eshell's, bound with `let' in `kittymacs-eshell-project'.
+(defvar eshell-buffer-name)
 
 (setopt comint-pager "cat")
 (remove-hook 'kill-buffer-query-functions #'process-kill-buffer-query-function)

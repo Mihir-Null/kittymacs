@@ -8,8 +8,9 @@
   "Options of the kittymacs Emacs configuration."
   :group 'emacs
   :prefix "kittymacs-")
-;; The three directories are defined in early-init.el (see the startup chapter);
+;; The directories are defined in early-init.el (see the startup chapter);
 ;; these defaults only apply when a module is loaded on its own.
+(defvar kittymacs-lisp-dir (expand-file-name "lisp/" user-emacs-directory))
 (defvar kittymacs-var-dir (expand-file-name "var/" user-emacs-directory))
 (defvar kittymacs-cache-dir (expand-file-name "cache/" kittymacs-var-dir))
 (defvar kittymacs-etc-dir (expand-file-name "etc/" kittymacs-var-dir))

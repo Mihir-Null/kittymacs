@@ -27,6 +27,7 @@ under =SPC W=. Searches use ripgrep when it is installed.
 ;;; Code:
 
 (require 'kittymacs-defaults)
+(require 'kittymacs-platform)
 
 #+end_src
 
