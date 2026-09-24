@@ -270,9 +270,16 @@ file actions open Dired or ripgrep in the file's directory.
 
 Corfu pops up after a short pause while you type. =C-j= and =C-k= move,
 =RET= or =TAB= accept, =ESC= dismisses, and a second pause shows
-documentation for the highlighted candidate. In shells the popup only
-appears on request, and accepting a candidate sends the line. The icons in
-the margin come from [[file:50-appearance.org][the appearance chapter]].
+documentation for the highlighted candidate. The icons in the margin come
+from [[file:50-appearance.org][the appearance chapter]].
+
+In Eshell the popup only appears on request, with =TAB=, as it would in
+Bash or Zsh. The two accepting keys then differ, as Corfu's manual
+suggests: =RET= is bound to =corfu-send=, which inserts the candidate and,
+in Eshell or a comint shell such as =M-x shell=, also runs the line, so you
+do not press =RET= twice. =TAB= only inserts, so you can complete a file
+name and keep typing the command. Outside shells =corfu-send= does exactly
+what =corfu-insert= does.
 
 #+begin_src emacs-lisp
 (use-package corfu
@@ -283,7 +290,7 @@ the margin come from [[file:50-appearance.org][the appearance chapter]].
          ("M-l" . corfu-show-location)
          ("M-SPC" . corfu-insert-separator)
          ("<escape>" . corfu-quit)
-         ("RET" . corfu-insert)
+         ("RET" . corfu-send)
          ("TAB" . corfu-insert)
          ([tab] . corfu-insert))
   :custom
@@ -310,19 +317,12 @@ the margin come from [[file:50-appearance.org][the appearance chapter]].
       (corfu-mode 1)))
   (add-hook 'minibuffer-setup-hook #'kittymacs--corfu-in-minibuffer)
   (defun kittymacs--corfu-in-shells ()
-    "In shells, complete only on request and accept without a second RET."
+    "In Eshell, complete only on request, like an ordinary shell."
     (setq-local corfu-auto nil
                 corfu-quit-no-match t
                 corfu-quit-at-boundary t)
     (corfu-mode 1))
-  (add-hook 'eshell-mode-hook #'kittymacs--corfu-in-shells)
-  (defun kittymacs--corfu-send-shell (&rest _)
-    "Send the completed input when inside Eshell or a comint buffer."
-    (cond ((and (derived-mode-p 'eshell-mode) (fboundp 'eshell-send-input))
-           (eshell-send-input))
-          ((and (derived-mode-p 'comint-mode) (fboundp 'comint-send-input))
-           (comint-send-input))))
-  (advice-add #'corfu-insert :after #'kittymacs--corfu-send-shell))
+  (add-hook 'eshell-mode-hook #'kittymacs--corfu-in-shells))
 
 (keymap-global-set "M-/" #'dabbrev-completion)
 (keymap-global-set "C-M-/" #'dabbrev-expand)

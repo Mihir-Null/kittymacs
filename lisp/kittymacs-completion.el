@@ -181,7 +181,7 @@
          ("M-l" . corfu-show-location)
          ("M-SPC" . corfu-insert-separator)
          ("<escape>" . corfu-quit)
-         ("RET" . corfu-insert)
+         ("RET" . corfu-send)
          ("TAB" . corfu-insert)
          ([tab] . corfu-insert))
   :custom
@@ -208,19 +208,12 @@
       (corfu-mode 1)))
   (add-hook 'minibuffer-setup-hook #'kittymacs--corfu-in-minibuffer)
   (defun kittymacs--corfu-in-shells ()
-    "In shells, complete only on request and accept without a second RET."
+    "In Eshell, complete only on request, like an ordinary shell."
     (setq-local corfu-auto nil
                 corfu-quit-no-match t
                 corfu-quit-at-boundary t)
     (corfu-mode 1))
-  (add-hook 'eshell-mode-hook #'kittymacs--corfu-in-shells)
-  (defun kittymacs--corfu-send-shell (&rest _)
-    "Send the completed input when inside Eshell or a comint buffer."
-    (cond ((and (derived-mode-p 'eshell-mode) (fboundp 'eshell-send-input))
-           (eshell-send-input))
-          ((and (derived-mode-p 'comint-mode) (fboundp 'comint-send-input))
-           (comint-send-input))))
-  (advice-add #'corfu-insert :after #'kittymacs--corfu-send-shell))
+  (add-hook 'eshell-mode-hook #'kittymacs--corfu-in-shells))
 
 (keymap-global-set "M-/" #'dabbrev-completion)
 (keymap-global-set "C-M-/" #'dabbrev-expand)
