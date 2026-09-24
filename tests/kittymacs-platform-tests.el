@@ -20,6 +20,7 @@
 (defvar meow-insert-enter-hook)
 (defvar meow-insert-exit-hook)
 (defvar android-pass-multimedia-buttons-to-system)
+(defvar auth-sources)
 
 (defmacro kittymacs-platform-test-with (system executables &rest body)
   "Run BODY as SYSTEM with only EXECUTABLES findable and no global side effects."
@@ -28,6 +29,7 @@
          (process-environment (copy-sequence process-environment))
          (default-frame-alist (copy-sequence default-frame-alist))
          (enable-theme-functions nil)
+         (auth-sources (bound-and-true-p auth-sources))
          (saved-global-map (current-global-map))
          shell-file-name explicit-shell-file-name shell-command-switch
          delete-by-moving-to-trash trash-directory
@@ -54,6 +56,29 @@
     (should (eq (keymap-lookup (current-global-map) "s-q") #'kittymacs-delete-frame-or-quit))
     (should (eq (keymap-lookup (current-global-map) "C-s-f") #'toggle-frame-fullscreen))
     (should (memq #'kittymacs--macos-sync-titlebar enable-theme-functions))))
+
+(ert-deftest kittymacs-platform-macos-reads-passwords-from-the-keychain ()
+  (kittymacs-platform-test-with 'darwin '()
+    (setq auth-sources '("~/.authinfo.gpg"))
+    (kittymacs--macos-auth-sources)
+    (kittymacs--macos-auth-sources)
+    (should (equal auth-sources '("~/.authinfo.gpg"
+                                  macos-keychain-internet
+                                  macos-keychain-generic)))))
+
+(defun kittymacs-platform-test-after-load-forms ()
+  "Return how many forms are waiting in `after-load-alist'."
+  (apply #'+ (mapcar (lambda (entry) (length (cdr entry))) after-load-alist)))
+
+(ert-deftest kittymacs-platform-apply-registers-nothing-globally ()
+  ;; `with-eval-after-load' registers its body for good, so a policy
+  ;; function that used it would queue another copy on every call.
+  (dolist (system '(darwin windows-nt gnu/linux android))
+    (kittymacs-platform-test-with system '("zsh" "pwsh.exe")
+      (let ((before (kittymacs-platform-test-after-load-forms)))
+        (kittymacs-platform-apply)
+        (kittymacs-platform-apply)
+        (should (= (kittymacs-platform-test-after-load-forms) before))))))
 
 (ert-deftest kittymacs-platform-macos-modifiers-are-customizable ()
   (kittymacs-platform-test-with 'darwin '("zsh")
@@ -207,19 +232,14 @@ which is what an unpaired installation looks like from Emacs."
 
 (ert-deftest kittymacs-platform-android-keeps-its-inherited-environment ()
   ;; The POSIX importer would succeed here and report a `PATH' without
-  ;; Termux, so it is overridden exactly as it is on Windows.  The override
-  ;; waits on `with-eval-after-load', so the package has to look loaded.
+  ;; Termux, so it is overridden exactly as it is on Windows.
   (kittymacs-platform-test-android '("bash")
-    ;; `featurep' reads the C-level list, which `let' does not rebind, so
-    ;; the feature is really provided and really taken away again.
+    (defalias 'exec-path-from-shell-initialize #'ignore)
     (unwind-protect
         (progn
-          (defalias 'exec-path-from-shell-initialize #'ignore)
-          (provide 'exec-path-from-shell)
-          (kittymacs-platform-apply)
+          (kittymacs--configure-exec-path-from-shell)
           (should (advice-member-p #'kittymacs--skip-exec-path-from-shell
                                    #'exec-path-from-shell-initialize)))
-      (setq features (delq 'exec-path-from-shell features))
       (fmakunbound 'exec-path-from-shell-initialize))))
 
 (ert-deftest kittymacs-platform-android-sets-a-utf8-locale-only-when-missing ()

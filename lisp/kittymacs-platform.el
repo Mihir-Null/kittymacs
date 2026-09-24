@@ -65,6 +65,17 @@ denies access and every lookup below quietly returns nil."
 Used on native Windows, whose shell cannot evaluate POSIX syntax, and on
 Android, where the system shell would report a `PATH' without Termux."
   nil)
+
+(defun kittymacs--configure-exec-path-from-shell ()
+  "Keep the inherited environment on Windows and Android; import Nix's elsewhere."
+  (if (memq system-type '(windows-nt android))
+      (advice-add #'exec-path-from-shell-initialize :override
+                  #'kittymacs--skip-exec-path-from-shell)
+    (setopt exec-path-from-shell-variables
+            '("PATH" "MANPATH" "LANG" "NIX_PATH" "NIX_PROFILES"))))
+
+(with-eval-after-load 'exec-path-from-shell
+  (kittymacs--configure-exec-path-from-shell))
 (defun kittymacs--windows-unix-tools ()
   "Return the directory holding Git for Windows' or MSYS2's Unix tools, or nil.
 Magit's hunk refinement, Ediff and diff-hl ask for `diff', `diff3' and
@@ -128,23 +139,6 @@ beside its own `git'; MSYS2 keeps them under `usr/bin'."
     (when-let* ((tools (kittymacs--windows-unix-tools)))
       (add-to-list 'exec-path tools t)))
 
-  ;; Lambda configures exec-path-from-shell.  It supports POSIX shells, so native
-  ;; Windows keeps the environment inherited from Windows instead of asking
-  ;; PowerShell to evaluate Unix `printf' syntax.  Android keeps it too, because
-  ;; its system shell would report a `PATH' without Termux and overwrite ours.
-  ;; Linux/macOS retain Lambda's intended login-shell import without assuming a
-  ;; particular Nix profile path.
-  (if (memq system-type '(windows-nt android))
-      (with-eval-after-load 'exec-path-from-shell
-        (unless (advice-member-p
-                 #'kittymacs--skip-exec-path-from-shell
-                 #'exec-path-from-shell-initialize)
-          (advice-add #'exec-path-from-shell-initialize :override
-                      #'kittymacs--skip-exec-path-from-shell)))
-    (with-eval-after-load 'exec-path-from-shell
-      (setopt exec-path-from-shell-variables
-              '("PATH" "MANPATH" "LANG" "NIX_PATH" "NIX_PROFILES"))))
-
   (when (eq system-type 'darwin)
     (kittymacs--platform-apply-macos))
   (when (kittymacs-android-p)
@@ -207,14 +201,20 @@ itself, `trash-command' for the `trash' tool, or `directory' for ~/.Trash."
   (unless (getenv "LANG")
     (setenv "LANG" "en_US.UTF-8"))
   (kittymacs--macos-configure-trash)
-  (with-eval-after-load 'auth-source
-    (dolist (source '(macos-keychain-internet macos-keychain-generic))
-      (add-to-list 'auth-sources source t)))
   (keymap-global-set "s-Z" #'undo-redo)
   (keymap-global-set "s-q" #'kittymacs-delete-frame-or-quit)
   (keymap-global-set "C-s-f" #'toggle-frame-fullscreen)
   (add-hook 'enable-theme-functions #'kittymacs--macos-sync-titlebar)
   (kittymacs--macos-sync-titlebar))
+
+(defun kittymacs--macos-auth-sources ()
+  "Let `auth-source' read passwords from the macOS Keychain."
+  (dolist (source '(macos-keychain-internet macos-keychain-generic))
+    (add-to-list 'auth-sources source t)))
+
+(with-eval-after-load 'auth-source
+  (when (eq system-type 'darwin)
+    (kittymacs--macos-auth-sources)))
 ;; Defined by the Android build; declared so the module byte-compiles cleanly
 ;; on every platform, as the NS variables above are.
 (defvar android-pass-multimedia-buttons-to-system)

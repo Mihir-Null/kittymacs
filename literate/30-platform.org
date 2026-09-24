@@ -178,6 +178,13 @@ and on Android it would be worse than useless: it asks the login shell what
 =PATH= should be and installs the answer, but Android's =/system/bin/sh= has
 never heard of Termux, so the import would erase the very entries the Android
 policy has just added. Both platforms keep the environment Emacs inherited.
+On Linux and macOS the import also brings the Nix variables along.
+
+This is arranged once, when the module loads, rather than inside
+=kittymacs-platform-apply= below: =with-eval-after-load= registers its body
+permanently each time it runs, so a function that calls it would queue
+another copy on every call. Nothing here depends on =private.el=, so waiting
+for it gains nothing.
 
 #+name: kittymacs-platform-08-1
 #+begin_src emacs-lisp
@@ -186,11 +193,22 @@ policy has just added. Both platforms keep the environment Emacs inherited.
 Used on native Windows, whose shell cannot evaluate POSIX syntax, and on
 Android, where the system shell would report a `PATH' without Termux."
   nil)
+
+(defun kittymacs--configure-exec-path-from-shell ()
+  "Keep the inherited environment on Windows and Android; import Nix's elsewhere."
+  (if (memq system-type '(windows-nt android))
+      (advice-add #'exec-path-from-shell-initialize :override
+                  #'kittymacs--skip-exec-path-from-shell)
+    (setopt exec-path-from-shell-variables
+            '("PATH" "MANPATH" "LANG" "NIX_PATH" "NIX_PROFILES"))))
+
+(with-eval-after-load 'exec-path-from-shell
+  (kittymacs--configure-exec-path-from-shell))
 #+end_src
 
 ** Apply platform policy after overrides
 
-The project assignment waits for Lambda's project module so its initialization cannot overwrite the chosen path. Shell discovery uses available executables, and Windows skips the POSIX login-shell import. Windows also borrows Git for Windows' Unix tools, last on =exec-path=: =diff=, =diff3= and =patch= for Magit's hunk refinement, Ediff and diff-hl.
+Shell discovery uses available executables. Windows also borrows Git for Windows' Unix tools, last on =exec-path=: =diff=, =diff3= and =patch= for Magit's hunk refinement, Ediff and diff-hl.
 
 The following blocks are consecutive fragments of this source section. Some share an open Lisp form; edit them here and rebuild the whole chapter rather than evaluating a fragment on its own.
 
@@ -238,7 +256,7 @@ beside its own `git'; MSYS2 keeps them under `usr/bin'."
 
 *** Apply platform policy after overrides: continued 2
 
-Lambda configures exec-path-from-shell.  It supports POSIX shells, so native Windows keeps the environment inherited from Windows instead of asking PowerShell to evaluate Unix `printf' syntax.  Linux/macOS retain Lambda's
+The rest of the shell choice, the Unix tools on Windows, and the hand-off to the macOS and Android sections.
 
 #+name: kittymacs-platform-09-2
 #+begin_src emacs-lisp
@@ -266,23 +284,6 @@ Lambda configures exec-path-from-shell.  It supports POSIX shells, so native Win
   (when (eq system-type 'windows-nt)
     (when-let* ((tools (kittymacs--windows-unix-tools)))
       (add-to-list 'exec-path tools t)))
-
-  ;; Lambda configures exec-path-from-shell.  It supports POSIX shells, so native
-  ;; Windows keeps the environment inherited from Windows instead of asking
-  ;; PowerShell to evaluate Unix `printf' syntax.  Android keeps it too, because
-  ;; its system shell would report a `PATH' without Termux and overwrite ours.
-  ;; Linux/macOS retain Lambda's intended login-shell import without assuming a
-  ;; particular Nix profile path.
-  (if (memq system-type '(windows-nt android))
-      (with-eval-after-load 'exec-path-from-shell
-        (unless (advice-member-p
-                 #'kittymacs--skip-exec-path-from-shell
-                 #'exec-path-from-shell-initialize)
-          (advice-add #'exec-path-from-shell-initialize :override
-                      #'kittymacs--skip-exec-path-from-shell)))
-    (with-eval-after-load 'exec-path-from-shell
-      (setopt exec-path-from-shell-variables
-              '("PATH" "MANPATH" "LANG" "NIX_PATH" "NIX_PROFILES"))))
 
   (when (eq system-type 'darwin)
     (kittymacs--platform-apply-macos))
@@ -383,6 +384,13 @@ the Dock started Emacs without one. Passwords in Keychain become visible to
 =auth-source=, which Magit, Forge and Tramp consult. The three key bindings
 fill gaps in the NS port's own: redo, a frame-aware =⌘Q=, and full screen.
 
+The Keychain is the one part that has to wait for a library, and it waits
+outside the policy function. =with-eval-after-load= registers its body
+permanently, once per call, so calling it from a function that may run more
+than once (the tests call =kittymacs-platform-apply= dozens of times) would
+queue the same work again on every call. Registered once when the module
+loads, it asks which platform it is on when =auth-source= arrives.
+
 #+name: kittymacs-platform-13-1
 #+begin_src emacs-lisp
 (defun kittymacs--platform-apply-macos ()
@@ -393,14 +401,20 @@ fill gaps in the NS port's own: redo, a frame-aware =⌘Q=, and full screen.
   (unless (getenv "LANG")
     (setenv "LANG" "en_US.UTF-8"))
   (kittymacs--macos-configure-trash)
-  (with-eval-after-load 'auth-source
-    (dolist (source '(macos-keychain-internet macos-keychain-generic))
-      (add-to-list 'auth-sources source t)))
   (keymap-global-set "s-Z" #'undo-redo)
   (keymap-global-set "s-q" #'kittymacs-delete-frame-or-quit)
   (keymap-global-set "C-s-f" #'toggle-frame-fullscreen)
   (add-hook 'enable-theme-functions #'kittymacs--macos-sync-titlebar)
   (kittymacs--macos-sync-titlebar))
+
+(defun kittymacs--macos-auth-sources ()
+  "Let `auth-source' read passwords from the macOS Keychain."
+  (dolist (source '(macos-keychain-internet macos-keychain-generic))
+    (add-to-list 'auth-sources source t)))
+
+(with-eval-after-load 'auth-source
+  (when (eq system-type 'darwin)
+    (kittymacs--macos-auth-sources)))
 #+end_src
 
 ** Android
