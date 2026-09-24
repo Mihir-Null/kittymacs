@@ -103,69 +103,62 @@ Exclude trailing padding and compensate for leading indentation."
 (use-package dashboard
   :ensure t
   :demand t
-  :init
-  (setq dashboard-buffer-name "*home*"
-        dashboard-startup-banner 'ascii
-        dashboard-banner-ascii
-        (mapconcat #'identity
-                   '("╭────────────────────────────╮"
-                     "│                            │"
-                     "│   k i t t y m a c s   :3   │"
-                     "│                            │"
-                     "╰────────────────────────────╯")
-                   "\n")
-        dashboard-banner-logo-title "select · extend · act"
-        dashboard-center-content t
-        dashboard-vertically-center-content nil
-        dashboard-navigation-cycle t
-        dashboard-hide-cursor t
-        dashboard-icon-type 'nerd-icons
-        dashboard-set-heading-icons t
-        dashboard-set-file-icons t
-        dashboard-display-icons-p #'kittymacs-icons-available-p
-        dashboard-heading-icon-height 1.0
-        dashboard-show-shortcuts t
-        dashboard-projects-backend 'project-el
-        dashboard-path-style 'truncate-middle
-        dashboard-path-max-length 48
-        dashboard-items '((recents . 5)
-                          (projects . 5)
-                          (bookmarks . 3))
-        dashboard-item-shortcuts '((recents . "r")
-                                   (projects . "p")
-                                   (bookmarks . "b"))
-        dashboard-item-names '(("Recent Files:" . "Recent")
-                               ("Projects:" . "Projects")
-                               ("Bookmarks:" . "Bookmarks"))
-        dashboard-startupify-list '(dashboard-insert-banner
-                                    dashboard-insert-banner-title
-                                    dashboard-insert-newline
-                                    dashboard-insert-navigator
-                                    dashboard-insert-newline
-                                    dashboard-insert-init-info
-                                    dashboard-insert-items
-                                    kittymacs-dashboard-insert-key-guide
-                                    kittymacs-dashboard-center-lines)
-        dashboard-init-info
-        (lambda ()
-          (format "Emacs %s · ready in %s"
-                  emacs-version
-                  (emacs-init-time)))
-        dashboard-navigator-buttons
-        '((("+" "File" "Open a file" kittymacs-dashboard-open-file)
-           ("◆" "Project" "Switch project" kittymacs-dashboard-open-project)
-           ("↺" "Recent" "Open a recent file" kittymacs-dashboard-open-recent))
-          (("◎" "Agenda" "Open the Org agenda" kittymacs-dashboard-open-agenda)
-           ("*" "Scratch" "Open the scratch buffer"
-            (lambda (&rest _) (switch-to-buffer "*scratch*")))
-           ("λ" "Config" "Open the kittymacs reading guide (SPC C c)"
-            kittymacs-dashboard-open-config))
-          (("?" "Keys & commands" "Open the local cheat sheet (SPC h ?, or ? here)"
-            kittymacs-dashboard-open-cheatsheet)
-           ("»" "Meow tutor" "Learn select, extend, act (SPC h t)"
-            kittymacs-dashboard-open-tutor)
-           ("§" "Leader tree" "Every SPC key, group by group"
-            kittymacs-dashboard-open-keys-chapter))))
+  :custom
+  (dashboard-buffer-name "*home*")
+  (dashboard-startup-banner 'ascii)
+  (dashboard-banner-ascii
+   (mapconcat #'identity
+              '("╭────────────────────────────╮"
+                "│                            │"
+                "│   k i t t y m a c s   :3   │"
+                "│                            │"
+                "╰────────────────────────────╯")
+              "\n"))
+  (dashboard-banner-logo-title "select · extend · act")
+  (dashboard-center-content t)
+  (dashboard-vertically-center-content nil)
+  (dashboard-navigation-cycle t)
+  (dashboard-hide-cursor t)
+  (dashboard-icon-type 'nerd-icons)
+  (dashboard-set-heading-icons t)
+  (dashboard-set-file-icons t)
+  (dashboard-display-icons-p #'kittymacs-icons-available-p)
+  (dashboard-heading-icon-height 1.0)
+  (dashboard-show-shortcuts t)
+  (dashboard-projects-backend 'project-el)
+  (dashboard-path-style 'truncate-middle)
+  (dashboard-path-max-length 48)
+  (dashboard-items '((recents . 5) (projects . 5) (bookmarks . 3)))
+  (dashboard-item-shortcuts '((recents . "r") (projects . "p") (bookmarks . "b")))
+  (dashboard-item-names '(("Recent Files:" . "Recent")
+                          ("Projects:" . "Projects")
+                          ("Bookmarks:" . "Bookmarks")))
+  (dashboard-startupify-list '(dashboard-insert-banner
+                               dashboard-insert-banner-title
+                               dashboard-insert-newline
+                               dashboard-insert-navigator
+                               dashboard-insert-newline
+                               dashboard-insert-init-info
+                               dashboard-insert-items
+                               kittymacs-dashboard-insert-key-guide
+                               kittymacs-dashboard-center-lines))
+  (dashboard-init-info (lambda ()
+                         (format "Emacs %s · ready in %s" emacs-version (emacs-init-time))))
+  (dashboard-navigator-buttons
+   '((("+" "File" "Open a file" kittymacs-dashboard-open-file)
+      ("◆" "Project" "Switch project" kittymacs-dashboard-open-project)
+      ("↺" "Recent" "Open a recent file" kittymacs-dashboard-open-recent))
+     (("◎" "Agenda" "Open the Org agenda" kittymacs-dashboard-open-agenda)
+      ("*" "Scratch" "Open the scratch buffer"
+       (lambda (&rest _) (switch-to-buffer "*scratch*")))
+      ("λ" "Config" "Open the kittymacs reading guide (SPC C c)"
+       kittymacs-dashboard-open-config))
+     (("?" "Keys & commands" "Open the local cheat sheet (SPC h ?, or ? here)"
+       kittymacs-dashboard-open-cheatsheet)
+      ("»" "Meow tutor" "Learn select, extend, act (SPC h t)"
+       kittymacs-dashboard-open-tutor)
+      ("§" "Leader tree" "Every SPC key, group by group"
+       kittymacs-dashboard-open-keys-chapter))))
   :config
   (set-face-attribute 'dashboard-text-banner nil
                       :inherit 'font-lock-keyword-face
@@ -180,7 +173,7 @@ Exclude trailing padding and compensate for leading indentation."
                       :inherit 'font-lock-keyword-face
                       :weight 'semi-bold)
 
-  (define-key dashboard-mode-map (kbd "?") #'kittymacs-dashboard-open-cheatsheet)
+  (keymap-set dashboard-mode-map "?" #'kittymacs-dashboard-open-cheatsheet)
 
   (add-hook 'window-setup-hook #'kittymacs-dashboard-recenter 100)
   (add-hook 'after-setting-font-hook #'kittymacs-dashboard-recenter 100)
