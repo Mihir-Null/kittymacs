@@ -20,9 +20,11 @@
       darwinModules.default = import ./nix/darwin-module.nix;
       darwinModules.kittymacs = self.darwinModules.default;
 
-      # home-manager: links the checkout into place as ~/.config/emacs and can
-      # install the same tools for a user without nix-darwin.
-      homeManagerModules.default = import ./nix/home-module.nix;
+      # home-manager: clones the checkout on first activation, links it into
+      # place as ~/.config/emacs, and can install the same tools and run the
+      # daemon for a user without nix-darwin.  It is given the flake itself
+      # so that the clone defaults to this flake's revision.
+      homeManagerModules.default = import ./nix/home-module.nix { inherit self; };
       homeManagerModules.kittymacs = self.homeManagerModules.default;
 
       # The programs the configuration discovers at startup, as one list, so a

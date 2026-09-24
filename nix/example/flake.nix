@@ -28,8 +28,10 @@
           programs.kittymacs.enable = true;
           programs.kittymacs.daemon = false;
 
-          # The checkout stays writable outside the store; home-manager links
-          # it into place.  Packages are already installed system-wide.
+          # The checkout stays writable outside the store; home-manager clones
+          # it on the first switch, at the kittymacs revision flake.lock pins,
+          # and links it into place.  Packages are already installed
+          # system-wide.
           users.users.me.home = "/Users/me";
           home-manager.users.me = {
             imports = [ kittymacs.homeManagerModules.default ];
