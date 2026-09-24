@@ -98,7 +98,7 @@ when Emacs runs as a daemon.
     (when (kittymacs-icons-available-p)
       (nerd-icons-set-font kittymacs-nerd-font (selected-frame)))))
 
-(defun kittymacs-apply-font (&optional frame)
+(defun kittymacs--apply-font (&optional frame)
   "Apply the editing, symbol and icon fonts to FRAME."
   (with-selected-frame (or frame (selected-frame))
     (when (display-graphic-p)
@@ -120,8 +120,8 @@ when Emacs runs as a daemon.
   (nerd-icons-font-family kittymacs-nerd-font))
 
 (add-hook 'after-setting-font-hook #'kittymacs--apply-icon-font)
-(add-hook 'after-make-frame-functions #'kittymacs-apply-font)
-(kittymacs-apply-font)
+(add-hook 'after-make-frame-functions #'kittymacs--apply-font)
+(kittymacs--apply-font)
 
 #+end_src
 
@@ -271,13 +271,13 @@ so you see what a command changed.
   (add-to-list 'dimmer-buffer-exclusion-regexps "^ \\*Vertico\\*$")
   (dimmer-mode 1))
 
-(defun kittymacs-pulse-line (&rest _)
+(defun kittymacs--pulse-line (&rest _)
   "Briefly highlight the current line."
   (pulse-momentary-highlight-one-line (point)))
 (dolist (command '(scroll-up-command scroll-down-command recenter-top-bottom))
-  (advice-add command :after #'kittymacs-pulse-line))
+  (advice-add command :after #'kittymacs--pulse-line))
 ;; Every change of window, by `other-window', a mouse click or a leader key.
-(add-hook 'window-selection-change-functions #'kittymacs-pulse-line)
+(add-hook 'window-selection-change-functions #'kittymacs--pulse-line)
 
 (use-package hl-todo
   :ensure t

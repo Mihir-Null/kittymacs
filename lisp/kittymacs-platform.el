@@ -198,7 +198,7 @@ to nil to leave the input method alone."
 (defvar-local kittymacs--android-text-conversion nil
   "The `text-conversion-style' suspended when Meow left Insert state.")
 
-(defun kittymacs-android-suspend-text-conversion ()
+(defun kittymacs--android-suspend-text-conversion ()
   "Stop the on-screen keyboard editing this buffer outside Insert state."
   (when (and kittymacs-android-modal-text-conversion
              (fboundp 'set-text-conversion-style)
@@ -206,7 +206,7 @@ to nil to leave the input method alone."
     (setq kittymacs--android-text-conversion text-conversion-style)
     (set-text-conversion-style nil)))
 
-(defun kittymacs-android-resume-text-conversion ()
+(defun kittymacs--android-resume-text-conversion ()
   "Give the on-screen keyboard this buffer back on entering Insert state."
   (when (and kittymacs-android-modal-text-conversion
              (fboundp 'set-text-conversion-style)
@@ -226,8 +226,8 @@ to nil to leave the input method alone."
   (unless (getenv "LANG")
     (setenv "LANG" "en_US.UTF-8"))
   (setopt android-pass-multimedia-buttons-to-system kittymacs-android-volume-keys)
-  (add-hook 'meow-insert-exit-hook #'kittymacs-android-suspend-text-conversion)
-  (add-hook 'meow-insert-enter-hook #'kittymacs-android-resume-text-conversion))
+  (add-hook 'meow-insert-exit-hook #'kittymacs--android-suspend-text-conversion)
+  (add-hook 'meow-insert-enter-hook #'kittymacs--android-resume-text-conversion))
 (defun kittymacs-reveal-in-file-manager (&optional file)
   "Show FILE in the desktop file manager, selected where the manager allows.
 FILE defaults to this buffer's file, the file at point in Dired, or the
@@ -301,11 +301,11 @@ A checker that fails is reported once instead of breaking the buffer."
     (condition-case err
         (funcall mode-function)
       (error (kittymacs--spell-off err)))))
-(defun kittymacs-flyspell-text () (kittymacs--flyspell #'flyspell-mode))
-(defun kittymacs-flyspell-prog () (kittymacs--flyspell #'flyspell-prog-mode))
+(defun kittymacs--flyspell-text () (kittymacs--flyspell #'flyspell-mode))
+(defun kittymacs--flyspell-prog () (kittymacs--flyspell #'flyspell-prog-mode))
 
-(add-hook 'text-mode-hook #'kittymacs-flyspell-text)
-(add-hook 'prog-mode-hook #'kittymacs-flyspell-prog)
+(add-hook 'text-mode-hook #'kittymacs--flyspell-text)
+(add-hook 'prog-mode-hook #'kittymacs--flyspell-prog)
 ;; Do not force a font here. Inheriting the platform default makes first boot robust.
 ;; Fonts are chosen in the appearance chapter.
 

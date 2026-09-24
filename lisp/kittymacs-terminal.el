@@ -205,13 +205,13 @@ With prefix ARG, create another one instead of reusing the existing buffer."
   (when (require 'ghostel-eshell nil t)
     (ghostel-eshell-visual-command-mode 1)))
 
-(defun kittymacs-terminal-comint-colours ()
+(defun kittymacs-terminal--comint-colours ()
   "Render this comint buffer's output with ghostel's terminal parser."
   (when (and (kittymacs-terminal-module-installed-p)
              (require 'ghostel-comint nil t))
     (ghostel-comint-mode 1)))
 
-(add-hook 'shell-mode-hook #'kittymacs-terminal-comint-colours)
+(add-hook 'shell-mode-hook #'kittymacs-terminal--comint-colours)
 ;; `ghostel-recompile' carries no autoload cookie, and `SPC m t' must work
 ;; before the terminal has ever been opened.
 (autoload 'ghostel-compile "ghostel-compile" "Run a command in a terminal." t)

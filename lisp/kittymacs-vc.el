@@ -66,11 +66,11 @@ Falls back to `magit-status', which asks, when neither is a repository."
                             (project-root (project-current)))))))
       (magit-status-setup-buffer root)
     (call-interactively #'magit-status)))
-(defun kittymacs-git-commit-setup ()
+(defun kittymacs--git-commit-setup ()
   "Prepare a commit message buffer for writing."
   (setq fill-column 80)
   (setq-local comment-auto-fill-only-comments nil)
-  (kittymacs-flyspell-text)
+  (kittymacs--flyspell-text)
   ;; Meow's states are minor modes, but only `meow--switch-state' also moves
   ;; the cursor and the mode line with them.
   (when (fboundp 'meow--switch-state)
@@ -79,7 +79,7 @@ Falls back to `magit-status', which asks, when neither is a repository."
 ;; Never touch `git-commit-setup-hook' -- or its alias `git-commit-mode-hook'
 ;; -- before git-commit.el has declared them.  See the prose above.
 (with-eval-after-load 'git-commit
-  (add-hook 'git-commit-setup-hook #'kittymacs-git-commit-setup))
+  (add-hook 'git-commit-setup-hook #'kittymacs--git-commit-setup))
 (use-package diff-hl
   :ensure t
   :hook ((prog-mode text-mode) . diff-hl-mode)

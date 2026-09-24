@@ -64,7 +64,7 @@ Use t for a terminal configured with a Nerd Font, or nil to disable icons."
     (when (kittymacs-icons-available-p)
       (nerd-icons-set-font kittymacs-nerd-font (selected-frame)))))
 
-(defun kittymacs-apply-font (&optional frame)
+(defun kittymacs--apply-font (&optional frame)
   "Apply the editing, symbol and icon fonts to FRAME."
   (with-selected-frame (or frame (selected-frame))
     (when (display-graphic-p)
@@ -86,8 +86,8 @@ Use t for a terminal configured with a Nerd Font, or nil to disable icons."
   (nerd-icons-font-family kittymacs-nerd-font))
 
 (add-hook 'after-setting-font-hook #'kittymacs--apply-icon-font)
-(add-hook 'after-make-frame-functions #'kittymacs-apply-font)
-(kittymacs-apply-font)
+(add-hook 'after-make-frame-functions #'kittymacs--apply-font)
+(kittymacs--apply-font)
 (setopt custom-safe-themes t)
 (add-to-list 'custom-theme-load-path
              (expand-file-name "themes/" (file-name-directory (or load-file-name buffer-file-name))))
@@ -195,13 +195,13 @@ Use t for a terminal configured with a Nerd Font, or nil to disable icons."
   (add-to-list 'dimmer-buffer-exclusion-regexps "^ \\*Vertico\\*$")
   (dimmer-mode 1))
 
-(defun kittymacs-pulse-line (&rest _)
+(defun kittymacs--pulse-line (&rest _)
   "Briefly highlight the current line."
   (pulse-momentary-highlight-one-line (point)))
 (dolist (command '(scroll-up-command scroll-down-command recenter-top-bottom))
-  (advice-add command :after #'kittymacs-pulse-line))
+  (advice-add command :after #'kittymacs--pulse-line))
 ;; Every change of window, by `other-window', a mouse click or a leader key.
-(add-hook 'window-selection-change-functions #'kittymacs-pulse-line)
+(add-hook 'window-selection-change-functions #'kittymacs--pulse-line)
 
 (use-package hl-todo
   :ensure t

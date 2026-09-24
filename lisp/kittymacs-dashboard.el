@@ -20,7 +20,7 @@
   "Open the keys chapter: the whole SPC tree, group by group."
   (interactive)
   (find-file (expand-file-name "literate/42-keys.org" user-emacs-directory)))
-(defun kittymacs-dashboard-center-lines ()
+(defun kittymacs--dashboard-center-lines ()
   "Center each visible dashboard line using its rendered pixel width.
 Measure the actual buffer so heading display overlays and icon faces count.
 Exclude trailing padding and compensate for leading indentation."
@@ -55,19 +55,19 @@ Exclude trailing padding and compensate for leading indentation."
                   (add-text-properties start end
                                        `(line-prefix ,prefix wrap-prefix ,prefix)))))
             (forward-line)))))))
-(defun kittymacs-dashboard-recenter (&rest _)
+(defun kittymacs--dashboard-recenter (&rest _)
   "Recompute visible dashboard text metrics after a font or theme change."
   (when-let* ((window (get-buffer-window dashboard-buffer-name t)))
     (with-selected-window window
       (with-current-buffer dashboard-buffer-name
-        (kittymacs-dashboard-center-lines)))))
+        (kittymacs--dashboard-center-lines)))))
 (defvar kittymacs-dashboard-key-guide
   '(("SPC SPC" "run a command by name" "SPC h ?" "the cheat sheet")
     ("SPC f f" "open a file"           "SPC h t" "Meow's tutorial")
     ("SPC m"   "menu for this mode"    "SPC C c" "the reading guide"))
   "Rows of (KEY WHAT KEY WHAT) shown at the bottom of the home page.")
 
-(defun kittymacs-dashboard-insert-key-guide ()
+(defun kittymacs--dashboard-insert-key-guide ()
   "Insert the short guide to the first keys."
   (insert "\n")
   (dolist (row kittymacs-dashboard-key-guide)
@@ -117,8 +117,8 @@ Exclude trailing padding and compensate for leading indentation."
                                dashboard-insert-newline
                                dashboard-insert-init-info
                                dashboard-insert-items
-                               kittymacs-dashboard-insert-key-guide
-                               kittymacs-dashboard-center-lines))
+                               kittymacs--dashboard-insert-key-guide
+                               kittymacs--dashboard-center-lines))
   (dashboard-init-info (lambda ()
                          (format "Emacs %s · ready in %s" emacs-version (emacs-init-time))))
   (dashboard-navigator-buttons
@@ -150,9 +150,9 @@ Exclude trailing padding and compensate for leading indentation."
 
   (keymap-set dashboard-mode-map "?" #'kittymacs-dashboard-open-cheatsheet)
 
-  (add-hook 'window-setup-hook #'kittymacs-dashboard-recenter 100)
-  (add-hook 'after-setting-font-hook #'kittymacs-dashboard-recenter 100)
-  (add-hook 'enable-theme-functions #'kittymacs-dashboard-recenter 100)
+  (add-hook 'window-setup-hook #'kittymacs--dashboard-recenter 100)
+  (add-hook 'after-setting-font-hook #'kittymacs--dashboard-recenter 100)
+  (add-hook 'enable-theme-functions #'kittymacs--dashboard-recenter 100)
 
   ;; Skip the home page when Emacs was invoked with a file argument.
   (dashboard-setup-startup-hook))

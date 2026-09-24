@@ -260,8 +260,8 @@ which is what an unpaired installation looks like from Emacs."
 (ert-deftest kittymacs-platform-android-follows-meow-with-text-conversion ()
   (kittymacs-platform-test-android nil
     (kittymacs-platform-apply)
-    (should (memq #'kittymacs-android-suspend-text-conversion meow-insert-exit-hook))
-    (should (memq #'kittymacs-android-resume-text-conversion meow-insert-enter-hook)))
+    (should (memq #'kittymacs--android-suspend-text-conversion meow-insert-exit-hook))
+    (should (memq #'kittymacs--android-resume-text-conversion meow-insert-enter-hook)))
   ;; Leaving Insert state takes the buffer away from the input method, and
   ;; entering it hands back the style that was in force.
   (let (style)
@@ -270,10 +270,10 @@ which is what an unpaired installation looks like from Emacs."
       (with-temp-buffer
         (setq-local text-conversion-style 'action)
         (setq style 'action)
-        (kittymacs-android-suspend-text-conversion)
+        (kittymacs--android-suspend-text-conversion)
         (should-not style)
         (should (eq kittymacs--android-text-conversion 'action))
-        (kittymacs-android-resume-text-conversion)
+        (kittymacs--android-resume-text-conversion)
         (should (eq style 'action))
         (should-not kittymacs--android-text-conversion)))))
 
@@ -284,7 +284,7 @@ which is what an unpaired installation looks like from Emacs."
                (lambda (value) (setq style value))))
       (with-temp-buffer
         (setq-local text-conversion-style 'action)
-        (kittymacs-android-suspend-text-conversion)
+        (kittymacs--android-suspend-text-conversion)
         (should (eq style 'action))
         (should-not kittymacs--android-text-conversion)))))
 
@@ -358,18 +358,18 @@ which is what an unpaired installation looks like from Emacs."
   ;; The hooks are always there, so a checker that appears after the module
   ;; loaded (MSYS2's, once private.el sets `kittymacs-msys2-root') still
   ;; turns spelling on.
-  (should (memq #'kittymacs-flyspell-text text-mode-hook))
-  (should (memq #'kittymacs-flyspell-prog prog-mode-hook))
+  (should (memq #'kittymacs--flyspell-text text-mode-hook))
+  (should (memq #'kittymacs--flyspell-prog prog-mode-hook))
   (kittymacs-platform-test-with 'windows-nt '()
     (let ((kittymacs-msys2-root "/msys64/") enabled)
       (cl-letf (((symbol-function 'flyspell-mode) (lambda () (setq enabled t))))
         (cl-letf (((symbol-function 'file-executable-p) #'ignore))
-          (kittymacs-flyspell-text)
+          (kittymacs--flyspell-text)
           (should-not enabled))
         (cl-letf (((symbol-function 'file-executable-p)
                    (lambda (file)
                      (equal file "/msys64/ucrt64/bin/hunspell.exe"))))
-          (kittymacs-flyspell-text)
+          (kittymacs--flyspell-text)
           (should enabled))))))
 
 (ert-deftest kittymacs-platform-a-broken-flyspell-is-reported-once ()
@@ -379,8 +379,8 @@ which is what an unpaired installation looks like from Emacs."
                  (lambda () (error "No dictionary")))
                 ((symbol-function 'message)
                  (lambda (&rest _) (setq reports (1+ reports)))))
-        (kittymacs-flyspell-prog)
-        (kittymacs-flyspell-prog))
+        (kittymacs--flyspell-prog)
+        (kittymacs--flyspell-prog))
       (should kittymacs--spell-warned)
       (should (= reports 1)))))
 
