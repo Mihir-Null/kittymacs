@@ -116,11 +116,18 @@ pause at the top of the frame, and =C-h= inside any prefix shows them at once.
 
 =SPC p= is =kittymacs-project-map=, whose /parent/ is Emacs's own
 =project-prefix-map=. A key that is not found in a keymap is looked up in its
-parent, so every =C-x p= command works under =SPC p= as well, and the map
-below only adds to it or overrides a key. The additions live here rather than
-being written into Emacs's map, so =C-x p= stays exactly the menu the Emacs
-manual describes. One key is overridden: =SPC p p= opens the project in its
-own workspace, while =C-x p p= still switches project in the current one.
+parent, so the =C-x p= commands work under =SPC p= as well, and the map below
+adds to it or overrides a key. The additions live here rather than being
+written into Emacs's map, so =C-x p= stays exactly the menu the Emacs manual
+describes. Three keys are overridden:
+
+- =SPC p p= opens the project in its own workspace; =C-x p p= still switches
+  project in the current one.
+- =SPC p b= is Consult's project buffer list, with preview, instead of
+  =project-switch-to-buffer=.
+- =SPC p G= is Magit's status for the project. The command =C-x p G= runs,
+  =project-or-external-find-regexp=, has no key under =SPC p=; use =C-x p G=
+  for it.
 
 Windows are frames here: =SPC w n= makes a new OS window. =SPC w h= and
 =SPC w v= are bound to Emacs's own split commands, which [[file:45-frames.org][the frames chapter]]

@@ -98,8 +98,8 @@ line, =SPC j w= a word. It works across every window of the frame.
 
 =project.el= is Emacs's project layer. Switching to a project asks what to
 do there; the menu includes Magit on =G=. A command in that menu names its
-key when the key is not already in =project-prefix-map=, which [[file:42-keys.org][the keys
-chapter]] leaves as Emacs defines it. Extra root markers let non-Git
+key when =project-prefix-map=, which [[file:42-keys.org][the keys chapter]] leaves as Emacs
+defines it, has no key for that command. Extra root markers let non-Git
 directories count as projects. Ripgrep backs =xref= searches.
 
 #+begin_src emacs-lisp
