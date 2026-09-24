@@ -84,7 +84,8 @@ has just added.
 
 * Eshell
 
-History and the last-directory ring persist under =var/etc/eshell/=.
+History and the last-directory ring persist under =var/etc/eshell/=, or
+wherever =kittymacs-eshell-dir= points if =private.el= sets it.
 Completion ignores case and cycles. Programs that need a terminal run in one,
 because [[file:34-terminal.org][the terminal chapter]] turns on
 =ghostel-eshell-visual-command-mode=. The prompt shows the directory, the Git
@@ -92,8 +93,10 @@ branch when there is one, and a =λ= on its own line so long paths do not
 squeeze your command.
 
 #+begin_src emacs-lisp
-(defvar kittymacs-eshell-dir (expand-file-name "eshell/" kittymacs-etc-dir)
-  "Directory for Eshell history, aliases and the directory ring.")
+(defcustom kittymacs-eshell-dir (expand-file-name "eshell/" kittymacs-etc-dir)
+  "Directory for Eshell history, aliases and the directory ring."
+  :type 'directory
+  :group 'kittymacs)
 
 (setopt eshell-directory-name kittymacs-eshell-dir
         eshell-history-file-name (expand-file-name "history" kittymacs-eshell-dir)

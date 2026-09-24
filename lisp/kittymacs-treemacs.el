@@ -13,7 +13,6 @@
 (require 'kittymacs-ui)
 (use-package treemacs
   :ensure t
-  :defer t
   :commands (treemacs treemacs-select-window treemacs-find-file
              treemacs-add-and-display-current-project-exclusively)
   :custom

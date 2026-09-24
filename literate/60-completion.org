@@ -388,11 +388,14 @@ way =SPC s s= lists lines.
 
 Snippets are text templates with fields. Type a key and press =C-'= to
 expand, or pick one with =SPC i s=. Your own snippets live under
-=var/etc/snippets/<major-mode>/=.
+=var/etc/snippets/<major-mode>/=; set =kittymacs-snippets-dir= in =private.el=
+to keep them somewhere else, such as a directory you back up.
 
 #+begin_src emacs-lisp
-(defvar kittymacs-snippets-dir (expand-file-name "snippets/" kittymacs-etc-dir)
-  "Directory of personal snippets, one subdirectory per major mode.")
+(defcustom kittymacs-snippets-dir (expand-file-name "snippets/" kittymacs-etc-dir)
+  "Directory of personal snippets, one subdirectory per major mode."
+  :type 'directory
+  :group 'kittymacs)
 
 (defun kittymacs--yas-not-in-org-src ()
   "Do not expand snippets inside Org source blocks."

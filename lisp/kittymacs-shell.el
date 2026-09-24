@@ -21,8 +21,10 @@
   :config
   (when (or window-system (daemonp))
     (exec-path-from-shell-initialize)))
-(defvar kittymacs-eshell-dir (expand-file-name "eshell/" kittymacs-etc-dir)
-  "Directory for Eshell history, aliases and the directory ring.")
+(defcustom kittymacs-eshell-dir (expand-file-name "eshell/" kittymacs-etc-dir)
+  "Directory for Eshell history, aliases and the directory ring."
+  :type 'directory
+  :group 'kittymacs)
 
 (setopt eshell-directory-name kittymacs-eshell-dir
         eshell-history-file-name (expand-file-name "history" kittymacs-eshell-dir)

@@ -244,8 +244,10 @@
 (use-package consult-flyspell
   :ensure t
   :commands consult-flyspell)
-(defvar kittymacs-snippets-dir (expand-file-name "snippets/" kittymacs-etc-dir)
-  "Directory of personal snippets, one subdirectory per major mode.")
+(defcustom kittymacs-snippets-dir (expand-file-name "snippets/" kittymacs-etc-dir)
+  "Directory of personal snippets, one subdirectory per major mode."
+  :type 'directory
+  :group 'kittymacs)
 
 (defun kittymacs--yas-not-in-org-src ()
   "Do not expand snippets inside Org source blocks."

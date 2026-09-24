@@ -146,8 +146,10 @@
   :config
   (popper-mode 1)
   (popper-echo-mode 1))
-(defvar kittymacs-scratch-file (expand-file-name "scratch" kittymacs-cache-dir)
-  "Where the *scratch* buffer's text is kept between sessions.")
+(defcustom kittymacs-scratch-file (expand-file-name "scratch" kittymacs-cache-dir)
+  "Where the *scratch* buffer's text is kept between sessions."
+  :type 'file
+  :group 'kittymacs)
 
 (defun kittymacs--bury-scratch ()
   "Bury *scratch* instead of killing it."

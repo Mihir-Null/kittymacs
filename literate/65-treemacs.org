@@ -66,7 +66,6 @@ switched off explicitly below so that the choice is written down. Note the
 #+begin_src emacs-lisp
 (use-package treemacs
   :ensure t
-  :defer t
   :commands (treemacs treemacs-select-window treemacs-find-file
              treemacs-add-and-display-current-project-exclusively)
   :custom
