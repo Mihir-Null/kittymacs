@@ -134,10 +134,10 @@ pick one of the numbered expansion hints Meow draws after a movement.
 
 A *thing* is what =,= and =.= select: a word, a pair of brackets, a string.
 Angle brackets are added to the built-in set on =<=. =meow-mode-state-list= decides
-the state a buffer starts in; terminals start in Insert because their keys
-belong to the shell. Each package chapter adds its own entries next to the
-package (Dired and Magit start in Motion, for example). Once everything is
-set, Meow is enabled globally and the leader is attached.
+the state a buffer starts in, and each package chapter adds its own entries
+next to the package: Dired and Magit start in Motion, shells and terminals in
+Insert because their keys belong to the program. Once everything is set, Meow
+is enabled globally and the leader is attached.
 
 The numbered expansion hints keep their colours from the theme: Meow mixes
 the cursor colour into the region colour for the hint backgrounds and
@@ -157,13 +157,6 @@ leaves the hints indistinguishable from text.
   :config
   (meow-thing-register 'angle '(regexp "<" ">") '(regexp "<" ">"))
   (add-to-list 'meow-char-thing-table '(?< . angle))
-  (dolist (entry '((eshell-mode . insert)
-                   (shell-mode . insert)
-                   (term-mode . insert)))
-    (add-to-list 'meow-mode-state-list entry))
-  (with-eval-after-load 'org
-    ;; Treat @ as part of symbols/words during Meow movement in Org.
-    (modify-syntax-entry ?@ "_" org-mode-syntax-table))
   (kittymacs-meow-setup)
   (meow-global-mode 1)
   (kittymacs-leader-enable))
