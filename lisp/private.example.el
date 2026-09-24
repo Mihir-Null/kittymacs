@@ -16,13 +16,15 @@
 ;; (setopt kittymacs-project-directory (expand-file-name "~/src/"))
 ;; (setopt kittymacs-org-directory (expand-file-name "~/Documents/my-org/"))
 
-;; Linked notes, read when the Org-roam chapter loads.
+;; Linked notes, read when the Org-roam chapter loads.  The exclusions are
+;; folder names left out of the personal graph at any depth.
 ;; (setopt kittymacs-org-roam-directory (expand-file-name "~/notes/"))
 ;; (setopt kittymacs-org-roam-excluded-directories
 ;;         '(".git" ".cache" "cache" "caches" "archive"))
-;; For a project, establish buffer-local org-roam-directory and
-;; org-roam-db-location; compute the latter with kittymacs-org-roam-db-path.
-;; The database must stay outside the graph. See literate/71-org-roam.org.
+;; A project becomes a graph of its own with a .dir-locals.el at its root,
+;; not with settings here; see literate/71-org-roam.org:
+;;   ((nil . ((kittymacs-org-roam-project . t)
+;;            (kittymacs-org-roam-excluded-directories . ("secrets")))))
 
 ;; Terminal
 ;; MSYS2's location, when it is not the normal C:/msys64/.

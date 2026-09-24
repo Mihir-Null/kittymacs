@@ -118,7 +118,8 @@ Group maps are walked too.  Autoloaded commands count as commands."
                        "Personal graph private override was overwritten")
       (kittymacs-verify-check (equal kittymacs-org-roam-excluded-directories '("test-excluded"))
                        "Graph exclusion private override was overwritten")
-      (kittymacs-verify-check (equal org-roam-directory kittymacs-org-roam-directory)
+      (kittymacs-verify-check (equal org-roam-directory
+                              (file-name-as-directory (file-truename kittymacs-org-roam-directory)))
                        "Upstream root does not reflect personal graph override")
       (kittymacs-verify-check (not (file-exists-p kittymacs-org-roam-directory))
                        "Startup created the graph root")

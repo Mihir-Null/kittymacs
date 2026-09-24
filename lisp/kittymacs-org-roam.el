@@ -1,295 +1,176 @@
 ;;; kittymacs-org-roam.el --- Scoped linked notes -*- lexical-binding: t; -*-
 ;; Generated from literate/71-org-roam.org; edit the Org source, then tangle.
+
 ;;; Code:
+
 (require 'cl-lib)
-(require 'kittymacs-leader)
 (require 'org)
 (require 'org-id)
-(require 'org-capture)
+(require 'kittymacs-leader)
+
+;; Defined by the defaults and platform chapters, which init.el loads first.
+(defvar kittymacs-cache-dir)
+(defvar kittymacs-org-directory)
 
 (defgroup kittymacs-org-roam nil
-  "Scoped linked notes." :group 'org)
+  "Linked notes, one graph at a time."
+  :group 'kittymacs)
+
 (defcustom kittymacs-org-roam-directory kittymacs-org-directory
-  "Personal graph root.  Prebind with `setq' in private.el."
-  :type 'directory :group 'kittymacs-org-roam)
-(defcustom kittymacs-org-roam-excluded-directories
-  '(".git" ".cache" "cache" "caches")
-  "Directory components excluded from graph indexing and capture."
-  :type '(repeat string) :group 'kittymacs-org-roam)
+  "Root of the personal Org-roam graph.
+The chapter reads it while it loads, so set it with `setopt' in private.el."
+  :type 'directory
+  :group 'kittymacs-org-roam)
 
-(defun kittymacs--org-roam-path (path)
-  "Return fresh physical PATH, folded only on a case-insensitive filesystem."
-  (when (or (file-remote-p path) (string-prefix-p "//" path))
-    (user-error "Org-roam supports local graph paths only"))
-  (let ((true (file-truename (expand-file-name path))))
-    (if (file-name-case-insensitive-p true) (downcase true) true)))
-
-(defun kittymacs--org-roam-root (root)
-  "Return the physical directory identity of ROOT."
-  (file-name-as-directory (kittymacs--org-roam-path root)))
+(defun kittymacs--org-roam-root (directory)
+  "Return DIRECTORY as an absolute directory name with links resolved."
+  (file-name-as-directory (file-truename (expand-file-name directory))))
 
 (defun kittymacs-org-roam-db-path (root)
-  "Return the external cache database path for canonical ROOT."
-  (expand-file-name
-   (concat (secure-hash 'sha256 (kittymacs--org-roam-root root)) ".sqlite")
-   (expand-file-name "org-roam/" kittymacs-cache-dir)))
+  "Return the database file for the graph at ROOT, inside the user cache.
+The name is a hash of ROOT's real path, lower-cased on a file system
+that ignores case, so every spelling of one directory shares one file."
+  (let ((identity (kittymacs--org-roam-root root)))
+    (when (file-name-case-insensitive-p identity)
+      (setq identity (downcase identity)))
+    (expand-file-name (concat (secure-hash 'sha256 identity) ".sqlite")
+                      (expand-file-name "org-roam/" kittymacs-cache-dir))))
 
-;; Defvar preserves private.el prebindings, including upstream options.
-(defvar org-roam-directory kittymacs-org-roam-directory)
+(defvar org-roam-directory (kittymacs--org-roam-root kittymacs-org-roam-directory))
 (defvar org-roam-db-location (kittymacs-org-roam-db-path org-roam-directory))
-(defvar kittymacs--org-roam-capture-scope nil)
-(defvar-local kittymacs--org-roam-panel-scope nil)
-(put 'kittymacs--org-roam-panel-scope 'permanent-local t)
+(defcustom kittymacs-org-roam-project nil
+  "Non-nil in a directory's .dir-locals.el to make that directory a graph root."
+  :type 'boolean
+  :safe #'booleanp
+  :group 'kittymacs-org-roam)
 
-(defun kittymacs--org-roam-capability (&rest _)
-  "Refuse graph operations without native SQLite, before opening a backend."
-  (unless (and (fboundp 'sqlite-available-p) (sqlite-available-p))
-    (user-error "Org-roam requires an Emacs build with native SQLite support")))
+(defcustom kittymacs-org-roam-excluded-directories '(".git" ".cache" "cache" "caches")
+  "Folder names whose contents are never notes, at any depth of a graph.
+A project graph sets its own list in its .dir-locals.el."
+  :type '(repeat string)
+  :safe #'list-of-strings-p
+  :group 'kittymacs-org-roam)
+
+(defvar org-roam-file-exclude-regexp)
+
+(defvar-local kittymacs--org-roam-graph nil
+  "This buffer's graph as a list (ROOT DB EXCLUDE), or nil.")
+(put 'kittymacs--org-roam-graph 'permanent-local t)
+
+(defun kittymacs--org-roam-project-root ()
+  "Return the directory whose .dir-locals.el set `kittymacs-org-roam-project'."
+  (when (alist-get 'kittymacs-org-roam-project dir-local-variables-alist)
+    (let ((found (dir-locals-find-file (or buffer-file-name default-directory))))
+      (if (consp found) (car found) found))))
+
+(defun kittymacs--org-roam-named-graph ()
+  "Return the graph that this buffer's own variables name, or nil."
+  (when-let* ((directory (or (kittymacs--org-roam-project-root)
+                             (and (local-variable-p 'org-roam-directory)
+                                  org-roam-directory))))
+    (let ((root (kittymacs--org-roam-root directory)))
+      (list root
+            (if (local-variable-p 'org-roam-db-location)
+                (expand-file-name org-roam-db-location)
+              (kittymacs-org-roam-db-path root))
+            (kittymacs--org-roam-exclusions kittymacs-org-roam-excluded-directories)))))
+
+(defun kittymacs--org-roam-personal-graph ()
+  "Return the personal graph, from the global values of its variables."
+  (list (kittymacs--org-roam-root (default-value 'org-roam-directory))
+        (expand-file-name (default-value 'org-roam-db-location))
+        (kittymacs--org-roam-exclusions
+         (default-value 'kittymacs-org-roam-excluded-directories))))
 
 (defun kittymacs--org-roam-scope ()
-  "Return the physical upstream root and external database pair."
-  (kittymacs--org-roam-capability)
-  (let* ((root (kittymacs--org-roam-root org-roam-directory))
-         (db (expand-file-name
-              (or (if (and (local-variable-p 'org-roam-directory)
-                           (not (local-variable-p 'org-roam-db-location)))
-                      nil org-roam-db-location)
-                  (kittymacs-org-roam-db-path root))))
-         (physical-db (kittymacs--org-roam-path db)))
-    (unless (file-directory-p root)
-      (user-error "Org-roam root does not exist: %s" root))
-    (when (or (equal (directory-file-name root) physical-db)
-              (file-in-directory-p physical-db root))
-      (user-error "Org-roam database must be outside the graph; use kittymacs-org-roam-db-path"))
-    (cons root db)))
-
-(defun kittymacs--org-roam-call (scope function)
-  "Call FUNCTION in this buffer with SCOPE also bound for temporary buffers.
-Binding in a buffer with local graph variables only binds those locals;
-Org-roam's parser uses temporary buffers, which need the default binding."
-  (let ((origin (current-buffer)))
-    (with-temp-buffer
-      (let ((org-roam-directory (car scope))
-            (org-roam-db-location (cdr scope)))
-        (with-current-buffer origin
-          (let ((org-roam-directory (car scope))
-                (org-roam-db-location (cdr scope)))
-            (funcall function)))))))
+  "Return the graph for a command in this buffer, or explain why there is none."
+  (unless (sqlite-available-p)
+    (user-error "Org-roam needs an Emacs built with SQLite support"))
+  (let ((scope (or kittymacs--org-roam-graph
+                   (kittymacs--org-roam-named-graph)
+                   (kittymacs--org-roam-personal-graph))))
+    (pcase-let ((`(,root ,db) scope))
+      (unless (file-directory-p root)
+        (user-error "Org-roam graph does not exist: %s" root))
+      (when (file-in-directory-p db root)
+        (user-error "Org-roam database %s is inside its graph; see kittymacs-org-roam-db-path"
+                    db)))
+    scope))
 
 (defun kittymacs--org-roam-set-scope (scope)
-  "Apply SCOPE to this buffer, including subsequent save operations."
-  (setq-local org-roam-directory (car scope)
-              org-roam-db-location (cdr scope))
+  "Make SCOPE this buffer's graph, for these commands and for Org-roam's own."
+  (pcase-let ((`(,root ,db ,exclude) scope))
+    (setq-local kittymacs--org-roam-graph scope
+                org-roam-directory root
+                org-roam-db-location db
+                org-roam-file-exclude-regexp exclude))
   (when (derived-mode-p 'org-mode)
     (add-hook 'after-save-hook #'kittymacs--org-roam-save nil t)))
 
-(defun kittymacs--org-roam-excluded-p (path root)
-  "Whether PATH has an excluded component relative to ROOT."
-  (let ((components (split-string (file-relative-name path root) "[/\\]" t))
-        (excluded kittymacs-org-roam-excluded-directories))
-    (when (file-name-case-insensitive-p path)
-      (setq components (mapcar #'downcase components)
-            excluded (mapcar #'downcase excluded)))
-    (seq-intersection components excluded #'equal)))
-
-(defun kittymacs--org-roam-allowed-p (file)
-  "Whether FILE is physically in this graph with no lexical or physical exclusion."
-  (when file
-    (let ((root (kittymacs--org-roam-root org-roam-directory))
-          (physical (kittymacs--org-roam-path file)))
-      (and (file-in-directory-p physical root)
-           (not (kittymacs--org-roam-excluded-p (expand-file-name file) org-roam-directory))
-           (not (kittymacs--org-roam-excluded-p physical root))))))
-
-(defun kittymacs--org-roam-list-files (&rest _)
-  "Walk allowed physical directories before upstream reads note contents.
-Visit each physical directory once; exclude escape links before descending.
-Missing link targets contribute no files; resolution errors abort the scan."
-  (let* ((org-roam-directory (kittymacs--org-roam-root org-roam-directory))
-         (pending (list org-roam-directory))
-         (seen (make-hash-table :test #'equal))
-         files)
-    (while pending
-      (let ((dir (pop pending)))
-        (unless (gethash dir seen)
-          (puthash dir t seen)
-          (dolist (entry (directory-files dir t directory-files-no-dot-files-regexp))
-            (when (kittymacs--org-roam-allowed-p entry)
-              (let ((physical (kittymacs--org-roam-path entry)))
-                (cond
-                 ((file-directory-p physical)
-                  (push (file-name-as-directory physical) pending))
-                 ((and (file-regular-p physical) (file-readable-p physical)
-                       (org-roam-file-p entry))
-                  (push physical files)))))))))
-    (delete-dups files)))
-
-(defun kittymacs--org-roam-update-file (original &optional file &rest args)
-  "Validate and canonicalize FILE before ORIGINAL hashes or reads it."
-  (let* ((file (or file (buffer-file-name (buffer-base-buffer))))
-         (scope (kittymacs--org-roam-scope)))
-    (kittymacs--org-roam-call
-     scope
-     (lambda ()
-       (unless (kittymacs--org-roam-allowed-p file)
-         (user-error "Org-roam refuses to index excluded or escaped file: %s" file))
-       (let* ((physical (kittymacs--org-roam-path file))
-              (visited (or (find-buffer-visiting file)
-                           (find-buffer-visiting physical)))
-              (find-file-hook nil)
-              (find-file-existing-other-name t)
-              (auto-mode-alist nil)
-              (buffer (or visited (find-file-noselect physical))))
-         (unwind-protect
-             (with-current-buffer buffer
-               ;; Visiting restores native case. Bind the physical DB spelling
-               ;; before upstream selects this buffer and records its filename.
-               (let ((buffer-file-name physical))
-                 (apply original physical args)))
-           (unless visited (kill-buffer buffer))))))))
-
-(defun kittymacs--org-roam-file-filter (original &optional file)
-  "Limit ORIGINAL membership check for FILE to safe graph paths."
-  (let ((path (or file (buffer-file-name (or (buffer-base-buffer) (current-buffer)))))
-        (org-roam-directory (kittymacs--org-roam-root org-roam-directory)))
-    (and (kittymacs--org-roam-allowed-p path)
-         ;; Upstream only folds the drive letter in its prefix comparison.
-         (funcall original (kittymacs--org-roam-path path)))))
+(defun kittymacs--org-roam-restore ()
+  "Give this buffer its graph again after its local variables were cleared."
+  (when-let* ((scope (or (and (derived-mode-p 'org-mode)
+                              (or (kittymacs--org-roam-named-graph)
+                                  (and buffer-file-name
+                                       (file-in-directory-p buffer-file-name
+                                                            org-roam-directory)
+                                       (kittymacs--org-roam-personal-graph))))
+                         kittymacs--org-roam-graph)))
+    (kittymacs--org-roam-set-scope scope)))
+(defun kittymacs--org-roam-exclusions (directories)
+  "Return Org-roam's exclusion regexps plus one matching any of DIRECTORIES.
+The new regexp matches a whole folder name at any depth of a path that
+is relative to the graph root, which is what `org-roam-file-p' tests."
+  (append (ensure-list (default-toplevel-value 'org-roam-file-exclude-regexp))
+          (and directories
+               (list (concat "\\(?:\\`\\|/\\)" (regexp-opt directories) "/")))))
+(defun kittymacs--org-roam-call (scope function)
+  "Call FUNCTION with SCOPE in effect, also in buffers Org-roam opens itself."
+  (let ((variables '(org-roam-directory org-roam-db-location org-roam-file-exclude-regexp))
+        (origin (current-buffer)))
+    (with-temp-buffer
+      (cl-progv variables scope
+        (with-current-buffer origin
+          (cl-progv variables scope
+            (funcall function)))))))
 
 (defun kittymacs--org-roam-save ()
-  "Update this buffer's graph after a save without starting a global scan."
-  (when (and (sqlite-available-p) (org-roam-file-p))
-    (kittymacs--org-roam-call (kittymacs--org-roam-scope)
-                             #'org-roam-db-update-file)))
+  "Update this note's entry in its graph's database, under its real file name."
+  (let ((buffer-file-name (file-truename buffer-file-name)))
+    (when (and (sqlite-available-p) (org-roam-file-p))
+      (kittymacs--org-roam-call kittymacs--org-roam-graph #'org-roam-db-update-file))))
 
-(defun kittymacs--org-roam-visit-scope ()
-  "Restore file scope from directory locals, or an already open graph.
-Use upstream connections to recognize known roots; there is no graph registry."
-  (when (and buffer-file-name (derived-mode-p 'org-mode))
-    (let* ((roots (cons (kittymacs--org-roam-root kittymacs-org-roam-directory)
-                        (hash-table-keys org-roam-db--connection)))
-           (root (if (local-variable-p 'org-roam-directory)
-                     (kittymacs--org-roam-root org-roam-directory)
-                   (car (sort (seq-filter
-                               (lambda (dir) (file-in-directory-p (kittymacs--org-roam-path buffer-file-name) dir))
-                               roots)
-                              (lambda (a b) (> (length a) (length b))))))))
-      (when root
-        (kittymacs--org-roam-set-scope
-         (cons root (if (local-variable-p 'org-roam-db-location)
-                        org-roam-db-location
-                      (if-let* ((connection (gethash root org-roam-db--connection)))
-                          (oref connection file)
-                        (if (equal root (kittymacs--org-roam-root (default-value 'org-roam-directory)))
-                            (default-value 'org-roam-db-location)
-                          (kittymacs-org-roam-db-path root))))))))))
+(defun kittymacs-org-roam-sync (&optional force)
+  "Bring this graph's database up to date and record its IDs for Org.
+With a prefix argument FORCE, delete the database and build it again."
+  (interactive "P")
+  (kittymacs--org-roam-call
+   (kittymacs--org-roam-scope)
+   (lambda ()
+     (org-roam-db-sync force)
+     (dolist (row (org-roam-db-query [:select [id file] :from nodes]))
+       (org-id-add-location (car row) (cadr row)))
+     (org-id-locations-save))))
 
-(defun kittymacs--org-roam-capture-prepared (&rest _)
-  "Save originating scope in both the capture properties and target buffer."
-  (when kittymacs--org-roam-capture-scope
-    (org-capture-put :kittymacs-org-roam-scope kittymacs--org-roam-capture-scope)
-    (kittymacs--org-roam-set-scope kittymacs--org-roam-capture-scope)))
+(defun kittymacs--org-roam-lookup-p (&rest _)
+  "Whether Org-roam can answer an ID lookup in this buffer's graph."
+  (and (sqlite-available-p) (file-directory-p org-roam-directory)))
+(defvar kittymacs--org-roam-capture-scope nil
+  "The graph of the command now starting an Org-roam capture, or nil.
+Only `kittymacs--org-roam-capture-node' binds it, while Org sets up the
+capture; `kittymacs--org-roam-capture-mode' reads it.")
 
 (defun kittymacs--org-roam-capture-mode ()
-  "Give the indirect capture buffer the scope saved on its target."
-  (when-let* ((scope (org-capture-get :kittymacs-org-roam-scope)))
-    (kittymacs--org-roam-set-scope scope)))
-
-(defun kittymacs--org-roam-finalize (original &rest args)
-  "Run ORIGINAL with ARGS in the graph saved by the capture."
-  (if-let* ((scope (org-capture-get :kittymacs-org-roam-scope)))
-      (kittymacs--org-roam-call
-       scope (lambda ()
-               (let ((kittymacs--org-roam-capture-scope scope))
-                 (apply original args))))
-    (apply original args)))
-
-(defun kittymacs--org-roam-writable-target-p (file)
-  "Whether physical FILE or its nearest existing directory permits creation."
-  (let* ((file (kittymacs--org-roam-path file))
-         (existing file))
-    (while (not (file-exists-p existing))
-      (let ((parent (file-name-directory (directory-file-name existing))))
-        (when (equal parent existing)
-          (user-error "No existing capture ancestor: %s" file))
-        (setq existing parent)))
-    (and (or (equal existing file) (file-directory-p existing))
-         (file-writable-p existing))))
-
-(defun kittymacs--org-roam-capture-target (original path)
-  "Validate ORIGINAL's resolved PATH before Org writes capture headers."
-  (let ((file (funcall original path)))
-    (when kittymacs--org-roam-capture-scope
-      (unless (and (kittymacs--org-roam-allowed-p file)
-                   (kittymacs--org-roam-writable-target-p file))
-        (user-error "Org-roam capture destination is excluded, outside the graph, or read-only: %s" file))
-      (setq file (kittymacs--org-roam-path file))
-      (make-directory (file-name-directory file) t))
-    file))
-
-(defun kittymacs--org-roam-panel-restore ()
-  "Restore the graph before sections query the DB on every panel render."
-  (when kittymacs--org-roam-panel-scope
-    (kittymacs--org-roam-set-scope kittymacs--org-roam-panel-scope)))
-
-(defun kittymacs--org-roam-db-canonical (original &rest args)
-  "Validate physical root and DB placement before every upstream DB access."
-  (kittymacs--org-roam-call
-   (kittymacs--org-roam-scope) (lambda () (apply original args))))
-
-(defun kittymacs--org-roam-id-destination (location)
-  "Restore graph scope on an already open ID destination LOCATION."
-  (when-let* ((buffer (cond ((markerp location) (marker-buffer location))
-                           ((consp location) (find-buffer-visiting (car location))))))
-    (with-current-buffer buffer (kittymacs--org-roam-visit-if-available)))
-  location)
-
-(defun kittymacs--org-roam-id-available (original &rest args)
-  "Let Org's own ID index handle lookups when graph scope is unavailable.
-Only the optional graph preflight is tolerant; errors from ORIGINAL after
-successful validation remain visible."
-  (when (condition-case nil (kittymacs--org-roam-scope)
-          (user-error nil))
-    (apply original args)))
-
-(defun kittymacs--org-roam-visit-if-available ()
-  "Restore known graph scope without making ordinary Org editing require it."
-  (condition-case nil
-      (kittymacs--org-roam-visit-scope)
-    (user-error nil)))
-
-(use-package org-roam
-  :ensure t
-  :demand t
-  :config
-  (advice-add 'org-roam-db :around #'kittymacs--org-roam-db-canonical)
-  (advice-add 'org-roam-db-sync :around #'kittymacs--org-roam-db-canonical)
-  (advice-add 'org-roam-list-files :override #'kittymacs--org-roam-list-files)
-  (advice-add 'org-roam-db-update-file :around #'kittymacs--org-roam-update-file)
-  (advice-add 'org-id-find :filter-return #'kittymacs--org-roam-id-destination)
-  (advice-add 'org-roam-file-p :around #'kittymacs--org-roam-file-filter)
-  (advice-add 'org-roam-id-find :around #'kittymacs--org-roam-id-available)
-  (advice-add 'org-roam-capture--prepare-buffer :after #'kittymacs--org-roam-capture-prepared)
-  (advice-add 'org-roam-capture--target-truepath :around #'kittymacs--org-roam-capture-target)
-  (advice-add 'org-capture-finalize :around #'kittymacs--org-roam-finalize)
-  (add-hook 'org-capture-mode-hook #'kittymacs--org-roam-capture-mode)
-  (add-hook 'org-roam-mode-hook #'kittymacs--org-roam-panel-restore)
-  (add-hook 'find-file-hook #'kittymacs--org-roam-visit-if-available)
-  (add-hook 'kill-emacs-hook #'org-roam-db--close-all))
-
-(defun kittymacs--org-roam-read (scope &optional require-match)
-  "Read a node in SCOPE, optionally REQUIRE-MATCH."
-  (kittymacs--org-roam-call
-   scope (lambda ()
-           (org-roam-node-read nil nil nil require-match
-                               (format "Node (%s): " (car scope))))))
-
-(defun kittymacs--org-roam-project-p (scope)
-  "Whether SCOPE is different from the personal graph."
-  (not (equal (car scope) (kittymacs--org-roam-root kittymacs-org-roam-directory))))
+  "Give a capture started from a SPC n command the graph of that command.
+Set it in the capture buffer and in the file buffer behind it, so the
+save that finishes the capture updates that graph's database."
+  (when kittymacs--org-roam-capture-scope
+    (kittymacs--org-roam-set-scope kittymacs--org-roam-capture-scope)
+    (with-current-buffer (buffer-base-buffer)
+      (kittymacs--org-roam-set-scope kittymacs--org-roam-capture-scope))))
 
 (defun kittymacs--org-roam-capture-node (scope node &optional props)
-  "Start capture of NODE in SCOPE with finalization PROPS."
+  "Capture NODE into the graph SCOPE, passing PROPS to Org-roam."
   (unless (file-writable-p (car scope))
     (user-error "Org-roam capture root is read-only: %s" (car scope)))
   (message "Org-roam capture destination: %s" (car scope))
@@ -297,22 +178,33 @@ successful validation remain visible."
    scope (lambda ()
            (let ((kittymacs--org-roam-capture-scope scope))
              (org-roam-capture- :node node :props props)))))
+(defun kittymacs--org-roam-read (scope &optional require-match)
+  "Read a node of the graph SCOPE; REQUIRE-MATCH allows only existing ones."
+  (kittymacs--org-roam-call
+   scope (lambda ()
+           (org-roam-node-read nil nil nil require-match
+                               (format "Node (%s): " (car scope))))))
+
+(defun kittymacs--org-roam-project-p (scope)
+  "Whether SCOPE is a graph other than the personal one."
+  (not (file-equal-p (car scope) (default-value 'org-roam-directory))))
 
 (defun kittymacs-org-roam-find ()
-  "Find a node in this graph; project graphs require an existing node."
+  "Find a note in this graph; a project graph offers only existing notes."
   (interactive)
   (let* ((scope (kittymacs--org-roam-scope))
          (origin (current-buffer))
          (node (kittymacs--org-roam-read scope (kittymacs--org-roam-project-p scope))))
     (with-current-buffer origin
       (if (org-roam-node-file node)
-          (let ((buffer (find-file-noselect (org-roam-node-file node))))
-            (with-current-buffer buffer (kittymacs--org-roam-set-scope scope))
+          (progn
+            (with-current-buffer (find-file-noselect (org-roam-node-file node))
+              (kittymacs--org-roam-set-scope scope))
             (org-roam-node-open node nil t))
         (kittymacs--org-roam-capture-node scope node '(:finalize find-file))))))
 
 (defun kittymacs-org-roam-insert ()
-  "Insert an ID link in the originating buffer, scoped to its graph."
+  "Insert an ID link to a note of this graph where the command started."
   (interactive)
   (let* ((scope (kittymacs--org-roam-scope))
          (origin (point-marker))
@@ -337,7 +229,7 @@ successful validation remain visible."
       (deactivate-mark))))
 
 (defun kittymacs-org-roam-capture ()
-  "Explicitly capture in this graph, showing its destination."
+  "Capture a note into this graph, showing where it will go."
   (interactive)
   (let* ((scope (kittymacs--org-roam-scope))
          (origin (current-buffer))
@@ -346,7 +238,7 @@ successful validation remain visible."
       (kittymacs--org-roam-capture-node scope node '(:finalize find-file)))))
 
 (defun kittymacs-org-roam-backlinks ()
-  "Show graph-local backlinks in a side panel in the current frame."
+  "Show the notes of this graph that link to a note, in a side panel."
   (interactive)
   (let* ((scope (kittymacs--org-roam-scope))
          (node (or (and (derived-mode-p 'org-mode) (org-roam-node-at-point))
@@ -354,23 +246,21 @@ successful validation remain visible."
          (buffer (get-buffer-create
                   (format "*org-roam: %s*" (substring (secure-hash 'sha256 (car scope)) 0 12)))))
     (with-current-buffer buffer
-      (setq-local kittymacs--org-roam-panel-scope scope
+      (setq-local kittymacs--org-roam-graph scope
                   org-roam-buffer-current-directory (car scope)
                   org-roam-buffer-current-node node)
       (org-roam-buffer-render-contents))
     (display-buffer-in-side-window buffer '((side . right) (window-width . 0.33)))))
 
-(defun kittymacs-org-roam-sync ()
-  "Synchronize this graph and add its IDs to Org's independent global index."
-  (interactive)
-  (kittymacs--org-roam-call
-   (kittymacs--org-roam-scope)
-   (lambda ()
-     (org-roam-db-sync)
-     ;; Adding locations is deliberately separate from database ownership.
-     (dolist (row (org-roam-db-query [:select [id file] :from nodes]))
-       (org-id-add-location (car row) (cadr row)))
-     (org-id-locations-save))))
+(use-package org-roam
+  :ensure t
+  :demand t
+  :config
+  (add-hook 'hack-local-variables-hook #'kittymacs--org-roam-restore)
+  (add-hook 'org-roam-mode-hook #'kittymacs--org-roam-restore)
+  (add-hook 'org-capture-mode-hook #'kittymacs--org-roam-capture-mode)
+  (add-hook 'kill-emacs-hook #'org-roam-db--close-all)
+  (advice-add 'org-roam-id-find :before-while #'kittymacs--org-roam-lookup-p))
 
 (with-eval-after-load 'meow
   (add-to-list 'meow-mode-state-list '(org-roam-mode . motion)))

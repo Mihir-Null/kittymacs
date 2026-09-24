@@ -7,322 +7,453 @@
 
 * One graph at a time
 
-=SPC n f= finds a note, =SPC n i= inserts an ID link, =SPC n c= explicitly
-captures, =SPC n b= shows backlinks and =SPC n s= synchronizes the graph.
-Your personal graph defaults to =kittymacs-org-directory=. The inbox and
-agenda in the Org chapter keep their existing templates and files.
+=SPC n f= finds a note, =SPC n i= inserts a link to one, =SPC n c= captures
+a new one, =SPC n b= shows which notes link to one, and =SPC n s= brings the
+index up to date. Each of them works on /one graph/: the graph that the
+current buffer belongs to.
 
-A graph is the upstream pair =org-roam-directory= and =org-roam-db-location=.
-A project may bind these buffer-locally or through trusted directory locals;
-no project Lisp is loaded by this module. Use =kittymacs-org-roam-db-path= to
-compute the database path. A graph's physical identity is =file-truename=,
-lower-cased on a case-insensitive file system, so symbolic links to one
-graph share that path and separate worktrees have separate paths. An alias
-that =file-truename= cannot resolve, such as an NTFS junction on native
-Windows, is a different path and gets its own cache. Databases belong under the user cache, outside
-the graph. Project find and insert require an existing node; explicit capture
-shows the destination root before starting. Personal find/insert also allow a
-new title, using ordinary Org-roam capture templates.
+A graph is a folder of Org files together with an index of them. Org-roam,
+the package underneath, keeps the index in a SQLite database and names the
+two halves with two variables: =org-roam-directory= is the folder and
+=org-roam-db-location= is the database file. Upstream expects one global
+pair. This chapter lets a buffer have its own pair, so your personal notes
+and a project's documentation stay separate graphs with separate indexes,
+and a search from a project file never turns up your diary.
 
-The first =SPC n s= builds the index. Startup never scans notes, builds a
-SQLite library, or enables the upstream autosync mode (which rebuilds on
-activation). Scoped note buffers update their own database after saving;
-use sync after external edits, renames or deletions. Emacs needs native SQLite
-support; ordinary Org and startup still work without it.
+There are two kinds of graph. The /personal graph/ is
+=kittymacs-org-roam-directory=, which defaults to the Org directory of [[file:30-platform.org][the
+platform chapter]]. A /project graph/ is a repository whose =.dir-locals.el=
+says it is one, as described below. The inbox and agenda of [[file:70-org.org][the Org chapter]]
+are not affected: they keep their own files and templates.
+
+Nothing here scans notes or opens a database at startup, and upstream's
+=org-roam-db-autosync-mode= stays off, because switching it on rebuilds the
+whole index on the spot. The first =SPC n s= in a graph builds its index.
+After that, saving a note updates that note's entry, and =SPC n s= is only
+needed after changes made outside Emacs: edits, renames and deletions. The
+graph commands need an Emacs built with SQLite; without it they say so, and
+ordinary Org editing works as before.
+
+* Paths and identity
+
+Every database lives outside its graph, in =org-roam/= under
+=kittymacs-cache-dir=. A project checkout therefore never contains a
+generated file, and a read-only checkout can still be indexed.
+
+The database's file name is a hash of the graph's /real/ path.
+=file-truename= resolves symbolic links, and on a file system that ignores
+the case of letters (the default on macOS and Windows) the path is also
+lower-cased. Two spellings of one folder, such as =~/notes= and a symbolic
+link to it, therefore share one database, while two worktrees of the same
+repository are different folders with different databases. An alias that
+=file-truename= cannot see through, such as an NTFS junction on Windows or
+a bind mount, looks like a different folder and gets a cache of its own.
+That costs a second index, not correctness; open the graph through one path
+if it matters to you.
+
+=kittymacs--org-roam-root= is that resolution. It runs once, when a buffer's
+graph is decided (next section); the paths it returns are then used as they
+are, so no SQL query pays for resolving them again.
+=kittymacs-org-roam-db-path= is public so you can compute a database path
+yourself, for example to open it with the =sqlite3= program.
+
+The last two forms give upstream's variables their global values, which
+describe the personal graph, before Org-roam loads. =defvar= does nothing
+to a variable that already has a value, so if =private.el= set
+=org-roam-directory= itself, that value stays; setting
+=kittymacs-org-roam-directory= is the better way, because it also gets
+resolved.
 
 #+begin_src emacs-lisp
 ;;; kittymacs-org-roam.el --- Scoped linked notes -*- lexical-binding: t; -*-
 ;; Generated from literate/71-org-roam.org; edit the Org source, then tangle.
+
 ;;; Code:
+
 (require 'cl-lib)
-(require 'kittymacs-leader)
 (require 'org)
 (require 'org-id)
-(require 'org-capture)
+(require 'kittymacs-leader)
+
+;; Defined by the defaults and platform chapters, which init.el loads first.
+(defvar kittymacs-cache-dir)
+(defvar kittymacs-org-directory)
 
 (defgroup kittymacs-org-roam nil
-  "Scoped linked notes." :group 'org)
+  "Linked notes, one graph at a time."
+  :group 'kittymacs)
+
 (defcustom kittymacs-org-roam-directory kittymacs-org-directory
-  "Personal graph root.  Prebind with `setq' in private.el."
-  :type 'directory :group 'kittymacs-org-roam)
-(defcustom kittymacs-org-roam-excluded-directories
-  '(".git" ".cache" "cache" "caches")
-  "Directory components excluded from graph indexing and capture."
-  :type '(repeat string) :group 'kittymacs-org-roam)
+  "Root of the personal Org-roam graph.
+The chapter reads it while it loads, so set it with `setopt' in private.el."
+  :type 'directory
+  :group 'kittymacs-org-roam)
 
-(defun kittymacs--org-roam-path (path)
-  "Return fresh physical PATH, folded only on a case-insensitive filesystem."
-  (when (or (file-remote-p path) (string-prefix-p "//" path))
-    (user-error "Org-roam supports local graph paths only"))
-  (let ((true (file-truename (expand-file-name path))))
-    (if (file-name-case-insensitive-p true) (downcase true) true)))
-
-(defun kittymacs--org-roam-root (root)
-  "Return the physical directory identity of ROOT."
-  (file-name-as-directory (kittymacs--org-roam-path root)))
+(defun kittymacs--org-roam-root (directory)
+  "Return DIRECTORY as an absolute directory name with links resolved."
+  (file-name-as-directory (file-truename (expand-file-name directory))))
 
 (defun kittymacs-org-roam-db-path (root)
-  "Return the external cache database path for canonical ROOT."
-  (expand-file-name
-   (concat (secure-hash 'sha256 (kittymacs--org-roam-root root)) ".sqlite")
-   (expand-file-name "org-roam/" kittymacs-cache-dir)))
+  "Return the database file for the graph at ROOT, inside the user cache.
+The name is a hash of ROOT's real path, lower-cased on a file system
+that ignores case, so every spelling of one directory shares one file."
+  (let ((identity (kittymacs--org-roam-root root)))
+    (when (file-name-case-insensitive-p identity)
+      (setq identity (downcase identity)))
+    (expand-file-name (concat (secure-hash 'sha256 identity) ".sqlite")
+                      (expand-file-name "org-roam/" kittymacs-cache-dir))))
 
-;; Defvar preserves private.el prebindings, including upstream options.
-(defvar org-roam-directory kittymacs-org-roam-directory)
+(defvar org-roam-directory (kittymacs--org-roam-root kittymacs-org-roam-directory))
 (defvar org-roam-db-location (kittymacs-org-roam-db-path org-roam-directory))
-(defvar kittymacs--org-roam-capture-scope nil)
-(defvar-local kittymacs--org-roam-panel-scope nil)
-(put 'kittymacs--org-roam-panel-scope 'permanent-local t)
 
-(defun kittymacs--org-roam-capability (&rest _)
-  "Refuse graph operations without native SQLite, before opening a backend."
-  (unless (and (fboundp 'sqlite-available-p) (sqlite-available-p))
-    (user-error "Org-roam requires an Emacs build with native SQLite support")))
+#+end_src
+
+* Scope: which graph a buffer uses
+
+A buffer's /scope/ is a list of three values: the graph's root, its
+database, and the list of regular expressions that keep files out of it
+(the next section explains that list). =kittymacs--org-roam-scope= decides
+it for the =SPC n= commands, in this order:
+
+1. A graph already set in the buffer, which the variable
+   =kittymacs--org-roam-graph= remembers.
+2. A graph named by the buffer's own variables: the project flag below, or
+   a buffer-local =org-roam-directory=. The database is a buffer-local
+   =org-roam-db-location= if there is one, and otherwise the cache path for
+   that root.
+3. The personal graph.
+
+Before returning it, the function checks what a command needs: SQLite, a
+root that exists, and a database outside the root. A command that fails one
+of these stops with a message and changes nothing, so it never creates a
+graph folder or an empty database for a folder that is not there. The same
+check protects =C-u SPC n s=, which deletes the database before rebuilding
+it.
+
+** Project graphs
+
+A repository becomes a graph of its own with a =.dir-locals.el= at its
+root. EmptyNet ships exactly this one:
+
+#+begin_src emacs-lisp :tangle no
+((nil . ((kittymacs-org-roam-project . t)
+         (kittymacs-org-roam-excluded-directories . ("secrets" "tools" "web" ".github")))))
+#+end_src
+
+=kittymacs-org-roam-project= says "the folder holding this file is a graph
+root". Emacs already knows which folder that is: when it applies directory
+locals it records them in =dir-local-variables-alist=, and
+=dir-locals-find-file= returns the folder whose =.dir-locals.el= it read.
+The database is the cache path for that root; add =org-roam-db-location= to
+the same file to choose another. =kittymacs-org-roam-excluded-directories=
+replaces the default exclusions for this graph only.
+
+Both variables are declared safe for their types, a boolean and a list of
+strings, so Emacs applies them without asking, and nothing in the file is
+evaluated. An Emacs without kittymacs does not know them: the first time it
+opens a file there it asks whether to apply them, and answering =i=
+ignores them for good. They do nothing in that Emacs either way.
+
+Emacs reads only the nearest =.dir-locals.el= above a file. A subfolder with
+its own =.dir-locals.el= hides the root's, so its files leave the project
+graph unless that file repeats the flag, and then the subfolder is a graph
+of its own.
+
+A project may instead set =org-roam-directory= and =org-roam-db-location=
+directly in its directory locals, which is the arrangement upstream
+documents. That keeps working through the second rule above. Emacs asks
+before applying those two, because upstream does not declare them safe, and
+the directory should be written as its real absolute path, since Org-roam
+reads the value in files it opens by itself.
+
+** Setting and restoring a buffer's graph
+
+=kittymacs--org-roam-set-scope= writes a scope into a buffer: it sets the
+three upstream variables buffer-locally, so Org-roam's own functions agree
+with ours, and in an Org buffer it adds the save hook of the indexing
+section.
+
+Buffer-local variables do not last: every major mode starts by clearing
+them, and so does reverting a file. =kittymacs--org-roam-restore= puts the
+graph back. It runs from =hack-local-variables-hook=, which Emacs runs
+after it has applied a file's local and directory-local variables: when a
+file is visited, whenever a major mode starts in it, and after a revert. So
+it always sees the project flag. For an Org buffer it first decides the
+graph afresh: the buffer's own variables, then the personal graph if the
+file lies inside it. When neither applies, and for any buffer that is not
+Org, it restores the graph that was set before, if there was one. That is
+how a note that =SPC n f= opened from a graph stays in that graph, and how
+the backlinks panel keeps its graph. A note that was never given a graph
+belongs to none, and its saves touch no database.
+
+The same hook runs in the buffers Org-roam opens by itself to read notes
+during a sync, because upstream calls =hack-local-variables= there. A
+project's notes are therefore read into the project's database even when
+the sync was started with Org-roam's own =M-x org-roam-db-sync=.
+
+=kittymacs--org-roam-graph= is /permanent-local/: it survives the clearing,
+which a restore needs. Because a file's own variables are asked first, its
+value is still replaced when they name a different graph, so editing
+=.dir-locals.el= and reverting a note moves the note to the new graph.
+
+#+begin_src emacs-lisp
+(defcustom kittymacs-org-roam-project nil
+  "Non-nil in a directory's .dir-locals.el to make that directory a graph root."
+  :type 'boolean
+  :safe #'booleanp
+  :group 'kittymacs-org-roam)
+
+(defcustom kittymacs-org-roam-excluded-directories '(".git" ".cache" "cache" "caches")
+  "Folder names whose contents are never notes, at any depth of a graph.
+A project graph sets its own list in its .dir-locals.el."
+  :type '(repeat string)
+  :safe #'list-of-strings-p
+  :group 'kittymacs-org-roam)
+
+(defvar org-roam-file-exclude-regexp)
+
+(defvar-local kittymacs--org-roam-graph nil
+  "This buffer's graph as a list (ROOT DB EXCLUDE), or nil.")
+(put 'kittymacs--org-roam-graph 'permanent-local t)
+
+(defun kittymacs--org-roam-project-root ()
+  "Return the directory whose .dir-locals.el set `kittymacs-org-roam-project'."
+  (when (alist-get 'kittymacs-org-roam-project dir-local-variables-alist)
+    (let ((found (dir-locals-find-file (or buffer-file-name default-directory))))
+      (if (consp found) (car found) found))))
+
+(defun kittymacs--org-roam-named-graph ()
+  "Return the graph that this buffer's own variables name, or nil."
+  (when-let* ((directory (or (kittymacs--org-roam-project-root)
+                             (and (local-variable-p 'org-roam-directory)
+                                  org-roam-directory))))
+    (let ((root (kittymacs--org-roam-root directory)))
+      (list root
+            (if (local-variable-p 'org-roam-db-location)
+                (expand-file-name org-roam-db-location)
+              (kittymacs-org-roam-db-path root))
+            (kittymacs--org-roam-exclusions kittymacs-org-roam-excluded-directories)))))
+
+(defun kittymacs--org-roam-personal-graph ()
+  "Return the personal graph, from the global values of its variables."
+  (list (kittymacs--org-roam-root (default-value 'org-roam-directory))
+        (expand-file-name (default-value 'org-roam-db-location))
+        (kittymacs--org-roam-exclusions
+         (default-value 'kittymacs-org-roam-excluded-directories))))
 
 (defun kittymacs--org-roam-scope ()
-  "Return the physical upstream root and external database pair."
-  (kittymacs--org-roam-capability)
-  (let* ((root (kittymacs--org-roam-root org-roam-directory))
-         (db (expand-file-name
-              (or (if (and (local-variable-p 'org-roam-directory)
-                           (not (local-variable-p 'org-roam-db-location)))
-                      nil org-roam-db-location)
-                  (kittymacs-org-roam-db-path root))))
-         (physical-db (kittymacs--org-roam-path db)))
-    (unless (file-directory-p root)
-      (user-error "Org-roam root does not exist: %s" root))
-    (when (or (equal (directory-file-name root) physical-db)
-              (file-in-directory-p physical-db root))
-      (user-error "Org-roam database must be outside the graph; use kittymacs-org-roam-db-path"))
-    (cons root db)))
-
-(defun kittymacs--org-roam-call (scope function)
-  "Call FUNCTION in this buffer with SCOPE also bound for temporary buffers.
-Binding in a buffer with local graph variables only binds those locals;
-Org-roam's parser uses temporary buffers, which need the default binding."
-  (let ((origin (current-buffer)))
-    (with-temp-buffer
-      (let ((org-roam-directory (car scope))
-            (org-roam-db-location (cdr scope)))
-        (with-current-buffer origin
-          (let ((org-roam-directory (car scope))
-                (org-roam-db-location (cdr scope)))
-            (funcall function)))))))
+  "Return the graph for a command in this buffer, or explain why there is none."
+  (unless (sqlite-available-p)
+    (user-error "Org-roam needs an Emacs built with SQLite support"))
+  (let ((scope (or kittymacs--org-roam-graph
+                   (kittymacs--org-roam-named-graph)
+                   (kittymacs--org-roam-personal-graph))))
+    (pcase-let ((`(,root ,db) scope))
+      (unless (file-directory-p root)
+        (user-error "Org-roam graph does not exist: %s" root))
+      (when (file-in-directory-p db root)
+        (user-error "Org-roam database %s is inside its graph; see kittymacs-org-roam-db-path"
+                    db)))
+    scope))
 
 (defun kittymacs--org-roam-set-scope (scope)
-  "Apply SCOPE to this buffer, including subsequent save operations."
-  (setq-local org-roam-directory (car scope)
-              org-roam-db-location (cdr scope))
+  "Make SCOPE this buffer's graph, for these commands and for Org-roam's own."
+  (pcase-let ((`(,root ,db ,exclude) scope))
+    (setq-local kittymacs--org-roam-graph scope
+                org-roam-directory root
+                org-roam-db-location db
+                org-roam-file-exclude-regexp exclude))
   (when (derived-mode-p 'org-mode)
     (add-hook 'after-save-hook #'kittymacs--org-roam-save nil t)))
 
-(defun kittymacs--org-roam-excluded-p (path root)
-  "Whether PATH has an excluded component relative to ROOT."
-  (let ((components (split-string (file-relative-name path root) "[/\\]" t))
-        (excluded kittymacs-org-roam-excluded-directories))
-    (when (file-name-case-insensitive-p path)
-      (setq components (mapcar #'downcase components)
-            excluded (mapcar #'downcase excluded)))
-    (seq-intersection components excluded #'equal)))
-
-(defun kittymacs--org-roam-allowed-p (file)
-  "Whether FILE is physically in this graph with no lexical or physical exclusion."
-  (when file
-    (let ((root (kittymacs--org-roam-root org-roam-directory))
-          (physical (kittymacs--org-roam-path file)))
-      (and (file-in-directory-p physical root)
-           (not (kittymacs--org-roam-excluded-p (expand-file-name file) org-roam-directory))
-           (not (kittymacs--org-roam-excluded-p physical root))))))
-
-(defun kittymacs--org-roam-list-files (&rest _)
-  "Walk allowed physical directories before upstream reads note contents.
-Visit each physical directory once; exclude escape links before descending.
-Missing link targets contribute no files; resolution errors abort the scan."
-  (let* ((org-roam-directory (kittymacs--org-roam-root org-roam-directory))
-         (pending (list org-roam-directory))
-         (seen (make-hash-table :test #'equal))
-         files)
-    (while pending
-      (let ((dir (pop pending)))
-        (unless (gethash dir seen)
-          (puthash dir t seen)
-          (dolist (entry (directory-files dir t directory-files-no-dot-files-regexp))
-            (when (kittymacs--org-roam-allowed-p entry)
-              (let ((physical (kittymacs--org-roam-path entry)))
-                (cond
-                 ((file-directory-p physical)
-                  (push (file-name-as-directory physical) pending))
-                 ((and (file-regular-p physical) (file-readable-p physical)
-                       (org-roam-file-p entry))
-                  (push physical files)))))))))
-    (delete-dups files)))
-
-(defun kittymacs--org-roam-update-file (original &optional file &rest args)
-  "Validate and canonicalize FILE before ORIGINAL hashes or reads it."
-  (let* ((file (or file (buffer-file-name (buffer-base-buffer))))
-         (scope (kittymacs--org-roam-scope)))
-    (kittymacs--org-roam-call
-     scope
-     (lambda ()
-       (unless (kittymacs--org-roam-allowed-p file)
-         (user-error "Org-roam refuses to index excluded or escaped file: %s" file))
-       (let* ((physical (kittymacs--org-roam-path file))
-              (visited (or (find-buffer-visiting file)
-                           (find-buffer-visiting physical)))
-              (find-file-hook nil)
-              (find-file-existing-other-name t)
-              (auto-mode-alist nil)
-              (buffer (or visited (find-file-noselect physical))))
-         (unwind-protect
-             (with-current-buffer buffer
-               ;; Visiting restores native case. Bind the physical DB spelling
-               ;; before upstream selects this buffer and records its filename.
-               (let ((buffer-file-name physical))
-                 (apply original physical args)))
-           (unless visited (kill-buffer buffer))))))))
-
-(defun kittymacs--org-roam-file-filter (original &optional file)
-  "Limit ORIGINAL membership check for FILE to safe graph paths."
-  (let ((path (or file (buffer-file-name (or (buffer-base-buffer) (current-buffer)))))
-        (org-roam-directory (kittymacs--org-roam-root org-roam-directory)))
-    (and (kittymacs--org-roam-allowed-p path)
-         ;; Upstream only folds the drive letter in its prefix comparison.
-         (funcall original (kittymacs--org-roam-path path)))))
-
-(defun kittymacs--org-roam-save ()
-  "Update this buffer's graph after a save without starting a global scan."
-  (when (and (sqlite-available-p) (org-roam-file-p))
-    (kittymacs--org-roam-call (kittymacs--org-roam-scope)
-                             #'org-roam-db-update-file)))
-
-(defun kittymacs--org-roam-visit-scope ()
-  "Restore file scope from directory locals, or an already open graph.
-Use upstream connections to recognize known roots; there is no graph registry."
-  (when (and buffer-file-name (derived-mode-p 'org-mode))
-    (let* ((roots (cons (kittymacs--org-roam-root kittymacs-org-roam-directory)
-                        (hash-table-keys org-roam-db--connection)))
-           (root (if (local-variable-p 'org-roam-directory)
-                     (kittymacs--org-roam-root org-roam-directory)
-                   (car (sort (seq-filter
-                               (lambda (dir) (file-in-directory-p (kittymacs--org-roam-path buffer-file-name) dir))
-                               roots)
-                              (lambda (a b) (> (length a) (length b))))))))
-      (when root
-        (kittymacs--org-roam-set-scope
-         (cons root (if (local-variable-p 'org-roam-db-location)
-                        org-roam-db-location
-                      (if-let* ((connection (gethash root org-roam-db--connection)))
-                          (oref connection file)
-                        (if (equal root (kittymacs--org-roam-root (default-value 'org-roam-directory)))
-                            (default-value 'org-roam-db-location)
-                          (kittymacs-org-roam-db-path root))))))))))
-
-(defun kittymacs--org-roam-capture-prepared (&rest _)
-  "Save originating scope in both the capture properties and target buffer."
-  (when kittymacs--org-roam-capture-scope
-    (org-capture-put :kittymacs-org-roam-scope kittymacs--org-roam-capture-scope)
-    (kittymacs--org-roam-set-scope kittymacs--org-roam-capture-scope)))
-
-(defun kittymacs--org-roam-capture-mode ()
-  "Give the indirect capture buffer the scope saved on its target."
-  (when-let* ((scope (org-capture-get :kittymacs-org-roam-scope)))
+(defun kittymacs--org-roam-restore ()
+  "Give this buffer its graph again after its local variables were cleared."
+  (when-let* ((scope (or (and (derived-mode-p 'org-mode)
+                              (or (kittymacs--org-roam-named-graph)
+                                  (and buffer-file-name
+                                       (file-in-directory-p buffer-file-name
+                                                            org-roam-directory)
+                                       (kittymacs--org-roam-personal-graph))))
+                         kittymacs--org-roam-graph)))
     (kittymacs--org-roam-set-scope scope)))
 
-(defun kittymacs--org-roam-finalize (original &rest args)
-  "Run ORIGINAL with ARGS in the graph saved by the capture."
-  (if-let* ((scope (org-capture-get :kittymacs-org-roam-scope)))
-      (kittymacs--org-roam-call
-       scope (lambda ()
-               (let ((kittymacs--org-roam-capture-scope scope))
-                 (apply original args))))
-    (apply original args)))
+#+end_src
 
-(defun kittymacs--org-roam-writable-target-p (file)
-  "Whether physical FILE or its nearest existing directory permits creation."
-  (let* ((file (kittymacs--org-roam-path file))
-         (existing file))
-    (while (not (file-exists-p existing))
-      (let ((parent (file-name-directory (directory-file-name existing))))
-        (when (equal parent existing)
-          (user-error "No existing capture ancestor: %s" file))
-        (setq existing parent)))
-    (and (or (equal existing file) (file-directory-p existing))
-         (file-writable-p existing))))
+* Membership: which files are notes
 
-(defun kittymacs--org-roam-capture-target (original path)
-  "Validate ORIGINAL's resolved PATH before Org writes capture headers."
-  (let ((file (funcall original path)))
-    (when kittymacs--org-roam-capture-scope
-      (unless (and (kittymacs--org-roam-allowed-p file)
-                   (kittymacs--org-roam-writable-target-p file))
-        (user-error "Org-roam capture destination is excluded, outside the graph, or read-only: %s" file))
-      (setq file (kittymacs--org-roam-path file))
-      (make-directory (file-name-directory file) t))
-    file))
+Upstream decides whether a file is a note with =org-roam-file-p=: the file
+must lie under the root, have an extension from =org-roam-file-extensions=,
+and not match =org-roam-file-exclude-regexp=, a regular expression or a list
+of them that is tested against the path relative to the root. That last
+option is the extension point this chapter uses.
 
-(defun kittymacs--org-roam-panel-restore ()
-  "Restore the graph before sections query the DB on every panel render."
-  (when kittymacs--org-roam-panel-scope
-    (kittymacs--org-roam-set-scope kittymacs--org-roam-panel-scope)))
+=kittymacs--org-roam-exclusions= turns a list of folder names into one more
+regular expression and adds it to upstream's own list, which by default
+holds Org's attachment folder. The expression matches a folder name as a
+whole path component, at any depth: with ="cache"= it excludes =cache/a.org=
+and =notes/cache/b.org= but not =cached.org=. Because each scope carries its
+own list and sets it buffer-locally, every graph has its own exclusions,
+and the personal graph's list comes from the global value of
+=kittymacs-org-roam-excluded-directories=.
 
-(defun kittymacs--org-roam-db-canonical (original &rest args)
-  "Validate physical root and DB placement before every upstream DB access."
+The default excludes Git's folder and cache folders, which is what a
+personal notes folder usually contains. To change it for the personal graph,
+set the option with =setopt= in =private.el=; a project sets its list in its
+=.dir-locals.el=.
+
+Upstream finds a graph's files with =find=, =fd= or =rg= when one is
+installed, which is much faster than walking the folders in Lisp, and then
+filters the result through =org-roam-file-p=, so the exclusions apply however
+the files were found. Those tools follow symbolic links, so a link inside a
+graph that points outside it brings the file it points to into the graph.
+That is your choice to make: a link is the way to include a file on
+purpose, and leaving it out is the way to keep a file out.
+
+#+begin_src emacs-lisp
+(defun kittymacs--org-roam-exclusions (directories)
+  "Return Org-roam's exclusion regexps plus one matching any of DIRECTORIES.
+The new regexp matches a whole folder name at any depth of a path that
+is relative to the graph root, which is what `org-roam-file-p' tests."
+  (append (ensure-list (default-toplevel-value 'org-roam-file-exclude-regexp))
+          (and directories
+               (list (concat "\\(?:\\`\\|/\\)" (regexp-opt directories) "/")))))
+
+#+end_src
+
+=default-toplevel-value= reads the global value even while a command below
+has bound it, so the list never grows by repeating our own expression.
+
+* Indexing: sync, saves and links
+
+=kittymacs--org-roam-call= runs a piece of Org-roam with a scope in effect.
+Setting the three upstream variables in the current buffer is not enough,
+because Org-roam does part of its work in buffers of its own: it opens a
+note that is not already open in a hidden buffer to read it, and fills
+temporary buffers for previews. Those buffers see the /global/ values. A
+=let= binding changes the global value only where the variable is not
+buffer-local, so the function binds the variables twice with =cl-progv=,
+which binds a list of variables to a list of values: once from a temporary
+buffer, where they are global, and once in the buffer the command started
+in.
+
+Upstream also keeps one open database connection per root, in
+=org-roam-db--connection=, and looks it up by the root alone. Every buffer of
+one graph must therefore agree on its database; two databases for the same
+root in one session would quietly share whichever connection opened first.
+The scope rules above make them agree: a root always gets the same cache
+path unless its own directory locals name another.
+
+=kittymacs--org-roam-save= runs after a note in a graph is saved and updates
+that note's entry. Org-roam records the file name it is given, and a sync
+records real paths, because it lists files under the resolved root. The
+function therefore binds =buffer-file-name= to the real path while it runs,
+so a note opened through a symbolic link is recorded under the same name a
+sync would use, not a second time under the link's.
+
+=kittymacs-org-roam-sync= brings the database up to date, deleting it first
+when given a prefix argument. It then copies every node's ID and file into
+Org's own ID index, =org-id-locations=. That index is separate from
+Org-roam's and knows nothing about graphs; recording each graph's IDs there
+is what lets an =id:= link reach a note in another graph (see below).
+
+** Links across graphs
+
+An =id:= link may point at a note in another graph. Org follows it with
+=org-id-find=, and Org-roam places its own lookup in front of that function
+with advice, so Org first asks the current graph's database. When the ID is
+not there, Org's own index answers, which is why every graph should be synced
+once. Opening the note there gives its buffer the destination's graph, by
+the rules above. Backlinks stay within a graph: the source graph's database
+records the outgoing link, but not the destination note or the other links
+to it. IDs must be unique across all your graphs.
+
+When the current graph cannot be used, because Emacs has no SQLite or the
+graph's root does not exist, upstream's lookup would fail with an error or
+create an empty database for a folder that is not there, and ordinary Org
+links would break with it. =kittymacs--org-roam-lookup-p= answers "not here"
+in that case, so Org's own index answers alone.
+
+#+begin_src emacs-lisp
+(defun kittymacs--org-roam-call (scope function)
+  "Call FUNCTION with SCOPE in effect, also in buffers Org-roam opens itself."
+  (let ((variables '(org-roam-directory org-roam-db-location org-roam-file-exclude-regexp))
+        (origin (current-buffer)))
+    (with-temp-buffer
+      (cl-progv variables scope
+        (with-current-buffer origin
+          (cl-progv variables scope
+            (funcall function)))))))
+
+(defun kittymacs--org-roam-save ()
+  "Update this note's entry in its graph's database, under its real file name."
+  (let ((buffer-file-name (file-truename buffer-file-name)))
+    (when (and (sqlite-available-p) (org-roam-file-p))
+      (kittymacs--org-roam-call kittymacs--org-roam-graph #'org-roam-db-update-file))))
+
+(defun kittymacs-org-roam-sync (&optional force)
+  "Bring this graph's database up to date and record its IDs for Org.
+With a prefix argument FORCE, delete the database and build it again."
+  (interactive "P")
   (kittymacs--org-roam-call
-   (kittymacs--org-roam-scope) (lambda () (apply original args))))
+   (kittymacs--org-roam-scope)
+   (lambda ()
+     (org-roam-db-sync force)
+     (dolist (row (org-roam-db-query [:select [id file] :from nodes]))
+       (org-id-add-location (car row) (cadr row)))
+     (org-id-locations-save))))
 
-(defun kittymacs--org-roam-id-destination (location)
-  "Restore graph scope on an already open ID destination LOCATION."
-  (when-let* ((buffer (cond ((markerp location) (marker-buffer location))
-                           ((consp location) (find-buffer-visiting (car location))))))
-    (with-current-buffer buffer (kittymacs--org-roam-visit-if-available)))
-  location)
+(defun kittymacs--org-roam-lookup-p (&rest _)
+  "Whether Org-roam can answer an ID lookup in this buffer's graph."
+  (and (sqlite-available-p) (file-directory-p org-roam-directory)))
 
-(defun kittymacs--org-roam-id-available (original &rest args)
-  "Let Org's own ID index handle lookups when graph scope is unavailable.
-Only the optional graph preflight is tolerant; errors from ORIGINAL after
-successful validation remain visible."
-  (when (condition-case nil (kittymacs--org-roam-scope)
-          (user-error nil))
-    (apply original args)))
+#+end_src
 
-(defun kittymacs--org-roam-visit-if-available ()
-  "Restore known graph scope without making ordinary Org editing require it."
-  (condition-case nil
-      (kittymacs--org-roam-visit-scope)
-    (user-error nil)))
+* Capture
 
-(use-package org-roam
-  :ensure t
-  :demand t
-  :config
-  (advice-add 'org-roam-db :around #'kittymacs--org-roam-db-canonical)
-  (advice-add 'org-roam-db-sync :around #'kittymacs--org-roam-db-canonical)
-  (advice-add 'org-roam-list-files :override #'kittymacs--org-roam-list-files)
-  (advice-add 'org-roam-db-update-file :around #'kittymacs--org-roam-update-file)
-  (advice-add 'org-id-find :filter-return #'kittymacs--org-roam-id-destination)
-  (advice-add 'org-roam-file-p :around #'kittymacs--org-roam-file-filter)
-  (advice-add 'org-roam-id-find :around #'kittymacs--org-roam-id-available)
-  (advice-add 'org-roam-capture--prepare-buffer :after #'kittymacs--org-roam-capture-prepared)
-  (advice-add 'org-roam-capture--target-truepath :around #'kittymacs--org-roam-capture-target)
-  (advice-add 'org-capture-finalize :around #'kittymacs--org-roam-finalize)
-  (add-hook 'org-capture-mode-hook #'kittymacs--org-roam-capture-mode)
-  (add-hook 'org-roam-mode-hook #'kittymacs--org-roam-panel-restore)
-  (add-hook 'find-file-hook #'kittymacs--org-roam-visit-if-available)
-  (add-hook 'kill-emacs-hook #'org-roam-db--close-all))
+=SPC n c= always captures, and =SPC n f= and =SPC n i= capture when you type
+a title that is not a note yet. Project graphs do not do the second: their
+find and insert offer only existing notes, so a typo in a repository's
+documentation never becomes a new file. Before a capture starts, the command
+checks that it can write to the root and shows the root it will write into.
+Which file inside the graph receives the note is decided by your
+=org-roam-capture-templates=, as upstream documents; a template that writes
+outside the graph is your choice, like a link. When the file's folder does
+not exist yet, Emacs asks before creating it when the capture is saved.
 
-(defun kittymacs--org-roam-read (scope &optional require-match)
-  "Read a node in SCOPE, optionally REQUIRE-MATCH."
-  (kittymacs--org-roam-call
-   scope (lambda ()
-           (org-roam-node-read nil nil nil require-match
-                               (format "Node (%s): " (car scope))))))
+A capture happens in two halves. The first half runs inside the command:
+Org opens the target file, inserts the template and shows a capture buffer,
+so the command's scope is still in effect. The second half, =C-c C-c=, runs
+whenever you finish, from whatever buffer happens to be current, long after
+the command has returned. Org saves the target file then, and that save must
+update the graph the capture started in.
 
-(defun kittymacs--org-roam-project-p (scope)
-  "Whether SCOPE is different from the personal graph."
-  (not (equal (car scope) (kittymacs--org-roam-root kittymacs-org-roam-directory))))
+So the scope is written into the buffers themselves during the first half.
+The command binds =kittymacs--org-roam-capture-scope= while it runs. Org
+turns on =org-capture-mode= in the capture buffer at the end of that first
+half, and its hook =kittymacs--org-roam-capture-mode= sees the binding and
+sets the scope in the capture buffer and in the file's buffer behind it,
+the capture buffer's /base buffer/. The save when you finish updates that
+graph, whichever buffer you were in. Captures started any other way, such
+as the inbox capture of the Org chapter, find the variable unbound and are
+left alone.
+
+#+begin_src emacs-lisp
+(defvar kittymacs--org-roam-capture-scope nil
+  "The graph of the command now starting an Org-roam capture, or nil.
+Only `kittymacs--org-roam-capture-node' binds it, while Org sets up the
+capture; `kittymacs--org-roam-capture-mode' reads it.")
+
+(defun kittymacs--org-roam-capture-mode ()
+  "Give a capture started from a SPC n command the graph of that command.
+Set it in the capture buffer and in the file buffer behind it, so the
+save that finishes the capture updates that graph's database."
+  (when kittymacs--org-roam-capture-scope
+    (kittymacs--org-roam-set-scope kittymacs--org-roam-capture-scope)
+    (with-current-buffer (buffer-base-buffer)
+      (kittymacs--org-roam-set-scope kittymacs--org-roam-capture-scope))))
 
 (defun kittymacs--org-roam-capture-node (scope node &optional props)
-  "Start capture of NODE in SCOPE with finalization PROPS."
+  "Capture NODE into the graph SCOPE, passing PROPS to Org-roam."
   (unless (file-writable-p (car scope))
     (user-error "Org-roam capture root is read-only: %s" (car scope)))
   (message "Org-roam capture destination: %s" (car scope))
@@ -331,21 +462,88 @@ successful validation remain visible."
            (let ((kittymacs--org-roam-capture-scope scope))
              (org-roam-capture- :node node :props props)))))
 
+#+end_src
+
+* The panel and the commands
+
+The commands read a note with upstream's =org-roam-node-read=, inside the
+scope, with the graph's root in the prompt. Completion may switch buffers
+while you choose, so each command remembers where it started, the buffer or
+for =SPC n i= the exact position, and goes back there before acting.
+
+=SPC n f= opens the note in a buffer that has been given the command's
+graph, then lets =org-roam-node-open= show it, which follows the frame
+policy of [[file:45-frames.org][the frames chapter]]. =SPC n i= inserts an =id:= link at the
+remembered position and replaces the active region, if there is one, just
+as upstream's insert does. It also runs =org-roam-post-node-insert-hook=.
+
+=SPC n b= shows the backlinks panel in a side window of the current frame,
+one panel per graph. Upstream draws the panel's contents again on every
+refresh and starts by switching its major mode on again, which clears every
+buffer-local variable. The panel's graph survives in the permanent
+=kittymacs--org-roam-graph=, and =kittymacs--org-roam-restore= on
+=org-roam-mode-hook= puts the upstream variables back before the sections
+query the database. Upstream's own permanent =org-roam-buffer-current-directory=
+and =org-roam-buffer-current-node= say which note the panel is about.
+
+** What this chapter asks of Org-roam
+
+The =use-package= block at the end is the whole connection to Org-roam
+beyond ordinary function calls. It adds four hooks and one piece of advice:
+
+- =hack-local-variables-hook= (Emacs) restores a buffer's graph after its
+  local variables are applied, in notes you open and in the buffers
+  Org-roam opens by itself.
+- =org-roam-mode-hook= (Org-roam) restores the panel's graph each time the
+  panel is redrawn.
+- =org-capture-mode-hook= (Org) hands a capture its graph.
+- =kill-emacs-hook= closes every open database when Emacs exits, with
+  upstream's =org-roam-db--close-all=. Upstream adds this itself only when
+  =org-roam-db-autosync-mode= is switched on, and this chapter leaves that
+  mode off.
+- =org-roam-id-find= gets =kittymacs--org-roam-lookup-p= as =:before-while=
+  advice, which runs our function first and upstream's only if ours returns
+  non-nil. Upstream adds its lookup to every =org-id-find= and offers no
+  option to skip it when the graph cannot be used, which is what the advice
+  adds.
+
+Org-roam's own commands, such as =M-x org-roam-node-find=, keep working in
+any buffer and use that buffer's graph, because the graph is stored in
+upstream's own variables.
+
+** Meow in the panel
+
+The panel is a special buffer, so it starts in Motion state, and =SPC m= in
+it offers refresh, sync and find.
+
+#+begin_src emacs-lisp
+(defun kittymacs--org-roam-read (scope &optional require-match)
+  "Read a node of the graph SCOPE; REQUIRE-MATCH allows only existing ones."
+  (kittymacs--org-roam-call
+   scope (lambda ()
+           (org-roam-node-read nil nil nil require-match
+                               (format "Node (%s): " (car scope))))))
+
+(defun kittymacs--org-roam-project-p (scope)
+  "Whether SCOPE is a graph other than the personal one."
+  (not (file-equal-p (car scope) (default-value 'org-roam-directory))))
+
 (defun kittymacs-org-roam-find ()
-  "Find a node in this graph; project graphs require an existing node."
+  "Find a note in this graph; a project graph offers only existing notes."
   (interactive)
   (let* ((scope (kittymacs--org-roam-scope))
          (origin (current-buffer))
          (node (kittymacs--org-roam-read scope (kittymacs--org-roam-project-p scope))))
     (with-current-buffer origin
       (if (org-roam-node-file node)
-          (let ((buffer (find-file-noselect (org-roam-node-file node))))
-            (with-current-buffer buffer (kittymacs--org-roam-set-scope scope))
+          (progn
+            (with-current-buffer (find-file-noselect (org-roam-node-file node))
+              (kittymacs--org-roam-set-scope scope))
             (org-roam-node-open node nil t))
         (kittymacs--org-roam-capture-node scope node '(:finalize find-file))))))
 
 (defun kittymacs-org-roam-insert ()
-  "Insert an ID link in the originating buffer, scoped to its graph."
+  "Insert an ID link to a note of this graph where the command started."
   (interactive)
   (let* ((scope (kittymacs--org-roam-scope))
          (origin (point-marker))
@@ -370,7 +568,7 @@ successful validation remain visible."
       (deactivate-mark))))
 
 (defun kittymacs-org-roam-capture ()
-  "Explicitly capture in this graph, showing its destination."
+  "Capture a note into this graph, showing where it will go."
   (interactive)
   (let* ((scope (kittymacs--org-roam-scope))
          (origin (current-buffer))
@@ -379,7 +577,7 @@ successful validation remain visible."
       (kittymacs--org-roam-capture-node scope node '(:finalize find-file)))))
 
 (defun kittymacs-org-roam-backlinks ()
-  "Show graph-local backlinks in a side panel in the current frame."
+  "Show the notes of this graph that link to a note, in a side panel."
   (interactive)
   (let* ((scope (kittymacs--org-roam-scope))
          (node (or (and (derived-mode-p 'org-mode) (org-roam-node-at-point))
@@ -387,23 +585,21 @@ successful validation remain visible."
          (buffer (get-buffer-create
                   (format "*org-roam: %s*" (substring (secure-hash 'sha256 (car scope)) 0 12)))))
     (with-current-buffer buffer
-      (setq-local kittymacs--org-roam-panel-scope scope
+      (setq-local kittymacs--org-roam-graph scope
                   org-roam-buffer-current-directory (car scope)
                   org-roam-buffer-current-node node)
       (org-roam-buffer-render-contents))
     (display-buffer-in-side-window buffer '((side . right) (window-width . 0.33)))))
 
-(defun kittymacs-org-roam-sync ()
-  "Synchronize this graph and add its IDs to Org's independent global index."
-  (interactive)
-  (kittymacs--org-roam-call
-   (kittymacs--org-roam-scope)
-   (lambda ()
-     (org-roam-db-sync)
-     ;; Adding locations is deliberately separate from database ownership.
-     (dolist (row (org-roam-db-query [:select [id file] :from nodes]))
-       (org-id-add-location (car row) (cadr row)))
-     (org-id-locations-save))))
+(use-package org-roam
+  :ensure t
+  :demand t
+  :config
+  (add-hook 'hack-local-variables-hook #'kittymacs--org-roam-restore)
+  (add-hook 'org-roam-mode-hook #'kittymacs--org-roam-restore)
+  (add-hook 'org-capture-mode-hook #'kittymacs--org-roam-capture-mode)
+  (add-hook 'kill-emacs-hook #'org-roam-db--close-all)
+  (advice-add 'org-roam-id-find :before-while #'kittymacs--org-roam-lookup-p))
 
 (with-eval-after-load 'meow
   (add-to-list 'meow-mode-state-list '(org-roam-mode . motion)))
@@ -416,21 +612,13 @@ successful validation remain visible."
 ;;; kittymacs-org-roam.el ends here
 #+end_src
 
-* Links across graphs
+* Try it
 
-An intentional =id:= link can refer to a node in another graph. Sync each
-graph once so Org's independent ID location index knows those files. Opening
-the destination applies its directory-local scope; in the current session,
-upstream open connections also identify previously used roots. For persistent
-project scope, use trusted directory locals with both upstream variables.
-Backlinks remain graph-local: the source database stores the outgoing link,
-not the destination node or its other backlinks. IDs must be globally unique.
-
-The default exclusions are the folders a personal notes folder usually
-holds but that are not notes: =.git/=, =.cache/=, =cache/= and =caches/=.
-Symlinks leading out of the graph are excluded.
-A read-only checkout can be browsed using its writable external database;
-capture checks the root and resolved target before writing. Safe nested capture
-paths create missing parent directories after validating the nearest existing
-parent; excluded and out-of-root parents are never created. Customize the
-exclusion list with =setq= in =private.el= before this chapter loads.
+- =SPC n s= in any buffer builds the personal graph's index; =SPC n f=
+  then offers its notes, and typing a new title captures one.
+- Open a file in a repository with the project =.dir-locals.el= above and
+  press =SPC n f=: the prompt shows the repository's root, and only its
+  notes are offered.
+- In a note, =SPC n b= opens the backlinks panel; =SPC m g= in the panel
+  refreshes it.
+- =C-u SPC n s= rebuilds a graph's index from nothing.

@@ -122,9 +122,18 @@ Much of the policy is distilled from [Lambda-Emacs](https://codeberg.org/Lambda-
 
 ## Linked notes
 
-`SPC n` opens the Org-roam menu: find (`f`), insert (`i`), explicit capture (`c`),
-backlinks (`b`) and sync (`s`). The personal graph defaults to the Org directory.
-Projects can bind the ordinary Org-roam root and external database buffer-locally;
-project find/insert only choose existing notes. Run sync once per graph; startup
-never scans notes. Native SQLite support is required for graph commands.
-See [the Org-roam chapter](literate/71-org-roam.org) for scope and capture policy.
+`SPC n` opens the Org-roam menu: find (`f`), insert (`i`), capture (`c`),
+backlinks (`b`) and sync (`s`). Each command works on the graph of the current
+buffer. The personal graph defaults to the Org directory. A repository becomes a
+graph of its own with a `.dir-locals.el` at its root:
+
+```elisp
+((nil . ((kittymacs-org-roam-project . t)
+         (kittymacs-org-roam-excluded-directories . ("secrets" "tools" "web" ".github")))))
+```
+
+Each graph's index is a SQLite database in the user cache, outside the graph, so
+Emacs must be built with SQLite. Run sync once per graph; startup never scans
+notes, and saving a note updates its entry. In a project graph, find and insert
+offer only existing notes. See [the Org-roam chapter](literate/71-org-roam.org)
+for how a buffer's graph is chosen, exclusions and capture.
