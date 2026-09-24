@@ -94,7 +94,11 @@ Options under =programs.kittymacs=:
   then on the checkout is yours to pull, commit in and switch branches in,
   so when a later activation finds it at another commit it prints one line
   saying so and changes nothing. Bumping the input in =flake.lock= therefore
-  never rewrites your configuration. A =source= that is a symbolic link to
+  never rewrites your configuration. If the clone fails (no network yet, as
+  on a NixOS machine's first boot, or a commit the repository does not
+  have), activation prints a warning and carries on with the rest of your
+  home configuration, and the next activation tries again; until then
+  =~/.config/emacs= points at nothing. A =source= that is a symbolic link to
   nothing (an unmounted disk, say) stops activation instead of being cloned
   over. The first clone is shallow and detached; =git fetch --unshallow
   origin= followed by =git switch main= turns it into an ordinary checkout.

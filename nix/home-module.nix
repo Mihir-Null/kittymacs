@@ -133,6 +133,11 @@ in
     #   `repository` so the checkout can pull later.  The work happens in a
     #   temporary directory beside `source`, which is moved into place only
     #   once HEAD is that commit, so a failed fetch leaves nothing half-made.
+    #   A failure only warns: the network may not be up yet (home-manager
+    #   runs at boot on NixOS), and the rest of the home configuration should
+    #   not wait for it.  The next activation tries again.  The subshell is
+    #   run with errexit on and not as an `if` condition, where bash would
+    #   ignore `set -e` and go on past a failed fetch.
     # - A Git checkout at another commit: say so, and touch nothing.
     #
     # git and coreutils are named by store path, because activation does not
@@ -152,7 +157,9 @@ in
             else
               parent=$(${coreutils}/dirname -- "$source")
               ${coreutils}/mkdir -p -- "$parent"
+              set +e
               (
+                set -e
                 temp=$(${coreutils}/mktemp -d "$parent/.kittymacs.XXXXXXXX")
                 trap '${coreutils}/rm -rf -- "$temp"' EXIT
                 ${git} -C "$temp" init --quiet
@@ -166,6 +173,11 @@ in
                 fi
                 ${coreutils}/mv -- "$temp" "$source"
               )
+              cloneStatus=$?
+              set -e
+              if (( cloneStatus != 0 )); then
+                warnEcho "kittymacs: could not clone $repository at $revision into $source; activation goes on without it, and the next one tries again"
+              fi
             fi
           elif [[ -e $source/.git ]] \
             && head=$(${git} -C "$source" rev-parse HEAD 2>/dev/null) \
