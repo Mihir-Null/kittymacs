@@ -558,6 +558,14 @@ toggles it. Ispell is configured in one guarded function, and the environment
 Hunspell needs is set before Ispell is pointed at it; the docstring says why
 the order matters.
 
+The hooks that turn Flyspell on are added unconditionally, and each one asks
+for a checker only when a buffer opens. Deciding once, while this module
+loads, would be too early: the module loads before =private.el=, so a
+=kittymacs-msys2-root= set there, or a checker that =exec-path-from-shell= later
+finds on the login shell's =PATH=, would never turn spelling on. The question
+costs two lookups on =exec-path= per buffer, which is nothing next to what
+Flyspell itself does.
+
 Only Emacs's own Flyspell is used here. This module is loaded by
 [[file:../tests/kittymacs-platform-tests.el][the platform tests]] with no packages available at all, so it must never declare
 one; the two front ends that make corrections pleasant (=C-;= and =SPC s p=)
@@ -605,16 +613,17 @@ library, runs the checker and fails again."
 
 ;; Enable Flyspell the same way: on any error say so once and carry on.
 (defun kittymacs--flyspell (mode-function)
-  "Enable Flyspell with MODE-FUNCTION, reporting a broken checker instead of failing."
-  (condition-case err
-      (funcall mode-function)
-    (error (kittymacs--spell-off err))))
+  "Enable Flyspell with MODE-FUNCTION when this machine has a spell checker.
+A checker that fails is reported once instead of breaking the buffer."
+  (when (kittymacs-spell-checker)
+    (condition-case err
+        (funcall mode-function)
+      (error (kittymacs--spell-off err)))))
 (defun kittymacs-flyspell-text () (kittymacs--flyspell #'flyspell-mode))
 (defun kittymacs-flyspell-prog () (kittymacs--flyspell #'flyspell-prog-mode))
 
-(when (kittymacs-spell-checker)
-  (add-hook 'text-mode-hook #'kittymacs-flyspell-text)
-  (add-hook 'prog-mode-hook #'kittymacs-flyspell-prog))
+(add-hook 'text-mode-hook #'kittymacs-flyspell-text)
+(add-hook 'prog-mode-hook #'kittymacs-flyspell-prog)
 
 #+end_src
 

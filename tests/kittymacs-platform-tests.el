@@ -346,6 +346,36 @@ which is what an unpaired installation looks like from Emacs."
         (kittymacs--configure-ispell))
       (should-not called))))
 
+(ert-deftest kittymacs-platform-flyspell-asks-for-a-checker-when-a-buffer-opens ()
+  ;; The hooks are always there, so a checker that appears after the module
+  ;; loaded (MSYS2's, once private.el sets `kittymacs-msys2-root') still
+  ;; turns spelling on.
+  (should (memq #'kittymacs-flyspell-text text-mode-hook))
+  (should (memq #'kittymacs-flyspell-prog prog-mode-hook))
+  (kittymacs-platform-test-with 'windows-nt '()
+    (let ((kittymacs-msys2-root "/msys64/") enabled)
+      (cl-letf (((symbol-function 'flyspell-mode) (lambda () (setq enabled t))))
+        (cl-letf (((symbol-function 'file-executable-p) #'ignore))
+          (kittymacs-flyspell-text)
+          (should-not enabled))
+        (cl-letf (((symbol-function 'file-executable-p)
+                   (lambda (file)
+                     (equal file "/msys64/ucrt64/bin/hunspell.exe"))))
+          (kittymacs-flyspell-text)
+          (should enabled))))))
+
+(ert-deftest kittymacs-platform-a-broken-flyspell-is-reported-once ()
+  (kittymacs-platform-test-with 'gnu/linux '("hunspell")
+    (let ((kittymacs--spell-warned nil) (reports 0))
+      (cl-letf (((symbol-function 'flyspell-prog-mode)
+                 (lambda () (error "No dictionary")))
+                ((symbol-function 'message)
+                 (lambda (&rest _) (setq reports (1+ reports)))))
+        (kittymacs-flyspell-prog)
+        (kittymacs-flyspell-prog))
+      (should kittymacs--spell-warned)
+      (should (= reports 1)))))
+
 ;;; Unix tools on Windows.
 
 (ert-deftest kittymacs-platform-windows-puts-gits-unix-tools-last ()

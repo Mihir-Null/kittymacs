@@ -334,16 +334,17 @@ library, runs the checker and fails again."
 
 ;; Enable Flyspell the same way: on any error say so once and carry on.
 (defun kittymacs--flyspell (mode-function)
-  "Enable Flyspell with MODE-FUNCTION, reporting a broken checker instead of failing."
-  (condition-case err
-      (funcall mode-function)
-    (error (kittymacs--spell-off err))))
+  "Enable Flyspell with MODE-FUNCTION when this machine has a spell checker.
+A checker that fails is reported once instead of breaking the buffer."
+  (when (kittymacs-spell-checker)
+    (condition-case err
+        (funcall mode-function)
+      (error (kittymacs--spell-off err)))))
 (defun kittymacs-flyspell-text () (kittymacs--flyspell #'flyspell-mode))
 (defun kittymacs-flyspell-prog () (kittymacs--flyspell #'flyspell-prog-mode))
 
-(when (kittymacs-spell-checker)
-  (add-hook 'text-mode-hook #'kittymacs-flyspell-text)
-  (add-hook 'prog-mode-hook #'kittymacs-flyspell-prog))
+(add-hook 'text-mode-hook #'kittymacs-flyspell-text)
+(add-hook 'prog-mode-hook #'kittymacs-flyspell-prog)
 ;; Do not force a font here. Inheriting the platform default makes first boot robust.
 ;; Fonts are chosen in the appearance chapter.
 
