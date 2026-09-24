@@ -54,6 +54,7 @@ section describing states and the =SPC m= menu, and "Try it" at the end.
 | [[file:66-vc.org][Version control]] | Magit and VC                                                                       |
 | [[file:68-navigation.org][Navigation]]      | Recent files, places, projects, search tools, workspaces                           |
 | [[file:70-org.org][Org]]             | Notes, tasks, the agenda                                                           |
+| [[file:71-org-roam.org][Org-roam]]        | Linked notes: personal and project graphs, capture, backlinks                      |
 | [[file:72-programming.org][Programming]]     | Delimiters, structural editing, linting, compiling, Emacs Lisp                     |
 | [[file:74-languages.org][Languages]]       | Tree-sitter grammars and opt-in language servers                                   |
 | [[file:80-maintenance.org][Maintenance]]     | Private overrides and the build commands                                           |
@@ -65,7 +66,7 @@ section describing states and the =SPC m= menu, and "Try it" at the end.
 *Emacs* supplies the mechanisms: keymaps, hooks, faces, =package.el=,
 =use-package=, which-key, project.el, Dired, Org, Tree-sitter, Eglot.
 *Packages* supply the features we chose: Meow, the completion stack, Magit,
-EAT, doom-modeline, and the rest; each is declared in the chapter that uses
+ghostel, doom-modeline, and the rest; each is declared in the chapter that uses
 it with =use-package … :ensure t=, so a fresh clone installs what it needs.
 *This configuration* is only the policy: which packages, how they are set,
 and the =SPC= tree that ties them together. Much of the policy was distilled
@@ -75,8 +76,10 @@ from [[https://codeberg.org/Lambda-Emacs/lambda-emacs][Lambda-Emacs]] by Colin M
 
 1. Edit the chapter: the prose and the code block together.
 2. =SPC C t= (or =M-x kittymacs-literate-tangle=) rebuilds the generated files in
-   a clean Emacs subprocess and reports in =*kittymacs literate build*=.
-   Unsaved chapters are refused, so a build never uses a stale file.
+   a clean Emacs subprocess and reports in =*kittymacs literate build*=. It
+   reads every =literate/NN-name.org= file and writes what its =:tangle=
+   headers name, so there is nothing else to update. Unsaved chapters are
+   refused, so a build never uses a stale file.
 3. =SPC C k= checks that chapters and generated files agree without writing.
 4. Restart Emacs. Commit the chapter and the generated file together.
 
