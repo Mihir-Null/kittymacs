@@ -3,9 +3,9 @@ name: CI
 # Three questions, answered on every push and pull request:
 #   1. Do the literate chapters still match the generated Lisp, and do the
 #      tests that need no packages pass?                             (tangle)
-#   2. Does a fresh clone install its packages and start, on the oldest
-#      supported Emacs and the current one?  And on macOS, and on Windows,
-#      the machine this is written on?                              (startup)
+#   2. Does a fresh clone install its packages, byte-compile and start, on
+#      the oldest supported Emacs and the current one?  And on macOS, and
+#      on Windows, the machine this is written on?                (startup)
 #   3. Does the Nix flake still evaluate, with its nix-darwin and
 #      nix-on-droid examples?                                           (nix)
 # The weekly run skips the package cache so upstream package breakage
@@ -105,6 +105,21 @@ jobs:
             -l early-init.el --eval '(package-refresh-contents)' -l init.el \
             --eval '(require (quote org-roam))' \
             --eval '(princ (format "%d packages active, leader bound: %S\n" (length package-activated-list) (keymapp (keymap-lookup meow-normal-state-keymap "SPC"))))'
+      # Errors fail the step; warnings are printed and do not, because most
+      # of them name a function that a module calls from a package, or from
+      # another module, that it does not load while compiling.  The .elc
+      # files go to the temporary directory, so the steps below still load
+      # the tracked sources.  Installing is switched off: the step above
+      # already did it, and a package that a module declares with :if nil
+      # on this system should stay uninstalled.
+      - name: Byte-compile the modules
+        run: |
+          emacs -Q --batch \
+            --eval '(setq user-emacs-directory (file-name-as-directory (expand-file-name ".")))' \
+            -l early-init.el -f package-activate-all -L lisp \
+            --eval '(setq use-package-ensure-function (quote ignore))' \
+            --eval '(setq byte-compile-dest-file-function (lambda (file) (expand-file-name (concat (file-name-nondirectory file) "c") temporary-file-directory)))' \
+            -f batch-byte-compile lisp/*.el
       - name: Leader tests
         run: emacs -Q --batch -l tests/kittymacs-leader-tests.el -f ert-run-tests-batch-and-exit
       - name: Scoped Org-roam tests
