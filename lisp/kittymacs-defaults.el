@@ -65,10 +65,6 @@
 (use-package ws-butler
   :ensure t
   :hook ((text-mode prog-mode) . ws-butler-mode))
-
-(use-package expand-region
-  :ensure t
-  :defer t)
 (setopt use-short-answers t
         use-file-dialog nil
         use-dialog-box nil

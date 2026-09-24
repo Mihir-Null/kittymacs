@@ -127,13 +127,12 @@ directories count as projects. Ripgrep backs =xref= searches.
 
 * Searching files
 
-Consult's ripgrep (=SPC s d=) is the everyday search. =deadgrep= and =rg=
-give a results buffer you can keep and revisit, and =visual-regexp= shows
+Consult's ripgrep (=SPC s d=) is the everyday search. =deadgrep= (=SPC s D=)
+gives a results buffer you can keep and revisit, and =visual-regexp= shows
 replacements live before you commit to them.
 
 #+begin_src emacs-lisp
 (use-package deadgrep :ensure t :commands deadgrep)
-(use-package rg :ensure t :commands rg)
 (use-package visual-regexp
   :ensure t
   :commands (vr/query-replace vr/replace))

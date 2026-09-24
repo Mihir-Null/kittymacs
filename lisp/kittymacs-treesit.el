@@ -129,7 +129,7 @@ ORIGINAL-FUNCTION unchanged."
          "git" nil t nil "-C" workdir "checkout" "--detach" "--quiet"
          "FETCH_HEAD"))
     (funcall original-function url revision workdir)))
-(defun kittymacs-treesit-refresh-mode-remaps (&rest _)
+(defun kittymacs-treesit-refresh-mode-remaps ()
   "Refresh managed mode remaps for the grammars available right now.
 
 Any unconditional remaps inherited from Lambda are removed first.  A remap is
@@ -185,12 +185,5 @@ then added only when its target mode exists and its grammar loads successfully."
                          #'treesit--git-clone-repo)
   (advice-add #'treesit--git-clone-repo :around
               #'kittymacs-treesit--git-clone-revision))
-;; Lambda's bulk command calls the built-in installer directly.  Refresh after
-;; each successful installation so a restart is not required before the remap
-;; becomes active.
-(unless (advice-member-p #'kittymacs-treesit-refresh-mode-remaps
-                         #'treesit-install-language-grammar)
-  (advice-add #'treesit-install-language-grammar :after
-              #'kittymacs-treesit-refresh-mode-remaps))
 (provide 'kittymacs-treesit)
 ;;; kittymacs-treesit.el ends here

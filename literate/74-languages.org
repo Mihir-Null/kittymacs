@@ -251,7 +251,7 @@ A replacement is installed only when both the target mode and its grammar work. 
 
 #+name: kittymacs-treesit-10-1
 #+begin_src emacs-lisp
-(defun kittymacs-treesit-refresh-mode-remaps (&rest _)
+(defun kittymacs-treesit-refresh-mode-remaps ()
   "Refresh managed mode remaps for the grammars available right now.
 
 Any unconditional remaps inherited from Lambda are removed first.  A remap is
@@ -347,21 +347,6 @@ Guard the advice so reloading the module cannot stack duplicate wrappers around 
                          #'treesit--git-clone-repo)
   (advice-add #'treesit--git-clone-repo :around
               #'kittymacs-treesit--git-clone-revision))
-#+end_src
-
-** Recheck modes after a parser installation
-
-Once a requested grammar installs, refresh remaps immediately so its Tree-sitter mode can become available without a restart.
-
-#+name: kittymacs-treesit-16-1
-#+begin_src emacs-lisp
-;; Lambda's bulk command calls the built-in installer directly.  Refresh after
-;; each successful installation so a restart is not required before the remap
-;; becomes active.
-(unless (advice-member-p #'kittymacs-treesit-refresh-mode-remaps
-                         #'treesit-install-language-grammar)
-  (advice-add #'treesit-install-language-grammar :after
-              #'kittymacs-treesit-refresh-mode-remaps))
 #+end_src
 
 ** Publish the module

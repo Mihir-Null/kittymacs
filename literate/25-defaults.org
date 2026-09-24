@@ -7,7 +7,7 @@
 
 Ownership: *user configuration*, distilled from Lambda-Emacs by Colin McLear
 (the =lem-setup-settings=, =-buffers=, =-windows=, =-scratch=, =-server= and
-=-colors= modules). Everything here is built into Emacs except four small
+=-colors= modules). Everything here is built into Emacs except five small
 packages. Nothing here is specific to one machine or operating system.
 
 * What this gives you
@@ -140,20 +140,13 @@ instead of scrolling sideways.
 
 #+end_src
 
-Two small packages keep whitespace tidy and make selecting easy.
-=ws-butler= removes trailing whitespace only on lines you changed, so a
-commit never touches lines you did not edit. =expand-region= grows the
-selection semantically; Meow's =o= and =,= do most of this, but it is handy
-in Insert state.
+=ws-butler= keeps whitespace tidy: it removes trailing whitespace only on
+lines you changed, so a commit never touches lines you did not edit.
 
 #+begin_src emacs-lisp
 (use-package ws-butler
   :ensure t
   :hook ((text-mode prog-mode) . ws-butler-mode))
-
-(use-package expand-region
-  :ensure t
-  :defer t)
 
 #+end_src
 

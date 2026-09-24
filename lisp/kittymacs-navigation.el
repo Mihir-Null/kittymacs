@@ -71,7 +71,6 @@
     (setopt xref-search-program 'ripgrep))
   (project-forget-zombie-projects))
 (use-package deadgrep :ensure t :commands deadgrep)
-(use-package rg :ensure t :commands rg)
 (use-package visual-regexp
   :ensure t
   :commands (vr/query-replace vr/replace))
