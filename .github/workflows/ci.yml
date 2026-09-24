@@ -154,13 +154,6 @@ jobs:
       - uses: jcs090218/setup-emacs@master
         with:
           version: "30.1"
-      - uses: actions/setup-python@v7
-        with:
-          python-version: "3.14"
-      - name: Verify native physical-path capability
-        shell: pwsh
-        run: |
-          python -I -S -B -c "import os, sys; assert sys.platform == 'win32'; assert hasattr(os.path, 'ALLOW_MISSING'); print(sys.executable)"
       - name: Restore the package directory
         if: github.event_name != 'schedule'
         uses: actions/cache@v6

@@ -17,165 +17,12 @@
   "Directory components excluded from graph indexing and capture."
   :type '(repeat string) :group 'kittymacs-org-roam)
 
-(require 'json)
-
-(defcustom kittymacs-org-roam-python-executable nil
-  "Absolute native Windows Python, or nil to discover python.exe on exec-path.
-Requires sys.platform == win32 and os.path.ALLOW_MISSING.  Configure this
-in private.el if Python is not on PATH; never use a project interpreter."
-  :type '(choice (const nil) file) :group 'kittymacs-org-roam)
-(defcustom kittymacs-org-roam-path-timeout 5
-  "Maximum seconds for one native physical-path request."
-  :type 'number :group 'kittymacs-org-roam)
-
-;; Fixed code; request paths are JSON data, never executable arguments.
-(defconst kittymacs--org-roam-python-code
-  "import json, os, stat, sys
-sys.stdin.reconfigure(encoding='utf-8')
-def resolve(path):
-    if not isinstance(path, str) or not os.path.isabs(path):
-        raise ValueError('Expected an absolute local path')
-    if os.path.splitdrive(path)[0].startswith('\\\\'):
-        raise ValueError('UNC paths are not supported by this local graph backend')
-    result = os.path.realpath(path, strict=os.path.ALLOW_MISSING)
-    if os.path.splitdrive(result)[0].startswith('\\\\'):
-        raise ValueError('Resolved UNC paths are not supported')
-    ancestor = result
-    while True:
-        try:
-            info = os.stat(ancestor)
-            break
-        except FileNotFoundError:
-            parent = os.path.dirname(ancestor)
-            if parent == ancestor:
-                raise
-            ancestor = parent
-    if ancestor != result and not stat.S_ISDIR(info.st_mode):
-        raise NotADirectoryError('Nearest existing ancestor is not a directory: ' + ancestor)
-    return result.replace('\\\\', '/')
-for line in sys.stdin:
-    try:
-        if sys.platform != 'win32' or not hasattr(os.path, 'ALLOW_MISSING'):
-            raise RuntimeError('Native Windows CPython with os.path.ALLOW_MISSING is required')
-        request = json.loads(line)
-        if not isinstance(request, list) or not all(isinstance(p, str) for p in request):
-            raise ValueError('Expected a JSON array of absolute paths')
-        response = {'paths': [resolve(p) for p in request]}
-    except Exception as error:
-        response = {'error': type(error).__name__ + ': ' + str(error)}
-    print(json.dumps(response, ensure_ascii=True), flush=True)
-")
-(defvar kittymacs--org-roam-path-context nil
-  "Dynamically owned [process stdout stderr busy] for one graph operation.")
-
-(defun kittymacs--org-roam-operation (function &rest args)
-  "Run FUNCTION with ARGS, owning any lazy native helper until return.
-Nested synchronous calls reuse the child, but each path is resolved anew."
-  (if kittymacs--org-roam-path-context
-      (apply function args)
-    (let ((kittymacs--org-roam-path-context (vector nil nil nil nil)))
-      (unwind-protect (apply function args)
-        (when-let* ((child (aref kittymacs--org-roam-path-context 0)))
-          (when (process-live-p child) (delete-process child)))
-        (dolist (index '(1 2))
-          (when-let* ((buffer (aref kittymacs--org-roam-path-context index)))
-            (when (buffer-live-p buffer)
-              (when-let* ((pipe (get-buffer-process buffer)))
-                (when (process-live-p pipe) (delete-process pipe)))
-              (kill-buffer buffer))))))))
-
-(defun kittymacs--org-roam-python-start ()
-  "Start the operation's isolated interpreter, failing only on graph use."
-  (let* ((default-directory temporary-file-directory)
-         ;; Relative exec-path entries can name project code; ignore them.
-         (exec-path (seq-filter (lambda (p) (and p (file-name-absolute-p p)
-                                                 (not (file-remote-p p))))
-                                exec-path))
-         (program (or kittymacs-org-roam-python-executable
-                      (executable-find "python.exe"))))
-    (unless (and program (file-name-absolute-p program)
-                 (not (file-remote-p program))
-                 (not (string-prefix-p "//" program))
-                 (file-executable-p program))
-      (user-error "Org-roam physical paths require native Python; set kittymacs-org-roam-python-executable to an absolute CPython with os.path.ALLOW_MISSING"))
-    (let ((out (generate-new-buffer " *org-roam-paths*"))
-          (err (generate-new-buffer " *org-roam-path-errors*")))
-      (aset kittymacs--org-roam-path-context 1 out)
-      (aset kittymacs--org-roam-path-context 2 err)
-      (condition-case failure
-          (aset kittymacs--org-roam-path-context 0
-                (make-process :name "org-roam-paths" :buffer out :stderr err
-                              :command (list program "-I" "-S" "-B" "-u" "-c"
-                                             kittymacs--org-roam-python-code)
-                              :connection-type 'pipe :coding 'utf-8-unix
-                              :noquery t :sentinel #'ignore))
-        (error (user-error "Org-roam physical-path Python could not start: %s"
-                           (error-message-string failure)))))))
-
-(defun kittymacs--org-roam-native-paths (paths)
-  "Resolve absolute PATHS using the owned JSON pipe; no response is cached."
-  (unless kittymacs--org-roam-path-context
-    (error "Physical resolver needs an operation context"))
-  (when (aref kittymacs--org-roam-path-context 3)
-    (user-error "Org-roam physical-path request reentered while awaiting Python"))
-  (unless (aref kittymacs--org-roam-path-context 0)
-    (kittymacs--org-roam-python-start))
-  (let ((child (aref kittymacs--org-roam-path-context 0))
-        (output (aref kittymacs--org-roam-path-context 1))
-        (deadline (+ (float-time) kittymacs-org-roam-path-timeout))
-        complete)
-    (aset kittymacs--org-roam-path-context 3 t)
-    (unwind-protect
-        (condition-case failure
-            (progn
-              (unless (process-live-p child) (error "Python exited before the request"))
-              (process-send-string child (concat (json-serialize (vconcat paths)) "\n"))
-              (with-current-buffer output
-                (while (not (save-excursion (goto-char (point-min)) (search-forward "\n" nil t)))
-                  (when (> (buffer-size) 1048576) (error "Oversized Python response"))
-                  (unless (process-live-p child) (error "Python exited without a complete response"))
-                  (when (> (float-time) deadline) (error "Python response timed out"))
-                  (accept-process-output child 0.01))
-                (let* ((end (save-excursion (goto-char (point-min)) (search-forward "\n")))
-                       (response (json-parse-string (buffer-substring-no-properties (point-min) end)
-                                                    :object-type 'alist :array-type 'list))
-                       (resolved (alist-get 'paths response)))
-                  (delete-region (point-min) end)
-                  (when (alist-get 'error response)
-                    (error "%s" (alist-get 'error response)))
-                  (unless (and (= (buffer-size) 0)
-                               (equal (mapcar #'car response) '(paths))
-                               (listp resolved) (= (length paths) (length resolved))
-                               (cl-every (lambda (p) (and (stringp p)
-                                                         (file-name-absolute-p p)
-                                                         (not (file-remote-p p))
-                                                         (not (string-prefix-p "//" p))))
-                                         resolved))
-                    (error "Invalid Python path response"))
-                  (setq complete t)
-                  resolved)))
-          (error
-           (when (process-live-p child) (delete-process child))
-           (user-error "Org-roam physical-path resolution failed: %s%s"
-                       (error-message-string failure)
-                       (with-current-buffer (aref kittymacs--org-roam-path-context 2)
-                         (if (= (buffer-size) 0) ""
-                           (concat "; " (buffer-substring-no-properties
-                                         (point-min) (min (point-max) 2049))))))))
-      (unless complete
-        (when (process-live-p child) (delete-process child)))
-      (aset kittymacs--org-roam-path-context 3 nil))))
-
 (defun kittymacs--org-roam-path (path)
   "Return fresh physical PATH, folded only on a case-insensitive filesystem."
   (when (or (file-remote-p path) (string-prefix-p "//" path))
     (user-error "Org-roam supports local graph paths only"))
-  (kittymacs--org-roam-operation
-   (lambda ()
-     (let ((true (if (eq system-type 'windows-nt)
-                     (car (kittymacs--org-roam-native-paths (list (expand-file-name path))))
-                   (file-truename (expand-file-name path)))))
-       (if (file-name-case-insensitive-p true) (downcase true) true)))))
+  (let ((true (file-truename (expand-file-name path))))
+    (if (file-name-case-insensitive-p true) (downcase true) true)))
 
 (defun kittymacs--org-roam-root (root)
   "Return the physical directory identity of ROOT."
@@ -189,9 +36,7 @@ Nested synchronous calls reuse the child, but each path is resolved anew."
 
 ;; Defvar preserves private.el prebindings, including upstream options.
 (defvar org-roam-directory kittymacs-org-roam-directory)
-(defvar org-roam-db-location
-  (unless (eq system-type 'windows-nt)
-    (kittymacs-org-roam-db-path org-roam-directory)))
+(defvar org-roam-db-location (kittymacs-org-roam-db-path org-roam-directory))
 (defvar kittymacs--org-roam-capture-scope nil)
 (defvar-local kittymacs--org-roam-panel-scope nil)
 (put 'kittymacs--org-roam-panel-scope 'permanent-local t)
@@ -408,9 +253,9 @@ successful validation remain visible."
     (apply original args)))
 
 (defun kittymacs--org-roam-visit-if-available ()
-  "Restore known graph scope without making ordinary Org editing require Python."
+  "Restore known graph scope without making ordinary Org editing require it."
   (condition-case nil
-      (kittymacs--org-roam-operation #'kittymacs--org-roam-visit-scope)
+      (kittymacs--org-roam-visit-scope)
     (user-error nil)))
 
 (use-package org-roam
@@ -421,11 +266,6 @@ successful validation remain visible."
   (advice-add 'org-roam-db-sync :around #'kittymacs--org-roam-db-canonical)
   (advice-add 'org-roam-list-files :override #'kittymacs--org-roam-list-files)
   (advice-add 'org-roam-db-update-file :around #'kittymacs--org-roam-update-file)
-  ;; Outer ownership covers direct upstream use as well as scoped commands.
-  (dolist (function '(org-roam-db org-roam-db-sync org-roam-db-update-file
-                      org-roam-list-files org-roam-file-p org-roam-id-find
-                      org-capture-finalize))
-    (advice-add function :around #'kittymacs--org-roam-operation))
   (advice-add 'org-id-find :filter-return #'kittymacs--org-roam-id-destination)
   (advice-add 'org-roam-file-p :around #'kittymacs--org-roam-file-filter)
   (advice-add 'org-roam-id-find :around #'kittymacs--org-roam-id-available)
@@ -531,13 +371,6 @@ successful validation remain visible."
      (dolist (row (org-roam-db-query [:select [id file] :from nodes]))
        (org-id-add-location (car row) (cadr row)))
      (org-id-locations-save))))
-
-(dolist (function '(kittymacs-org-roam-db-path kittymacs--org-roam-scope
-                    kittymacs--org-roam-capture-target
-                    kittymacs-org-roam-find kittymacs-org-roam-insert
-                    kittymacs-org-roam-capture kittymacs-org-roam-backlinks
-                    kittymacs-org-roam-sync))
-  (advice-add function :around #'kittymacs--org-roam-operation))
 
 (with-eval-after-load 'meow
   (add-to-list 'meow-mode-state-list '(org-roam-mode . motion)))
