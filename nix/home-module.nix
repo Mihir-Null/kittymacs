@@ -53,8 +53,9 @@ in
       default = self.rev or null;
       defaultText = lib.literalMD ''
         the commit of the kittymacs flake this module comes from, as the
-        host's `flake.lock` records it; null when that flake is a working
-        tree with uncommitted changes
+        host's `flake.lock` records it; null when that flake has no
+        revision: a `path:` input, or a Git working tree with uncommitted
+        changes
       '';
       example = "0123456789abcdef0123456789abcdef01234567";
       description = ''

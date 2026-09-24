@@ -80,8 +80,10 @@ home-manager.users.me = {
 Options under =programs.kittymacs=:
 
 - =source= :: where the checkout lives. =~/.config/emacs= becomes a link to
-  it. Leave it null to clone and place the configuration by hand; nothing
-  below happens then.
+  it. Leave it null to clone and place the configuration by hand; then
+  nothing is linked or cloned, and =repository= and =revision= have no
+  effect. The other options still install Emacs, the tools and the font,
+  and run the daemon.
 - =repository= :: the Git URL to clone from. Default
   =https://github.com/Mihir-Null/kittymacs.git=; point it at a fork to start
   from your own copy.
