@@ -43,12 +43,12 @@ section describing states and the =SPC m= menu, and "Try it" at the end.
 | [[file:35-shells.org][Shells]]          | Eshell and Tramp                                                                   |
 | [[file:40-editing.org][Editing]]         | Meow's states and grammar                                                          |
 | [[file:41-leader.org][Leader]]          | Why =SPC= is a real keymap, and how modes get their own menu                         |
-| [[file:42-keys.org][Keys]]            | The whole =SPC= tree, group by group, with a migration table                         |
+| [[file:42-keys.org][Keys]]            | The whole =SPC= tree, group by group, the help menu, a migration table               |
 | [[file:45-frames.org][Frames]]          | Frames-only mode and its exceptions                                                |
 | [[file:50-appearance.org][Appearance]]      | Fonts, theme, mode line, icons, highlighting                                       |
 | [[file:55-dashboard.org][Dashboard]]       | The home page                                                                      |
 | [[file:60-completion.org][Completion]]      | Vertico, Orderless, Marginalia, Consult, Embark, Corfu, Cape, snippets             |
-| [[file:62-help.org][Help]]            | Helpful, Info, Transient, the help menu                                            |
+| [[file:62-help.org][Help]]            | Helpful, Info, Transient                                                           |
 | [[file:64-dired.org][Dired]]           | The file manager                                                                   |
 | [[file:65-treemacs.org][Treemacs]]        | The project tree in a sidebar                                                      |
 | [[file:66-vc.org][Version control]] | Magit and VC                                                                       |
@@ -125,7 +125,7 @@ generated file too.
   early-init.el, init.el   generated from literate/10-startup.org
   literate/                these chapters
   lisp/                    generated modules, the cheat sheet, themes/, private.el
-  tests/                   tangle tests, startup verifier, leader tests, frame tests
+  tests/                   the test suites and the startup verifier
   tools/tangle.el          the builder
   var/                     packages, caches, custom.el: ignored by Git
 #+end_example

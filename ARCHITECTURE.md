@@ -20,7 +20,7 @@ flake.nix, nix/          nix-darwin and home-manager modules, tool list, dev she
 var/                     packages, caches, custom.el; ignored
 ```
 
-Startup is a flat list of `require`s in `init.el`, ordered by dependency: defaults → platform → `private.el` → UI → literate commands → dashboard → completion → help → Dired → Treemacs → VC → navigation → Meow → keys → shells → programming → Tree-sitter → languages → terminal → Org → Org-roam → frames → `custom.el`. There are no staged hooks; modes that need `after-init-hook` add themselves. The leader module is not in the list: the modules that define localleaders require it.
+Startup is a flat list of `require`s in `init.el`, ordered by dependency: defaults → platform → `private.el` → UI → literate commands → dashboard → completion → help → Dired → Treemacs → VC → navigation → Meow → keys → shells → programming → Tree-sitter → languages → terminal → Org → Org-roam → frames → `custom.el`. There are no staged hooks; the little that must wait until `init.el` has finished (restoring `*scratch*`, turning Tabspaces on) adds itself to `after-init-hook`. The leader module is not in the list: the modules that define localleaders require it.
 
 ## 3. The Meow layer
 
