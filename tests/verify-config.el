@@ -60,11 +60,14 @@ Group maps are walked too.  Autoloaded commands count as commands."
       native-comp-jit-compilation nil)
 (make-directory (expand-file-name "var/etc" user-emacs-directory) t)
 (with-temp-file (expand-file-name "var/etc/custom.el" user-emacs-directory)
-  (insert "(setq kittymacs-verify-custom-loaded t)\n"
+  ;; Emacs 31 warns about a Lisp file without this cookie.
+  (insert ";;; -*- lexical-binding: t; -*-\n"
+          "(setq kittymacs-verify-custom-loaded t)\n"
           ;; The completion chapter sets this to 100; Customize must win.
           "(custom-set-variables '(corfu-max-width 80))\n"))
 (with-temp-file (expand-file-name "lisp/private.el" user-emacs-directory)
-  (insert "(unless (boundp 'kittymacs-project-directory) (error \"Private loaded before platform\"))\n"
+  (insert ";;; -*- lexical-binding: t; -*-\n"
+          "(unless (boundp 'kittymacs-project-directory) (error \"Private loaded before platform\"))\n"
           "(setq kittymacs-verify-private-loads (1+ (if (boundp 'kittymacs-verify-private-loads) kittymacs-verify-private-loads 0)))\n"
           "(setopt kittymacs-project-directory (expand-file-name \"test-projects/\" user-emacs-directory))\n"
           ;; The completion chapter sets this to 10; the late override must win.
