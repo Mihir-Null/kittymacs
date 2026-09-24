@@ -168,13 +168,15 @@ entry has the same shape accepted by `treesit-language-source-alist':
 
 This table is a set of possibilities. The availability check below decides which remaps can actually be installed.
 
+The first column must name the mode Emacs really chooses for a file, or the remap never fires. For shell scripts that is =sh-mode=: there is no =bash-mode=. =sh-mode= edits every Bourne-family and C-shell dialect, while =bash-ts-mode= only understands Bash, but the remap is still safe, because =bash-ts-mode= checks the script's shell when it starts and hands anything that is not Bash or plain =sh= straight back to =sh-mode=. For JSON the built-in mode is =js-json-mode=; =json-mode= is a separate package this configuration does not install. The YAML, TypeScript and Typst rows name third-party modes and only matter when one of those packages is installed.
+
 #+name: kittymacs-treesit-06-1
 #+begin_src emacs-lisp
 (defconst kittymacs-treesit-mode-remaps
   '((yaml-mode yaml-ts-mode yaml)
-    (bash-mode bash-ts-mode bash)
+    (sh-mode bash-ts-mode bash)
     (typescript-mode typescript-ts-mode typescript)
-    (json-mode json-ts-mode json)
+    (js-json-mode json-ts-mode json)
     (css-mode css-ts-mode css)
     (python-mode python-ts-mode python)
     (typst-mode typst-ts-mode typst)

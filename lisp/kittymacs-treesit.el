@@ -84,9 +84,9 @@ entry has the same shape accepted by `treesit-language-source-alist':
   :group 'kittymacs-treesit)
 (defconst kittymacs-treesit-mode-remaps
   '((yaml-mode yaml-ts-mode yaml)
-    (bash-mode bash-ts-mode bash)
+    (sh-mode bash-ts-mode bash)
     (typescript-mode typescript-ts-mode typescript)
-    (json-mode json-ts-mode json)
+    (js-json-mode json-ts-mode json)
     (css-mode css-ts-mode css)
     (python-mode python-ts-mode python)
     (typst-mode typst-ts-mode typst)

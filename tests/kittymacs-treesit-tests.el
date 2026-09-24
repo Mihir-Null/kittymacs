@@ -74,24 +74,32 @@
     (should-not external-called)))
 
 (ert-deftest kittymacs-treesit-nix-source-is-exactly-pinned ()
-  "The Nix recipe remains reproducible while existing recipes stay present."
+  "The Nix recipe remains reproducible."
   (let ((recipe (assq 'nix kittymacs-treesit-language-source-alist)))
     (should (equal (nth 1 recipe)
                    "https://github.com/nix-community/tree-sitter-nix"))
     (should (equal (nth 2 recipe)
-                   "ea1d87f7996be1329ef6555dcacfa63a69bd55c6")))
-  (should (equal (mapcar #'car kittymacs-treesit-language-source-alist)
-                 '(bash cmake css elisp go html javascript json make markdown nix
-                        python toml tsx typescript typst yaml)))
-  (should (equal kittymacs-treesit-mode-remaps
-                 '((yaml-mode yaml-ts-mode yaml)
-                   (bash-mode bash-ts-mode bash)
-                   (typescript-mode typescript-ts-mode typescript)
-                   (json-mode json-ts-mode json)
-                   (css-mode css-ts-mode css)
-                   (python-mode python-ts-mode python)
-                   (typst-mode typst-ts-mode typst)
-                   (nix-mode nix-ts-mode nix)))))
+                   "ea1d87f7996be1329ef6555dcacfa63a69bd55c6"))))
+
+(ert-deftest kittymacs-treesit-every-remap-has-a-recipe ()
+  "Installing every pinned grammar makes every remap possible."
+  (dolist (spec kittymacs-treesit-mode-remaps)
+    (should (assq (nth 2 spec) kittymacs-treesit-language-source-alist))))
+
+(ert-deftest kittymacs-treesit-remaps-the-modes-emacs-chooses ()
+  "With grammars present, files opened in built-in modes reach Tree-sitter.
+The classic side of each remap must be the mode `auto-mode-alist'
+really selects, or the remap never fires."
+  (let ((major-mode-remap-alist nil))
+    (cl-letf (((symbol-function 'kittymacs-treesit--language-available-p)
+               (lambda (_) t)))
+      (kittymacs-treesit-refresh-mode-remaps))
+    (pcase-dolist (`(,file . ,mode) '(("build.sh" . bash-ts-mode)
+                                      ("package.json" . json-ts-mode)
+                                      ("style.css" . css-ts-mode)
+                                      ("main.py" . python-ts-mode)))
+      (let ((classic (assoc-default file auto-mode-alist #'string-match-p)))
+        (should (eq (alist-get classic major-mode-remap-alist) mode))))))
 
 (ert-deftest kittymacs-treesit-windows-nix-recipe-uses-msys2-gcc ()
   "Windows grammar builds use an absolute compiler without changing PATH."
