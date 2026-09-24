@@ -114,7 +114,7 @@ Press =SPC=, then:
 | SPC p p | Open a project in its own workspace | tabspaces-open-or-create-project-and-workspace |
 | SPC p f | Find a file in the project          | project-find-file                              |
 | SPC p b | Switch to a project buffer          | consult-project-buffer                         |
-| SPC p G | Magit status for the project        | kittymacs-project-magit                          |
+| SPC p G | Magit status for the project        | magit-project-status                           |
 | SPC W s | Switch or create a workspace        | tabspaces-switch-or-create-workspace           |
 | SPC W d | Close this workspace                | tabspaces-close-workspace                      |
 | SPC TAB | Switch tab                          | kittymacs-tab-dwim                               |
@@ -171,7 +171,7 @@ New editing surfaces are OS windows (frames); your window manager arranges them.
 | SPC c d | Duplicate line or region          | duplicate-dwim                    |
 | SPC c s | Surround with a pair              | embrace-commander                 |
 | SPC e e | Evaluate the last expression      | eval-last-sexp                    |
-| SPC l e | Start or manage a language server | kittymacs-eglot                     |
+| SPC l e | Start or manage a language server | eglot                             |
 | SPC l a | Code actions                      | eglot-code-actions                |
 | SPC l R | Rename symbol                     | eglot-rename                      |
 | SPC l d | Go to definition                  | xref-find-definitions             |

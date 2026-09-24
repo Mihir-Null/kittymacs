@@ -140,7 +140,7 @@ Group maps are walked too.  Autoloaded commands count as commands."
                        "SPC is not the literal leader in Normal state")
       (kittymacs-verify-check (eq (lookup-key meow-motion-state-keymap (kbd "SPC")) kittymacs-leader-map)
                        "SPC is not the literal leader in Motion state")
-      (kittymacs-verify-check (eq (lookup-key kittymacs-leader-map (kbd "l e")) #'kittymacs-eglot)
+      (kittymacs-verify-check (eq (lookup-key kittymacs-leader-map (kbd "l e")) #'eglot)
                        "SPC l is not the language-server menu")
       (kittymacs-verify-check (eq (lookup-key kittymacs-leader-map (kbd "s l")) #'vertico-repeat)
                        "SPC s l is not completion history")

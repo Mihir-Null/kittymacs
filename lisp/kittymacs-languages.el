@@ -21,7 +21,7 @@ not need to be listed here."
 (defcustom kittymacs-eglot-auto-start-modes nil
   "Major modes in which `eglot-ensure' should run automatically.
 
-The default is nil: start Eglot explicitly with `kittymacs-eglot' or `M-x eglot'
+The default is nil: start Eglot explicitly with `M-x eglot' (SPC l e)
 until the language server for a mode is deliberately installed on each machine."
   :type '(repeat symbol)
   :group 'kittymacs-languages)
@@ -45,11 +45,6 @@ until the language server for a mode is deliberately installed on each machine."
     (let ((hook (intern (format "%s-hook" mode))))
       (add-hook hook #'eglot-ensure)
       (push hook kittymacs--eglot-auto-start-hooks))))
-(defun kittymacs-eglot ()
-  "Interactively start or manage Eglot for the current project."
-  (interactive)
-  (require 'eglot)
-  (call-interactively #'eglot))
 
 (kittymacs-eglot-apply-auto-start-modes)
 ;; Keep non-built-in language modes deliberate.  Set

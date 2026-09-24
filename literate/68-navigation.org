@@ -103,11 +103,6 @@ chapter]] leaves as Emacs defines it. Extra root markers let non-Git
 directories count as projects. Ripgrep backs =xref= searches.
 
 #+begin_src emacs-lisp
-(defun kittymacs-project-magit ()
-  "Open Magit status for the current project."
-  (interactive)
-  (magit-status))
-
 (defun kittymacs-projects-directory ()
   "Open the directory where projects live."
   (interactive)
@@ -121,7 +116,7 @@ directories count as projects. Ripgrep backs =xref= searches.
                              (project-find-regexp "Find regexp")
                              (project-find-dir "Find directory")
                              (project-vc-dir "VC-Dir")
-                             (kittymacs-project-magit "Magit status" ?G)))
+                             (magit-project-status "Magit status" ?G)))
   (project-vc-extra-root-markers '(".dir-locals.el" ".project.el" "package.json" "requirements.txt" "autogen.sh"))
   :config
   (when (executable-find "rg")

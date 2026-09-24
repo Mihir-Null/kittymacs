@@ -168,15 +168,6 @@ every agenda file to eight levels deep.
   (interactive)
   (org-agenda nil "d"))
 
-(defun kittymacs-org-archive-done ()
-  "Archive every DONE or CANCELED entry in this file."
-  (interactive)
-  (dolist (match '("/DONE" "/CANCELED"))
-    (org-map-entries (lambda ()
-                       (org-archive-subtree)
-                       (setq org-map-continue-from (outline-previous-heading)))
-                     match 'file)))
-
 (defun kittymacs--org-agenda-refresh ()
   "Refresh an open agenda after a capture."
   (when-let* ((buffer (get-buffer "*Org Agenda*")))
@@ -189,7 +180,9 @@ every agenda file to eight levels deep.
 
 Exports get smart quotes, tolerate broken links and omit the HTML
 postamble. Headings tagged =:ignore:= export their contents but not
-their title. Office documents open in their default application.
+their title. Office documents open in their default application. =SPC m w=
+wraps the region in a source, quote or example block, or inserts an empty
+one; it is Org's own =org-insert-structure-template=, also on =C-c C-,=.
 
 #+begin_src emacs-lisp
 (setopt org-export-with-smart-quotes t
@@ -208,26 +201,6 @@ their title. Office documents open in their default application.
   :config
   (require 'ox-extra)
   (ox-extras-activate '(ignore-headlines)))
-
-(defun kittymacs-org-block-wrap ()
-  "Wrap the region, or insert at point, an Org block of a chosen type."
-  (interactive)
-  (let* ((choices '(("s" . "src") ("e" . "example") ("q" . "quote") ("c" . "comment")
-                    ("E" . "src emacs-lisp") ("v" . "verse") ("C" . "center")))
-         (key (key-description
-               (vector (read-key (concat (propertize "Block type: " 'face 'minibuffer-prompt)
-                                         (mapconcat (lambda (choice)
-                                                      (concat (propertize (car choice) 'face 'font-lock-type-face)
-                                                              ": " (cdr choice)))
-                                                    choices ", "))))))
-         (type (cdr (assoc key choices))))
-    (when type
-      (if (region-active-p)
-          (let ((start (region-beginning)) (end (region-end)))
-            (goto-char end) (insert "#+end_" (car (split-string type)) "\n")
-            (goto-char start) (insert "#+begin_" type "\n"))
-        (insert "#+begin_" type "\n")
-        (save-excursion (insert "#+end_" (car (split-string type))))))))
 
 #+end_src
 
@@ -290,7 +263,7 @@ own =C-c= key, which =C-h m= lists.
   "." (cons "time stamp" #'org-time-stamp)
   "b" (cons "run source block" #'org-babel-execute-src-block)
   "'" (cons "edit source block" #'org-edit-special)
-  "w" (cons "wrap in block" #'kittymacs-org-block-wrap)
+  "w" (cons "wrap in block" #'org-insert-structure-template)
   "e" (cons "export" #'org-export-dispatch)
   "i" (cons "insert heading" #'org-insert-heading-respect-content)
   "?" (cons "menu" #'casual-org-tmenu))

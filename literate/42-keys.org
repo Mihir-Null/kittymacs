@@ -133,7 +133,7 @@ split keys split inside the current frame when you want that.
   "p" (cons "open in a workspace" #'tabspaces-open-or-create-project-and-workspace)
   "b" (cons "project buffer" #'consult-project-buffer)
   "m" (cons "bookmark" #'consult-bookmark)
-  "G" (cons "Magit status" #'kittymacs-project-magit)
+  "G" (cons "Magit status" #'magit-project-status)
   "t" (cons "projects directory" #'kittymacs-projects-directory)
   "R" (cons "remember projects under" #'project-remember-projects-under)
   "C" (cons "recompile" #'recompile))
@@ -244,7 +244,7 @@ source, for the times Corfu's automatic popup is not offering what you want;
 
 (defvar-keymap kittymacs-lsp-map
   :doc "Language server and code intelligence."
-  "e" (cons "start or manage" #'kittymacs-eglot)
+  "e" (cons "start or manage" #'eglot)
   "q" (cons "shut down" #'eglot-shutdown)
   "=" (cons "reconnect" #'eglot-reconnect)
   "a" (cons "code actions" #'eglot-code-actions)

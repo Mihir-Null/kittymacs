@@ -30,8 +30,10 @@ you type. =SPC m= shows the actions that matter, labelled.
 
 * Behaviour
 
-Entering a directory reuses the buffer instead of leaving a trail of Dired
-buffers. Copies and deletes recurse without asking per directory, and when
+Entering a directory, or going up with =h=, reuses the buffer instead of
+leaving a trail of Dired buffers: =dired-kill-when-opening-new-dired-buffer=
+applies to Dired's own =dired-up-directory= as well as to =RET=, and going up
+also puts point on the directory you came from. Copies and deletes recurse without asking per directory, and when
 two Dired windows are visible the other one is the default target, which
 makes copying between directories a two-step affair. Directories sort
 first: GNU =ls= does this with a switch, and on Windows and Android, where
@@ -65,13 +67,8 @@ Emacs lists directories itself, a variable does.
                 "-lahv --group-directories-first"
               "-lah"))))
 
-(defun kittymacs-dired-up-directory ()
-  "Go to the parent directory in this buffer."
-  (interactive)
-  (find-alternate-file ".."))
-
 (with-eval-after-load 'dired
-  (keymap-set dired-mode-map "h" #'kittymacs-dired-up-directory)
+  (keymap-set dired-mode-map "h" #'dired-up-directory)
   (keymap-set dired-mode-map "l" #'dired-find-file))
 
 #+end_src

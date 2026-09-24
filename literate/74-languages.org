@@ -426,7 +426,7 @@ An empty list means buffers do not start language servers merely by opening a fi
 (defcustom kittymacs-eglot-auto-start-modes nil
   "Major modes in which `eglot-ensure' should run automatically.
 
-The default is nil: start Eglot explicitly with `kittymacs-eglot' or `M-x eglot'
+The default is nil: start Eglot explicitly with `M-x eglot' (SPC l e)
 until the language server for a mode is deliberately installed on each machine."
   :type '(repeat symbol)
   :group 'kittymacs-languages)
@@ -474,19 +474,6 @@ Track the hooks installed by this module so changing the opt-in list removes obs
     (let ((hook (intern (format "%s-hook" mode))))
       (add-hook hook #'eglot-ensure)
       (push hook kittymacs--eglot-auto-start-hooks))))
-#+end_src
-
-** Start language assistance deliberately
-
-The interactive entry point loads the client and starts or manages the server for the current buffer.
-
-#+name: kittymacs-languages-07-1
-#+begin_src emacs-lisp
-(defun kittymacs-eglot ()
-  "Interactively start or manage Eglot for the current project."
-  (interactive)
-  (require 'eglot)
-  (call-interactively #'eglot))
 #+end_src
 
 ** Group language commands under SPC l

@@ -51,11 +51,6 @@
   (avy-timeout-seconds 0.4)
   (avy-all-windows t)
   (avy-style 'at-full))
-(defun kittymacs-project-magit ()
-  "Open Magit status for the current project."
-  (interactive)
-  (magit-status))
-
 (defun kittymacs-projects-directory ()
   "Open the directory where projects live."
   (interactive)
@@ -69,7 +64,7 @@
                              (project-find-regexp "Find regexp")
                              (project-find-dir "Find directory")
                              (project-vc-dir "VC-Dir")
-                             (kittymacs-project-magit "Magit status" ?G)))
+                             (magit-project-status "Magit status" ?G)))
   (project-vc-extra-root-markers '(".dir-locals.el" ".project.el" "package.json" "requirements.txt" "autogen.sh"))
   :config
   (when (executable-find "rg")
