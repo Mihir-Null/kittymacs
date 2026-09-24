@@ -171,41 +171,6 @@ Trying candidates in order lets the same configuration use a suitable installed 
   (seq-some #'executable-find programs))
 #+end_src
 
-** Preserve the inherited environment
-
-The POSIX shell importer cannot ask PowerShell to evaluate Unix shell syntax,
-and on Android it would be worse than useless: it asks the login shell what
-=PATH= should be and installs the answer, but Android's =/system/bin/sh= has
-never heard of Termux, so the import would erase the very entries the Android
-policy has just added. Both platforms keep the environment Emacs inherited.
-On Linux and macOS the import also brings the Nix variables along.
-
-This is arranged once, when the module loads, rather than inside
-=kittymacs-platform-apply= below: =with-eval-after-load= registers its body
-permanently each time it runs, so a function that calls it would queue
-another copy on every call. Nothing here depends on =private.el=, so waiting
-for it gains nothing.
-
-#+name: kittymacs-platform-08-1
-#+begin_src emacs-lisp
-(defun kittymacs--skip-exec-path-from-shell (&rest _)
-  "Keep the inherited process environment unchanged.
-Used on native Windows, whose shell cannot evaluate POSIX syntax, and on
-Android, where the system shell would report a `PATH' without Termux."
-  nil)
-
-(defun kittymacs--configure-exec-path-from-shell ()
-  "Keep the inherited environment on Windows and Android; import Nix's elsewhere."
-  (if (memq system-type '(windows-nt android))
-      (advice-add #'exec-path-from-shell-initialize :override
-                  #'kittymacs--skip-exec-path-from-shell)
-    (setopt exec-path-from-shell-variables
-            '("PATH" "MANPATH" "LANG" "NIX_PATH" "NIX_PROFILES"))))
-
-(with-eval-after-load 'exec-path-from-shell
-  (kittymacs--configure-exec-path-from-shell))
-#+end_src
-
 ** Apply platform policy after overrides
 
 Shell discovery uses available executables. Windows also borrows Git for Windows' Unix tools, last on =exec-path=: =diff=, =diff3= and =patch= for Magit's hunk refinement, Ediff and diff-hl.

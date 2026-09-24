@@ -50,24 +50,28 @@ keeps your usual pager, because there =less= works as it does anywhere else.
 
 A graphical Emacs started from a launcher does not run your shell's
 profile, so =PATH= can be wrong. =exec-path-from-shell= copies the
-variables from your shell. On Linux it asks a plain non-interactive shell,
-which reads =~/.zshenv= or =$BASH_ENV=. On macOS it asks a login shell,
+variables from your shell: =PATH= and =MANPATH=, the locale, and the two
+variables the =nix= commands read. On Linux it asks a plain non-interactive
+shell, which reads =~/.zshenv= or =$BASH_ENV=. On macOS it asks a login shell,
 because that is where the system's =path_helper= and Homebrew's =shellenv=
 line in =~/.zprofile= run; the startup chapter already put Homebrew on
-=exec-path= so this import only refines it. Windows inherits its environment
-correctly, and [[file:30-platform.org][the platform chapter]] turns this off there.
+=exec-path= so this import only refines it.
 
-Android is excluded for the opposite reason to Windows: the import would
-succeed, and that is the problem. =/system/bin/sh= evaluates the POSIX syntax
-quite happily and reports a =PATH= that has never heard of Termux, replacing
-the entries the platform chapter just added. The package is not even installed
-there, so a broken graphical session cannot be caused by it.
+Two platforms keep the environment Emacs inherited, and the =:if= line means
+the package is not even installed there. On Windows the importer would ask
+PowerShell to evaluate POSIX shell syntax, which it cannot, and Windows
+programs inherit a correct environment anyway. Android is excluded for the
+opposite reason: the import would succeed, and that is the problem.
+=/system/bin/sh= evaluates the POSIX syntax quite happily and reports a =PATH=
+that has never heard of Termux, replacing the entries [[file:30-platform.org][the platform chapter]]
+has just added.
 
 #+begin_src emacs-lisp
 (use-package exec-path-from-shell
   :ensure t
   :if (not (memq system-type '(windows-nt android)))
   :custom
+  (exec-path-from-shell-variables '("PATH" "MANPATH" "LANG" "NIX_PATH" "NIX_PROFILES"))
   (exec-path-from-shell-arguments (and (eq system-type 'darwin) '("-l")))
   :config
   (when (or window-system (daemonp))

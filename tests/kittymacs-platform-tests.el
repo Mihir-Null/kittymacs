@@ -230,18 +230,6 @@ which is what an unpaired installation looks like from Emacs."
     (should (equal (getenv "PATH") "/system/bin"))
     (should (equal (getenv "LD_LIBRARY_PATH") "/vendor/lib64"))))
 
-(ert-deftest kittymacs-platform-android-keeps-its-inherited-environment ()
-  ;; The POSIX importer would succeed here and report a `PATH' without
-  ;; Termux, so it is overridden exactly as it is on Windows.
-  (kittymacs-platform-test-android '("bash")
-    (defalias 'exec-path-from-shell-initialize #'ignore)
-    (unwind-protect
-        (progn
-          (kittymacs--configure-exec-path-from-shell)
-          (should (advice-member-p #'kittymacs--skip-exec-path-from-shell
-                                   #'exec-path-from-shell-initialize)))
-      (fmakunbound 'exec-path-from-shell-initialize))))
-
 (ert-deftest kittymacs-platform-android-sets-a-utf8-locale-only-when-missing ()
   (kittymacs-platform-test-android nil
     (setenv "LANG" nil)

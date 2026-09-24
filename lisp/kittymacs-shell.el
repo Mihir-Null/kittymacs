@@ -17,6 +17,7 @@
   :ensure t
   :if (not (memq system-type '(windows-nt android)))
   :custom
+  (exec-path-from-shell-variables '("PATH" "MANPATH" "LANG" "NIX_PATH" "NIX_PROFILES"))
   (exec-path-from-shell-arguments (and (eq system-type 'darwin) '("-l")))
   :config
   (when (or window-system (daemonp))

@@ -60,22 +60,6 @@ denies access and every lookup below quietly returns nil."
 (defun kittymacs--first-executable (&rest programs)
   "Return the first executable found in PROGRAMS."
   (seq-some #'executable-find programs))
-(defun kittymacs--skip-exec-path-from-shell (&rest _)
-  "Keep the inherited process environment unchanged.
-Used on native Windows, whose shell cannot evaluate POSIX syntax, and on
-Android, where the system shell would report a `PATH' without Termux."
-  nil)
-
-(defun kittymacs--configure-exec-path-from-shell ()
-  "Keep the inherited environment on Windows and Android; import Nix's elsewhere."
-  (if (memq system-type '(windows-nt android))
-      (advice-add #'exec-path-from-shell-initialize :override
-                  #'kittymacs--skip-exec-path-from-shell)
-    (setopt exec-path-from-shell-variables
-            '("PATH" "MANPATH" "LANG" "NIX_PATH" "NIX_PROFILES"))))
-
-(with-eval-after-load 'exec-path-from-shell
-  (kittymacs--configure-exec-path-from-shell))
 (defun kittymacs--windows-unix-tools ()
   "Return the directory holding Git for Windows' or MSYS2's Unix tools, or nil.
 Magit's hunk refinement, Ediff and diff-hl ask for `diff', `diff3' and
