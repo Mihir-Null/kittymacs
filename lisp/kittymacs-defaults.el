@@ -4,6 +4,10 @@
 ;; Distilled from Lambda-Emacs by Colin McLear (GPL-3.0-or-later).
 
 ;;; Code:
+(defgroup kittymacs nil
+  "Options of the kittymacs Emacs configuration."
+  :group 'emacs
+  :prefix "kittymacs-")
 ;; The three directories are defined in early-init.el (see the startup chapter);
 ;; these defaults only apply when a module is loaded on its own.
 (defvar kittymacs-var-dir (expand-file-name "var/" user-emacs-directory))

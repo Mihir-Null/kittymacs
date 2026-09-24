@@ -28,6 +28,21 @@ adds a few small helpers the leader menus use.
 
 #+end_src
 
+* The kittymacs options
+
+Every option this configuration defines belongs to the =kittymacs= group, or
+to a smaller group inside it, so =M-x customize-group RET kittymacs= lists
+them all in one place. The group is defined here because this module loads
+first, before any chapter adds an option to it.
+
+#+begin_src emacs-lisp
+(defgroup kittymacs nil
+  "Options of the kittymacs Emacs configuration."
+  :group 'emacs
+  :prefix "kittymacs-")
+
+#+end_src
+
 * Where Emacs keeps its state
 
 Everything Emacs writes on its own (backups, history, caches, saved

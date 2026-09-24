@@ -11,23 +11,21 @@
 (declare-function meow-normal-define-key "meow-helpers" (&rest keybinds))
 (declare-function meow-motion-define-key "meow-helpers" (&rest keybinds))
 
-(defgroup kittymacs nil
-  "kittymacs: a literal, discoverable leader for Meow."
-  :group 'convenience
-  :prefix "kittymacs-")
-
 (defcustom kittymacs-leader-key "SPC"
   "Key that opens `kittymacs-leader-map' in Meow's Normal and Motion states."
-  :type 'key)
+  :type 'key
+  :group 'kittymacs)
 
 (defcustom kittymacs-localleader-key "m"
   "Key below the leader that opens the current major mode's localleader map."
-  :type 'key)
+  :type 'key
+  :group 'kittymacs)
 
 (defcustom kittymacs-keypad-key nil
   "Optional key below the leader that starts Meow's keypad translation loop.
 Nil leaves `meow-keypad' unbound; it stays available as a command."
-  :type '(choice (const :tag "Unbound" nil) key))
+  :type '(choice (const :tag "Unbound" nil) key)
+  :group 'kittymacs)
 (defvar kittymacs-leader-map (make-sparse-keymap)
   "The leader map, opened by `kittymacs-leader-key' in Normal and Motion states.
 Add a command with `keymap-set'.  Add a labelled group with
