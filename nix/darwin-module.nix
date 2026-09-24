@@ -8,7 +8,8 @@
 #
 # The configuration itself is not put in the Nix store: it writes packages,
 # caches and private.el under its own directory, so clone it somewhere
-# writable (~/.config/emacs) or let the home-manager module link it there.
+# writable (~/.config/emacs) or let the home-manager module clone it and
+# link it there.
 { config, lib, pkgs, ... }:
 
 let
@@ -24,9 +25,9 @@ in
       default = pkgs.emacs;
       defaultText = lib.literalExpression "pkgs.emacs";
       description = ''
-        The Emacs to install.  kittymacs needs 30.1 or later.  `pkgs.emacs` is
-        nixpkgs' current release as the Cocoa build; `pkgs.emacs-macport` is
-        the Mitsuharu port.
+        The Emacs to install, and to run when `daemon` is on.  kittymacs
+        needs 30.1 or later.  `pkgs.emacs` is nixpkgs' current release as
+        the Cocoa build; `pkgs.emacs-macport` is the Mitsuharu port.
       '';
     };
 
@@ -34,8 +35,10 @@ in
       type = lib.types.bool;
       default = false;
       description = ''
-        Start the Emacs server at login through launchd, so `emacsclient`
-        opens files in frames of one running Emacs.
+        Start the Emacs server at login, so `emacsclient` opens files in
+        frames of one running Emacs.  This turns on nix-darwin's
+        `services.emacs` with `package`, a launchd agent.  Turn on this
+        option or the home-manager module's, not both.
       '';
     };
   };
@@ -46,7 +49,7 @@ in
 
     services.emacs = lib.mkIf cfg.daemon {
       enable = true;
-      package = cfg.package;
+      inherit (cfg) package;
     };
   };
 }

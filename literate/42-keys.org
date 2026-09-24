@@ -27,8 +27,6 @@ group reserved for your own keys.
 ;;; Code:
 
 (require 'kittymacs-leader)
-(require 'kittymacs-help)
-(require 'kittymacs-completion)
 
 #+end_src
 
@@ -41,7 +39,6 @@ pause at the top of the frame, and =C-h= inside any prefix shows them at once.
 (setopt which-key-idle-delay 0.45
         which-key-idle-secondary-delay 0.05
         which-key-show-early-on-C-h t
-        which-key-popup-type 'side-window
         which-key-side-window-location 'top
         which-key-side-window-max-height 0.5)
 (which-key-mode 1)
@@ -75,8 +72,8 @@ pause at the top of the frame, and =C-h= inside any prefix shows them at once.
   "a" (cons "ibuffer" #'ibuffer)
   "x" (cons "scratch" #'scratch-buffer)
   "u" (cons "undo tree" #'vundo)
-  "[" (cons "previous" #'kittymacs-previous-user-buffer)
-  "]" (cons "next" #'kittymacs-next-user-buffer))
+  "[" (cons "previous" #'previous-buffer)
+  "]" (cons "next" #'next-buffer))
 
 (defvar-keymap kittymacs-file-map
   :doc "Files."
@@ -117,14 +114,37 @@ pause at the top of the frame, and =C-h= inside any prefix shows them at once.
 
 * Projects, version control, windows, workspaces
 
-The project group is Emacs's own =project-prefix-map=, so =C-x p= and
-=SPC p= are the same menu. Windows are frames here: =SPC w n= makes a new
-OS window, and the lowercase split keys split inside the current frame
-when you want that.
+=SPC p= is =kittymacs-project-map=, whose /parent/ is Emacs's own
+=project-prefix-map=. A key that is not found in a keymap is looked up in its
+parent, so the =C-x p= commands work under =SPC p= as well, and the map below
+adds to it or overrides a key. The additions live here rather than being
+written into Emacs's map, so =C-x p= stays exactly the menu the Emacs manual
+describes. Three keys are overridden:
+
+- =SPC p p= opens the project in its own workspace; =C-x p p= still switches
+  project in the current one.
+- =SPC p b= is Consult's project buffer list, with preview, instead of
+  =project-switch-to-buffer=.
+- =SPC p G= is Magit's status for the project. The command =C-x p G= runs,
+  =project-or-external-find-regexp=, has no key under =SPC p=; use =C-x p G=
+  for it.
+
+Windows are frames here: =SPC w n= makes a new OS window. =SPC w h= and
+=SPC w v= are bound to Emacs's own split commands, which [[file:45-frames.org][the frames chapter]]
+turns into frame creation while frames-only mode is on, so they make a new
+OS window too; with the mode off (=SPC t f=) they split the current frame.
 
 #+begin_src emacs-lisp
-(with-eval-after-load 'project
-  (keymap-set project-prefix-map "C" #'recompile))
+(defvar-keymap kittymacs-project-map
+  :doc "Project commands: Emacs's `project-prefix-map' plus a few more."
+  :parent project-prefix-map
+  "p" (cons "open in a workspace" #'tabspaces-open-or-create-project-and-workspace)
+  "b" (cons "project buffer" #'consult-project-buffer)
+  "m" (cons "bookmark" #'consult-bookmark)
+  "G" (cons "Magit status" #'magit-project-status)
+  "t" (cons "projects directory" #'kittymacs-projects-directory)
+  "R" (cons "remember projects under" #'project-remember-projects-under)
+  "C" (cons "recompile" #'recompile))
 
 (defvar-keymap kittymacs-jump-map
   :doc "Jump with on-screen hints."
@@ -148,7 +168,7 @@ when you want that.
   "p" (cons "push" #'magit-push)
   "P" (cons "pull" #'magit-pull)
   "z" (cons "stash" #'magit-stash)
-  "r" (cons "reflog" #'magit-reflog)
+  "r" (cons "reflog" #'magit-reflog-current)
   "i" (cons "init" #'magit-init)
   "C" (cons "clone" #'magit-clone)
   "q" (cons "quick commit (vc)" #'vc-next-action)
@@ -193,9 +213,22 @@ when you want that.
 * Code, evaluation, diagnostics, insertion
 
 =SPC l= is the language-server menu; the servers themselves are opt-in in
-[[file:74-languages.org][the languages chapter]].
+[[file:74-languages.org][the languages chapter]]. =SPC c p= completes at point from one particular
+source, for the times Corfu's automatic popup is not offering what you want;
+[[file:60-completion.org][the completion chapter]] installs Cape, which provides most of them.
 
 #+begin_src emacs-lisp
+(defvar-keymap kittymacs-cape-map
+  :doc "Complete with one particular source."
+  "p" (cons "everything (capf)" #'completion-at-point)
+  "d" (cons "words in buffers" #'cape-dabbrev)
+  "f" (cons "file name" #'cape-file)
+  "k" (cons "language keyword" #'cape-keyword)
+  "l" (cons "whole line" #'cape-line)
+  "a" (cons "abbrev" #'cape-abbrev)
+  "w" (cons "dictionary word" #'cape-dict)
+  "e" (cons "Emacs Lisp symbol" #'cape-elisp-symbol))
+
 (defvar-keymap kittymacs-code-map
   :doc "Change code."
   "c" (cons "comment" #'comment-dwim)
@@ -219,7 +252,7 @@ when you want that.
 
 (defvar-keymap kittymacs-lsp-map
   :doc "Language server and code intelligence."
-  "e" (cons "start or manage" #'kittymacs-eglot)
+  "e" (cons "start or manage" #'eglot)
   "q" (cons "shut down" #'eglot-shutdown)
   "=" (cons "reconnect" #'eglot-reconnect)
   "a" (cons "code actions" #'eglot-code-actions)
@@ -263,12 +296,12 @@ when you want that.
 
 * Open, toggle, configure, quit
 
-#+begin_src emacs-lisp
-(defun kittymacs-org-inbox ()
-  "Open the Org inbox file."
-  (interactive)
-  (find-file org-default-notes-file))
+The commands these groups call belong to the chapters they serve: the Org
+inbox to [[file:70-org.org][the Org chapter]], the linked-notes commands to [[file:71-org-roam.org][Org-roam]], and the
+=SPC C= commands that open and rebuild this configuration to [[file:80-maintenance.org][the
+maintenance chapter]].
 
+#+begin_src emacs-lisp
 (defvar-keymap kittymacs-notes-map
   :doc "Linked notes in the current graph."
   "f" (cons "find node" #'kittymacs-org-roam-find)
@@ -318,36 +351,6 @@ when you want that.
   "p" (cons "structural editing" #'puni-mode)
   "z" (cons "zone out" #'zone))
 
-(defun kittymacs-find-config-file ()
-  "Open one of the literate chapters."
-  (interactive)
-  (let ((default-directory (expand-file-name "literate/" user-emacs-directory)))
-    (call-interactively #'find-file)))
-
-(defun kittymacs-search-config ()
-  "Search the configuration sources with ripgrep."
-  (interactive)
-  (consult-ripgrep (expand-file-name "literate/" user-emacs-directory)))
-
-(defun kittymacs-open-private-file ()
-  "Open private.el, creating it from the example if needed."
-  (interactive)
-  (let ((private (expand-file-name "private.el" kittymacs-lisp-dir))
-        (example (expand-file-name "private.example.el" kittymacs-lisp-dir)))
-    (when (and (not (file-exists-p private)) (file-exists-p example))
-      (copy-file example private))
-    (find-file private)))
-
-(defun kittymacs-open-custom-file ()
-  "Open the file where Customize saves settings."
-  (interactive)
-  (find-file custom-file))
-
-(defun kittymacs-open-architecture ()
-  "Open ARCHITECTURE.md, the design record."
-  (interactive)
-  (find-file (expand-file-name "ARCHITECTURE.md" user-emacs-directory)))
-
 (defvar-keymap kittymacs-config-map
   :doc "This configuration."
   "c" (cons "reading guide" #'kittymacs-literate-open)
@@ -370,7 +373,41 @@ when you want that.
 (defvar-keymap kittymacs-user-map
   :doc "Your own keys. Add them here or in private.el.")
 
-(keymap-set kittymacs-help-map "?" (cons "cheat sheet" #'kittymacs-dashboard-open-cheatsheet))
+#+end_src
+
+* Help
+
+The help group gathers the describe commands, source lookup, the manuals, and
+the three places a learner is sent: the home page, this configuration's cheat
+sheet and Meow's tutorial. Most entries are the Helpful versions that
+[[file:62-help.org][the help chapter]] installs.
+
+#+begin_src emacs-lisp
+(defvar-keymap kittymacs-help-map
+  :doc "Help, documentation and tutorials."
+  "h" (cons "home" #'dashboard-open)
+  "?" (cons "cheat sheet" #'kittymacs-dashboard-open-cheatsheet)
+  "k" (cons "key" #'helpful-key)
+  "f" (cons "function" #'helpful-callable)
+  "v" (cons "variable" #'helpful-variable)
+  "o" (cons "symbol" #'helpful-symbol)
+  "c" (cons "command" #'helpful-command)
+  "." (cons "at point" #'helpful-at-point)
+  "m" (cons "mode" #'describe-mode)
+  "b" (cons "bindings here" #'embark-bindings)
+  "B" (cons "all bindings" #'describe-bindings)
+  "l" (cons "leader" #'kittymacs-describe-leader)
+  "F" (cons "face" #'describe-face)
+  "w" (cons "where is" #'where-is)
+  "e" (cons "messages" #'view-echo-area-messages)
+  "L" (cons "lossage" #'view-lossage)
+  "i" (cons "info" #'info)
+  "s" (cons "search manuals" #'kittymacs-search-manuals)
+  "S" (cons "find source" #'find-function)
+  "V" (cons "find variable" #'find-variable)
+  "K" (cons "find key" #'find-function-on-key)
+  "t" (cons "meow tutor" #'meow-tutor)
+  "C" (cons "meow cheatsheet" #'meow-cheatsheet))
 
 #+end_src
 
@@ -379,13 +416,13 @@ when you want that.
 #+begin_src emacs-lisp
 (keymap-set kittymacs-leader-map "SPC" (cons "M-x" #'execute-extended-command))
 (keymap-set kittymacs-leader-map "/" (cons "describe leader" #'kittymacs-describe-leader))
-(keymap-set kittymacs-leader-map "?" (cons "search commands" #'consult-apropos))
+(keymap-set kittymacs-leader-map "?" (cons "search commands" #'apropos-command))
 (keymap-set kittymacs-leader-map ";" (cons "comment line" #'comment-line))
 (keymap-set kittymacs-leader-map "d" (cons "directory" #'dired-jump))
 (keymap-set kittymacs-leader-map "x" (cons "scratch" #'scratch-buffer))
 (keymap-set kittymacs-leader-map "k" (cons "kill ring" #'consult-yank-from-kill-ring))
-(keymap-set kittymacs-leader-map "[" (cons "previous buffer" #'kittymacs-previous-user-buffer))
-(keymap-set kittymacs-leader-map "]" (cons "next buffer" #'kittymacs-next-user-buffer))
+(keymap-set kittymacs-leader-map "[" (cons "previous buffer" #'previous-buffer))
+(keymap-set kittymacs-leader-map "]" (cons "next buffer" #'next-buffer))
 (keymap-set kittymacs-leader-map "{" (cons "previous tab" #'tab-bar-switch-to-prev-tab))
 (keymap-set kittymacs-leader-map "}" (cons "next tab" #'tab-bar-switch-to-next-tab))
 (keymap-set kittymacs-leader-map "TAB" (cons "switch tab" #'kittymacs-tab-dwim))
@@ -394,7 +431,7 @@ when you want that.
 (keymap-set kittymacs-leader-map "f" (cons "files" kittymacs-file-map))
 (keymap-set kittymacs-leader-map "s" (cons "search" kittymacs-search-map))
 (keymap-set kittymacs-leader-map "j" (cons "jump" kittymacs-jump-map))
-(keymap-set kittymacs-leader-map "p" (cons "project" project-prefix-map))
+(keymap-set kittymacs-leader-map "p" (cons "project" kittymacs-project-map))
 (keymap-set kittymacs-leader-map "v" (cons "version control" kittymacs-vc-map))
 (keymap-set kittymacs-leader-map "w" (cons "windows" kittymacs-window-map))
 (keymap-set kittymacs-leader-map "W" (cons "workspaces" kittymacs-workspace-map))
@@ -435,7 +472,8 @@ modules used to add on their own. Sequences that changed:
 | =SPC l= completion history | =SPC s l= | =SPC l= is the language server |
 | =SPC m= mail | localleader | mail was never installed |
 | =SPC M= compile | =SPC p c= or =SPC m c= | project or mode menu |
-| =SPC n= notes, =SPC S= spelling | dropped | packages not in use; =SPC t s= toggles spelling |
-| =SPC w h= / =SPC w v= new frame | =SPC w n= | lowercase splits are real splits now |
+| =SPC n= notes | =SPC n= | same key, now [[file:71-org-roam.org][Org-roam]]'s linked notes |
+| =SPC S= spelling | dropped | =SPC t s= toggles spelling |
+| =SPC w h= / =SPC w v= new frame | =SPC w n= | =SPC w h= / =SPC w v= are the split commands, which make frames only while frames-only mode is on |
 | =SPC o e= EAT terminal | =SPC o e= | same key, [[file:34-terminal.org][ghostel]] instead of EAT |
 | =SPC t d= dired-sidebar | =SPC t d= | same key, [[file:65-treemacs.org][Treemacs]] instead |

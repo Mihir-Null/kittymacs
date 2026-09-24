@@ -55,10 +55,17 @@ lands in the sidebar. Single-child directories are collapsed into one line
 so a deep package path does not cost five rows, which needs Python 3; where
 there is none, the tree simply shows every level.
 
+The tree hides nothing but the =.git= directory itself. Dotfiles are shown,
+and so are files that Git ignores, such as build output or a local
+=private.el=: a sidebar that silently leaves out files which exist on disk
+is more confusing than one that shows a few extra. Treemacs can hide ignored
+files with =treemacs-hide-gitignored-files-mode=; it is off by default, and
+switched off explicitly below so that the choice is written down. Note the
+=-1=: a minor mode called from Lisp with =nil= is turned *on*, not off.
+
 #+begin_src emacs-lisp
 (use-package treemacs
   :ensure t
-  :defer t
   :commands (treemacs treemacs-select-window treemacs-find-file
              treemacs-add-and-display-current-project-exclusively)
   :custom
@@ -100,8 +107,8 @@ there is none, the tree simply shows every level.
                (and treemacs-python-executable t))
     ('(t . t) (treemacs-git-mode 'deferred))
     ('(t . nil) (treemacs-git-mode 'simple)))
-  (when (fboundp 'treemacs-hide-gitignored-files-mode)
-    (treemacs-hide-gitignored-files-mode nil))
+  ;; Show files that Git ignores, too.
+  (treemacs-hide-gitignored-files-mode -1)
 
   ;; The sidebar is a panel that serves the buffer beside it; dimming it as
   ;; an "inactive window" only makes the tree harder to read.

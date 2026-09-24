@@ -98,7 +98,7 @@ when Emacs runs as a daemon.
     (when (kittymacs-icons-available-p)
       (nerd-icons-set-font kittymacs-nerd-font (selected-frame)))))
 
-(defun kittymacs-apply-font (&optional frame)
+(defun kittymacs--apply-font (&optional frame)
   "Apply the editing, symbol and icon fonts to FRAME."
   (with-selected-frame (or frame (selected-frame))
     (when (display-graphic-p)
@@ -110,9 +110,8 @@ when Emacs runs as a daemon.
         (set-fontset-font t 'symbol symbols nil))
       (kittymacs--apply-icon-font))))
 
-(setq-default line-spacing 0.1)
-(setopt text-scale-mode-step 1.08
-        use-default-font-for-symbols t)
+(setopt line-spacing 0.1
+        text-scale-mode-step 1.08)
 
 (use-package nerd-icons
   :ensure t
@@ -121,8 +120,8 @@ when Emacs runs as a daemon.
   (nerd-icons-font-family kittymacs-nerd-font))
 
 (add-hook 'after-setting-font-hook #'kittymacs--apply-icon-font)
-(add-hook 'after-make-frame-functions #'kittymacs-apply-font)
-(kittymacs-apply-font)
+(add-hook 'after-make-frame-functions #'kittymacs--apply-font)
+(kittymacs--apply-font)
 
 #+end_src
 
@@ -166,6 +165,9 @@ Emacs's own =enable-theme-functions=.
 
 =doom-modeline= is compact and shows the Meow state. The built-in tab bar
 appears once a second workspace exists and borrows the mode line's faces.
+=SPC t H= hides the mode line of the current buffer with
+=hide-mode-line-mode=, which is handy for a screenshot or a presentation;
+pressing it again brings the mode line back.
 
 #+begin_src emacs-lisp
 (use-package doom-modeline
@@ -179,6 +181,10 @@ appears once a second workspace exists and borrows the mode line's faces.
   (doom-modeline-buffer-state-icon t)
   :config
   (doom-modeline-mode 1))
+
+(use-package hide-mode-line
+  :ensure t
+  :commands hide-mode-line-mode)
 
 (defun kittymacs--tab-bar-faces (&rest _)
   "Give the tab bar a compact, mode-line-like look."
@@ -265,12 +271,13 @@ so you see what a command changed.
   (add-to-list 'dimmer-buffer-exclusion-regexps "^ \\*Vertico\\*$")
   (dimmer-mode 1))
 
-(defun kittymacs-pulse-line (&rest _)
+(defun kittymacs--pulse-line (&rest _)
   "Briefly highlight the current line."
   (pulse-momentary-highlight-one-line (point)))
-(dolist (command '(scroll-up-command scroll-down-command recenter-top-bottom other-window))
-  (advice-add command :after #'kittymacs-pulse-line))
-(add-hook 'window-selection-change-functions #'kittymacs-pulse-line)
+(dolist (command '(scroll-up-command scroll-down-command recenter-top-bottom))
+  (advice-add command :after #'kittymacs--pulse-line))
+;; Every change of window, by `other-window', a mouse click or a leader key.
+(add-hook 'window-selection-change-functions #'kittymacs--pulse-line)
 
 (use-package hl-todo
   :ensure t
@@ -289,6 +296,20 @@ so you see what a command changed.
 (use-package outline-minor-faces
   :ensure t
   :hook ((emacs-lisp-mode lisp-interaction-mode lisp-mode) . outline-minor-faces-mode))
+
+#+end_src
+
+* Distraction-free writing
+
+=SPC t w= toggles =writeroom-mode=: the frame goes full screen, the text sits
+in a centred column eighty characters wide, and the mode line and everything
+else around the text disappear until you press it again. It suits long prose
+more than code.
+
+#+begin_src emacs-lisp
+(use-package writeroom-mode
+  :ensure t
+  :commands writeroom-mode)
 
 #+end_src
 
@@ -312,5 +333,7 @@ Line numbers and a highlighted current line in code; neither in prose.
 * Try it
 
 - =SPC t t= flips to the light theme and back.
+- =SPC t w= in an Org file hides everything but the text; =SPC t w= again
+  brings it back. =SPC t H= hides only the mode line.
 - =C-x C-+= grows the text one point at a time; =C-x C-0= resets.
 - Set =kittymacs-icons= to =nil= in =private.el= to run without icon fonts.

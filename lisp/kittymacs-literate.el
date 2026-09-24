@@ -4,10 +4,41 @@
 ;; Development addition: keep authoring explicit and startup independent of Org.
 ;;; Code:
 
+(require 'kittymacs-defaults)
+
 (defun kittymacs-literate-open (&rest _)
   "Open the literate configuration's reading guide."
   (interactive)
   (find-file (expand-file-name "literate/index.org" user-emacs-directory)))
+(defun kittymacs-find-config-file ()
+  "Open one of the literate chapters."
+  (interactive)
+  (let ((default-directory (expand-file-name "literate/" user-emacs-directory)))
+    (call-interactively #'find-file)))
+
+(defun kittymacs-search-config ()
+  "Search the configuration sources with ripgrep."
+  (interactive)
+  (consult-ripgrep (expand-file-name "literate/" user-emacs-directory)))
+
+(defun kittymacs-open-private-file ()
+  "Open private.el, creating it from the example if needed."
+  (interactive)
+  (let ((private (expand-file-name "private.el" kittymacs-lisp-dir))
+        (example (expand-file-name "private.example.el" kittymacs-lisp-dir)))
+    (when (and (not (file-exists-p private)) (file-exists-p example))
+      (copy-file example private))
+    (find-file private)))
+
+(defun kittymacs-open-custom-file ()
+  "Open the file where Customize saves settings."
+  (interactive)
+  (find-file custom-file))
+
+(defun kittymacs-open-architecture ()
+  "Open ARCHITECTURE.md, the design record."
+  (interactive)
+  (find-file (expand-file-name "ARCHITECTURE.md" user-emacs-directory)))
 (defun kittymacs-literate--build (write)
   "Run the isolated literate builder; WRITE selects generation over checking."
   (let ((source-dir (expand-file-name "literate/" user-emacs-directory))

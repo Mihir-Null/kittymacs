@@ -3,18 +3,17 @@
 #+STARTUP: overview
 #+PROPERTY: header-args:emacs-lisp :tangle ../lisp/kittymacs-frames.el :eval never :comments no :padline no :mkdirp yes
 
-[[file:index.org][Reading guide]] · [[file:20-user-policy.org][Startup policy]]
+[[file:index.org][Reading guide]] · [[file:10-startup.org][Startup]] · [[file:66-vc.org][Version control]]
 
 Ownership: *user configuration*. [[https://github.com/davidshepherd7/frames-only-mode][frames-only-mode]] supplies the frame lifecycle;
-this module integrates it with Lambda's deferred Magit setup and leader keys.
+this module fits it to the deferred Magit setup and the leader keys.
 An Emacs frame is an OS window; an Emacs window is a pane inside that frame.
 Load this module after Help and Org so their defaults cannot undo the policy.
 
 * Keep ordinary editor frames native
 
 Native decorations, positioning and sizing remain under the desktop window
-manager's control. This module does not load Lambda's undecorated, recentering
-frame module. Ordinary file and buffer switching still uses the current frame;
+manager's control. Ordinary file and buffer switching still uses the current frame;
 commands that would pop up an auxiliary buffer can create a separate frame.
 
 #+begin_src emacs-lisp
@@ -65,13 +64,17 @@ quitting their buffers. Vertico's top side window, Transient menus and Corfu's
 child-frame suggestions remain attached to their editor. These are temporary
 controls, so they should not become separate desktop editing windows.
 
-Lambda's Popper normally forces Help and compilation into top side windows.
-Turn off only its display control while frame mode is active; popup tracking
+Popper, from [[file:25-defaults.org][the defaults chapter]], normally shows Help and compilation
+buffers in a window of its own inside the frame. Turn off only its display
+control while frame mode is active; popup tracking
 and cycling remain available, and disabling frame mode restores its placement.
 
-The standard split keys (=C-x 2=, =C-x 3=) are remapped to frame creation
-inside the minor mode map, so =M-x frames-only-mode= restores them when
-disabled. The leader's =SPC w h= and =SPC w v= remain real in-frame splits.
+The split commands themselves, =split-window-below= and =split-window-right=,
+are remapped to frame creation inside the minor mode map. A remap applies to
+every key bound to the command, so =C-x 2=, =C-x 3= and the leader's =SPC w h=
+and =SPC w v= all make a frame while the mode is on, and =M-x frames-only-mode=
+turns them back into splits when disabled. A remap is a property of keys, not
+of the command: =M-x split-window-below= still splits the current frame.
 
 #+begin_src emacs-lisp
 (use-package frames-only-mode
@@ -81,13 +84,12 @@ disabled. The leader's =SPC w h= and =SPC w v= remain real in-frame splits.
   :custom
   (frames-only-mode-use-windows-for-completion t)
   :config
-  (setq frames-only-mode-configuration-variables
-        (seq-remove (lambda (setting)
-                      (memq (car setting)
-                            '(magit-commit-show-diff magit-bury-buffer-function)))
-                    frames-only-mode-configuration-variables))
-  (add-to-list 'frames-only-mode-configuration-variables
-               '(popper-display-control nil))
+  (setopt frames-only-mode-configuration-variables
+          (cons '(popper-display-control nil)
+                (seq-remove (lambda (setting)
+                              (memq (car setting)
+                                    '(magit-commit-show-diff magit-bury-buffer-function)))
+                            frames-only-mode-configuration-variables)))
   (frames-only-mode-remap-common-window-split-keybindings)
   ;; Re-evaluating this file must not overwrite the mode's saved defaults.
   (unless frames-only-mode
@@ -137,14 +139,15 @@ mode leaves alone.
 
 * Everyday commands and recovery
 
-- =C-x 2= / =C-x 3= and =SPC w n= create native frames; =SPC w h= / =SPC w v= split inside one.
+- =C-x 2=, =C-x 3=, =SPC w h=, =SPC w v= and =SPC w n= create native frames;
+  =M-x split-window-below= and =M-x split-window-right= split inside one.
 - =C-x 4= uses the other-frame commands normally under =C-x 5=.
 - =C-x 5 f= visits a file in another frame; =C-x 5 b= selects a buffer there.
 - =C-x 5 0= closes a frame. Desktop window-manager shortcuts can arrange it.
 - =M-x frames-only-mode= toggles this policy for the session. Internal panes
   already on screen are not deleted when enabling the mode.
 
-The graphical integration checks are in [[file:../tests/frames-tests.el][frames-tests.el]]. Load them after
-ordinary GUI startup and run =M-x ert RET ^dots-frames- RET=. They exercise
+The graphical integration checks are in [[file:../tests/kittymacs-frames-tests.el][kittymacs-frames-tests.el]]. Load them after
+ordinary GUI startup and run =M-x ert RET ^kittymacs-frames- RET=. They exercise
 auxiliary-frame creation and cleanup, the completion side window, and Magit's
 lazy load and return to internal splits when the mode is disabled.

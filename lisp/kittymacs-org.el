@@ -20,8 +20,12 @@
 (setopt org-capture-templates
         `(("t" "Inbox TODO" entry (file ,org-default-notes-file) "* TODO %?\n  %U\n")
           ("n" "Inbox note" entry (file ,org-default-notes-file) "* %?\n  %U\n")))
+
+(defun kittymacs-org-inbox ()
+  "Open the Org inbox file."
+  (interactive)
+  (find-file org-default-notes-file))
 (setopt org-hide-emphasis-markers t
-        org-hide-leading-stars t
         org-startup-indented t
         org-adapt-indentation t
         org-pretty-entities t
@@ -44,11 +48,8 @@
         org-footnote-section nil
         org-footnote-auto-adjust t
         org-imenu-depth 8
-        org-src-fontify-natively t
-        org-src-tab-acts-natively t
         org-src-preserve-indentation t
-        org-src-window-setup 'other-window
-        org-confirm-babel-evaluate t)
+        org-src-window-setup 'other-window)
 
 (with-eval-after-load 'org
   (add-to-list 'org-modules 'org-habit t)
@@ -64,9 +65,7 @@
         org-enforce-todo-dependencies t
         org-enforce-todo-checkbox-dependencies t
         org-log-done 'time
-        org-log-into-drawer t
-        org-log-redeadline nil
-        org-log-reschedule nil)
+        org-log-into-drawer t)
 
 (setopt org-agenda-start-with-log-mode '(closed clock)
         org-agenda-tags-column 0
@@ -102,15 +101,6 @@
   (interactive)
   (org-agenda nil "d"))
 
-(defun kittymacs-org-archive-done ()
-  "Archive every DONE or CANCELED entry in this file."
-  (interactive)
-  (dolist (match '("/DONE" "/CANCELED"))
-    (org-map-entries (lambda ()
-                       (org-archive-subtree)
-                       (setq org-map-continue-from (outline-previous-heading)))
-                     match 'file)))
-
 (defun kittymacs--org-agenda-refresh ()
   "Refresh an open agenda after a capture."
   (when-let* ((buffer (get-buffer "*Org Agenda*")))
@@ -132,26 +122,6 @@
   :config
   (require 'ox-extra)
   (ox-extras-activate '(ignore-headlines)))
-
-(defun kittymacs-org-block-wrap ()
-  "Wrap the region, or insert at point, an Org block of a chosen type."
-  (interactive)
-  (let* ((choices '(("s" . "src") ("e" . "example") ("q" . "quote") ("c" . "comment")
-                    ("E" . "src emacs-lisp") ("v" . "verse") ("C" . "center")))
-         (key (key-description
-               (vector (read-key (concat (propertize "Block type: " 'face 'minibuffer-prompt)
-                                         (mapconcat (lambda (choice)
-                                                      (concat (propertize (car choice) 'face 'font-lock-type-face)
-                                                              ": " (cdr choice)))
-                                                    choices ", "))))))
-         (type (cdr (assoc key choices))))
-    (when type
-      (if (region-active-p)
-          (let ((start (region-beginning)) (end (region-end)))
-            (goto-char end) (insert "#+end_" (car (split-string type)) "\n")
-            (goto-char start) (insert "#+begin_" type "\n"))
-        (insert "#+begin_" type "\n")
-        (save-excursion (insert "#+end_" (car (split-string type))))))))
 (use-package org-modern
   :ensure t
   :hook ((org-mode . org-modern-mode)
@@ -190,7 +160,7 @@
   "." (cons "time stamp" #'org-time-stamp)
   "b" (cons "run source block" #'org-babel-execute-src-block)
   "'" (cons "edit source block" #'org-edit-special)
-  "w" (cons "wrap in block" #'kittymacs-org-block-wrap)
+  "w" (cons "wrap in block" #'org-insert-structure-template)
   "e" (cons "export" #'org-export-dispatch)
   "i" (cons "insert heading" #'org-insert-heading-respect-content)
   "?" (cons "menu" #'casual-org-tmenu))

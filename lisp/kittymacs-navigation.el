@@ -6,13 +6,13 @@
 ;;; Code:
 
 (require 'kittymacs-defaults)
+(require 'kittymacs-platform)
 (setopt save-place-file (expand-file-name "saved-places" kittymacs-cache-dir)
         save-place-forget-unreadable-files nil)
 (save-place-mode 1)
 
 (setopt recentf-save-file (expand-file-name "recentf" kittymacs-cache-dir)
-        recentf-max-saved-items 500
-        recentf-max-menu-items 10)
+        recentf-max-saved-items 500)
 (recentf-mode 1)
 
 (setopt bookmark-default-file (expand-file-name "bookmarks" kittymacs-cache-dir))
@@ -51,11 +51,6 @@
   (avy-timeout-seconds 0.4)
   (avy-all-windows t)
   (avy-style 'at-full))
-(defun kittymacs-project-magit ()
-  "Open Magit status for the current project."
-  (interactive)
-  (magit-status))
-
 (defun kittymacs-projects-directory ()
   "Open the directory where projects live."
   (interactive)
@@ -63,24 +58,19 @@
 
 (use-package project
   :ensure nil
-  :bind (:map project-prefix-map
-         ("G" . kittymacs-project-magit)
-         ("t" . kittymacs-projects-directory)
-         ("R" . project-remember-projects-under))
   :custom
   (project-list-file (expand-file-name "projects" kittymacs-cache-dir))
   (project-switch-commands '((project-find-file "Find file")
                              (project-find-regexp "Find regexp")
                              (project-find-dir "Find directory")
                              (project-vc-dir "VC-Dir")
-                             (kittymacs-project-magit "Magit status")))
+                             (magit-project-status "Magit status" ?G)))
   (project-vc-extra-root-markers '(".dir-locals.el" ".project.el" "package.json" "requirements.txt" "autogen.sh"))
   :config
   (when (executable-find "rg")
     (setopt xref-search-program 'ripgrep))
   (project-forget-zombie-projects))
 (use-package deadgrep :ensure t :commands deadgrep)
-(use-package rg :ensure t :commands rg)
 (use-package visual-regexp
   :ensure t
   :commands (vr/query-replace vr/replace))
@@ -89,7 +79,6 @@
   :after visual-regexp)
 (setopt tab-bar-tab-hints t
         tab-bar-new-tab-choice "*scratch*"
-        tab-bar-close-tab-select 'recent
         tab-bar-new-tab-to 'rightmost
         tab-bar-close-last-tab-choice 'tab-bar-mode-disable
         tab-bar-new-button-show nil
@@ -104,38 +93,39 @@
           ((= (length tabs) 1) (tab-next))
           (t (tab-bar-switch-to-tab (completing-read "Select tab: " tabs nil t))))))
 
+(defvar kittymacs-consult-source-workspace
+  (list :name "Workspace Buffers"
+        :narrow ?w
+        :history 'buffer-name-history
+        :category 'buffer
+        :state #'consult--buffer-state
+        :default t
+        :items (lambda () (consult--buffer-query
+                           :predicate #'tabspaces--local-buffer-p
+                           :sort 'visibility
+                           :as #'buffer-name)))
+  "Consult source listing only this workspace's buffers.")
+
+(defun kittymacs--consult-tabspaces ()
+  "Show workspace buffers first while tabspaces is on."
+  (if tabspaces-mode
+      (progn
+        (plist-put consult-source-buffer :hidden t)
+        (plist-put consult-source-buffer :default nil)
+        (add-to-list 'consult-buffer-sources 'kittymacs-consult-source-workspace))
+    (plist-put consult-source-buffer :hidden nil)
+    (plist-put consult-source-buffer :default t)
+    (setq consult-buffer-sources (remove 'kittymacs-consult-source-workspace consult-buffer-sources))))
+
 (use-package tabspaces
   :ensure t
-  :hook (emacs-startup . tabspaces-mode)
-  :bind (:map project-prefix-map
-         ("p" . tabspaces-open-or-create-project-and-workspace))
+  :demand t
   :custom
   (tabspaces-use-filtered-buffers-as-default t)
   (tabspaces-default-tab "Home")
   :config
+  (add-hook 'after-init-hook #'tabspaces-mode 95)
   (with-eval-after-load 'consult
-    (defvar kittymacs-consult-source-workspace
-      (list :name "Workspace Buffers"
-            :narrow ?w
-            :history 'buffer-name-history
-            :category 'buffer
-            :state #'consult--buffer-state
-            :default t
-            :items (lambda () (consult--buffer-query
-                               :predicate #'tabspaces--local-buffer-p
-                               :sort 'visibility
-                               :as #'buffer-name)))
-      "Consult source listing only this workspace's buffers.")
-    (defun kittymacs--consult-tabspaces ()
-      "Show workspace buffers first while tabspaces is on."
-      (if tabspaces-mode
-          (progn
-            (plist-put consult-source-buffer :hidden t)
-            (plist-put consult-source-buffer :default nil)
-            (add-to-list 'consult-buffer-sources 'kittymacs-consult-source-workspace))
-        (plist-put consult-source-buffer :hidden nil)
-        (plist-put consult-source-buffer :default t)
-        (setq consult-buffer-sources (remove 'kittymacs-consult-source-workspace consult-buffer-sources))))
     (add-hook 'tabspaces-mode-hook #'kittymacs--consult-tabspaces)
     (kittymacs--consult-tabspaces)))
 

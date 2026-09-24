@@ -43,17 +43,18 @@ section describing states and the =SPC m= menu, and "Try it" at the end.
 | [[file:35-shells.org][Shells]]          | Eshell and Tramp                                                                   |
 | [[file:40-editing.org][Editing]]         | Meow's states and grammar                                                          |
 | [[file:41-leader.org][Leader]]          | Why =SPC= is a real keymap, and how modes get their own menu                         |
-| [[file:42-keys.org][Keys]]            | The whole =SPC= tree, group by group, with a migration table                         |
+| [[file:42-keys.org][Keys]]            | The whole =SPC= tree, group by group, the help menu, a migration table               |
 | [[file:45-frames.org][Frames]]          | Frames-only mode and its exceptions                                                |
 | [[file:50-appearance.org][Appearance]]      | Fonts, theme, mode line, icons, highlighting                                       |
 | [[file:55-dashboard.org][Dashboard]]       | The home page                                                                      |
 | [[file:60-completion.org][Completion]]      | Vertico, Orderless, Marginalia, Consult, Embark, Corfu, Cape, snippets             |
-| [[file:62-help.org][Help]]            | Helpful, Info, Transient, the help menu                                            |
+| [[file:62-help.org][Help]]            | Helpful, Info, Transient                                                           |
 | [[file:64-dired.org][Dired]]           | The file manager                                                                   |
 | [[file:65-treemacs.org][Treemacs]]        | The project tree in a sidebar                                                      |
 | [[file:66-vc.org][Version control]] | Magit and VC                                                                       |
 | [[file:68-navigation.org][Navigation]]      | Recent files, places, projects, search tools, workspaces                           |
 | [[file:70-org.org][Org]]             | Notes, tasks, the agenda                                                           |
+| [[file:71-org-roam.org][Org-roam]]        | Linked notes: personal and project graphs, capture, backlinks                      |
 | [[file:72-programming.org][Programming]]     | Delimiters, structural editing, linting, compiling, Emacs Lisp                     |
 | [[file:74-languages.org][Languages]]       | Tree-sitter grammars and opt-in language servers                                   |
 | [[file:80-maintenance.org][Maintenance]]     | Private overrides and the build commands                                           |
@@ -65,7 +66,7 @@ section describing states and the =SPC m= menu, and "Try it" at the end.
 *Emacs* supplies the mechanisms: keymaps, hooks, faces, =package.el=,
 =use-package=, which-key, project.el, Dired, Org, Tree-sitter, Eglot.
 *Packages* supply the features we chose: Meow, the completion stack, Magit,
-EAT, doom-modeline, and the rest; each is declared in the chapter that uses
+ghostel, doom-modeline, and the rest; each is declared in the chapter that uses
 it with =use-package … :ensure t=, so a fresh clone installs what it needs.
 *This configuration* is only the policy: which packages, how they are set,
 and the =SPC= tree that ties them together. Much of the policy was distilled
@@ -75,8 +76,10 @@ from [[https://codeberg.org/Lambda-Emacs/lambda-emacs][Lambda-Emacs]] by Colin M
 
 1. Edit the chapter: the prose and the code block together.
 2. =SPC C t= (or =M-x kittymacs-literate-tangle=) rebuilds the generated files in
-   a clean Emacs subprocess and reports in =*kittymacs literate build*=.
-   Unsaved chapters are refused, so a build never uses a stale file.
+   a clean Emacs subprocess and reports in =*kittymacs literate build*=. It
+   reads every =literate/NN-name.org= file and writes what its =:tangle=
+   headers name, so there is nothing else to update. Unsaved chapters are
+   refused, so a build never uses a stale file.
 3. =SPC C k= checks that chapters and generated files agree without writing.
 4. Restart Emacs. Commit the chapter and the generated file together.
 
@@ -95,26 +98,34 @@ form; that changes the running Emacs without rebuilding anything.
 Copy =lisp/private.example.el= to =lisp/private.el= (=SPC C p= does it) and
 set paths, fonts, opt-in language servers or your own keys there. Git ignores
 it. =M-x customize= saves to =var/etc/custom.el=, also ignored. Back both up
-yourself.
+yourself. The last section of [[file:10-startup.org][the startup chapter]] explains when each file is
+read, and why a package option in =private.el= goes in a hook.
 
 * Add a chapter
 
 1. Create =literate/NN-name.org= with the header of any existing chapter,
-   changing the =:tangle= target to =../lisp/kittymacs-name.el=.
-2. Register the source and the output in [[file:manifest.json][manifest.json]].
-3. Add =(require 'kittymacs-name)= to =init.el= in the [[file:10-startup.org][startup chapter]] where
+   changing the =:tangle= target to =../lisp/kittymacs-name.el=. The two
+   digits and the dash matter: the builder treats every file named that way
+   as a chapter and reads its outputs from the =:tangle= headers, so there
+   is no list to register the chapter in.
+2. Add =(require 'kittymacs-name)= to =init.el= in the [[file:10-startup.org][startup chapter]] where
    it belongs in the order.
-4. Give the package a Meow section: which state its buffers start in, and a
+3. Give the package a Meow section: which state its buffers start in, and a
    =kittymacs-define-localleader= form for its =SPC m= menu.
+
+The builder also refuses to run when =lisp/= holds a =kittymacs-*.el= that
+no chapter produces, because startup would go on loading a module whose
+source is gone. After renaming or deleting a chapter, delete its old
+generated file too.
 
 * Where things are on disk
 
 #+begin_example
 .emacs.d/
   early-init.el, init.el   generated from literate/10-startup.org
-  literate/                these chapters and manifest.json
+  literate/                these chapters
   lisp/                    generated modules, the cheat sheet, themes/, private.el
-  tests/                   tangle tests, startup verifier, leader tests, frame tests
+  tests/                   the test suites and the startup verifier
   tools/tangle.el          the builder
   var/                     packages, caches, custom.el: ignored by Git
 #+end_example

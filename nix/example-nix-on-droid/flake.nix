@@ -78,7 +78,8 @@
 
               # The checkout stays writable outside the store, because the
               # configuration installs its own Emacs packages under var/ and
-              # keeps private.el beside its modules.
+              # keeps private.el beside its modules.  The first switch
+              # clones it here, at the kittymacs revision flake.lock pins.
               source = "${config.home.homeDirectory}/src/kittymacs";
             };
 

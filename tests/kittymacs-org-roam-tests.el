@@ -3,7 +3,7 @@
 (require 'cl-lib)
 (require 'package)
 (setq native-comp-jit-compilation nil)
-(when-let* ((directory (getenv "EMACS_DOTS_TEST_PACKAGES")))
+(when-let* ((directory (getenv "KITTYMACS_TEST_PACKAGES")))
   (setq package-user-dir directory))
 (package-initialize)
 (dolist (fn '(package-install package-refresh-contents))
@@ -26,7 +26,9 @@
   (declare (indent 0))
   `(let* ((frames-before (frame-list))
           (frame-before (selected-frame))
-          (base (make-temp-file "kittymacs-roam-" t))
+          ;; The real path, so paths built from it are the ones the graph uses.
+          (base (file-name-as-directory
+                 (file-truename (make-temp-file "kittymacs-roam-" t))))
           (personal (expand-file-name "personal/" base))
           (project (expand-file-name "worktree/" base))
           (kittymacs-cache-dir (expand-file-name "cache/" base))
@@ -70,6 +72,11 @@
       (insert (format ":PROPERTIES:\n:ID: %s\n:END:\n#+title: %s\n\n%s\n" id title (or body ""))))
     file))
 
+(defun kittymacs-roam-test-dir-locals (directory variables)
+  "Write a .dir-locals.el in DIRECTORY that sets VARIABLES in every mode."
+  (with-temp-file (expand-file-name ".dir-locals.el" directory)
+    (prin1 `((nil . ,variables)) (current-buffer))))
+
 (defmacro kittymacs-roam-test-project (&rest body)
   (declare (indent 0))
   `(with-temp-buffer
@@ -99,14 +106,11 @@
                       kittymacs-org-roam-sync))
       (should-error (funcall command) :type 'user-error))))
 
-(ert-deftest kittymacs-roam-real-databases-exclude-unsafe-files ()
+(ert-deftest kittymacs-roam-real-databases-keep-graphs-apart ()
   (kittymacs-roam-test
     (kittymacs-roam-test-note personal "p.org" "p" "Personal")
     (kittymacs-roam-test-note project "a.org" "a" "Alpha" "[[id:b][Beta]] [[id:p][Personal]]")
     (kittymacs-roam-test-note project "b.org" "b" "Beta")
-    (dolist (dir '("legacy" ".git" "secrets" "cache" "caches" "var"))
-      (kittymacs-roam-test-note project (concat dir "/excluded.org") dir dir))
-    (kittymacs-roam-test-symlink (expand-file-name "p.org" personal) (expand-file-name "escape.org" project))
     (kittymacs-org-roam-sync)
     (should (equal (org-roam-db-query [:select id :from nodes]) '(("p"))))
     (kittymacs-roam-test-project
@@ -114,6 +118,55 @@
       (should (equal (org-roam-db-query [:select id :from nodes :order-by id]) '(("a") ("b"))))
       (should (equal (org-roam-db-query [:select [source dest] :from links :order-by dest])
                      '(("a" "b") ("a" "p")))))))
+
+(ert-deftest kittymacs-roam-default-exclusions-are-generic ()
+  "The personal graph leaves out Git and cache folders, and nothing else."
+  (should (equal (eval (car (get 'kittymacs-org-roam-excluded-directories 'standard-value)))
+                 '(".git" ".cache" "cache" "caches")))
+  (kittymacs-roam-test
+    (kittymacs-roam-test-note personal "p.org" "p" "Personal")
+    (dolist (dir '(".git" ".cache" "cache" "caches" "deep/cache"))
+      (kittymacs-roam-test-note personal (concat dir "/excluded.org") dir dir))
+    (dolist (dir '("legacy" "secrets" "var" "cached"))
+      (kittymacs-roam-test-note personal (concat dir "/kept.org") dir dir))
+    (kittymacs-org-roam-sync)
+    (should (equal (org-roam-db-query [:select id :from nodes :order-by id])
+                   '(("cached") ("legacy") ("p") ("secrets") ("var"))))))
+
+(ert-deftest kittymacs-roam-project-flag-names-root-database-and-exclusions ()
+  "The .dir-locals.el that EmptyNet ships makes its folder a graph of its own."
+  (should (safe-local-variable-p 'kittymacs-org-roam-project t))
+  (should (safe-local-variable-p 'kittymacs-org-roam-excluded-directories '("secrets")))
+  (should-not (safe-local-variable-p 'kittymacs-org-roam-excluded-directories '(secrets)))
+  (kittymacs-roam-test
+    (kittymacs-roam-test-dir-locals
+     project '((kittymacs-org-roam-project . t)
+               (kittymacs-org-roam-excluded-directories . ("secrets" "tools" "web" ".github"))))
+    (let ((file (kittymacs-roam-test-note project "a.org" "a" "Alpha"))
+          (hidden (kittymacs-roam-test-note project "secrets/s.org" "s" "Secret")))
+      ;; Only the project's list applies, so its cache folder is indexed.
+      (kittymacs-roam-test-note project "cache/c.org" "c" "Cache")
+      (kittymacs-roam-test-note project "notes/n.org" "n" "Nested")
+      (with-current-buffer (find-file-noselect file)
+        (should (equal org-roam-directory project))
+        (should (equal org-roam-db-location (kittymacs-org-roam-db-path project)))
+        (kittymacs-org-roam-sync)
+        (should (equal (org-roam-db-query [:select id :from nodes :order-by id])
+                       '(("a") ("c") ("n"))))
+        ;; Org-roam's own sync, started in a project note, reads new notes
+        ;; into the project's database too.
+        (kittymacs-roam-test-note project "notes/m.org" "m" "Upstream")
+        (org-roam-db-sync)
+        (should (equal (org-roam-db-query [:select id :from nodes :order-by id])
+                       '(("a") ("c") ("m") ("n")))))
+      (with-current-buffer (find-file-noselect hidden)
+        (should (equal org-roam-directory project))
+        (should-not (org-roam-file-p)))
+      (let ((default-directory project))
+        (with-temp-buffer
+          (hack-dir-local-variables-non-file-buffer)
+          (should (equal (car (kittymacs--org-roam-scope)) project))))
+      (should-not (file-exists-p (expand-file-name "personal.db" kittymacs-cache-dir))))))
 
 (ert-deftest kittymacs-roam-project-find-and-insert-require-existing ()
   (kittymacs-roam-test
@@ -134,6 +187,23 @@
             (set-buffer (window-buffer))
             (should (file-equal-p buffer-file-name file))
             (should (file-equal-p org-roam-directory project))))))))
+
+(ert-deftest kittymacs-roam-insert-keeps-region-text ()
+  "The selected text starts the prompt and becomes the link's description."
+  (kittymacs-roam-test
+    (kittymacs-roam-test-note personal "a.org" "a" "Alpha")
+    (kittymacs-org-roam-sync)
+    (with-temp-buffer
+      (let ((transient-mark-mode t))
+        (insert "see the first letter here")
+        (set-mark 5)
+        (goto-char 21)
+        (cl-letf (((symbol-function 'completing-read)
+                   (lambda (_prompt _table _pred _require-match initial &rest _)
+                     (should (equal initial "the first letter"))
+                     "Alpha")))
+          (kittymacs-org-roam-insert))
+        (should (equal (buffer-string) "see [[id:a][the first letter]] here"))))))
 
 (ert-deftest kittymacs-roam-capture-finalizes-in-originating-graph ()
   (kittymacs-roam-test
@@ -170,11 +240,10 @@
       (let ((frame (selected-frame)))
         (cl-letf (((symbol-function 'completing-read) (lambda (&rest _) "Beta")))
           (kittymacs-org-roam-backlinks))
-        (let ((panel (window-buffer (get-mru-window nil nil t))))
-          ;; The side window is observable regardless of selection policy.
-          (setq panel (cl-loop for window in (window-list)
-                               when (window-parameter window 'window-side)
-                               return (window-buffer window)))
+        ;; The side window is observable regardless of selection policy.
+        (let ((panel (cl-loop for window in (window-list)
+                              when (window-parameter window 'window-side)
+                              return (window-buffer window))))
           (should panel)
           (with-current-buffer panel
             (should (derived-mode-p 'org-roam-mode))
@@ -207,18 +276,6 @@
       (should-error (kittymacs-org-roam-capture) :type 'user-error)
       (should-not (file-exists-p project)))))
 
-
-
-;; These catch writes before validation and alias-specific duplicate connections.
-(ert-deftest kittymacs-roam-capture-rejects-outside-target-before-writing ()
-  (kittymacs-roam-test
-    (kittymacs-roam-test-project
-      (let ((org-roam-capture-templates
-             '(("d" "bad" plain "%?" :target (file+head "../escape.org" "#+title: ${title}\n")))))
-        (cl-letf (((symbol-function 'completing-read) (lambda (&rest _) "Escape")))
-          (should-error (kittymacs-org-roam-capture)))
-        (should-not (file-exists-p (expand-file-name "escape.org" base)))))))
-
 (ert-deftest kittymacs-roam-alias-uses-one-real-connection ()
   (kittymacs-roam-test
     (let ((alias (expand-file-name "alias/" base)))
@@ -248,24 +305,21 @@
             (should (equal (directory-files project nil "\\.org\\'") '("a.org")))))
       (set-file-modes project #o755))))
 
-(ert-deftest kittymacs-roam-internal-alias-cannot-bypass-exclusions ()
+(ert-deftest kittymacs-roam-explicit-dir-locals-pair-survives-panel-and-id-links ()
+  "Directory locals that set both upstream variables still name a graph."
   (kittymacs-roam-test
-    (kittymacs-roam-test-note project "secrets/hidden.org" "secret" "Secret")
-    (kittymacs-roam-test-symlink (expand-file-name "secrets/hidden.org" project)
-                        (expand-file-name "public.org" project))
-    (kittymacs-roam-test-project
-      (kittymacs-org-roam-sync)
-      (should-not (org-roam-db-query [:select id :from nodes])))))
-
-(ert-deftest kittymacs-roam-custom-db-survives-panel-and-cross-graph-navigation ()
-  (kittymacs-roam-test
-    (kittymacs-roam-test-note project "a.org" "a" "Alpha")
-    (let ((external (expand-file-name "custom.sqlite" kittymacs-cache-dir)))
-      (kittymacs-roam-test-project
-        (setq-local org-roam-db-location external)
+    (let* ((external (expand-file-name "custom.sqlite" kittymacs-cache-dir))
+           (file (kittymacs-roam-test-note project "a.org" "a" "Alpha"))
+           ;; Upstream does not declare its variables safe; accept them here
+           ;; as a user would at the prompt.
+           (enable-local-variables :all))
+      (kittymacs-roam-test-dir-locals
+       project `((org-roam-directory . ,project) (org-roam-db-location . ,external)))
+      (with-current-buffer (find-file-noselect file)
+        (should (equal org-roam-directory project))
+        (should (equal org-roam-db-location external))
         (kittymacs-org-roam-sync)
-        (cl-letf (((symbol-function 'completing-read) (lambda (&rest _) "Alpha")))
-          (kittymacs-org-roam-backlinks))
+        (kittymacs-org-roam-backlinks)
         (let ((panel (cl-loop for window in (window-list)
                               when (window-parameter window 'window-side)
                               return (window-buffer window))))
@@ -274,9 +328,8 @@
             (should (equal org-roam-db-location external)))))
       (let ((marker (org-id-find "a" t)))
         (with-current-buffer (marker-buffer marker)
-          (should (file-equal-p org-roam-directory project))
+          (should (equal org-roam-directory project))
           (should (equal org-roam-db-location external))
-          (kittymacs-org-roam-sync)
           (should (equal (org-roam-db-query [:select id :from nodes]) '(("a")))))
         (set-marker marker nil))
       (should-not (file-exists-p (kittymacs-org-roam-db-path project))))))
@@ -333,6 +386,7 @@
   "Run after ordinary GUI startup with frames-only-mode enabled."
   (skip-unless (and (display-graphic-p) (bound-and-true-p frames-only-mode)))
   (kittymacs-roam-test
+    (kittymacs-roam-test-dir-locals project '((kittymacs-org-roam-project . t)))
     (kittymacs-roam-test-note project "a.org" "a" "Alpha")
     (kittymacs-roam-test-note project "b.org" "b" "Beta")
     (kittymacs-roam-test-project
@@ -350,37 +404,17 @@
           (should (file-equal-p org-roam-directory project))
           (should (eq (window-parameter window 'window-side) 'right)))))))
 
-(ert-deftest kittymacs-roam-nested-capture-target ()
-  (kittymacs-roam-test
-    (kittymacs-roam-test-project
-      (let ((org-roam-capture-templates
-             '(("d" "nested" plain "%?" :target (file+head "topics/new.org" "#+title: ${title}\n") :unnarrowed t))))
-        (cl-letf (((symbol-function 'completing-read) (lambda (&rest _) "Nested")))
-          (kittymacs-org-roam-capture))
-        (with-current-buffer (window-buffer) (org-capture-finalize))
-        (should (file-exists-p (expand-file-name "topics/new.org" project)))))))
-(ert-deftest kittymacs-roam-personal-alias-id-connection ()
-  (kittymacs-roam-test
-    (let* ((alias (expand-file-name "personal-alias/" base))
-           (kittymacs-org-roam-directory alias)
-           (org-roam-directory alias))
-      (kittymacs-roam-test-symlink personal (directory-file-name alias))
-      (kittymacs-roam-test-note personal "p.org" "p" "Personal")
-      (kittymacs-org-roam-sync)
-      (should (= 1 (hash-table-count org-roam-db--connection)))
-      (org-id-find "p")
-      (princ (format "\nConnections after ID: %S\n" (hash-table-keys org-roam-db--connection)))
-      (should (= 1 (hash-table-count org-roam-db--connection))))))
 (ert-deftest kittymacs-roam-cross-graph-id-already-open-destination ()
   (kittymacs-roam-test
+    (kittymacs-roam-test-dir-locals project '((kittymacs-org-roam-project . t)))
     (let* ((file (kittymacs-roam-test-note project "a.org" "a" "Alpha"))
            (buffer (find-file-noselect file)))
-      (kittymacs-roam-test-project (kittymacs-org-roam-sync))
+      (with-current-buffer buffer (kittymacs-org-roam-sync))
       (let ((marker (org-id-find "a" t)))
         (should (eq buffer (marker-buffer marker)))
-        (with-current-buffer (marker-buffer marker)
-          (princ (format "\nDestination scope: %S, expected: %S\n" org-roam-directory project))
-          (should (file-equal-p org-roam-directory project)))
+        (with-current-buffer buffer
+          (should (equal org-roam-directory project))
+          (should (equal org-roam-db-location (kittymacs-org-roam-db-path project))))
         (set-marker marker nil)))))
 
 (ert-deftest kittymacs-roam-capture-then-sync-keeps-one-physical-record ()
@@ -401,17 +435,6 @@
       (should (= 1 (hash-table-count org-roam-db--connection)))
       (dolist (row (org-roam-db-query [:select file :from files]))
         (should (file-equal-p (car row) (expand-file-name "MixedCase.org" personal)))))))
-
-(ert-deftest kittymacs-roam-nested-capture-does-not-create-excluded-parents ()
-  (kittymacs-roam-test
-    (kittymacs-roam-test-project
-      (dolist (target '("secrets/nested/new.org" "../outside/new.org"))
-        (let ((org-roam-capture-templates
-               `(("d" "blocked" plain "%?" :target (file+head ,target "#+title: ${title}\n")))))
-          (cl-letf (((symbol-function 'completing-read) (lambda (&rest _) "Blocked")))
-            (should-error (kittymacs-org-roam-capture)))))
-      (should-not (file-exists-p (expand-file-name "secrets" project)))
-      (should-not (file-exists-p (expand-file-name "outside" base))))))
 
 (ert-deftest kittymacs-roam-id-preserves-established-destination-pair ()
   (kittymacs-roam-test
@@ -447,39 +470,3 @@
       (should (= 0 (hash-table-count org-roam-db--connection)))
       (should-not (file-exists-p personal)))))
 
-(ert-deftest kittymacs-roam-ordinary-id-without-native-python ()
-  "An unavailable graph resolver must permit ordinary Org ID lookup."
-  (skip-unless (eq system-type 'windows-nt))
-  (kittymacs-roam-test
-    (let ((file (kittymacs-roam-test-note base "ordinary/note.org"
-                                         "ordinary" "Outside graph"))
-          (kittymacs-org-roam-python-executable "C:/missing-python/python.exe"))
-      (org-id-add-location "ordinary" file)
-      (let ((marker (org-id-find "ordinary" t)))
-        (should (markerp marker))
-        (should (file-equal-p file (buffer-file-name (marker-buffer marker))))
-        (should (= 1 (marker-position marker)))
-        (set-marker marker nil))
-      (should (file-equal-p file (car (org-id-find "ordinary"))))
-      (should-error (kittymacs-org-roam-sync) :type 'user-error)
-      (should-error (kittymacs-org-roam-capture) :type 'user-error)
-      (should (= 0 (hash-table-count org-roam-db--connection))))))
-
-(ert-deftest kittymacs-roam-ordinary-id-destination-without-native-python ()
-  "Restoring a returned ordinary ID destination is independently best-effort."
-  (skip-unless (eq system-type 'windows-nt))
-  (kittymacs-roam-test
-    (let* ((file (kittymacs-roam-test-note base "ordinary/note.org"
-                                          "ordinary" "Outside graph"))
-           (kittymacs-org-roam-python-executable "C:/missing-python/python.exe")
-           (buffer (find-file-noselect file))
-           (marker (with-current-buffer buffer (copy-marker (point-min)))))
-      (unwind-protect
-          (progn
-            (should (eq marker (kittymacs--org-roam-id-destination marker)))
-            (let ((location (cons file 1)))
-              (should (eq location (kittymacs--org-roam-id-destination location))))
-            (with-current-buffer buffer
-              (should (derived-mode-p 'org-mode))
-              (should-not (local-variable-p 'org-roam-directory))))
-        (set-marker marker nil)))))

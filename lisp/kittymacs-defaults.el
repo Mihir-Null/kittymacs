@@ -4,8 +4,13 @@
 ;; Distilled from Lambda-Emacs by Colin McLear (GPL-3.0-or-later).
 
 ;;; Code:
-;; The three directories are defined in early-init.el (see the startup chapter);
+(defgroup kittymacs nil
+  "Options of the kittymacs Emacs configuration."
+  :group 'emacs
+  :prefix "kittymacs-")
+;; The directories are defined in early-init.el (see the startup chapter);
 ;; these defaults only apply when a module is loaded on its own.
+(defvar kittymacs-lisp-dir (expand-file-name "lisp/" user-emacs-directory))
 (defvar kittymacs-var-dir (expand-file-name "var/" user-emacs-directory))
 (defvar kittymacs-cache-dir (expand-file-name "cache/" kittymacs-var-dir))
 (defvar kittymacs-etc-dir (expand-file-name "etc/" kittymacs-var-dir))
@@ -14,9 +19,6 @@
   (make-directory directory t))
 
 (setopt custom-file (expand-file-name "custom.el" kittymacs-etc-dir))
-(unless (file-exists-p custom-file)
-  (make-empty-file custom-file t))
-(load custom-file nil t)
 (setopt require-final-newline t
         large-file-warning-threshold 100000000
         confirm-kill-processes nil
@@ -30,32 +32,25 @@
   (setopt backup-directory-alist `(("." . ,backups))
           auto-save-file-name-transforms `((".*" ,auto-saves t))
           auto-save-list-file-prefix (expand-file-name ".saves-" auto-saves)))
-(setopt make-backup-files t
-        backup-by-copying t
+(setopt backup-by-copying t
         version-control t
         delete-old-versions t
         kept-new-versions 10
         kept-old-versions 0
         vc-make-backup-files t
-        create-lockfiles nil
-        auto-save-default t
-        auto-save-timeout 30
-        auto-save-interval 300)
+        create-lockfiles nil)
 (auto-save-visited-mode 1)
 
-(setopt savehist-file (expand-file-name "savehist" kittymacs-cache-dir)
-        savehist-save-minibuffer-history t
-        history-length 100)
+(setopt savehist-file (expand-file-name "savehist" kittymacs-cache-dir))
 (savehist-mode 1)
 (global-so-long-mode 1)
 (setopt multisession-directory (expand-file-name "multisession/" kittymacs-cache-dir))
-(setq-default indent-tabs-mode nil
-              tab-width 4
-              fill-column 80
-              tab-always-indent 'complete)
-(setopt completion-cycle-threshold 3
+(setopt indent-tabs-mode nil
+        tab-width 4
+        fill-column 80
+        tab-always-indent 'complete
+        completion-cycle-threshold 3
         sentence-end-double-space nil
-        line-move-visual t
         global-mark-ring-max 8
         mark-ring-max 8)
 (prefer-coding-system 'utf-8)
@@ -64,14 +59,10 @@
 (use-package ws-butler
   :ensure t
   :hook ((text-mode prog-mode) . ws-butler-mode))
-
-(use-package expand-region
-  :ensure t
-  :defer t)
 (setopt use-short-answers t
+        use-file-dialog nil
+        use-dialog-box nil
         ring-bell-function #'ignore
-        make-pointer-invisible t
-        switch-to-buffer-preserve-window-point t
         display-line-numbers-type 'visual
         display-line-numbers-width-start t)
 (blink-cursor-mode -1)
@@ -87,7 +78,6 @@
         auto-window-vscroll nil
         hscroll-step 1
         hscroll-margin 1
-        mouse-wheel-follow-mouse t
         mouse-wheel-progressive-speed nil
         mouse-wheel-scroll-amount '(1 ((shift) . 2))
         mouse-autoselect-window t)
@@ -95,7 +85,6 @@
 
 (setopt uniquify-buffer-name-style 'reverse
         uniquify-separator " • "
-        uniquify-after-kill-buffer-p t
         uniquify-ignore-buffers-re "^\\*")
 
 (setopt auto-revert-verbose nil
@@ -115,7 +104,7 @@
       (fundamental-mode)
     (let ((buffer-file-name (buffer-name)))
       (set-auto-mode))))
-(setq-default major-mode #'kittymacs-guess-major-mode)
+(setopt major-mode #'kittymacs-guess-major-mode)
 (fset 'undo-auto-amalgamate #'ignore)
 (setopt undo-limit 67108864
         undo-strong-limit 100663296
@@ -133,8 +122,7 @@
 (winner-mode 1)
 (windmove-default-keybindings)
 (setopt window-divider-default-right-width 10
-        window-divider-default-bottom-width 10
-        window-divider-default-places 'right-only)
+        window-divider-default-bottom-width 10)
 (window-divider-mode 1)
 
 (use-package ace-window
@@ -143,6 +131,7 @@
 
 (use-package popper
   :ensure t
+  :demand t
   :bind (("M-`" . popper-toggle)
          ("C-`" . popper-cycle)
          ("C-M-`" . popper-toggle-type))
@@ -155,11 +144,13 @@
      "\\*Async Shell Command\\*"
      help-mode
      compilation-mode))
-  :init
+  :config
   (popper-mode 1)
   (popper-echo-mode 1))
-(defvar kittymacs-scratch-file (expand-file-name "scratch" kittymacs-cache-dir)
-  "Where the *scratch* buffer's text is kept between sessions.")
+(defcustom kittymacs-scratch-file (expand-file-name "scratch" kittymacs-cache-dir)
+  "Where the *scratch* buffer's text is kept between sessions."
+  :type 'file
+  :group 'kittymacs)
 
 (defun kittymacs--bury-scratch ()
   "Bury *scratch* instead of killing it."
@@ -188,28 +179,7 @@
   (setopt server-client-instructions nil)
   (unless (server-running-p)
     (server-start)))
-(defun kittymacs-user-buffer-p (&optional buffer)
-  "Return non-nil when BUFFER is one the user opened, not an internal one."
-  (not (string-match-p "\\`[ *]" (buffer-name buffer))))
-
-(defun kittymacs-next-user-buffer ()
-  "Switch to the next user buffer."
-  (interactive)
-  (next-buffer)
-  (let ((tries 0))
-    (while (and (< tries 20) (not (kittymacs-user-buffer-p)))
-      (next-buffer)
-      (setq tries (1+ tries)))))
-
-(defun kittymacs-previous-user-buffer ()
-  "Switch to the previous user buffer."
-  (interactive)
-  (previous-buffer)
-  (let ((tries 0))
-    (while (and (< tries 20) (not (kittymacs-user-buffer-p)))
-      (previous-buffer)
-      (setq tries (1+ tries)))))
-
+(setopt switch-to-prev-buffer-skip-regexp "\\`[ *]")
 (defun kittymacs-new-buffer (&optional frame)
   "Create an empty buffer; with FRAME (prefix argument), show it in a new frame."
   (interactive "P")

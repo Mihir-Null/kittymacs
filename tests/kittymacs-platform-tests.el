@@ -20,6 +20,7 @@
 (defvar meow-insert-enter-hook)
 (defvar meow-insert-exit-hook)
 (defvar android-pass-multimedia-buttons-to-system)
+(defvar auth-sources)
 
 (defmacro kittymacs-platform-test-with (system executables &rest body)
   "Run BODY as SYSTEM with only EXECUTABLES findable and no global side effects."
@@ -28,6 +29,7 @@
          (process-environment (copy-sequence process-environment))
          (default-frame-alist (copy-sequence default-frame-alist))
          (enable-theme-functions nil)
+         (auth-sources (bound-and-true-p auth-sources))
          (saved-global-map (current-global-map))
          shell-file-name explicit-shell-file-name shell-command-switch
          delete-by-moving-to-trash trash-directory
@@ -54,6 +56,29 @@
     (should (eq (keymap-lookup (current-global-map) "s-q") #'kittymacs-delete-frame-or-quit))
     (should (eq (keymap-lookup (current-global-map) "C-s-f") #'toggle-frame-fullscreen))
     (should (memq #'kittymacs--macos-sync-titlebar enable-theme-functions))))
+
+(ert-deftest kittymacs-platform-macos-reads-passwords-from-the-keychain ()
+  (kittymacs-platform-test-with 'darwin '()
+    (setq auth-sources '("~/.authinfo.gpg"))
+    (kittymacs--macos-auth-sources)
+    (kittymacs--macos-auth-sources)
+    (should (equal auth-sources '("~/.authinfo.gpg"
+                                  macos-keychain-internet
+                                  macos-keychain-generic)))))
+
+(defun kittymacs-platform-test-after-load-forms ()
+  "Return how many forms are waiting in `after-load-alist'."
+  (apply #'+ (mapcar (lambda (entry) (length (cdr entry))) after-load-alist)))
+
+(ert-deftest kittymacs-platform-apply-registers-nothing-globally ()
+  ;; `with-eval-after-load' registers its body for good, so a policy
+  ;; function that used it would queue another copy on every call.
+  (dolist (system '(darwin windows-nt gnu/linux android))
+    (kittymacs-platform-test-with system '("zsh" "pwsh.exe")
+      (let ((before (kittymacs-platform-test-after-load-forms)))
+        (kittymacs-platform-apply)
+        (kittymacs-platform-apply)
+        (should (= (kittymacs-platform-test-after-load-forms) before))))))
 
 (ert-deftest kittymacs-platform-macos-modifiers-are-customizable ()
   (kittymacs-platform-test-with 'darwin '("zsh")
@@ -205,23 +230,6 @@ which is what an unpaired installation looks like from Emacs."
     (should (equal (getenv "PATH") "/system/bin"))
     (should (equal (getenv "LD_LIBRARY_PATH") "/vendor/lib64"))))
 
-(ert-deftest kittymacs-platform-android-keeps-its-inherited-environment ()
-  ;; The POSIX importer would succeed here and report a `PATH' without
-  ;; Termux, so it is overridden exactly as it is on Windows.  The override
-  ;; waits on `with-eval-after-load', so the package has to look loaded.
-  (kittymacs-platform-test-android '("bash")
-    ;; `featurep' reads the C-level list, which `let' does not rebind, so
-    ;; the feature is really provided and really taken away again.
-    (unwind-protect
-        (progn
-          (defalias 'exec-path-from-shell-initialize #'ignore)
-          (provide 'exec-path-from-shell)
-          (kittymacs-platform-apply)
-          (should (advice-member-p #'kittymacs--skip-exec-path-from-shell
-                                   #'exec-path-from-shell-initialize)))
-      (setq features (delq 'exec-path-from-shell features))
-      (fmakunbound 'exec-path-from-shell-initialize))))
-
 (ert-deftest kittymacs-platform-android-sets-a-utf8-locale-only-when-missing ()
   (kittymacs-platform-test-android nil
     (setenv "LANG" nil)
@@ -252,8 +260,8 @@ which is what an unpaired installation looks like from Emacs."
 (ert-deftest kittymacs-platform-android-follows-meow-with-text-conversion ()
   (kittymacs-platform-test-android nil
     (kittymacs-platform-apply)
-    (should (memq #'kittymacs-android-suspend-text-conversion meow-insert-exit-hook))
-    (should (memq #'kittymacs-android-resume-text-conversion meow-insert-enter-hook)))
+    (should (memq #'kittymacs--android-suspend-text-conversion meow-insert-exit-hook))
+    (should (memq #'kittymacs--android-resume-text-conversion meow-insert-enter-hook)))
   ;; Leaving Insert state takes the buffer away from the input method, and
   ;; entering it hands back the style that was in force.
   (let (style)
@@ -262,10 +270,10 @@ which is what an unpaired installation looks like from Emacs."
       (with-temp-buffer
         (setq-local text-conversion-style 'action)
         (setq style 'action)
-        (kittymacs-android-suspend-text-conversion)
+        (kittymacs--android-suspend-text-conversion)
         (should-not style)
         (should (eq kittymacs--android-text-conversion 'action))
-        (kittymacs-android-resume-text-conversion)
+        (kittymacs--android-resume-text-conversion)
         (should (eq style 'action))
         (should-not kittymacs--android-text-conversion)))))
 
@@ -276,7 +284,7 @@ which is what an unpaired installation looks like from Emacs."
                (lambda (value) (setq style value))))
       (with-temp-buffer
         (setq-local text-conversion-style 'action)
-        (kittymacs-android-suspend-text-conversion)
+        (kittymacs--android-suspend-text-conversion)
         (should (eq style 'action))
         (should-not kittymacs--android-text-conversion)))))
 
@@ -345,6 +353,36 @@ which is what an unpaired installation looks like from Emacs."
                  (lambda () (setq called t))))
         (kittymacs--configure-ispell))
       (should-not called))))
+
+(ert-deftest kittymacs-platform-flyspell-asks-for-a-checker-when-a-buffer-opens ()
+  ;; The hooks are always there, so a checker that appears after the module
+  ;; loaded (MSYS2's, once private.el sets `kittymacs-msys2-root') still
+  ;; turns spelling on.
+  (should (memq #'kittymacs--flyspell-text text-mode-hook))
+  (should (memq #'kittymacs--flyspell-prog prog-mode-hook))
+  (kittymacs-platform-test-with 'windows-nt '()
+    (let ((kittymacs-msys2-root "/msys64/") enabled)
+      (cl-letf (((symbol-function 'flyspell-mode) (lambda () (setq enabled t))))
+        (cl-letf (((symbol-function 'file-executable-p) #'ignore))
+          (kittymacs--flyspell-text)
+          (should-not enabled))
+        (cl-letf (((symbol-function 'file-executable-p)
+                   (lambda (file)
+                     (equal file "/msys64/ucrt64/bin/hunspell.exe"))))
+          (kittymacs--flyspell-text)
+          (should enabled))))))
+
+(ert-deftest kittymacs-platform-a-broken-flyspell-is-reported-once ()
+  (kittymacs-platform-test-with 'gnu/linux '("hunspell")
+    (let ((kittymacs--spell-warned nil) (reports 0))
+      (cl-letf (((symbol-function 'flyspell-prog-mode)
+                 (lambda () (error "No dictionary")))
+                ((symbol-function 'message)
+                 (lambda (&rest _) (setq reports (1+ reports)))))
+        (kittymacs--flyspell-prog)
+        (kittymacs--flyspell-prog))
+      (should kittymacs--spell-warned)
+      (should (= reports 1)))))
 
 ;;; Unix tools on Windows.
 

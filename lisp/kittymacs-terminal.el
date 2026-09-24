@@ -23,6 +23,13 @@
 ;; The Eshell fallback below: `kittymacs-shell' is loaded before this module
 ;; by `init.el', but this module does not require it.
 (declare-function kittymacs-eshell-project "kittymacs-shell" ())
+;; Ghostel's options, which `kittymacs-terminal-msys2' binds with `let'.  The
+;; first terminal of a session may be that one, before ghostel has loaded and
+;; declared them; without these a `let' would bind them lexically, and ghostel
+;; would never see the MSYS2 shell.
+(defvar ghostel-shell)
+(defvar ghostel-environment)
+(defvar ghostel-buffer-name)
 
 (defgroup kittymacs-terminal nil
   "The integrated terminal."
@@ -191,7 +198,7 @@ With prefix ARG, create another one instead of reusing the existing buffer."
       (ghostel arg))))
 (when kittymacs-terminal-ghostel
   (with-eval-after-load 'project
-    (add-to-list 'project-switch-commands '(ghostel-project "Terminal") t)))
+    (add-to-list 'project-switch-commands '(ghostel-project "Terminal" ?t) t)))
 
 (use-package consult-ghostel
   :vc (:url "https://github.com/dakra/ghostel"
@@ -205,13 +212,13 @@ With prefix ARG, create another one instead of reusing the existing buffer."
   (when (require 'ghostel-eshell nil t)
     (ghostel-eshell-visual-command-mode 1)))
 
-(defun kittymacs-terminal-comint-colours ()
+(defun kittymacs-terminal--comint-colours ()
   "Render this comint buffer's output with ghostel's terminal parser."
   (when (and (kittymacs-terminal-module-installed-p)
              (require 'ghostel-comint nil t))
     (ghostel-comint-mode 1)))
 
-(add-hook 'shell-mode-hook #'kittymacs-terminal-comint-colours)
+(add-hook 'shell-mode-hook #'kittymacs-terminal--comint-colours)
 ;; `ghostel-recompile' carries no autoload cookie, and `SPC m t' must work
 ;; before the terminal has ever been opened.
 (autoload 'ghostel-compile "ghostel-compile" "Run a command in a terminal." t)

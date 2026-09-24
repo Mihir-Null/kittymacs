@@ -6,7 +6,6 @@
 ;;; Code:
 
 (require 'kittymacs-leader)
-(require 'kittymacs-ui)
 (setopt dired-kill-when-opening-new-dired-buffer t
         dired-recursive-copies 'always
         dired-recursive-deletes 'always
@@ -34,14 +33,11 @@
                 "-lahv --group-directories-first"
               "-lah"))))
 
-(defun kittymacs-dired-up-directory ()
-  "Go to the parent directory in this buffer."
-  (interactive)
-  (find-alternate-file ".."))
-
-(with-eval-after-load 'dired
-  (keymap-set dired-mode-map "h" #'kittymacs-dired-up-directory)
-  (keymap-set dired-mode-map "l" #'dired-find-file))
+(use-package dired
+  :ensure nil
+  :bind (:map dired-mode-map
+         ("h" . dired-up-directory)
+         ("l" . dired-find-file)))
 (use-package diredfl
   :ensure t
   :hook (dired-mode . diredfl-mode))

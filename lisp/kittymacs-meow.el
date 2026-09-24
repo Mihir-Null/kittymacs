@@ -91,13 +91,6 @@
   :config
   (meow-thing-register 'angle '(regexp "<" ">") '(regexp "<" ">"))
   (add-to-list 'meow-char-thing-table '(?< . angle))
-  (dolist (entry '((eshell-mode . insert)
-                   (shell-mode . insert)
-                   (term-mode . insert)))
-    (add-to-list 'meow-mode-state-list entry))
-  (with-eval-after-load 'org
-    ;; Treat @ as part of symbols/words during Meow movement in Org.
-    (modify-syntax-entry ?@ "_" org-mode-syntax-table))
   (kittymacs-meow-setup)
   (meow-global-mode 1)
   (kittymacs-leader-enable))

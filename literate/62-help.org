@@ -14,9 +14,9 @@ documentation nicer to read and easier to reach.
 =C-h k= then a key tells you what it does; =C-h f= and =C-h v= describe a
 function or variable. Helpful replaces those views with richer ones that
 include the source, examples and references. Info manuals get colour, and
-the leader's help menu collects the commands a learner needs most. Popup
-menus (Transient, used by Magit) open at the top of the frame, and no OS
-dialog boxes ever appear.
+the leader's help menu, =SPC h= in [[file:42-keys.org][the keys chapter]], collects the commands a
+learner needs most. Popup
+menus (Transient, used by Magit) open at the top of the frame.
 
 #+begin_src emacs-lisp
 ;;; kittymacs-help.el --- Help, Info and menus -*- lexical-binding: t; -*-
@@ -29,13 +29,10 @@ dialog boxes ever appear.
 (require 'kittymacs-defaults)
 (require 'kittymacs-leader)
 
-(setopt use-file-dialog nil
-        use-dialog-box nil
-        confirm-nonexistent-file-or-buffer nil
+(setopt confirm-nonexistent-file-or-buffer nil
         help-window-select t
         help-at-pt-timer-delay 0.1
         help-at-pt-display-when-idle '(flymake-diagnostic))
-(menu-bar-mode -1)
 
 #+end_src
 
@@ -90,40 +87,6 @@ it never replaces the buffer you are looking at.
                                      (dedicated . t)
                                      (inhibit-same-window . t)
                                      (window-parameters (no-other-window . t)))))
-
-#+end_src
-
-* The help menu
-
-A keymap, so which-key shows it. It gathers describe commands, source
-lookup, manuals and the kittymacs and Meow tutorials. [[file:42-keys.org][The keys chapter]] puts
-it on =SPC h=.
-
-#+begin_src emacs-lisp
-(defvar-keymap kittymacs-help-map
-  :doc "Help, documentation and tutorials."
-  "h" (cons "home" #'dashboard-open)
-  "k" (cons "key" #'helpful-key)
-  "f" (cons "function" #'helpful-callable)
-  "v" (cons "variable" #'helpful-variable)
-  "o" (cons "symbol" #'helpful-symbol)
-  "c" (cons "command" #'helpful-command)
-  "." (cons "at point" #'helpful-at-point)
-  "m" (cons "mode" #'describe-mode)
-  "b" (cons "bindings here" #'embark-bindings)
-  "B" (cons "all bindings" #'describe-bindings)
-  "l" (cons "leader" #'kittymacs-describe-leader)
-  "F" (cons "face" #'describe-face)
-  "w" (cons "where is" #'where-is)
-  "e" (cons "messages" #'view-echo-area-messages)
-  "L" (cons "lossage" #'view-lossage)
-  "i" (cons "info" #'info)
-  "s" (cons "search manuals" #'kittymacs-search-manuals)
-  "S" (cons "find source" #'find-function)
-  "V" (cons "find variable" #'find-variable)
-  "K" (cons "find key" #'find-function-on-key)
-  "t" (cons "meow tutor" #'meow-tutor)
-  "C" (cons "meow cheatsheet" #'meow-cheatsheet))
 
 #+end_src
 

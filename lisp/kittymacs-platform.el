@@ -12,7 +12,7 @@
 (require 'seq)
 (require 'subr-x)
 (defgroup kittymacs-platform nil
-  "Portable defaults for the Lambda learning configuration."
+  "Where this machine keeps things: paths, the shell, spelling, macOS and Android."
   :group 'kittymacs)
 (defun kittymacs--user-home-directory ()
   "Return the user's ordinary home directory for configuration defaults.
@@ -60,16 +60,27 @@ denies access and every lookup below quietly returns nil."
 (defun kittymacs--first-executable (&rest programs)
   "Return the first executable found in PROGRAMS."
   (seq-some #'executable-find programs))
-(defun kittymacs--skip-exec-path-from-shell (&rest _)
-  "Keep the inherited process environment unchanged.
-Used on native Windows, whose shell cannot evaluate POSIX syntax, and on
-Android, where the system shell would report a `PATH' without Termux."
-  nil)
+(defun kittymacs--platform-shell ()
+  "Return (PROGRAM . SWITCH) for this platform's shell, or nil if none is found."
+  (pcase system-type
+    ('windows-nt
+     (if-let* ((powershell (kittymacs--first-executable "pwsh.exe" "powershell.exe")))
+         (cons powershell "-Command")
+       (when-let* ((cmd (executable-find "cmd.exe")))
+         (cons cmd "/c"))))
+    ((or 'darwin 'gnu/linux)
+     (when-let* ((shell (kittymacs--first-executable "zsh" "bash" "sh")))
+       (cons shell "-c")))
+    ('android
+     (cons (or (kittymacs-termux-program "bash")
+               (kittymacs-termux-program "sh")
+               "/system/bin/sh")
+           "-c"))))
+
 (defun kittymacs--windows-unix-tools ()
   "Return the directory holding Git for Windows' or MSYS2's Unix tools, or nil.
-Magit's hunk refinement, Ediff and diff-hl ask for `diff', `diff3' and
-`patch' by name, and Windows has none.  Git for Windows ships them
-beside its own `git'; MSYS2 keeps them under `usr/bin'."
+Git for Windows ships `diff', `diff3' and `patch' beside its own `git';
+MSYS2 keeps them under `usr/bin'."
   (let ((git (file-name-directory (or (executable-find "git") ""))))
     (seq-find (lambda (dir) (file-executable-p (expand-file-name "diff.exe" dir)))
               (delq nil
@@ -82,69 +93,13 @@ beside its own `git'; MSYS2 keeps them under `usr/bin'."
 
 (defun kittymacs-platform-apply ()
   "Apply the currently configured portable platform defaults."
-  ;; Choose a usable shell without assuming a username, Homebrew prefix, Nix profile,
-  ;; or conventional Unix filesystem on Windows.
-  (pcase system-type
-    ('windows-nt
-     (cond
-      ((executable-find "pwsh.exe")
-       (setq-default shell-file-name (executable-find "pwsh.exe"))
-       (setq explicit-shell-file-name (executable-find "pwsh.exe")
-             shell-command-switch "-Command"))
-      ((executable-find "powershell.exe")
-       (setq-default shell-file-name (executable-find "powershell.exe"))
-       (setq explicit-shell-file-name (executable-find "powershell.exe")
-             shell-command-switch "-Command"))
-      ((executable-find "cmd.exe")
-       (setq-default shell-file-name (executable-find "cmd.exe"))
-       (setq explicit-shell-file-name (executable-find "cmd.exe")
-             shell-command-switch "/c"))))
-    ('darwin
-     (when-let ((shell (kittymacs--first-executable "zsh" "bash" "sh")))
-       (setq-default shell-file-name shell)
-       (setq explicit-shell-file-name shell
-             shell-command-switch "-c")))
-    ('gnu/linux
-     (when-let ((shell (kittymacs--first-executable "zsh" "bash" "sh")))
-       (setq-default shell-file-name shell)
-       (setq explicit-shell-file-name shell
-             shell-command-switch "-c")))
-    ;; Android has no /bin, so Emacs's compiled-in /bin/sh does not exist.
-    ;; Termux's shells are preferred because they can see Termux's programs;
-    ;; /system/bin/sh is always present, which makes it a real fallback
-    ;; rather than a hopeful one.
-    ('android
-     (let ((shell (or (kittymacs-termux-program "bash")
-                      (kittymacs-termux-program "sh")
-                      "/system/bin/sh")))
-       (setq-default shell-file-name shell)
-       (setq explicit-shell-file-name shell
-             shell-command-switch "-c"))))
-
-  ;; Windows borrows Git's Unix tools.  They go last on `exec-path' so every
-  ;; native program still wins, and `PATH' itself is left alone, so
-  ;; subprocesses see no change.
+  (when-let* ((shell (kittymacs--platform-shell)))
+    (setopt shell-file-name (car shell)
+            explicit-shell-file-name (car shell))
+    (setq shell-command-switch (cdr shell)))
   (when (eq system-type 'windows-nt)
     (when-let* ((tools (kittymacs--windows-unix-tools)))
       (add-to-list 'exec-path tools t)))
-
-  ;; Lambda configures exec-path-from-shell.  It supports POSIX shells, so native
-  ;; Windows keeps the environment inherited from Windows instead of asking
-  ;; PowerShell to evaluate Unix `printf' syntax.  Android keeps it too, because
-  ;; its system shell would report a `PATH' without Termux and overwrite ours.
-  ;; Linux/macOS retain Lambda's intended login-shell import without assuming a
-  ;; particular Nix profile path.
-  (if (memq system-type '(windows-nt android))
-      (with-eval-after-load 'exec-path-from-shell
-        (unless (advice-member-p
-                 #'kittymacs--skip-exec-path-from-shell
-                 #'exec-path-from-shell-initialize)
-          (advice-add #'exec-path-from-shell-initialize :override
-                      #'kittymacs--skip-exec-path-from-shell)))
-    (with-eval-after-load 'exec-path-from-shell
-      (setopt exec-path-from-shell-variables
-              '("PATH" "MANPATH" "LANG" "NIX_PATH" "NIX_PROFILES"))))
-
   (when (eq system-type 'darwin)
     (kittymacs--platform-apply-macos))
   (when (kittymacs-android-p)
@@ -173,13 +128,13 @@ to macOS.  Applied by `kittymacs-platform-apply' after `private.el'."
   "Send deleted files to the Trash by the best available means.
 Return the means chosen: `native' when this Emacs moves files to the Trash
 itself, `trash-command' for the `trash' tool, or `directory' for ~/.Trash."
-  (setq delete-by-moving-to-trash t)
+  (setopt delete-by-moving-to-trash t)
   (cond ((fboundp 'system-move-file-to-trash) 'native)
         ((executable-find "trash")
-         (setq trash-directory nil)
+         (setopt trash-directory nil)
          (defalias 'system-move-file-to-trash #'kittymacs--macos-trash)
          'trash-command)
-        (t (setq trash-directory "~/.Trash")
+        (t (setopt trash-directory "~/.Trash")
            'directory)))
 
 (defun kittymacs-delete-frame-or-quit ()
@@ -203,18 +158,24 @@ itself, `trash-command' for the `trash' tool, or `directory' for ~/.Trash."
   "Apply the macOS policy: modifiers, Trash, locale, Keychain, keys, title bar."
   (pcase-dolist (`(,variable . ,modifier) kittymacs-macos-modifiers)
     (set variable modifier))
-  (setq ns-use-native-fullscreen nil)
+  (setopt ns-use-native-fullscreen nil)
   (unless (getenv "LANG")
     (setenv "LANG" "en_US.UTF-8"))
   (kittymacs--macos-configure-trash)
-  (with-eval-after-load 'auth-source
-    (dolist (source '(macos-keychain-internet macos-keychain-generic))
-      (add-to-list 'auth-sources source t)))
   (keymap-global-set "s-Z" #'undo-redo)
   (keymap-global-set "s-q" #'kittymacs-delete-frame-or-quit)
   (keymap-global-set "C-s-f" #'toggle-frame-fullscreen)
   (add-hook 'enable-theme-functions #'kittymacs--macos-sync-titlebar)
   (kittymacs--macos-sync-titlebar))
+
+(defun kittymacs--macos-auth-sources ()
+  "Let `auth-source' read passwords from the macOS Keychain."
+  (dolist (source '(macos-keychain-internet macos-keychain-generic))
+    (add-to-list 'auth-sources source t)))
+
+(with-eval-after-load 'auth-source
+  (when (eq system-type 'darwin)
+    (kittymacs--macos-auth-sources)))
 ;; Defined by the Android build; declared so the module byte-compiles cleanly
 ;; on every platform, as the NS variables above are.
 (defvar android-pass-multimedia-buttons-to-system)
@@ -237,7 +198,7 @@ to nil to leave the input method alone."
 (defvar-local kittymacs--android-text-conversion nil
   "The `text-conversion-style' suspended when Meow left Insert state.")
 
-(defun kittymacs-android-suspend-text-conversion ()
+(defun kittymacs--android-suspend-text-conversion ()
   "Stop the on-screen keyboard editing this buffer outside Insert state."
   (when (and kittymacs-android-modal-text-conversion
              (fboundp 'set-text-conversion-style)
@@ -245,7 +206,7 @@ to nil to leave the input method alone."
     (setq kittymacs--android-text-conversion text-conversion-style)
     (set-text-conversion-style nil)))
 
-(defun kittymacs-android-resume-text-conversion ()
+(defun kittymacs--android-resume-text-conversion ()
   "Give the on-screen keyboard this buffer back on entering Insert state."
   (when (and kittymacs-android-modal-text-conversion
              (fboundp 'set-text-conversion-style)
@@ -264,9 +225,9 @@ to nil to leave the input method alone."
     (setenv "LD_LIBRARY_PATH" nil))
   (unless (getenv "LANG")
     (setenv "LANG" "en_US.UTF-8"))
-  (setq android-pass-multimedia-buttons-to-system kittymacs-android-volume-keys)
-  (add-hook 'meow-insert-exit-hook #'kittymacs-android-suspend-text-conversion)
-  (add-hook 'meow-insert-enter-hook #'kittymacs-android-resume-text-conversion))
+  (setopt android-pass-multimedia-buttons-to-system kittymacs-android-volume-keys)
+  (add-hook 'meow-insert-exit-hook #'kittymacs--android-suspend-text-conversion)
+  (add-hook 'meow-insert-enter-hook #'kittymacs--android-resume-text-conversion))
 (defun kittymacs-reveal-in-file-manager (&optional file)
   "Show FILE in the desktop file manager, selected where the manager allows.
 FILE defaults to this buffer's file, the file at point in Dired, or the
@@ -334,16 +295,17 @@ library, runs the checker and fails again."
 
 ;; Enable Flyspell the same way: on any error say so once and carry on.
 (defun kittymacs--flyspell (mode-function)
-  "Enable Flyspell with MODE-FUNCTION, reporting a broken checker instead of failing."
-  (condition-case err
-      (funcall mode-function)
-    (error (kittymacs--spell-off err))))
-(defun kittymacs-flyspell-text () (kittymacs--flyspell #'flyspell-mode))
-(defun kittymacs-flyspell-prog () (kittymacs--flyspell #'flyspell-prog-mode))
+  "Enable Flyspell with MODE-FUNCTION when this machine has a spell checker.
+A checker that fails is reported once instead of breaking the buffer."
+  (when (kittymacs-spell-checker)
+    (condition-case err
+        (funcall mode-function)
+      (error (kittymacs--spell-off err)))))
+(defun kittymacs--flyspell-text () (kittymacs--flyspell #'flyspell-mode))
+(defun kittymacs--flyspell-prog () (kittymacs--flyspell #'flyspell-prog-mode))
 
-(when (kittymacs-spell-checker)
-  (add-hook 'text-mode-hook #'kittymacs-flyspell-text)
-  (add-hook 'prog-mode-hook #'kittymacs-flyspell-prog))
+(add-hook 'text-mode-hook #'kittymacs--flyspell-text)
+(add-hook 'prog-mode-hook #'kittymacs--flyspell-prog)
 ;; Do not force a font here. Inheriting the platform default makes first boot robust.
 ;; Fonts are chosen in the appearance chapter.
 

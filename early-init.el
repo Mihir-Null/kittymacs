@@ -15,12 +15,15 @@
 (defvar kittymacs-etc-dir (expand-file-name "etc/" kittymacs-var-dir)
   "Directory for state worth keeping: saved customizations, shell history.")
 
+;; `setq', not `setopt', throughout this file: `setopt' would load Customize
+;; and, for the package options, package.el with url and EIEIO, all before
+;; the first frame is drawn.  See the startup chapter.
 (setq package-user-dir (expand-file-name "elpa/" kittymacs-var-dir)
       package-gnupghome-dir (expand-file-name "gnupg/" package-user-dir)
-      package-enable-at-startup nil)
-(setopt package-archives '(("gnu" . "https://elpa.gnu.org/packages/")
-                           ("nongnu" . "https://elpa.nongnu.org/nongnu/")
-                           ("melpa" . "https://melpa.org/packages/")))
+      package-enable-at-startup nil
+      package-archives '(("gnu" . "https://elpa.gnu.org/packages/")
+                         ("nongnu" . "https://elpa.nongnu.org/nongnu/")
+                         ("melpa" . "https://melpa.org/packages/")))
 ;; An Emacs.app started from the Dock inherits no shell PATH, so the gpg,
 ;; git and language servers that Nix or Homebrew installed are invisible
 ;; until the shells chapter imports the login environment.  Put those
@@ -51,18 +54,21 @@
 
 (when (featurep 'native-compile)
   (startup-redirect-eln-cache (expand-file-name "eln-cache/" kittymacs-cache-dir))
-  (setopt native-comp-async-report-warnings-errors 'silent))
+  (setq native-comp-async-report-warnings-errors 'silent))
 
 (setq gc-cons-threshold most-positive-fixnum)
 (add-hook 'emacs-startup-hook (lambda () (setq gc-cons-threshold (* 64 1024 1024))))
 
-(setopt frame-inhibit-implied-resize t
-        inhibit-startup-screen t
-        initial-scratch-message nil
-        load-prefer-newer t)
+(setq frame-inhibit-implied-resize t
+      inhibit-startup-screen t
+      initial-scratch-message nil
+      load-prefer-newer t)
 (push '(tool-bar-lines . 0) default-frame-alist)
 (push '(menu-bar-lines . 0) default-frame-alist)
 (push '(vertical-scroll-bars) default-frame-alist)
+;; The frame parameter hides the menu bar; the mode has to agree, or the
+;; first `SPC t m' would switch a hidden menu bar "off" and show nothing.
+(menu-bar-mode -1)
 
 (when (eq system-type 'windows-nt)
   (setq w32-get-true-file-attributes nil

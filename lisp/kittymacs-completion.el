@@ -6,23 +6,25 @@
 ;;; Code:
 
 (require 'kittymacs-defaults)
+(defun kittymacs-vertico-directories-first (files)
+  "Sort FILES by history, length and name, then put directories first."
+  (let ((sorted (vertico-sort-history-length-alpha files)))
+    (nconc (seq-filter (lambda (file) (string-suffix-p "/" file)) sorted)
+           (seq-remove (lambda (file) (string-suffix-p "/" file)) sorted))))
+
 (use-package vertico
   :ensure t
+  :demand t
   :bind (:map vertico-map
          ("<escape>" . minibuffer-keyboard-quit)
          ("M-RET" . vertico-exit))
   :custom
   (vertico-cycle t)
   (vertico-resize nil)
-  :init
-  (vertico-mode 1)
+  (vertico-multiform-categories
+   '((file (vertico-sort-function . kittymacs-vertico-directories-first))))
   :config
-  (defun kittymacs-vertico-directories-first (files)
-    "Sort FILES by history, length and name, then put directories first."
-    (let ((sorted (vertico-sort-history-length-alpha files)))
-      (nconc (seq-filter (lambda (file) (string-suffix-p "/" file)) sorted)
-             (seq-remove (lambda (file) (string-suffix-p "/" file)) sorted))))
-  (setopt vertico-multiform-categories '((file (vertico-sort-function . kittymacs-vertico-directories-first))))
+  (vertico-mode 1)
   (vertico-multiform-mode 1))
 
 (use-package vertico-directory
@@ -51,7 +53,8 @@
 (defun kittymacs--crm-indicator (args)
   "Prefix a `completing-read-multiple' prompt with [CRM]."
   (cons (concat "[CRM] " (car args)) (cdr args)))
-(advice-add #'completing-read-multiple :filter-args #'kittymacs--crm-indicator)
+(when (< emacs-major-version 31)
+  (advice-add #'completing-read-multiple :filter-args #'kittymacs--crm-indicator))
 
 (setopt resize-mini-windows t
         enable-recursive-minibuffers t
@@ -68,21 +71,19 @@
   (completion-category-overrides '((file (styles partial-completion)))))
 (use-package marginalia
   :ensure t
+  :demand t
   :bind (:map minibuffer-local-map
          ("C-M-a" . marginalia-cycle))
   :custom
   (marginalia-align 'center)
-  :init
+  :config
   (marginalia-mode 1))
 (use-package consult
   :ensure t
   :bind (("C-x b" . consult-buffer)
          ("M-y" . consult-yank-pop)
          ("M-g g" . consult-goto-line)
-         ("M-g i" . consult-imenu)
-         :map project-prefix-map
-         ("b" . consult-project-buffer)
-         ("m" . consult-bookmark))
+         ("M-g i" . consult-imenu))
   :hook (completion-list-mode . consult-preview-at-point-mode)
   :custom
   (consult-async-min-input 2)
@@ -118,6 +119,37 @@
          :map vertico-map
          ("C-x C-d" . consult-dir)
          ("C-x C-j" . consult-dir-jump-file)))
+;; Embark's variable, bound dynamically below even before Embark has loaded.
+(defvar embark-indicators)
+
+(defun kittymacs-embark-which-key-indicator ()
+  "Show Embark's action keymap with which-key."
+  (lambda (&optional keymap targets _prefix)
+    (if (null keymap)
+        (which-key-hide-popup)
+      (which-key-show-keymap
+       (if (eq (plist-get (car targets) :type) 'embark-become)
+           "Become"
+         (format "Act on %s '%s'%s"
+                 (plist-get (car targets) :type)
+                 (embark--truncate-target (plist-get (car targets) :target))
+                 (if (cdr targets) "..." "")))))))
+
+(defun kittymacs--embark-hide-which-key (function &rest args)
+  "Hide the which-key popup before the completing-read prompter takes over."
+  (which-key-hide-popup)
+  (let ((embark-indicators (remq #'kittymacs-embark-which-key-indicator embark-indicators)))
+    (apply function args)))
+
+(defun kittymacs-embark-dired-here (file)
+  "Open Dired in FILE's directory."
+  (dired (file-name-directory file)))
+
+(defun kittymacs-embark-ripgrep-here (file)
+  "Run ripgrep in FILE's directory."
+  (let ((default-directory (file-name-directory file)))
+    (consult-ripgrep)))
+
 (use-package embark
   :ensure t
   :bind (("C-." . embark-act)
@@ -131,39 +163,15 @@
   :custom
   (prefix-help-command #'embark-prefix-help-command)
   (embark-prompter #'embark-keymap-prompter)
+  (embark-indicators '(kittymacs-embark-which-key-indicator
+                       embark-highlight-indicator
+                       embark-isearch-highlight-indicator))
   :config
-  (defun kittymacs-embark-which-key-indicator ()
-    "Show Embark's action keymap with which-key."
-    (lambda (&optional keymap targets prefix)
-      (if (null keymap)
-          (which-key-hide-popup)
-        (which-key-show-keymap
-         (if (eq (plist-get (car targets) :type) 'embark-become)
-             "Become"
-           (format "Act on %s '%s'%s"
-                   (plist-get (car targets) :type)
-                   (embark--truncate-target (plist-get (car targets) :target))
-                   (if (cdr targets) "..." "")))))))
-  (setopt embark-indicators '(kittymacs-embark-which-key-indicator
-                              embark-highlight-indicator
-                              embark-isearch-highlight-indicator))
-  (defun kittymacs--embark-hide-which-key (function &rest args)
-    "Hide the which-key popup before the completing-read prompter takes over."
-    (which-key-hide-popup)
-    (let ((embark-indicators (remq #'kittymacs-embark-which-key-indicator embark-indicators)))
-      (apply function args)))
   (advice-add #'embark-completing-read-prompter :around #'kittymacs--embark-hide-which-key)
   (add-to-list 'display-buffer-alist
                '("\\`\\*Embark Collect \\(Live\\|Completions\\)\\*"
                  nil
                  (window-parameters (mode-line-format . none))))
-  (defun kittymacs-embark-dired-here (file)
-    "Open Dired in FILE's directory."
-    (dired (file-name-directory file)))
-  (defun kittymacs-embark-ripgrep-here (file)
-    "Run ripgrep in FILE's directory."
-    (let ((default-directory (file-name-directory file)))
-      (consult-ripgrep)))
   (keymap-set embark-file-map "x" #'embark-open-externally)
   (keymap-set embark-file-map "D" #'kittymacs-embark-dired-here)
   (keymap-set embark-file-map "g" #'kittymacs-embark-ripgrep-here)
@@ -173,15 +181,28 @@
   :ensure t
   :after (embark consult)
   :hook (embark-collect-mode . consult-preview-at-point-mode))
+(defun kittymacs--corfu-in-minibuffer ()
+  "Enable Corfu in minibuffers that offer completion at point, such as M-:."
+  (when (where-is-internal #'completion-at-point (list (current-local-map)))
+    (corfu-mode 1)))
+
+(defun kittymacs--corfu-in-shells ()
+  "In Eshell, complete only on request, like an ordinary shell."
+  (setq-local corfu-auto nil
+              corfu-quit-no-match t
+              corfu-quit-at-boundary t)
+  (corfu-mode 1))
+
 (use-package corfu
   :ensure t
+  :demand t
   :bind (:map corfu-map
          ("C-j" . corfu-next)
          ("C-k" . corfu-previous)
          ("M-l" . corfu-show-location)
          ("M-SPC" . corfu-insert-separator)
          ("<escape>" . corfu-quit)
-         ("RET" . corfu-insert)
+         ("RET" . corfu-send)
          ("TAB" . corfu-insert)
          ([tab] . corfu-insert))
   :custom
@@ -197,30 +218,12 @@
   (corfu-preview-current t)
   (corfu-preselect 'first)
   (corfu-popupinfo-delay 1)
-  :init
-  (global-corfu-mode 1)
   :config
+  (global-corfu-mode 1)
   (corfu-history-mode 1)
   (corfu-popupinfo-mode 1)
-  (defun kittymacs--corfu-in-minibuffer ()
-    "Enable Corfu in minibuffers that offer completion at point, such as M-:."
-    (when (where-is-internal #'completion-at-point (list (current-local-map)))
-      (corfu-mode 1)))
   (add-hook 'minibuffer-setup-hook #'kittymacs--corfu-in-minibuffer)
-  (defun kittymacs--corfu-in-shells ()
-    "In shells, complete only on request and accept without a second RET."
-    (setq-local corfu-auto nil
-                corfu-quit-no-match t
-                corfu-quit-at-boundary t)
-    (corfu-mode 1))
-  (add-hook 'eshell-mode-hook #'kittymacs--corfu-in-shells)
-  (defun kittymacs--corfu-send-shell (&rest _)
-    "Send the completed input when inside Eshell or a comint buffer."
-    (cond ((and (derived-mode-p 'eshell-mode) (fboundp 'eshell-send-input))
-           (eshell-send-input))
-          ((and (derived-mode-p 'comint-mode) (fboundp 'comint-send-input))
-           (comint-send-input))))
-  (advice-add #'corfu-insert :after #'kittymacs--corfu-send-shell))
+  (add-hook 'eshell-mode-hook #'kittymacs--corfu-in-shells))
 
 (keymap-global-set "M-/" #'dabbrev-completion)
 (keymap-global-set "C-M-/" #'dabbrev-expand)
@@ -233,17 +236,6 @@
   (add-to-list 'completion-at-point-functions #'cape-keyword)
   :config
   (advice-add 'pcomplete-completions-at-point :around #'cape-wrap-silent))
-
-(defvar-keymap kittymacs-cape-map
-  :doc "Complete with one particular source."
-  "p" #'completion-at-point
-  "d" #'cape-dabbrev
-  "f" #'cape-file
-  "k" #'cape-keyword
-  "l" #'cape-line
-  "a" #'cape-abbrev
-  "w" #'cape-dict
-  "e" #'cape-elisp-symbol)
 (use-package flyspell-correct
   :ensure t
   :after flyspell
@@ -252,21 +244,27 @@
 (use-package consult-flyspell
   :ensure t
   :commands consult-flyspell)
-(defvar kittymacs-snippets-dir (expand-file-name "snippets/" kittymacs-etc-dir)
-  "Directory of personal snippets, one subdirectory per major mode.")
+(defcustom kittymacs-snippets-dir (expand-file-name "snippets/" kittymacs-etc-dir)
+  "Directory of personal snippets, one subdirectory per major mode."
+  :type 'directory
+  :group 'kittymacs)
+
+(defun kittymacs--yas-not-in-org-src ()
+  "Do not expand snippets inside Org source blocks."
+  (setq-local yas-buffer-local-condition '(not (org-in-src-block-p t))))
 
 (use-package yasnippet
   :ensure t
   :defer 1
+  ;; No autoload cookies upstream: declare the two commands SPC i binds, so
+  ;; they work in the second before the deferred load has happened.
+  :commands (yas-insert-snippet yas-new-snippet)
   :bind (:map yas-minor-mode-map
          ("C-'" . yas-expand))
   :custom
   (yas-snippet-dirs (list kittymacs-snippets-dir))
   :config
   (make-directory kittymacs-snippets-dir t)
-  (defun kittymacs--yas-not-in-org-src ()
-    "Do not expand snippets inside Org source blocks."
-    (setq-local yas-buffer-local-condition '(not (org-in-src-block-p t))))
   (add-hook 'org-mode-hook #'kittymacs--yas-not-in-org-src)
   (with-eval-after-load 'warnings
     (push '(yasnippet backquote-change) warning-suppress-types))

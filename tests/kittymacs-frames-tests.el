@@ -1,14 +1,14 @@
-;;; frames-tests.el --- Frame policy integration checks -*- lexical-binding: t; -*-
-;; Load after ordinary graphical startup, then run selector "^dots-frames-".
+;;; kittymacs-frames-tests.el --- Frame policy integration checks -*- lexical-binding: t; -*-
+;; Load after ordinary graphical startup, then run selector "^kittymacs-frames-".
 (require 'ert)
 (require 'cl-lib)
 
-(defmacro dots-frames-with-buffer (&rest body)
+(defmacro kittymacs-frames-test-with-buffer (&rest body)
   "Run BODY with an isolated BUFFER and clean up only its new frames."
   (declare (indent 0) (debug t))
   `(let ((original (selected-frame))
          (before (frame-list))
-         (buffer (generate-new-buffer " *dots-frames-test*")))
+         (buffer (generate-new-buffer " *kittymacs-frames-test*")))
      (unwind-protect
          (save-window-excursion (delete-other-windows) ,@body)
        (select-frame original)
@@ -16,10 +16,10 @@
          (when (frame-live-p frame) (delete-frame frame t)))
        (when (buffer-live-p buffer) (kill-buffer buffer)))))
 
-(ert-deftest dots-frames-auxiliary-display-and-quit ()
+(ert-deftest kittymacs-frames-auxiliary-display-and-quit ()
   "Ordinary auxiliary buffers get an OS frame that quit-window closes."
   (skip-unless (display-graphic-p))
-  (dots-frames-with-buffer
+  (kittymacs-frames-test-with-buffer
     (with-current-buffer buffer (help-mode))
     (let* ((window (display-buffer buffer))
            (frame (window-frame window)))
@@ -28,20 +28,20 @@
       (quit-window nil window)
       (should-not (frame-live-p frame)))))
 
-(ert-deftest dots-frames-completion-stays-in-editor ()
+(ert-deftest kittymacs-frames-completion-stays-in-editor ()
   "The existing Vertico panel stays inside its initiating frame."
   (skip-unless (display-graphic-p))
-  (dots-frames-with-buffer
+  (kittymacs-frames-test-with-buffer
     (let ((window (display-buffer buffer vertico-buffer-display-action)))
       (should (eq (window-frame window) original))
       (should (eq (window-parameter window 'window-side) 'top))
       (delete-window window))))
 
-(ert-deftest dots-frames-magit-lazy-load-and-toggle ()
+(ert-deftest kittymacs-frames-magit-lazy-load-and-toggle ()
   "Lazy Magit loading must not reintroduce splits; disabling restores them."
   (skip-unless (display-graphic-p))
   (require 'magit)
-  (dots-frames-with-buffer
+  (kittymacs-frames-test-with-buffer
     (let* ((window (funcall magit-display-buffer-function buffer))
            (frame (window-frame window)))
       (should-not (eq frame original))
@@ -58,11 +58,11 @@
       (delete-other-windows)
       (frames-only-mode 1))))
 
-(ert-deftest dots-frames-magit-status-quit ()
+(ert-deftest kittymacs-frames-magit-status-quit ()
   "Quitting a real Magit status frame leaves the original editor alive."
   (skip-unless (display-graphic-p))
   (require 'magit)
-  (dots-frames-with-buffer
+  (kittymacs-frames-test-with-buffer
     (magit-status (expand-file-name "../" (file-name-directory (locate-library "kittymacs-frames"))))
     (let ((frame (selected-frame)))
       (should-not (eq frame original))
@@ -70,10 +70,10 @@
       (magit-mode-bury-buffer)
       (should-not (frame-live-p frame))
       (should (frame-live-p original)))))
-(ert-deftest dots-frames-split-command-remaps ()
-  "Both ordinary split keys and Lambda split-and-focus keys create OS frames."
+(ert-deftest kittymacs-frames-split-command-remaps ()
+  "Both ordinary split keys and the leader's split keys create OS frames."
   (skip-unless (display-graphic-p))
-  (dots-frames-with-buffer
+  (kittymacs-frames-test-with-buffer
     (switch-to-buffer buffer)
     (dolist (key '("C-x 2" "C-x 3" "C-c C-SPC w h" "C-c C-SPC w v"))
       (select-frame original)
@@ -86,4 +86,4 @@
             (should-not (frame-parameter frame 'parent-frame))
             (should-not (frame-parameter frame 'undecorated))
             (delete-frame frame t)))))))
-(provide 'frames-tests)
+(provide 'kittymacs-frames-tests)

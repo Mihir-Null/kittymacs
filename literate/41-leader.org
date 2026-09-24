@@ -8,7 +8,7 @@
 Ownership: *kittymacs core*. This is the smallest piece of the configuration and
 the most important one. It makes =SPC= an ordinary Emacs prefix keymap while
 Meow is in Normal or Motion state, and it gives every major mode its own menu
-under =SPC m=. Nothing here knows about Lambda, packages or this machine.
+under =SPC m=. Nothing here knows about other packages or this machine.
 
 * Why a real keymap instead of Meow's keypad
 
@@ -41,23 +41,21 @@ leader is two lines. The keypad is still available as the command
 (declare-function meow-normal-define-key "meow-helpers" (&rest keybinds))
 (declare-function meow-motion-define-key "meow-helpers" (&rest keybinds))
 
-(defgroup kittymacs nil
-  "kittymacs: a literal, discoverable leader for Meow."
-  :group 'convenience
-  :prefix "kittymacs-")
-
 (defcustom kittymacs-leader-key "SPC"
   "Key that opens `kittymacs-leader-map' in Meow's Normal and Motion states."
-  :type 'key)
+  :type 'key
+  :group 'kittymacs)
 
 (defcustom kittymacs-localleader-key "m"
   "Key below the leader that opens the current major mode's localleader map."
-  :type 'key)
+  :type 'key
+  :group 'kittymacs)
 
 (defcustom kittymacs-keypad-key nil
   "Optional key below the leader that starts Meow's keypad translation loop.
 Nil leaves `meow-keypad' unbound; it stays available as a command."
-  :type '(choice (const :tag "Unbound" nil) key))
+  :type '(choice (const :tag "Unbound" nil) key)
+  :group 'kittymacs)
 
 #+end_src
 
@@ -194,5 +192,5 @@ lineage, other buffers see nothing, and the keypad is unbound unless
 =kittymacs-keypad-key= is set. Run it from the repository root:
 
 #+begin_src sh :tangle no
-EMACS_DOTS_TEST_PACKAGES=/path/to/var/elpa emacs -Q --batch -l tests/kittymacs-leader-tests.el -f ert-run-tests-batch-and-exit
+KITTYMACS_TEST_PACKAGES=/path/to/var/elpa emacs -Q --batch -l tests/kittymacs-leader-tests.el -f ert-run-tests-batch-and-exit
 #+end_src

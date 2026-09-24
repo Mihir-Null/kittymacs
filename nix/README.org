@@ -10,7 +10,7 @@ program the chapters look for, and the icon font, so a fresh Mac needs one
 | Output | What it is |
 |---+---|
 | =darwinModules.default= | nix-darwin module: =programs.kittymacs.enable= installs Emacs, the tools and the font system-wide |
-| =homeManagerModules.default= | home-manager module: links a checkout to =~/.config/emacs=; can install the tools per user |
+| =homeManagerModules.default= | home-manager module: clones a checkout, links it to =~/.config/emacs=; can install the tools and run the daemon per user |
 | =packages.<system>.default= | the Emacs the modules install (=pkgs.emacs=, 31.1 at the time of writing) |
 | =packages.<system>.tools= | one environment with every tool, for =nix profile install= |
 | =devShells.<system>.default= | Emacs plus the tools, for running the batch checks |
@@ -41,8 +41,9 @@ Add the flake as an input and import the module:
 }
 #+end_src
 
-Then clone the configuration somewhere writable. Emacs looks in
-=~/.config/emacs= when =~/.emacs.d= does not exist:
+Then clone the configuration somewhere writable, or let [[*home-manager][the home-manager
+module]] clone it for you. Emacs looks in =~/.config/emacs= when =~/.emacs.d=
+does not exist:
 
 #+begin_src sh
 git clone https://github.com/Mihir-Null/kittymacs.git ~/.config/emacs
@@ -54,27 +55,70 @@ Options under =programs.kittymacs=:
   =pkgs.emacs-macport= is the Mitsuharu port. kittymacs needs 30.1 or later.
 - =daemon= :: start the Emacs server at login through launchd, so
   =emacsclient= opens files as frames of one running Emacs. Off by default;
-  the configuration starts a server itself whenever it has a display.
+  the configuration starts a server itself whenever it has a display. The
+  home-manager module has the same option; turn on one of them, not both.
 
 * home-manager
 
-With nix-darwin's home-manager module, the checkout can be linked into
-place declaratively. The link points outside the store on purpose.
+The home-manager module looks after the checkout itself: it clones it on the
+first switch, links it to =~/.config/emacs=, and keeps its hands off it after
+that. The link points outside the store on purpose. It works with
+nix-darwin's home-manager module, with a standalone home-manager on any
+Linux, and on nix-on-droid.
 
 #+begin_src nix
 home-manager.users.me = {
   imports = [ kittymacs.homeManagerModules.default ];
   programs.kittymacs = {
     enable = true;
-    source = "/Users/me/src/kittymacs";  # a writable clone
+    source = "/Users/me/src/kittymacs";  # where the writable clone lives
     installPackages = false;           # nix-darwin already installed them
   };
 };
 #+end_src
 
-Without nix-darwin, leave =installPackages= on and the same tools go into
-the user profile. =installFonts= follows =installPackages= and can be turned
-off on its own for a terminal Emacs, which has no use for the icon font.
+Options under =programs.kittymacs=:
+
+- =source= :: where the checkout lives. =~/.config/emacs= becomes a link to
+  it. Leave it null to clone and place the configuration by hand; then
+  nothing is linked or cloned, and =repository= and =revision= have no
+  effect. The other options still install Emacs, the tools and the font,
+  and run the daemon.
+- =repository= :: the Git URL to clone from. Default
+  =https://github.com/Mihir-Null/kittymacs.git=; point it at a fork to start
+  from your own copy.
+- =revision= :: the commit to check out. It defaults to the revision of the
+  kittymacs flake your host locked, so =flake.lock= decides what a new
+  machine starts from. The pin applies to the *first clone only*. Activation
+  clones when nothing is at =source=: it fetches just that commit into a
+  temporary directory beside =source=, checks that =HEAD= is that commit,
+  and moves the result into place, with =origin= set to =repository=. From
+  then on the checkout is yours to pull, commit in and switch branches in,
+  so when a later activation finds it at another commit it prints one line
+  saying so and changes nothing. Bumping the input in =flake.lock= therefore
+  never rewrites your configuration. If the clone fails (no network yet, as
+  on a NixOS machine's first boot, or a commit the repository does not
+  have), activation prints a warning and carries on with the rest of your
+  home configuration, and the next activation tries again; until then
+  =~/.config/emacs= points at nothing. A =source= that is a symbolic link to
+  nothing (an unmounted disk, say) stops activation instead of being cloned
+  over. The first clone is shallow and detached; =git fetch --unshallow
+  origin= followed by =git switch main= turns it into an ordinary checkout.
+  Set =revision= to null to never clone.
+- =daemon= :: run Emacs as a server for this user, through home-manager's
+  =services.emacs= with =package=: a systemd user service on Linux and a
+  launchd agent on macOS, plus an "Emacs Client" desktop entry on Linux.
+  Off by default. Where no systemd user session runs (nix-on-droid, WSL
+  without systemd) the service file is written but nothing starts it. On a
+  Mac use this option or the nix-darwin module's, not both.
+- =package= :: the Emacs to install and, with =daemon=, to run. Default
+  =pkgs.emacs=.
+- =installPackages= :: install Emacs and the tools into the user profile.
+  Turn it off when nix-darwin already installs them, as above; without
+  nix-darwin, leave it on and the same tools go into the user profile.
+- =installFonts= :: follows =installPackages= and can be turned off on its
+  own for a terminal Emacs, which has no use for the icon font.
+
 [[file:example/flake.nix][example/flake.nix]] is a complete host with both modules.
 
 * nix-on-droid
@@ -150,7 +194,17 @@ nix eval --no-write-lock-file --override-input kittymacs path:$PWD \
 nix eval --no-write-lock-file --override-input kittymacs path:$PWD \
   --json ./nix/example-nix-on-droid#nixOnDroidConfigurations.default.config.home-manager.config.home.packages \
   --apply 'ps: map (p: p.name) ps'
+nix eval --no-write-lock-file --override-input kittymacs "git+file://$PWD?shallow=1" \
+  --json ./nix/example-nix-on-droid#nixOnDroidConfigurations.default.config.home-manager.config \
+  --apply 'c: { inherit (c.programs.kittymacs) repository revision daemon;
+              clones = builtins.isString c.home.activation.cloneKittymacs.data; }'
 #+end_src
+
+The last one reads the clone options as a device would see them. It
+overrides the input with =git+file= rather than =path:= because a =path:=
+input has no revision, and without one the module has nothing to pin and
+defines no clone step; on a clean checkout, =revision= comes out as =git
+rev-parse HEAD=.
 
 CI runs all of them on Linux; building the nix-darwin example needs a Mac
 and building the nix-on-droid one needs an =aarch64-linux= machine, so both

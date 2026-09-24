@@ -2,10 +2,10 @@
 ;; Generated from literate/74-languages.org; edit the Org source, then tangle.
 
 ;;; Commentary:
-;; Lambda supplies useful grammar recipes, but moving repository heads can start
-;; emitting a parser ABI newer than an older supported Emacs release can load.
-;; Keep the recipes reproducible here and only remap a classic major mode after
-;; Emacs has successfully loaded the corresponding grammar.
+;; A grammar recipe that follows a repository's moving head can start emitting
+;; a parser ABI newer than an older supported Emacs release can load.  Keep the
+;; recipes reproducible here and only remap a classic major mode after Emacs
+;; has successfully loaded the corresponding grammar.
 
 ;;; Code:
 
@@ -84,9 +84,9 @@ entry has the same shape accepted by `treesit-language-source-alist':
   :group 'kittymacs-treesit)
 (defconst kittymacs-treesit-mode-remaps
   '((yaml-mode yaml-ts-mode yaml)
-    (bash-mode bash-ts-mode bash)
+    (sh-mode bash-ts-mode bash)
     (typescript-mode typescript-ts-mode typescript)
-    (json-mode json-ts-mode json)
+    (js-json-mode json-ts-mode json)
     (css-mode css-ts-mode css)
     (python-mode python-ts-mode python)
     (typst-mode typst-ts-mode typst)
@@ -100,7 +100,7 @@ entry has the same shape accepted by `treesit-language-source-alist':
            (treesit-language-available-p language)
          (error nil))))
 (defun kittymacs-treesit-apply-pinned-sources ()
-  "Replace Lambda's moving grammar recipes with pinned recipes."
+  "Put the pinned recipes into `treesit-language-source-alist'."
   (dolist (source kittymacs-treesit-language-source-alist)
     (setf (alist-get (car source) treesit-language-source-alist)
           (cdr source))))
@@ -129,11 +129,11 @@ ORIGINAL-FUNCTION unchanged."
          "git" nil t nil "-C" workdir "checkout" "--detach" "--quiet"
          "FETCH_HEAD"))
     (funcall original-function url revision workdir)))
-(defun kittymacs-treesit-refresh-mode-remaps (&rest _)
+(defun kittymacs-treesit-refresh-mode-remaps ()
   "Refresh managed mode remaps for the grammars available right now.
 
-Any unconditional remaps inherited from Lambda are removed first.  A remap is
-then added only when its target mode exists and its grammar loads successfully."
+Remaps for the managed modes are removed first.  A remap is then added
+only when its target mode exists and its grammar loads successfully."
   (interactive)
   (let ((managed-modes (mapcar #'car kittymacs-treesit-mode-remaps)))
     (setq major-mode-remap-alist
@@ -185,12 +185,5 @@ then added only when its target mode exists and its grammar loads successfully."
                          #'treesit--git-clone-repo)
   (advice-add #'treesit--git-clone-repo :around
               #'kittymacs-treesit--git-clone-revision))
-;; Lambda's bulk command calls the built-in installer directly.  Refresh after
-;; each successful installation so a restart is not required before the remap
-;; becomes active.
-(unless (advice-member-p #'kittymacs-treesit-refresh-mode-remaps
-                         #'treesit-install-language-grammar)
-  (advice-add #'treesit-install-language-grammar :after
-              #'kittymacs-treesit-refresh-mode-remaps))
 (provide 'kittymacs-treesit)
 ;;; kittymacs-treesit.el ends here

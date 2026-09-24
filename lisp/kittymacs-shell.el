@@ -9,20 +9,24 @@
 (require 'kittymacs-leader)
 
 (declare-function consult-history "consult" (&optional history))
+;; Eshell's, bound with `let' in `kittymacs-eshell-project'.
+(defvar eshell-buffer-name)
 
-(setenv "PAGER" "cat")
-(setopt kill-buffer-query-functions
-        (delq #'process-kill-buffer-query-function kill-buffer-query-functions))
+(setopt comint-pager "cat")
+(remove-hook 'kill-buffer-query-functions #'process-kill-buffer-query-function)
 (use-package exec-path-from-shell
   :ensure t
   :if (not (memq system-type '(windows-nt android)))
   :custom
+  (exec-path-from-shell-variables '("PATH" "MANPATH" "LANG" "NIX_PATH" "NIX_PROFILES"))
   (exec-path-from-shell-arguments (and (eq system-type 'darwin) '("-l")))
   :config
   (when (or window-system (daemonp))
     (exec-path-from-shell-initialize)))
-(defvar kittymacs-eshell-dir (expand-file-name "eshell/" kittymacs-etc-dir)
-  "Directory for Eshell history, aliases and the directory ring.")
+(defcustom kittymacs-eshell-dir (expand-file-name "eshell/" kittymacs-etc-dir)
+  "Directory for Eshell history, aliases and the directory ring."
+  :type 'directory
+  :group 'kittymacs)
 
 (setopt eshell-directory-name kittymacs-eshell-dir
         eshell-history-file-name (expand-file-name "history" kittymacs-eshell-dir)
@@ -31,16 +35,13 @@
         eshell-buffer-maximum-lines 20000
         eshell-scroll-to-bottom-on-input 'all
         eshell-scroll-to-bottom-on-output 'all
-        eshell-list-files-after-cd nil
         eshell-cmpl-ignore-case t
-        eshell-cmpl-cycle-completions t
         eshell-history-size 10000
         eshell-hist-ignoredups t
         eshell-glob-case-insensitive t
         eshell-error-if-no-glob t
         eshell-destroy-buffer-when-process-dies t
         eshell-banner-message ""
-        eshell-highlight-prompt t
         eshell-prompt-regexp "^λ ")
 
 (with-eval-after-load 'em-term

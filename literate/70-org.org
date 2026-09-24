@@ -35,8 +35,8 @@ the structure commands; =SPC m a= opens the agenda from anywhere.
 * Where notes live
 
 =kittymacs-org-directory= comes from [[file:30-platform.org][the platform chapter]] so a machine can
-override it in =private.el=. Everything captured lands in =inbox.org=;
-the agenda reads every file in the directory. Done tasks are archived
+override it in =private.el=. Everything captured lands in =inbox.org=,
+which =SPC o i= opens; the agenda reads every file in the directory. Done tasks are archived
 into a dated tree in one archive file.
 
 #+begin_src emacs-lisp
@@ -53,21 +53,26 @@ into a dated tree in one archive file.
         `(("t" "Inbox TODO" entry (file ,org-default-notes-file) "* TODO %?\n  %U\n")
           ("n" "Inbox note" entry (file ,org-default-notes-file) "* %?\n  %U\n")))
 
+(defun kittymacs-org-inbox ()
+  "Open the Org inbox file."
+  (interactive)
+  (find-file org-default-notes-file))
+
 #+end_src
 
 * How Org looks and behaves
 
 Markup is hidden and headings are indented, so a document reads like a
-document. Editing inside folded text is refused rather than silently
+document; indenting also hides every star of a heading but the last. Editing inside folded text is refused rather than silently
 mangling it. New headings go after the current subtree's content, =RET=
-follows links, and =C-a=/=C-e= respect heading stars. Source blocks use
-their language's colours and indentation. Files open unfolded: Org 9.7
+follows links, and =C-a=/=C-e= respect heading stars. Source blocks already
+use their language's colours and =TAB= by default; here they also keep their
+indentation exactly as written. Files open unfolded: Org 9.7
 spells that =nofold= and no longer accepts =nil=, and =setopt= checks the
 type at startup, so the symbol matters.
 
 #+begin_src emacs-lisp
 (setopt org-hide-emphasis-markers t
-        org-hide-leading-stars t
         org-startup-indented t
         org-adapt-indentation t
         org-pretty-entities t
@@ -90,11 +95,8 @@ type at startup, so the symbol matters.
         org-footnote-section nil
         org-footnote-auto-adjust t
         org-imenu-depth 8
-        org-src-fontify-natively t
-        org-src-tab-acts-natively t
         org-src-preserve-indentation t
-        org-src-window-setup 'other-window
-        org-confirm-babel-evaluate t)
+        org-src-window-setup 'other-window)
 
 (with-eval-after-load 'org
   (add-to-list 'org-modules 'org-habit t)
@@ -125,9 +127,7 @@ every agenda file to eight levels deep.
         org-enforce-todo-dependencies t
         org-enforce-todo-checkbox-dependencies t
         org-log-done 'time
-        org-log-into-drawer t
-        org-log-redeadline nil
-        org-log-reschedule nil)
+        org-log-into-drawer t)
 
 (setopt org-agenda-start-with-log-mode '(closed clock)
         org-agenda-tags-column 0
@@ -163,15 +163,6 @@ every agenda file to eight levels deep.
   (interactive)
   (org-agenda nil "d"))
 
-(defun kittymacs-org-archive-done ()
-  "Archive every DONE or CANCELED entry in this file."
-  (interactive)
-  (dolist (match '("/DONE" "/CANCELED"))
-    (org-map-entries (lambda ()
-                       (org-archive-subtree)
-                       (setq org-map-continue-from (outline-previous-heading)))
-                     match 'file)))
-
 (defun kittymacs--org-agenda-refresh ()
   "Refresh an open agenda after a capture."
   (when-let* ((buffer (get-buffer "*Org Agenda*")))
@@ -184,7 +175,9 @@ every agenda file to eight levels deep.
 
 Exports get smart quotes, tolerate broken links and omit the HTML
 postamble. Headings tagged =:ignore:= export their contents but not
-their title. Office documents open in their default application.
+their title. Office documents open in their default application. =SPC m w=
+wraps the region in a source, quote or example block, or inserts an empty
+one; it is Org's own =org-insert-structure-template=, also on =C-c C-,=.
 
 #+begin_src emacs-lisp
 (setopt org-export-with-smart-quotes t
@@ -203,26 +196,6 @@ their title. Office documents open in their default application.
   :config
   (require 'ox-extra)
   (ox-extras-activate '(ignore-headlines)))
-
-(defun kittymacs-org-block-wrap ()
-  "Wrap the region, or insert at point, an Org block of a chosen type."
-  (interactive)
-  (let* ((choices '(("s" . "src") ("e" . "example") ("q" . "quote") ("c" . "comment")
-                    ("E" . "src emacs-lisp") ("v" . "verse") ("C" . "center")))
-         (key (key-description
-               (vector (read-key (concat (propertize "Block type: " 'face 'minibuffer-prompt)
-                                         (mapconcat (lambda (choice)
-                                                      (concat (propertize (car choice) 'face 'font-lock-type-face)
-                                                              ": " (cdr choice)))
-                                                    choices ", "))))))
-         (type (cdr (assoc key choices))))
-    (when type
-      (if (region-active-p)
-          (let ((start (region-beginning)) (end (region-end)))
-            (goto-char end) (insert "#+end_" (car (split-string type)) "\n")
-            (goto-char start) (insert "#+begin_" type "\n"))
-        (insert "#+begin_" type "\n")
-        (save-excursion (insert "#+end_" (car (split-string type))))))))
 
 #+end_src
 
@@ -285,7 +258,7 @@ own =C-c= key, which =C-h m= lists.
   "." (cons "time stamp" #'org-time-stamp)
   "b" (cons "run source block" #'org-babel-execute-src-block)
   "'" (cons "edit source block" #'org-edit-special)
-  "w" (cons "wrap in block" #'kittymacs-org-block-wrap)
+  "w" (cons "wrap in block" #'org-insert-structure-template)
   "e" (cons "export" #'org-export-dispatch)
   "i" (cons "insert heading" #'org-insert-heading-respect-content)
   "?" (cons "menu" #'casual-org-tmenu))

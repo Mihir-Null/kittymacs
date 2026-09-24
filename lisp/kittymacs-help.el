@@ -8,13 +8,10 @@
 (require 'kittymacs-defaults)
 (require 'kittymacs-leader)
 
-(setopt use-file-dialog nil
-        use-dialog-box nil
-        confirm-nonexistent-file-or-buffer nil
+(setopt confirm-nonexistent-file-or-buffer nil
         help-window-select t
         help-at-pt-timer-delay 0.1
         help-at-pt-display-when-idle '(flymake-diagnostic))
-(menu-bar-mode -1)
 (use-package helpful
   :ensure t
   :bind (([remap display-local-help] . helpful-at-point)
@@ -49,30 +46,6 @@
                                      (dedicated . t)
                                      (inhibit-same-window . t)
                                      (window-parameters (no-other-window . t)))))
-(defvar-keymap kittymacs-help-map
-  :doc "Help, documentation and tutorials."
-  "h" (cons "home" #'dashboard-open)
-  "k" (cons "key" #'helpful-key)
-  "f" (cons "function" #'helpful-callable)
-  "v" (cons "variable" #'helpful-variable)
-  "o" (cons "symbol" #'helpful-symbol)
-  "c" (cons "command" #'helpful-command)
-  "." (cons "at point" #'helpful-at-point)
-  "m" (cons "mode" #'describe-mode)
-  "b" (cons "bindings here" #'embark-bindings)
-  "B" (cons "all bindings" #'describe-bindings)
-  "l" (cons "leader" #'kittymacs-describe-leader)
-  "F" (cons "face" #'describe-face)
-  "w" (cons "where is" #'where-is)
-  "e" (cons "messages" #'view-echo-area-messages)
-  "L" (cons "lossage" #'view-lossage)
-  "i" (cons "info" #'info)
-  "s" (cons "search manuals" #'kittymacs-search-manuals)
-  "S" (cons "find source" #'find-function)
-  "V" (cons "find variable" #'find-variable)
-  "K" (cons "find key" #'find-function-on-key)
-  "t" (cons "meow tutor" #'meow-tutor)
-  "C" (cons "meow cheatsheet" #'meow-cheatsheet))
 (use-package keycast
   :ensure t
   :commands (keycast-header-line-mode keycast-log-mode keycast-tab-bar-mode)

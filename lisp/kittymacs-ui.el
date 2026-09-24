@@ -64,7 +64,7 @@ Use t for a terminal configured with a Nerd Font, or nil to disable icons."
     (when (kittymacs-icons-available-p)
       (nerd-icons-set-font kittymacs-nerd-font (selected-frame)))))
 
-(defun kittymacs-apply-font (&optional frame)
+(defun kittymacs--apply-font (&optional frame)
   "Apply the editing, symbol and icon fonts to FRAME."
   (with-selected-frame (or frame (selected-frame))
     (when (display-graphic-p)
@@ -76,9 +76,8 @@ Use t for a terminal configured with a Nerd Font, or nil to disable icons."
         (set-fontset-font t 'symbol symbols nil))
       (kittymacs--apply-icon-font))))
 
-(setq-default line-spacing 0.1)
-(setopt text-scale-mode-step 1.08
-        use-default-font-for-symbols t)
+(setopt line-spacing 0.1
+        text-scale-mode-step 1.08)
 
 (use-package nerd-icons
   :ensure t
@@ -87,8 +86,8 @@ Use t for a terminal configured with a Nerd Font, or nil to disable icons."
   (nerd-icons-font-family kittymacs-nerd-font))
 
 (add-hook 'after-setting-font-hook #'kittymacs--apply-icon-font)
-(add-hook 'after-make-frame-functions #'kittymacs-apply-font)
-(kittymacs-apply-font)
+(add-hook 'after-make-frame-functions #'kittymacs--apply-font)
+(kittymacs--apply-font)
 (setopt custom-safe-themes t)
 (add-to-list 'custom-theme-load-path
              (expand-file-name "themes/" (file-name-directory (or load-file-name buffer-file-name))))
@@ -125,6 +124,10 @@ Use t for a terminal configured with a Nerd Font, or nil to disable icons."
   (doom-modeline-buffer-state-icon t)
   :config
   (doom-modeline-mode 1))
+
+(use-package hide-mode-line
+  :ensure t
+  :commands hide-mode-line-mode)
 
 (defun kittymacs--tab-bar-faces (&rest _)
   "Give the tab bar a compact, mode-line-like look."
@@ -192,12 +195,13 @@ Use t for a terminal configured with a Nerd Font, or nil to disable icons."
   (add-to-list 'dimmer-buffer-exclusion-regexps "^ \\*Vertico\\*$")
   (dimmer-mode 1))
 
-(defun kittymacs-pulse-line (&rest _)
+(defun kittymacs--pulse-line (&rest _)
   "Briefly highlight the current line."
   (pulse-momentary-highlight-one-line (point)))
-(dolist (command '(scroll-up-command scroll-down-command recenter-top-bottom other-window))
-  (advice-add command :after #'kittymacs-pulse-line))
-(add-hook 'window-selection-change-functions #'kittymacs-pulse-line)
+(dolist (command '(scroll-up-command scroll-down-command recenter-top-bottom))
+  (advice-add command :after #'kittymacs--pulse-line))
+;; Every change of window, by `other-window', a mouse click or a leader key.
+(add-hook 'window-selection-change-functions #'kittymacs--pulse-line)
 
 (use-package hl-todo
   :ensure t
@@ -216,6 +220,9 @@ Use t for a terminal configured with a Nerd Font, or nil to disable icons."
 (use-package outline-minor-faces
   :ensure t
   :hook ((emacs-lisp-mode lisp-interaction-mode lisp-mode) . outline-minor-faces-mode))
+(use-package writeroom-mode
+  :ensure t
+  :commands writeroom-mode)
 (defun kittymacs--programming-presentation ()
   "Visual aids for programming buffers."
   (when kittymacs-line-numbers-in-programming

@@ -30,22 +30,24 @@
          ("C-{" . puni-barf-backward)
          ("C-}" . puni-barf-forward)))
 
+(defun kittymacs--embrace-markdown ()
+  "Markdown pairs for Embrace."
+  (dolist (pair '((?* "*" . "*") (?_ "_" . "_") (?` "`" . "`") (?$ "$" . "$")))
+    (embrace-add-pair (car pair) (cadr pair) (cddr pair))))
+
 (use-package embrace
   :ensure t
   :commands (embrace-commander embrace-add embrace-change embrace-delete)
   :hook (org-mode . embrace-org-mode-hook)
   :config
-  (defun kittymacs--embrace-markdown ()
-    "Markdown pairs for Embrace."
-    (dolist (pair '((?* "*" . "*") (?_ "_" . "_") (?` "`" . "`") (?$ "$" . "$")))
-      (embrace-add-pair (car pair) (cadr pair) (cddr pair))))
   (add-hook 'markdown-mode-hook #'kittymacs--embrace-markdown))
 
 (use-package iedit
   :ensure t
   :commands iedit-mode)
 (defun kittymacs--indent-guides ()
-  "Indent guides in graphical frames; the package cannot derive faces without a display."
+  "Show indent guides in graphical frames.
+The package cannot derive its faces without a display."
   (when (display-graphic-p)
     (highlight-indent-guides-mode 1)))
 
@@ -70,6 +72,8 @@
 (use-package flymake
   :ensure nil
   :hook (prog-mode . flymake-mode)
+  :commands (flymake-start flymake-goto-next-error flymake-goto-prev-error
+             flymake-show-buffer-diagnostics flymake-show-project-diagnostics)
   :custom
   (flymake-fringe-indicator-position 'left-fringe)
   (flymake-suppress-zero-counters t)
@@ -88,7 +92,9 @@
 
 (use-package flymake-collection
   :ensure t
-  :hook (after-init . flymake-collection-hook-setup))
+  :demand t
+  :config
+  (flymake-collection-hook-setup))
 (setopt compilation-always-kill t
         compilation-ask-about-save nil
         compilation-scroll-output 'first-error)
@@ -100,12 +106,11 @@
   :ensure t
   :hook ((emacs-lisp-mode ielm-mode lisp-interaction-mode) . elisp-def-mode))
 
-(defun kittymacs--lisp-buffer-setup ()
-  "Visual aids for Lisp buffers."
-  (setq show-trailing-whitespace t)
-  (prettify-symbols-mode 1))
+(defun kittymacs--show-trailing-whitespace ()
+  "Mark trailing whitespace in this buffer."
+  (setq show-trailing-whitespace t))
 (dolist (hook '(emacs-lisp-mode-hook ielm-mode-hook lisp-interaction-mode-hook))
-  (add-hook hook #'kittymacs--lisp-buffer-setup))
+  (add-hook hook #'kittymacs--show-trailing-whitespace))
 
 (dolist (pattern '("\\.zsh\\'" "zlogin\\'" "zlogout\\'" "zprofile\\'" "zshenv\\'" "zshrc\\'"))
   (add-to-list 'auto-mode-alist (cons pattern 'sh-mode)))

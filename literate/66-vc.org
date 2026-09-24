@@ -16,6 +16,14 @@ from there: stage with =s=, commit with =c c=, push with =P p=, and every
 prefix opens a menu that lists its options. Diffs are refined word by
 word, and commit messages get wrapped at eighty columns.
 
+When a merge leaves conflict markers in a file, =smerge-mode= offers to keep
+one side or the other; its commands live under =C-c v= here rather than the
+default =C-c ^= (=C-c v n= next conflict, =C-c v u= keep upper, =C-c v l= keep
+lower). All of them are in =smerge-basic-map=, which =smerge-mode-map= puts
+under =C-c ^=; binding the same map under =C-c v= as well makes the shorter
+prefix work without changing anything else. =C-c ^= keeps working, as the
+Emacs manual describes.
+
 #+begin_src emacs-lisp
 ;;; kittymacs-vc.el --- Magit and version control -*- lexical-binding: t; -*-
 ;; Generated from literate/66-vc.org; edit the Org source, then tangle.
@@ -45,7 +53,7 @@ word, and commit messages get wrapped at eighty columns.
         ediff-window-setup-function #'ediff-setup-windows-plain)
 
 (with-eval-after-load 'smerge-mode
-  (setopt smerge-command-prefix (kbd "C-c v")))
+  (keymap-set smerge-mode-map "C-c v" smerge-basic-map))
 
 #+end_src
 
@@ -148,11 +156,11 @@ needs was lost. Waiting for the library is still the rule: add to a package's
 hooks after the file that declares them has loaded.
 
 #+begin_src emacs-lisp
-(defun kittymacs-git-commit-setup ()
+(defun kittymacs--git-commit-setup ()
   "Prepare a commit message buffer for writing."
   (setq fill-column 80)
   (setq-local comment-auto-fill-only-comments nil)
-  (kittymacs-flyspell-text)
+  (kittymacs--flyspell-text)
   ;; Meow's states are minor modes, but only `meow--switch-state' also moves
   ;; the cursor and the mode line with them.
   (when (fboundp 'meow--switch-state)
@@ -161,7 +169,7 @@ hooks after the file that declares them has loaded.
 ;; Never touch `git-commit-setup-hook' -- or its alias `git-commit-mode-hook'
 ;; -- before git-commit.el has declared them.  See the prose above.
 (with-eval-after-load 'git-commit
-  (add-hook 'git-commit-setup-hook #'kittymacs-git-commit-setup))
+  (add-hook 'git-commit-setup-hook #'kittymacs--git-commit-setup))
 
 #+end_src
 

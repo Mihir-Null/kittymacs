@@ -4,12 +4,9 @@
 ;;; Code:
 
 (require 'kittymacs-leader)
-(require 'kittymacs-help)
-(require 'kittymacs-completion)
 (setopt which-key-idle-delay 0.45
         which-key-idle-secondary-delay 0.05
         which-key-show-early-on-C-h t
-        which-key-popup-type 'side-window
         which-key-side-window-location 'top
         which-key-side-window-max-height 0.5)
 (which-key-mode 1)
@@ -37,8 +34,8 @@
   "a" (cons "ibuffer" #'ibuffer)
   "x" (cons "scratch" #'scratch-buffer)
   "u" (cons "undo tree" #'vundo)
-  "[" (cons "previous" #'kittymacs-previous-user-buffer)
-  "]" (cons "next" #'kittymacs-next-user-buffer))
+  "[" (cons "previous" #'previous-buffer)
+  "]" (cons "next" #'next-buffer))
 
 (defvar-keymap kittymacs-file-map
   :doc "Files."
@@ -74,8 +71,16 @@
   "t" (cons "todo keywords" #'hl-todo-occur)
   "p" (cons "spelling" #'consult-flyspell)
   "l" (cons "last completion" #'vertico-repeat))
-(with-eval-after-load 'project
-  (keymap-set project-prefix-map "C" #'recompile))
+(defvar-keymap kittymacs-project-map
+  :doc "Project commands: Emacs's `project-prefix-map' plus a few more."
+  :parent project-prefix-map
+  "p" (cons "open in a workspace" #'tabspaces-open-or-create-project-and-workspace)
+  "b" (cons "project buffer" #'consult-project-buffer)
+  "m" (cons "bookmark" #'consult-bookmark)
+  "G" (cons "Magit status" #'magit-project-status)
+  "t" (cons "projects directory" #'kittymacs-projects-directory)
+  "R" (cons "remember projects under" #'project-remember-projects-under)
+  "C" (cons "recompile" #'recompile))
 
 (defvar-keymap kittymacs-jump-map
   :doc "Jump with on-screen hints."
@@ -99,7 +104,7 @@
   "p" (cons "push" #'magit-push)
   "P" (cons "pull" #'magit-pull)
   "z" (cons "stash" #'magit-stash)
-  "r" (cons "reflog" #'magit-reflog)
+  "r" (cons "reflog" #'magit-reflog-current)
   "i" (cons "init" #'magit-init)
   "C" (cons "clone" #'magit-clone)
   "q" (cons "quick commit (vc)" #'vc-next-action)
@@ -138,6 +143,17 @@
   "k" (cons "kill buffers and close" #'tabspaces-kill-buffers-close-workspace)
   "]" (cons "next tab" #'tab-next)
   "[" (cons "previous tab" #'tab-previous))
+(defvar-keymap kittymacs-cape-map
+  :doc "Complete with one particular source."
+  "p" (cons "everything (capf)" #'completion-at-point)
+  "d" (cons "words in buffers" #'cape-dabbrev)
+  "f" (cons "file name" #'cape-file)
+  "k" (cons "language keyword" #'cape-keyword)
+  "l" (cons "whole line" #'cape-line)
+  "a" (cons "abbrev" #'cape-abbrev)
+  "w" (cons "dictionary word" #'cape-dict)
+  "e" (cons "Emacs Lisp symbol" #'cape-elisp-symbol))
+
 (defvar-keymap kittymacs-code-map
   :doc "Change code."
   "c" (cons "comment" #'comment-dwim)
@@ -161,7 +177,7 @@
 
 (defvar-keymap kittymacs-lsp-map
   :doc "Language server and code intelligence."
-  "e" (cons "start or manage" #'kittymacs-eglot)
+  "e" (cons "start or manage" #'eglot)
   "q" (cons "shut down" #'eglot-shutdown)
   "=" (cons "reconnect" #'eglot-reconnect)
   "a" (cons "code actions" #'eglot-code-actions)
@@ -200,11 +216,6 @@
   "c" (cons "character" #'insert-char)
   "e" (cons "emoji" #'emoji-insert)
   "d" (cons "date" #'kittymacs-insert-date))
-(defun kittymacs-org-inbox ()
-  "Open the Org inbox file."
-  (interactive)
-  (find-file org-default-notes-file))
-
 (defvar-keymap kittymacs-notes-map
   :doc "Linked notes in the current graph."
   "f" (cons "find node" #'kittymacs-org-roam-find)
@@ -254,36 +265,6 @@
   "p" (cons "structural editing" #'puni-mode)
   "z" (cons "zone out" #'zone))
 
-(defun kittymacs-find-config-file ()
-  "Open one of the literate chapters."
-  (interactive)
-  (let ((default-directory (expand-file-name "literate/" user-emacs-directory)))
-    (call-interactively #'find-file)))
-
-(defun kittymacs-search-config ()
-  "Search the configuration sources with ripgrep."
-  (interactive)
-  (consult-ripgrep (expand-file-name "literate/" user-emacs-directory)))
-
-(defun kittymacs-open-private-file ()
-  "Open private.el, creating it from the example if needed."
-  (interactive)
-  (let ((private (expand-file-name "private.el" kittymacs-lisp-dir))
-        (example (expand-file-name "private.example.el" kittymacs-lisp-dir)))
-    (when (and (not (file-exists-p private)) (file-exists-p example))
-      (copy-file example private))
-    (find-file private)))
-
-(defun kittymacs-open-custom-file ()
-  "Open the file where Customize saves settings."
-  (interactive)
-  (find-file custom-file))
-
-(defun kittymacs-open-architecture ()
-  "Open ARCHITECTURE.md, the design record."
-  (interactive)
-  (find-file (expand-file-name "ARCHITECTURE.md" user-emacs-directory)))
-
 (defvar-keymap kittymacs-config-map
   :doc "This configuration."
   "c" (cons "reading guide" #'kittymacs-literate-open)
@@ -305,17 +286,40 @@
 
 (defvar-keymap kittymacs-user-map
   :doc "Your own keys. Add them here or in private.el.")
-
-(keymap-set kittymacs-help-map "?" (cons "cheat sheet" #'kittymacs-dashboard-open-cheatsheet))
+(defvar-keymap kittymacs-help-map
+  :doc "Help, documentation and tutorials."
+  "h" (cons "home" #'dashboard-open)
+  "?" (cons "cheat sheet" #'kittymacs-dashboard-open-cheatsheet)
+  "k" (cons "key" #'helpful-key)
+  "f" (cons "function" #'helpful-callable)
+  "v" (cons "variable" #'helpful-variable)
+  "o" (cons "symbol" #'helpful-symbol)
+  "c" (cons "command" #'helpful-command)
+  "." (cons "at point" #'helpful-at-point)
+  "m" (cons "mode" #'describe-mode)
+  "b" (cons "bindings here" #'embark-bindings)
+  "B" (cons "all bindings" #'describe-bindings)
+  "l" (cons "leader" #'kittymacs-describe-leader)
+  "F" (cons "face" #'describe-face)
+  "w" (cons "where is" #'where-is)
+  "e" (cons "messages" #'view-echo-area-messages)
+  "L" (cons "lossage" #'view-lossage)
+  "i" (cons "info" #'info)
+  "s" (cons "search manuals" #'kittymacs-search-manuals)
+  "S" (cons "find source" #'find-function)
+  "V" (cons "find variable" #'find-variable)
+  "K" (cons "find key" #'find-function-on-key)
+  "t" (cons "meow tutor" #'meow-tutor)
+  "C" (cons "meow cheatsheet" #'meow-cheatsheet))
 (keymap-set kittymacs-leader-map "SPC" (cons "M-x" #'execute-extended-command))
 (keymap-set kittymacs-leader-map "/" (cons "describe leader" #'kittymacs-describe-leader))
-(keymap-set kittymacs-leader-map "?" (cons "search commands" #'consult-apropos))
+(keymap-set kittymacs-leader-map "?" (cons "search commands" #'apropos-command))
 (keymap-set kittymacs-leader-map ";" (cons "comment line" #'comment-line))
 (keymap-set kittymacs-leader-map "d" (cons "directory" #'dired-jump))
 (keymap-set kittymacs-leader-map "x" (cons "scratch" #'scratch-buffer))
 (keymap-set kittymacs-leader-map "k" (cons "kill ring" #'consult-yank-from-kill-ring))
-(keymap-set kittymacs-leader-map "[" (cons "previous buffer" #'kittymacs-previous-user-buffer))
-(keymap-set kittymacs-leader-map "]" (cons "next buffer" #'kittymacs-next-user-buffer))
+(keymap-set kittymacs-leader-map "[" (cons "previous buffer" #'previous-buffer))
+(keymap-set kittymacs-leader-map "]" (cons "next buffer" #'next-buffer))
 (keymap-set kittymacs-leader-map "{" (cons "previous tab" #'tab-bar-switch-to-prev-tab))
 (keymap-set kittymacs-leader-map "}" (cons "next tab" #'tab-bar-switch-to-next-tab))
 (keymap-set kittymacs-leader-map "TAB" (cons "switch tab" #'kittymacs-tab-dwim))
@@ -324,7 +328,7 @@
 (keymap-set kittymacs-leader-map "f" (cons "files" kittymacs-file-map))
 (keymap-set kittymacs-leader-map "s" (cons "search" kittymacs-search-map))
 (keymap-set kittymacs-leader-map "j" (cons "jump" kittymacs-jump-map))
-(keymap-set kittymacs-leader-map "p" (cons "project" project-prefix-map))
+(keymap-set kittymacs-leader-map "p" (cons "project" kittymacs-project-map))
 (keymap-set kittymacs-leader-map "v" (cons "version control" kittymacs-vc-map))
 (keymap-set kittymacs-leader-map "w" (cons "windows" kittymacs-window-map))
 (keymap-set kittymacs-leader-map "W" (cons "workspaces" kittymacs-workspace-map))

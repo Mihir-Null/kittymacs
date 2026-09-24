@@ -41,4 +41,7 @@
 (require 'kittymacs-org-roam)
 (require 'kittymacs-frames)
 
+;; Settings saved by M-x customize come last, so they override the chapters.
+(load custom-file 'noerror 'nomessage)
+
 ;;; init.el ends here

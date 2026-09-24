@@ -19,6 +19,18 @@ cannot do is draw a full-screen program, so it hands those to [[file:34-terminal
 =htop=, =less= and =git log= open there and behave. Tramp opens files on remote
 machines over SSH as if they were local.
 
+Programs such as =git log= and =man= send long output through a /pager/ like
+=less=, which waits for keys and redraws the screen. In Eshell or =M-x shell=
+the output lands in an ordinary Emacs buffer that you can already scroll and
+search, so the pager only gets in the way. Emacs 30's =comint-pager= tells
+those shells, and only them, to set =PAGER=cat= for the programs they start;
+Eshell honours the same option. A real terminal from [[file:34-terminal.org][the terminal chapter]]
+keeps your usual pager, because there =less= works as it does anywhere else.
+
+Killing a buffer whose process is still running normally asks first. For a
+shell that question is noise, since ending the process is why you are killing
+the buffer, so the function that asks is taken off =kill-buffer-query-functions=.
+
 #+begin_src emacs-lisp
 ;;; kittymacs-shell.el --- Eshell and Tramp -*- lexical-binding: t; -*-
 ;; Generated from literate/35-shells.org; edit the Org source, then tangle.
@@ -31,10 +43,11 @@ machines over SSH as if they were local.
 (require 'kittymacs-leader)
 
 (declare-function consult-history "consult" (&optional history))
+;; Eshell's, bound with `let' in `kittymacs-eshell-project'.
+(defvar eshell-buffer-name)
 
-(setenv "PAGER" "cat")
-(setopt kill-buffer-query-functions
-        (delq #'process-kill-buffer-query-function kill-buffer-query-functions))
+(setopt comint-pager "cat")
+(remove-hook 'kill-buffer-query-functions #'process-kill-buffer-query-function)
 
 #+end_src
 
@@ -42,24 +55,28 @@ machines over SSH as if they were local.
 
 A graphical Emacs started from a launcher does not run your shell's
 profile, so =PATH= can be wrong. =exec-path-from-shell= copies the
-variables from your shell. On Linux it asks a plain non-interactive shell,
-which reads =~/.zshenv= or =$BASH_ENV=. On macOS it asks a login shell,
+variables from your shell: =PATH= and =MANPATH=, the locale, and the two
+variables the =nix= commands read. On Linux it asks a plain non-interactive
+shell, which reads =~/.zshenv= or =$BASH_ENV=. On macOS it asks a login shell,
 because that is where the system's =path_helper= and Homebrew's =shellenv=
 line in =~/.zprofile= run; the startup chapter already put Homebrew on
-=exec-path= so this import only refines it. Windows inherits its environment
-correctly, and [[file:30-platform.org][the platform chapter]] turns this off there.
+=exec-path= so this import only refines it.
 
-Android is excluded for the opposite reason to Windows: the import would
-succeed, and that is the problem. =/system/bin/sh= evaluates the POSIX syntax
-quite happily and reports a =PATH= that has never heard of Termux, replacing
-the entries the platform chapter just added. The package is not even installed
-there, so a broken graphical session cannot be caused by it.
+Two platforms keep the environment Emacs inherited, and the =:if= line means
+the package is not even installed there. On Windows the importer would ask
+PowerShell to evaluate POSIX shell syntax, which it cannot, and Windows
+programs inherit a correct environment anyway. Android is excluded for the
+opposite reason: the import would succeed, and that is the problem.
+=/system/bin/sh= evaluates the POSIX syntax quite happily and reports a =PATH=
+that has never heard of Termux, replacing the entries [[file:30-platform.org][the platform chapter]]
+has just added.
 
 #+begin_src emacs-lisp
 (use-package exec-path-from-shell
   :ensure t
   :if (not (memq system-type '(windows-nt android)))
   :custom
+  (exec-path-from-shell-variables '("PATH" "MANPATH" "LANG" "NIX_PATH" "NIX_PROFILES"))
   (exec-path-from-shell-arguments (and (eq system-type 'darwin) '("-l")))
   :config
   (when (or window-system (daemonp))
@@ -69,7 +86,8 @@ there, so a broken graphical session cannot be caused by it.
 
 * Eshell
 
-History and the last-directory ring persist under =var/etc/eshell/=.
+History and the last-directory ring persist under =var/etc/eshell/=, or
+wherever =kittymacs-eshell-dir= points if =private.el= sets it.
 Completion ignores case and cycles. Programs that need a terminal run in one,
 because [[file:34-terminal.org][the terminal chapter]] turns on
 =ghostel-eshell-visual-command-mode=. The prompt shows the directory, the Git
@@ -77,8 +95,10 @@ branch when there is one, and a =λ= on its own line so long paths do not
 squeeze your command.
 
 #+begin_src emacs-lisp
-(defvar kittymacs-eshell-dir (expand-file-name "eshell/" kittymacs-etc-dir)
-  "Directory for Eshell history, aliases and the directory ring.")
+(defcustom kittymacs-eshell-dir (expand-file-name "eshell/" kittymacs-etc-dir)
+  "Directory for Eshell history, aliases and the directory ring."
+  :type 'directory
+  :group 'kittymacs)
 
 (setopt eshell-directory-name kittymacs-eshell-dir
         eshell-history-file-name (expand-file-name "history" kittymacs-eshell-dir)
@@ -87,16 +107,13 @@ squeeze your command.
         eshell-buffer-maximum-lines 20000
         eshell-scroll-to-bottom-on-input 'all
         eshell-scroll-to-bottom-on-output 'all
-        eshell-list-files-after-cd nil
         eshell-cmpl-ignore-case t
-        eshell-cmpl-cycle-completions t
         eshell-history-size 10000
         eshell-hist-ignoredups t
         eshell-glob-case-insensitive t
         eshell-error-if-no-glob t
         eshell-destroy-buffer-when-process-dies t
         eshell-banner-message ""
-        eshell-highlight-prompt t
         eshell-prompt-regexp "^λ ")
 
 (with-eval-after-load 'em-term

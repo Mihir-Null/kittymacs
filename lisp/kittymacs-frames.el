@@ -17,13 +17,12 @@ it in `private.el', before this module is loaded, to override."
   :custom
   (frames-only-mode-use-windows-for-completion t)
   :config
-  (setq frames-only-mode-configuration-variables
-        (seq-remove (lambda (setting)
-                      (memq (car setting)
-                            '(magit-commit-show-diff magit-bury-buffer-function)))
-                    frames-only-mode-configuration-variables))
-  (add-to-list 'frames-only-mode-configuration-variables
-               '(popper-display-control nil))
+  (setopt frames-only-mode-configuration-variables
+          (cons '(popper-display-control nil)
+                (seq-remove (lambda (setting)
+                              (memq (car setting)
+                                    '(magit-commit-show-diff magit-bury-buffer-function)))
+                            frames-only-mode-configuration-variables)))
   (frames-only-mode-remap-common-window-split-keybindings)
   ;; Re-evaluating this file must not overwrite the mode's saved defaults.
   (unless frames-only-mode
