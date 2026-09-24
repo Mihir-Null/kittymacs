@@ -94,7 +94,7 @@
 
 (use-package tabspaces
   :ensure t
-  :hook (emacs-startup . tabspaces-mode)
+  :demand t
   :custom
   (tabspaces-use-filtered-buffers-as-default t)
   (tabspaces-default-tab "Home")
@@ -123,7 +123,8 @@
         (plist-put consult-source-buffer :default t)
         (setq consult-buffer-sources (remove 'kittymacs-consult-source-workspace consult-buffer-sources))))
     (add-hook 'tabspaces-mode-hook #'kittymacs--consult-tabspaces)
-    (kittymacs--consult-tabspaces)))
+    (kittymacs--consult-tabspaces))
+  (tabspaces-mode 1))
 
 (provide 'kittymacs-navigation)
 ;;; kittymacs-navigation.el ends here

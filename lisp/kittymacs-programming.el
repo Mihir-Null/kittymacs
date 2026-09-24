@@ -88,7 +88,9 @@
 
 (use-package flymake-collection
   :ensure t
-  :hook (after-init . flymake-collection-hook-setup))
+  :demand t
+  :config
+  (flymake-collection-hook-setup))
 (setopt compilation-always-kill t
         compilation-ask-about-save nil
         compilation-scroll-output 'first-error)

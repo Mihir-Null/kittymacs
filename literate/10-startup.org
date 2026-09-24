@@ -22,7 +22,12 @@ order. Nothing else is special.
    later can undo it.
 3. Packages are declared where they are used, with =use-package … :ensure t=.
    A fresh clone installs them on first start; an existing =var/elpa= is used
-   as is. GNU ELPA's index is signed, and Emacs verifies it with =gpg=;
+   as is. Global modes are switched on one way throughout: a built-in mode
+   with =(mode 1)= right after its settings, a package's mode in the
+   =:config= of its =use-package=, which runs once the package has loaded.
+   =:bind= and =:hook= would otherwise postpone loading until a key or hook
+   is used, so a package whose mode must be on from the start also says
+   =:demand t=. GNU ELPA's index is signed, and Emacs verifies it with =gpg=;
    install [[https://gpg4win.org/][Gpg4win]] on Windows so that check can run; the startup file puts it
    first on =exec-path=, because the =gpg= that Git for Windows ships comes
    first otherwise and cannot use a Windows keyring directory. On macOS an

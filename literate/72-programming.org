@@ -144,7 +144,9 @@ common tools. Problems show in the left fringe and in the mode line;
 
 (use-package flymake-collection
   :ensure t
-  :hook (after-init . flymake-collection-hook-setup))
+  :demand t
+  :config
+  (flymake-collection-hook-setup))
 
 #+end_src
 

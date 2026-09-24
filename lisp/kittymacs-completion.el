@@ -8,15 +8,15 @@
 (require 'kittymacs-defaults)
 (use-package vertico
   :ensure t
+  :demand t
   :bind (:map vertico-map
          ("<escape>" . minibuffer-keyboard-quit)
          ("M-RET" . vertico-exit))
   :custom
   (vertico-cycle t)
   (vertico-resize nil)
-  :init
-  (vertico-mode 1)
   :config
+  (vertico-mode 1)
   (defun kittymacs-vertico-directories-first (files)
     "Sort FILES by history, length and name, then put directories first."
     (let ((sorted (vertico-sort-history-length-alpha files)))
@@ -69,11 +69,12 @@
   (completion-category-overrides '((file (styles partial-completion)))))
 (use-package marginalia
   :ensure t
+  :demand t
   :bind (:map minibuffer-local-map
          ("C-M-a" . marginalia-cycle))
   :custom
   (marginalia-align 'center)
-  :init
+  :config
   (marginalia-mode 1))
 (use-package consult
   :ensure t
@@ -173,6 +174,7 @@
   :hook (embark-collect-mode . consult-preview-at-point-mode))
 (use-package corfu
   :ensure t
+  :demand t
   :bind (:map corfu-map
          ("C-j" . corfu-next)
          ("C-k" . corfu-previous)
@@ -195,9 +197,8 @@
   (corfu-preview-current t)
   (corfu-preselect 'first)
   (corfu-popupinfo-delay 1)
-  :init
-  (global-corfu-mode 1)
   :config
+  (global-corfu-mode 1)
   (corfu-history-mode 1)
   (corfu-popupinfo-mode 1)
   (defun kittymacs--corfu-in-minibuffer ()

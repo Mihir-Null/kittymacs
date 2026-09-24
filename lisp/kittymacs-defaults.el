@@ -130,6 +130,7 @@
 
 (use-package popper
   :ensure t
+  :demand t
   :bind (("M-`" . popper-toggle)
          ("C-`" . popper-cycle)
          ("C-M-`" . popper-toggle-type))
@@ -142,7 +143,7 @@
      "\\*Async Shell Command\\*"
      help-mode
      compilation-mode))
-  :init
+  :config
   (popper-mode 1)
   (popper-echo-mode 1))
 (defvar kittymacs-scratch-file (expand-file-name "scratch" kittymacs-cache-dir)
