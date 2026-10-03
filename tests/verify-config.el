@@ -123,13 +123,24 @@ Group maps are walked too.  Autoloaded commands count as commands."
       ;; Every key in the leader tree must run a command, not a void function.
       (dolist (binding (kittymacs-verify-uncallable-bindings kittymacs-leader-map []))
         (kittymacs-verify-check nil (format "SPC %s is not a command" binding)))
-      ;; A cached package directory hides a wrong build, so check the spec
-      ;; package-vc builds consult-ghostel from, not only its command.
-      (require 'package-vc)
-      (kittymacs-verify-check (equal (plist-get (alist-get 'consult-ghostel package-vc-selected-packages)
-                                                :lisp-dir)
-                                     "extensions/consult-ghostel")
-                       "package-vc would build consult-ghostel from the wrong folder")
+      ;; The terminal comes from MELPA.  package.el keeps a Git checkout left
+      ;; by an older :vc install as installed, so name one if it is there.
+      (when kittymacs-terminal-ghostel
+        (dolist (name '(ghostel consult-ghostel))
+          (let ((desc (cadr (assq name package-alist))))
+            (kittymacs-verify-check
+             (and desc (not (package-vc-p desc)))
+             (if desc
+                 (format "%s is a Git checkout, not MELPA's package; M-x package-delete it" name)
+               (format "%s is not installed" name)))))
+        ;; Loading the terminal and Consult turns on consult-ghostel-mode.
+        (condition-case err
+            (progn
+              (require 'consult)
+              (require 'ghostel)
+              (kittymacs-verify-check (bound-and-true-p consult-ghostel-mode)
+                               "Loading ghostel and Consult did not turn on consult-ghostel-mode"))
+          (error (kittymacs-verify-check nil (format "Loading ghostel failed: %S" err)))))
       (kittymacs-verify-check (equal kittymacs-org-roam-directory
                               (expand-file-name "test-roam/" user-emacs-directory))
                        "Personal graph private override was overwritten")

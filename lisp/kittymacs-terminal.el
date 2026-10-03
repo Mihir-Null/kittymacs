@@ -52,48 +52,48 @@ is what the terminal needs."
 (defcustom kittymacs-terminal-ghostel
   (not (eq system-type 'android))
   "Whether ghostel provides the terminal.
-Off on Android, which has neither `git' for ghostel's `:vc' checkout nor a
-prebuilt native module.  `kittymacs-terminal-open' falls back to Eshell
+Off on Android, whose port is commonly built without the dynamic module
+support ghostel needs.  `kittymacs-terminal-open' falls back to Eshell
 whenever this is nil."
   :type 'boolean)
-(use-package ghostel
-  :vc (:url "https://github.com/dakra/ghostel" :lisp-dir "lisp" :rev :newest)
-  :if kittymacs-terminal-ghostel
-  :defer t
-  :commands (ghostel ghostel-project ghostel-other ghostel-list-buffers
-             ghostel-create ghostel-exec ghostel-compile ghostel-recompile)
-  :custom
-  (ghostel-module-directory kittymacs-terminal-module-directory)
-  (ghostel-kill-buffer-on-exit t)
-  (ghostel-query-before-killing 'auto)
-  (ghostel-max-scrollback (* 5 1024 1024))
-  (ghostel-scroll-on-input t)
-  (ghostel-enable-osc52 nil)
-  (ghostel-detect-password-prompts t)
-  :config
-  ;; Ghostel runs $SHELL, which native Windows does not set; follow the shell
-  ;; the platform chapter picked instead of ghostel's /bin/sh fallback.
-  (when (and (eq system-type 'windows-nt) (not (getenv "SHELL")))
-    (setopt ghostel-shell (or explicit-shell-file-name shell-file-name)))
+(when kittymacs-terminal-ghostel
+  (use-package ghostel
+    :ensure t
+    :defer t
+    :commands (ghostel ghostel-project ghostel-other ghostel-list-buffers
+               ghostel-create ghostel-exec ghostel-compile ghostel-recompile)
+    :custom
+    (ghostel-module-directory kittymacs-terminal-module-directory)
+    (ghostel-kill-buffer-on-exit t)
+    (ghostel-query-before-killing 'auto)
+    (ghostel-max-scrollback (* 5 1024 1024))
+    (ghostel-scroll-on-input t)
+    (ghostel-enable-osc52 nil)
+    (ghostel-detect-password-prompts t)
+    :config
+    ;; Ghostel runs $SHELL, which native Windows does not set; follow the shell
+    ;; the platform chapter picked instead of ghostel's /bin/sh fallback.
+    (when (and (eq system-type 'windows-nt) (not (getenv "SHELL")))
+      (setopt ghostel-shell (or explicit-shell-file-name shell-file-name)))
 
-  ;; A shell inside the terminal can call these Emacs commands by name:
-  ;;   ghostel_cmd find-file README.md
-  ;;   ghostel_cmd magit-status
-  ;; Only the listed commands can be reached, and every argument is a string.
-  (dolist (command '(("magit-status" magit-status)
-                     ("find-file-other-frame" find-file-other-frame)
-                     ("treemacs-find-file" treemacs-find-file)))
-    (add-to-list 'ghostel-eval-cmds command))
+    ;; A shell inside the terminal can call these Emacs commands by name:
+    ;;   ghostel_cmd find-file README.md
+    ;;   ghostel_cmd magit-status
+    ;; Only the listed commands can be reached, and every argument is a string.
+    (dolist (command '(("magit-status" magit-status)
+                       ("find-file-other-frame" find-file-other-frame)
+                       ("treemacs-find-file" treemacs-find-file)))
+      (add-to-list 'ghostel-eval-cmds command))
 
-  ;; Integrations that ship with ghostel and only make sense once it is here:
-  ;; ghostel: links in Org, bookmarks that reopen a terminal where it was,
-  ;; terminals that survive a desktop session, and Lisp input methods
-  ;; (Hangul, Quail) composing into the terminal rather than the buffer.
-  (require 'ghostel-org nil t)
-  (require 'ghostel-bookmark nil t)
-  (require 'ghostel-desktop nil t)
-  (when (require 'ghostel-ime nil t)
-    (add-hook 'ghostel-mode-hook #'ghostel-ime-mode)))
+    ;; Integrations that ship with ghostel and only make sense once it is here:
+    ;; ghostel: links in Org, bookmarks that reopen a terminal where it was,
+    ;; terminals that survive a desktop session, and Lisp input methods
+    ;; (Hangul, Quail) composing into the terminal rather than the buffer.
+    (require 'ghostel-org nil t)
+    (require 'ghostel-bookmark nil t)
+    (require 'ghostel-desktop nil t)
+    (when (require 'ghostel-ime nil t)
+      (add-hook 'ghostel-mode-hook #'ghostel-ime-mode))))
 (defun kittymacs-terminal--freeze ()
   "Freeze the terminal when Meow leaves Insert state.
 The buffer becomes read-only, so Meow's grammar can select its output."
@@ -198,23 +198,16 @@ With prefix ARG, create another one instead of reusing the existing buffer."
       (ghostel arg))))
 (when kittymacs-terminal-ghostel
   (with-eval-after-load 'project
-    (add-to-list 'project-switch-commands '(ghostel-project "Terminal" ?t) t)))
+    (add-to-list 'project-switch-commands '(ghostel-project "Terminal" ?t) t))
 
-(defvar package-vc-selected-packages)
-(when kittymacs-terminal-ghostel
-  (with-eval-after-load 'package-vc
-    (add-to-list 'package-vc-selected-packages
-                 '(consult-ghostel :url "https://github.com/dakra/ghostel"
-                                   :lisp-dir "extensions/consult-ghostel"))))
-
-(use-package consult-ghostel
-  :vc (:url "https://github.com/dakra/ghostel"
-       :lisp-dir "extensions/consult-ghostel" :rev :newest)
-  :if kittymacs-terminal-ghostel
-  :after (ghostel consult)
-  :demand t
-  :bind (:map ghostel-semi-char-mode-map
-         ("C-c h" . consult-ghostel-history)))
+  (use-package consult-ghostel
+    :ensure t
+    :after (ghostel consult)
+    :demand t
+    :bind (:map ghostel-semi-char-mode-map
+           ("C-c h" . consult-ghostel-history))
+    :config
+    (consult-ghostel-mode 1)))
 (with-eval-after-load 'eshell
   (when (require 'ghostel-eshell nil t)
     (ghostel-eshell-visual-command-mode 1)))
