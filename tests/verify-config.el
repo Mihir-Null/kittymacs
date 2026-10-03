@@ -137,31 +137,34 @@ Group maps are walked too.  Autoloaded commands count as commands."
       (kittymacs-verify-check (= (hash-table-count org-roam-db--connection) 0) "Startup opened a graph database")
       (kittymacs-verify-check (string-match-p "\\${tags" org-roam-node-display-template)
                        "SPC n f does not show the notes' tags")
-      ;; SPC s Q lists a query's headings grouped by file, refreshes through
-      ;; Org QL, and a group header keeps Meow's keys and the leader.
+      ;; SPC s Q parses a plain query, lists its headings grouped by file,
+      ;; refreshes through Org QL, and a group header keeps Meow's keys and
+      ;; the leader.  An error here must not skip the checks after it.
       (with-temp-file (expand-file-name "tagged.org" org-directory)
         (insert "* TODO Choose the services :decision:\n* Unrelated heading\n"))
-      (save-window-excursion
-        (kittymacs-org-ql-search "tags:decision")
-        (with-current-buffer "*Org QL View: tags:decision*"
-          (kittymacs-verify-check (and org-super-agenda-mode (null org-super-agenda-header-map))
-                           "Super-agenda is off, or its headers shadow Meow's keys")
-          (kittymacs-verify-check (and (string-match-p "Choose the services" (buffer-string))
-                                (not (string-match-p "Unrelated" (buffer-string))))
-                           "SPC s Q did not list exactly the tagged heading")
-          (goto-char (point-min))
-          (kittymacs-verify-check (and (search-forward "tagged" nil t)
-                                (get-text-property (pos-bol) 'org-super-agenda-header)
-                                (keymapp (key-binding (kbd "SPC"))))
-                           "SPC on a group header is not the leader")
-          ;; `org-agenda-redo' would leave an Org QL list as it was.
-          (with-current-buffer (find-file-noselect (expand-file-name "tagged.org" org-directory))
-            (goto-char (point-max))
-            (insert "* Another decision :decision:\n")
-            (save-buffer))
-          (kittymacs-org-agenda-refresh)
-          (kittymacs-verify-check (string-match-p "Another decision" (buffer-string))
-                           "SPC m g did not run the Org QL query again")))
+      (condition-case err
+          (save-window-excursion
+            (kittymacs-org-ql-search "tags:decision")
+            (with-current-buffer "*Org QL View: tags:decision*"
+              (kittymacs-verify-check (and org-super-agenda-mode (null org-super-agenda-header-map))
+                               "Super-agenda is off, or its headers shadow Meow's keys")
+              (kittymacs-verify-check (and (string-match-p "Choose the services" (buffer-string))
+                                    (not (string-match-p "Unrelated" (buffer-string))))
+                               "SPC s Q did not list exactly the tagged heading")
+              (goto-char (point-min))
+              (kittymacs-verify-check (and (search-forward "tagged" nil t)
+                                    (get-text-property (pos-bol) 'org-super-agenda-header)
+                                    (keymapp (key-binding (kbd "SPC"))))
+                               "SPC on a group header is not the leader")
+              ;; `org-agenda-redo' would leave an Org QL list as it was.
+              (with-current-buffer (find-file-noselect (expand-file-name "tagged.org" org-directory))
+                (goto-char (point-max))
+                (insert "* Another decision :decision:\n")
+                (save-buffer))
+              (kittymacs-org-agenda-refresh)
+              (kittymacs-verify-check (string-match-p "Another decision" (buffer-string))
+                               "SPC m g did not run the Org QL query again")))
+        (error (kittymacs-verify-check nil (format "SPC s Q failed: %S" err))))
       (kittymacs-verify-check (equal custom-enabled-themes '(doom-sonokai)) "Theme changed")
       ;; Exercise the real loader in both directions: themes must not stack.
       (kittymacs-toggle-theme)

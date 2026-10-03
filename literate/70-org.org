@@ -296,6 +296,33 @@ the query, the files, the order or the grouping."
 
 #+end_src
 
+** Plain queries on Emacs 31
+
+- Org QL parses a plain query by evaluating a =with-peg-rules= form with
+  dynamic binding ([[https://github.com/alphapapa/org-ql/issues/498][Org QL issue 498]]).
+- Emacs 31's =peg= makes every rule an OClosure, which needs lexical
+  binding, so every plain query failed with
+  =(cl-assertion-failed lexical-binding)=.
+- The advice below turns such a form into =(eval '(with-peg-rules ...) t)=:
+  the same form, evaluated with lexical binding.
+  - Lexical code expands as before, so the advice does nothing once Org QL
+    fixes its call.
+  - It is not limited to Emacs 31: =peg= is also a GNU ELPA package, so the
+    new =peg= can reach Emacs 30.
+
+#+begin_src emacs-lisp
+(defun kittymacs--peg-rules-lexically (expand &rest args)
+  "Expand `with-peg-rules' ARGS with EXPAND, under lexical binding.
+Code that is already lexical expands as before."
+  (if lexical-binding
+      (apply expand args)
+    `(eval '(with-peg-rules ,@args) t)))
+
+(with-eval-after-load 'peg
+  (advice-add 'with-peg-rules :around #'kittymacs--peg-rules-lexically))
+
+#+end_src
+
 * Export and files
 
 Exports get smart quotes, tolerate broken links and omit the HTML

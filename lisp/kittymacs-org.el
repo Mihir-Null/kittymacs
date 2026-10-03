@@ -160,6 +160,15 @@ the query, the files, the order or the grouping."
   (if (bound-and-true-p org-ql-view-buffers-files)
       (org-ql-view-refresh)
     (org-agenda-redo)))
+(defun kittymacs--peg-rules-lexically (expand &rest args)
+  "Expand `with-peg-rules' ARGS with EXPAND, under lexical binding.
+Code that is already lexical expands as before."
+  (if lexical-binding
+      (apply expand args)
+    `(eval '(with-peg-rules ,@args) t)))
+
+(with-eval-after-load 'peg
+  (advice-add 'with-peg-rules :around #'kittymacs--peg-rules-lexically))
 (setopt org-export-with-smart-quotes t
         org-export-with-broken-links t
         org-html-postamble nil
