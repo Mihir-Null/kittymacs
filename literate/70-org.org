@@ -12,11 +12,12 @@ personal files and export workflows.
 
 * What this gives you
 
-One inbox file under a portable Org directory, two capture templates, and
-an agenda. Org is configured to look clean (hidden markup, indented
-headings, pretty entities) and to behave predictably (no editing inside
-folded text, tasks log when they are done). =SPC m= in an Org buffer lists
-the structure commands; =SPC m a= opens the agenda from anywhere.
+One inbox file under a portable Org directory, two capture templates, an
+agenda, and searches by tag and by query. Org is configured to look clean
+(hidden markup, indented headings, pretty entities) and to behave
+predictably (no editing inside folded text, tasks log when they are done).
+=SPC m= in an Org buffer lists the structure commands; =SPC m a= opens the
+agenda from anywhere.
 
 #+begin_src emacs-lisp
 ;;; kittymacs-org.el --- Notes, tasks and the agenda -*- lexical-binding: t; -*-
@@ -171,6 +172,130 @@ every agenda file to eight levels deep.
 
 #+end_src
 
+* Finding headings by tag and by query
+
+- Where tags come from:
+  - a heading's own tags end its line: =* Services :decision:=;
+  - =#+filetags:= at the top of a file tags every heading in it;
+  - a heading inherits the tags of its file and of the headings above it.
+- So a file tag matches every heading of its file. A tag for a kind of
+  heading, such as =decision= or =assignment=, is the precise one to search for.
+- Org has three ways in; this chapter adds the last two:
+
+| Keys      | Searches           | Gives                                            |
+|-----------+--------------------+--------------------------------------------------|
+| =C-c / m=   | this buffer        | the outline, folded to the matching headings     |
+| =SPC s h=   | this buffer        | a jump list in which each heading shows its tags |
+| =SPC o A m= | the agenda files   | an agenda list of the matching headings          |
+| =SPC s q=   | the Org files here | a jump list that follows an Org QL query         |
+| =SPC s Q=   | the Org files here | an agenda-style list, grouped by file            |
+
+- /The Org files here/: the project's Org files when the buffer belongs to a
+  project, otherwise every Org file under =org-directory=.
+
+** Org's match syntax
+
+- =C-c / m= and =SPC o A m= read it:
+  - =decision+nixos=: both tags;
+  - =machine|module=: either tag;
+  - =nixos-assignment=: the first tag without the second.
+- =C-c C-c= clears the highlighting a match leaves.
+
+** Org QL
+
+- [[https://github.com/alphapapa/org-ql][Org QL]] is a query language for Org files.
+- Its plain syntax is =predicate:argument= words that must all hold:
+  - =tags:decision=, or =tags-local:decision= for the heading's own tags only;
+  - =todo:NEXT=, =heading:services=, =level:1=;
+  - a word without a colon searches the text;
+  - =!= in front of a word negates it: =!tags:done=.
+- =SPC s q= runs the query at every keystroke and jumps to the heading you
+  choose.
+- =SPC s Q= asks for a query and lists the matches in an agenda buffer:
+  - =RET= visits a heading; =g= runs the search again;
+  - =v= opens a menu that changes the query, the files, the order or the
+    grouping;
+  - to group by tags instead of files: =v=, =g=, choose =tags=, then =r=.
+
+#+begin_src emacs-lisp
+(declare-function org-ql-find "org-ql-find")
+(declare-function org-ql-search "org-ql-search")
+(declare-function project-files "project")
+
+(use-package org-ql
+  :ensure t
+  :defer t)
+
+(defun kittymacs--org-files-here ()
+  "Return the Org files that a search started in this buffer covers.
+In a project, the project's Org files; anywhere else, every Org file
+under `org-directory'."
+  (or (if-let* ((project (project-current)))
+          (seq-filter (lambda (file) (string-suffix-p ".org" file))
+                      (project-files project))
+        (directory-files-recursively org-directory "\\.org\\'"))
+      (user-error "No Org files here")))
+
+(defvar kittymacs--org-ql-history nil
+  "Queries given to `kittymacs-org-ql-search'.")
+
+(defun kittymacs-org-ql-find ()
+  "Jump to a heading in the Org files here, found with an Org QL query.
+The files are the project's, or your notes' outside a project.  The
+results follow the query as you type it: tags:decision, todo:NEXT, words."
+  (interactive)
+  (org-ql-find (kittymacs--org-files-here) :prompt "Org QL: "))
+
+(defun kittymacs-org-ql-search (query)
+  "List the headings in the Org files here that match QUERY, grouped by file.
+In the list, RET visits a heading, g runs the search again, and v changes
+the query, the files, the order or the grouping."
+  (interactive (list (read-string "Org QL query: " nil 'kittymacs--org-ql-history)))
+  (org-ql-search (kittymacs--org-files-here) query
+    :super-groups '((:auto-category t))
+    :title query))
+
+#+end_src
+
+** Grouping
+
+- [[https://github.com/alphapapa/org-super-agenda][org-super-agenda]] groups the lists; Org QL depends on it.
+- Its mode is on, so an agenda command of your own groups its entries by
+  setting =org-super-agenda-groups= in its settings; the package's README
+  lists the groups. The dashboard above does not group.
+- Group headers have no keymap of their own:
+  - upstream gives each header a copy of the agenda's map as a text property;
+  - a keymap property outranks every minor mode's map, Meow's state maps
+    included, so on a header =j=, =k= and =SPC= ran agenda commands;
+  - with =org-super-agenda-header-map= nil a header has the same keys as the
+    lines around it.
+- An Org QL list is an agenda buffer: it starts in Motion state, and =SPC m=
+  is the agenda's menu.
+  - =SPC m g= there runs the search again through Org QL;
+    =org-agenda-redo= only rebuilds Org's own agenda views.
+
+#+begin_src emacs-lisp
+(declare-function org-ql-view-refresh "org-ql-view")
+(defvar org-ql-view-buffers-files)
+
+(use-package org-super-agenda
+  :ensure t
+  :after org-agenda
+  :custom
+  (org-super-agenda-show-message nil)
+  :config
+  (setq org-super-agenda-header-map nil)
+  (org-super-agenda-mode 1))
+
+(defun kittymacs-org-agenda-refresh ()
+  "Run this agenda buffer's search again, whether Org or Org QL made it."
+  (interactive)
+  (if (bound-and-true-p org-ql-view-buffers-files)
+      (org-ql-view-refresh)
+    (org-agenda-redo)))
+
+#+end_src
+
 * Export and files
 
 Exports get smart quotes, tolerate broken links and omit the HTML
@@ -268,7 +393,7 @@ own =C-c= key, which =C-h m= lists.
   "s" (cons "schedule" #'org-agenda-schedule)
   "d" (cons "deadline" #'org-agenda-deadline)
   "r" (cons "refile" #'org-agenda-refile)
-  "g" (cons "refresh" #'org-agenda-redo)
+  "g" (cons "refresh" #'kittymacs-org-agenda-refresh)
   "v" (cons "view" #'org-agenda-view-mode-dispatch)
   "f" (cons "filter by tag" #'org-agenda-filter-by-tag)
   "q" (cons "quit" #'org-agenda-quit)
@@ -283,3 +408,7 @@ own =C-c= key, which =C-h m= lists.
 - =SPC m c t= from anywhere captures a task into the inbox.
 - In =inbox.org=, =SPC m t= cycles its state; =SPC m s= schedules it.
 - =SPC m a= shows today, due-soon and next actions together.
+- =SPC s Q= and =todo:TODO= list your open tasks grouped by file; =v g=,
+  =tags=, =r= regroups them by their tags.
+- In a project with tagged headings, =SPC s q= and =tags-local:decision=
+  jump straight to one of its decisions.

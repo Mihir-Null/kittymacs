@@ -21,6 +21,8 @@
 ;; Startup must load even when native SQLite is unavailable.
 (cl-letf (((symbol-function 'sqlite-available-p) (lambda () nil)))
   (require 'kittymacs-org-roam nil t))
+(defconst kittymacs-roam-test-display-template org-roam-node-display-template
+  "The prompt format the chapter sets, with each note's tags after its title.")
 
 (defmacro kittymacs-roam-test (&rest body)
   (declare (indent 0))
@@ -40,7 +42,10 @@
           (org-id-extra-files nil)
           (org-roam-db--connection (make-hash-table :test #'equal))
           (org-roam-list-files-commands nil)
-          (org-agenda-files nil))
+          (org-agenda-files nil)
+          ;; Bare titles, so a stubbed prompt can answer with a note's title;
+          ;; `kittymacs-roam-tags-follow-titles-in-prompt' tests the real format.
+          (org-roam-node-display-template "${title}"))
      (make-directory personal t)
      (make-directory project t)
      (make-directory kittymacs-cache-dir t)
@@ -103,7 +108,8 @@
   (cl-letf (((symbol-function 'sqlite-available-p) (lambda () nil)))
     (dolist (command '(kittymacs-org-roam-find kittymacs-org-roam-insert
                       kittymacs-org-roam-capture kittymacs-org-roam-backlinks
-                      kittymacs-org-roam-sync))
+                      kittymacs-org-roam-sync kittymacs-org-roam-find-by-tag
+                      kittymacs-org-roam-tag-index))
       (should-error (funcall command) :type 'user-error))))
 
 (ert-deftest kittymacs-roam-real-databases-keep-graphs-apart ()
@@ -470,3 +476,94 @@
       (should (= 0 (hash-table-count org-roam-db--connection)))
       (should-not (file-exists-p personal)))))
 
+(defun kittymacs-roam-test-tagged-graph (root)
+  "Write three notes in ROOT: two tagged pages, and headings with tags of their own.
+Mack's headings inherit its file tags; one adds decision.  Loop has no file
+tags, and one heading carries decision and concept."
+  (kittymacs-roam-test-note
+   root "mack.org" "mack" "Mack"
+   (concat "#+filetags: :machine:nixos:\n"
+           "* Services :decision:\n:PROPERTIES:\n:ID: mack-services\n:END:\n"
+           "* Hardware\n:PROPERTIES:\n:ID: mack-hardware\n:END:"))
+  (kittymacs-roam-test-note root "flake.org" "flake" "Flake" "#+filetags: :nixos:")
+  (kittymacs-roam-test-note
+   root "loop.org" "loop" "Loop"
+   "* Why a loop :decision:concept:\n:PROPERTIES:\n:ID: loop-why\n:END:"))
+
+(ert-deftest kittymacs-roam-tags-follow-titles-in-prompt ()
+  "The chapter's format puts every tag in the prompt, so #tag narrows it."
+  (should (string-match-p "\\${tags" kittymacs-roam-test-display-template))
+  (kittymacs-roam-test
+    (kittymacs-roam-test-tagged-graph personal)
+    (kittymacs-org-roam-sync)
+    (let ((org-roam-node-display-template kittymacs-roam-test-display-template))
+      (cl-letf (((symbol-function 'completing-read)
+                 (lambda (_prompt table pred &rest _)
+                   (let* ((candidates (all-completions "" table pred))
+                          (decisions (seq-filter (lambda (candidate)
+                                                   (string-match-p "#decision" candidate))
+                                                 candidates))
+                          (services (seq-find (lambda (candidate)
+                                                (string-prefix-p "Services " candidate))
+                                              candidates)))
+                     (should (= (length decisions) 2))
+                     ;; Tags past the column are hidden, not removed.
+                     (dolist (tag '("#decision" "#machine" "#nixos"))
+                       (should (string-match-p tag services)))
+                     (seq-find (lambda (candidate) (string-prefix-p "Why a loop " candidate))
+                               decisions)))))
+        (kittymacs-org-roam-find)
+        (set-buffer (window-buffer))
+        (should (equal (org-entry-get nil "ID") "loop-why"))))))
+
+(ert-deftest kittymacs-roam-find-by-tag-lists-tags-then-their-notes ()
+  "SPC n t offers the graph's tags with their counts, then only those notes."
+  (kittymacs-roam-test
+    (kittymacs-roam-test-tagged-graph personal)
+    (kittymacs-org-roam-sync)
+    (let (prompts)
+      (cl-letf (((symbol-function 'completing-read)
+                 (lambda (prompt table pred &rest _)
+                   (push prompt prompts)
+                   (if (string-prefix-p "Tag" prompt)
+                       (let ((annotate (completion-metadata-get
+                                        (completion-metadata "" table pred)
+                                        'annotation-function)))
+                         (should (equal (all-completions "" table pred)
+                                        '("concept" "decision" "machine" "nixos")))
+                         (should (equal (funcall annotate "nixos") "  4 notes"))
+                         (should (equal (funcall annotate "concept") "  1 note"))
+                         "decision")
+                     (should (equal (sort (all-completions "" table pred) #'string<)
+                                    '("Services" "Why a loop")))
+                     "Why a loop"))))
+        (kittymacs-org-roam-find-by-tag))
+      (should (= (length prompts) 2))
+      (set-buffer (window-buffer))
+      (should (equal (org-entry-get nil "ID") "loop-why")))))
+
+(ert-deftest kittymacs-roam-tag-index-lists-pages-once-and-headings-by-own-tags ()
+  "SPC n T lists a page under its file tags and a heading under the tags it adds."
+  (kittymacs-roam-test
+    (kittymacs-roam-test-tagged-graph personal)
+    (kittymacs-org-roam-sync)
+    (let ((name (format "*org-roam tags: %s*" (abbreviate-file-name personal))))
+      (unwind-protect
+          (progn
+            (kittymacs-org-roam-tag-index)
+            (with-current-buffer name
+              (let ((text (buffer-substring-no-properties (point-min) (point-max))))
+                (dolist (expected
+                         '("* concept (1)\n- [[id:loop-why][Why a loop]] · loop.org\n"
+                           "* decision (2)\n- [[id:loop-why][Why a loop]] · loop.org\n- [[id:mack-services][Services]] · mack.org\n"
+                           "* machine (1)\n- [[id:mack][Mack]] · mack.org\n"
+                           "* nixos (2)\n- [[id:flake][Flake]] · flake.org\n- [[id:mack][Mack]] · mack.org\n"))
+                  (should (string-search expected text))))
+              (should (file-equal-p org-roam-directory personal))
+              ;; The buffer has the graph, so its links resolve there.
+              (goto-char (point-min))
+              (search-forward "[[id:mack-services]")
+              (org-open-at-point))
+            (set-buffer (window-buffer))
+            (should (equal (org-entry-get nil "ID") "mack-services")))
+        (when (get-buffer name) (kill-buffer name))))))

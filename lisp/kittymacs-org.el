@@ -106,6 +106,60 @@
   (when-let* ((buffer (get-buffer "*Org Agenda*")))
     (with-current-buffer buffer (org-agenda-redo))))
 (add-hook 'org-capture-after-finalize-hook #'kittymacs--org-agenda-refresh)
+(declare-function org-ql-find "org-ql-find")
+(declare-function org-ql-search "org-ql-search")
+(declare-function project-files "project")
+
+(use-package org-ql
+  :ensure t
+  :defer t)
+
+(defun kittymacs--org-files-here ()
+  "Return the Org files that a search started in this buffer covers.
+In a project, the project's Org files; anywhere else, every Org file
+under `org-directory'."
+  (or (if-let* ((project (project-current)))
+          (seq-filter (lambda (file) (string-suffix-p ".org" file))
+                      (project-files project))
+        (directory-files-recursively org-directory "\\.org\\'"))
+      (user-error "No Org files here")))
+
+(defvar kittymacs--org-ql-history nil
+  "Queries given to `kittymacs-org-ql-search'.")
+
+(defun kittymacs-org-ql-find ()
+  "Jump to a heading in the Org files here, found with an Org QL query.
+The files are the project's, or your notes' outside a project.  The
+results follow the query as you type it: tags:decision, todo:NEXT, words."
+  (interactive)
+  (org-ql-find (kittymacs--org-files-here) :prompt "Org QL: "))
+
+(defun kittymacs-org-ql-search (query)
+  "List the headings in the Org files here that match QUERY, grouped by file.
+In the list, RET visits a heading, g runs the search again, and v changes
+the query, the files, the order or the grouping."
+  (interactive (list (read-string "Org QL query: " nil 'kittymacs--org-ql-history)))
+  (org-ql-search (kittymacs--org-files-here) query
+    :super-groups '((:auto-category t))
+    :title query))
+(declare-function org-ql-view-refresh "org-ql-view")
+(defvar org-ql-view-buffers-files)
+
+(use-package org-super-agenda
+  :ensure t
+  :after org-agenda
+  :custom
+  (org-super-agenda-show-message nil)
+  :config
+  (setq org-super-agenda-header-map nil)
+  (org-super-agenda-mode 1))
+
+(defun kittymacs-org-agenda-refresh ()
+  "Run this agenda buffer's search again, whether Org or Org QL made it."
+  (interactive)
+  (if (bound-and-true-p org-ql-view-buffers-files)
+      (org-ql-view-refresh)
+    (org-agenda-redo)))
 (setopt org-export-with-smart-quotes t
         org-export-with-broken-links t
         org-html-postamble nil
@@ -170,7 +224,7 @@
   "s" (cons "schedule" #'org-agenda-schedule)
   "d" (cons "deadline" #'org-agenda-deadline)
   "r" (cons "refile" #'org-agenda-refile)
-  "g" (cons "refresh" #'org-agenda-redo)
+  "g" (cons "refresh" #'kittymacs-org-agenda-refresh)
   "v" (cons "view" #'org-agenda-view-mode-dispatch)
   "f" (cons "filter by tag" #'org-agenda-filter-by-tag)
   "q" (cons "quit" #'org-agenda-quit)

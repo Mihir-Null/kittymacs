@@ -520,17 +520,24 @@ The panel is a special buffer, so it starts in Motion state, and =SPC m= in
 it offers refresh, sync and find.
 
 #+begin_src emacs-lisp
-(defun kittymacs--org-roam-read (scope &optional require-match initial)
+(defun kittymacs--org-roam-read (scope &optional require-match initial filter)
   "Read a node of the graph SCOPE, starting from INITIAL input.
-REQUIRE-MATCH allows only existing nodes."
+REQUIRE-MATCH allows only existing nodes.  FILTER, a function of a node,
+offers only the nodes for which it returns non-nil."
   (kittymacs--org-roam-call
    scope (lambda ()
-           (org-roam-node-read initial nil nil require-match
+           (org-roam-node-read initial filter nil require-match
                                (format "Node (%s): " (car scope))))))
 
 (defun kittymacs--org-roam-project-p (scope)
   "Whether SCOPE is a graph other than the personal one."
   (not (file-equal-p (car scope) (default-value 'org-roam-directory))))
+
+(defun kittymacs--org-roam-open (scope node)
+  "Show NODE, an existing note of the graph SCOPE, in a buffer given that graph."
+  (with-current-buffer (find-file-noselect (org-roam-node-file node))
+    (kittymacs--org-roam-set-scope scope))
+  (org-roam-node-open node nil t))
 
 (defun kittymacs-org-roam-find ()
   "Find a note in this graph; a project graph offers only existing notes."
@@ -540,10 +547,7 @@ REQUIRE-MATCH allows only existing nodes."
          (node (kittymacs--org-roam-read scope (kittymacs--org-roam-project-p scope))))
     (with-current-buffer origin
       (if (org-roam-node-file node)
-          (progn
-            (with-current-buffer (find-file-noselect (org-roam-node-file node))
-              (kittymacs--org-roam-set-scope scope))
-            (org-roam-node-open node nil t))
+          (kittymacs--org-roam-open scope node)
         (kittymacs--org-roam-capture-node scope node '(:finalize find-file))))))
 
 (defun kittymacs-org-roam-insert ()
@@ -617,6 +621,136 @@ The active region's text is the prompt's input and the link's description."
   "s" (cons "sync graph" #'kittymacs-org-roam-sync)
   "f" (cons "find node" #'kittymacs-org-roam-find))
 
+#+end_src
+
+* Tags
+
+- The index keeps every note's tags beside its title:
+  - a file note's are its =#+filetags=;
+  - a heading note's are what =org-get-tags= returns on it: its own tags
+    plus those inherited from its file and the headings above it.
+
+** Tags in the prompt
+
+- Since Org-roam 2.2.1 =org-roam-node-display-template= is the bare title,
+  so a tag typed at =SPC n f= matched nothing. The template below shows the
+  tags again:
+  - =${title:*}= pads the title to fill the line;
+  - =${tags:24}= is a 24-column field, each tag with a =#= in front
+    (upstream's =org-roam-node-template-prefixes=);
+  - tags that do not fit are made invisible, not cut off, so they still match.
+- Orderless reads each word you type as a separate condition:
+  - =#decision=: the notes tagged =decision=;
+  - =#machine #nixos=: the notes carrying both;
+  - =#nixos !#machine=: the =nixos= notes without =machine= (a word that
+    starts with =!= must not match).
+- =SPC n i= filters the same way. The template changes only the prompt: the
+  link it inserts still says the note's title.
+
+#+begin_src emacs-lisp
+(setopt org-roam-node-display-template
+        (concat "${title:*} " (propertize "${tags:24}" 'face 'org-tag)))
+
+#+end_src
+
+** Find by tag, and the tag index
+
+- =SPC n t= asks for a tag, then offers only the notes carrying it.
+  - The tag list is every tag in the graph with its number of notes: the
+    quickest way to see what tags a graph has.
+- =SPC n T= writes an Org buffer with a heading per tag and, under it, a link
+  to every note carrying it.
+  - A file note is listed under its file tags.
+  - A heading note is listed only under the tags its file note lacks, so a
+    page tagged =machine= appears once under =machine=, not once per heading.
+  - The buffer is given the graph, so =RET= on a link opens the note.
+- Both read the index: after editing notes outside Emacs, =SPC n s= first.
+
+#+begin_src emacs-lisp
+(defun kittymacs--org-roam-tag-counts (scope)
+  "Return the tags of the graph SCOPE as (TAG . NOTES) pairs, sorted by tag."
+  (kittymacs--org-roam-call
+   scope (lambda ()
+           (mapcar (lambda (row) (cons (car row) (cadr row)))
+                   (org-roam-db-query [:select [tag (funcall count *)] :from tags
+                                       :group-by tag :order-by [(asc tag)]])))))
+
+(defun kittymacs--org-roam-read-tag (scope)
+  "Read a tag of the graph SCOPE; the list says how many notes carry each."
+  (let ((counts (or (kittymacs--org-roam-tag-counts scope)
+                    (user-error "No tags in %s; SPC n s indexes the graph" (car scope)))))
+    (completing-read
+     (format "Tag (%s): " (car scope))
+     (lambda (string predicate action)
+       (if (eq action 'metadata)
+           `(metadata
+             (annotation-function
+              . ,(lambda (tag)
+                   (let ((notes (alist-get tag counts nil nil #'equal)))
+                     (format "  %d note%s" notes (if (= notes 1) "" "s"))))))
+         (complete-with-action action counts string predicate)))
+     nil t)))
+
+(defun kittymacs-org-roam-find-by-tag ()
+  "Find a note of this graph by choosing one of the graph's tags first."
+  (interactive)
+  (let* ((scope (kittymacs--org-roam-scope))
+         (origin (current-buffer))
+         (tag (kittymacs--org-roam-read-tag scope))
+         (node (kittymacs--org-roam-read
+                scope t nil (lambda (node) (member tag (org-roam-node-tags node))))))
+    (with-current-buffer origin
+      (kittymacs--org-roam-open scope node))))
+
+(defun kittymacs--org-roam-tagged-notes (scope)
+  "Return the tags of the graph SCOPE with the notes listed under each.
+The value is a list of (TAG . NOTES), sorted by tag; a note is a list
+\(ID TITLE FILE LEVEL), file notes first.  A file note is listed under
+its file tags, a heading note only under tags its file note lacks."
+  (let ((rows (kittymacs--org-roam-call
+               scope (lambda ()
+                       (org-roam-db-query
+                        [:select [tags:tag nodes:id nodes:title nodes:file nodes:level]
+                         :from tags :inner-join nodes :on (= tags:node-id nodes:id)
+                         :order-by [(asc tags:tag) (asc nodes:file) (asc nodes:pos)]]))))
+        (file-tags (make-hash-table :test #'equal))
+        groups)
+    (pcase-dolist (`(,tag ,_ ,_ ,file ,level) rows)
+      (when (zerop level) (puthash (cons file tag) t file-tags)))
+    (pcase-dolist (`(,tag ,id ,title ,file ,level) rows)
+      (unless (and (> level 0) (gethash (cons file tag) file-tags))
+        (push (list id title file level) (alist-get tag groups nil nil #'equal))))
+    (sort (mapcar (lambda (group)
+                    ;; File notes first; `sort' is stable, so the rest keep
+                    ;; the order of their files and positions.
+                    (cons (car group)
+                          (sort (nreverse (cdr group))
+                                (lambda (a b) (and (zerop (nth 3 a)) (> (nth 3 b) 0))))))
+                  groups)
+          (lambda (a b) (string< (car a) (car b))))))
+
+(defun kittymacs-org-roam-tag-index ()
+  "List this graph's tags in an Org buffer, each with links to its notes."
+  (interactive)
+  (let* ((scope (kittymacs--org-roam-scope))
+         (groups (or (kittymacs--org-roam-tagged-notes scope)
+                     (user-error "No tags in %s; SPC n s indexes the graph" (car scope))))
+         (root (abbreviate-file-name (car scope)))
+         (buffer (get-buffer-create (format "*org-roam tags: %s*" root))))
+    (with-current-buffer buffer
+      (erase-buffer)
+      (org-mode)
+      (kittymacs--org-roam-set-scope scope)
+      (insert (format "#+title: Tags in %s\n\n" root))
+      (pcase-dolist (`(,tag . ,notes) groups)
+        (insert (format "* %s (%d)\n" tag (length notes)))
+        (pcase-dolist (`(,id ,title ,file ,_) notes)
+          (insert "- " (org-link-make-string (concat "id:" id) title)
+                  " · " (file-relative-name file (car scope)) "\n")))
+      (set-buffer-modified-p nil)
+      (goto-char (point-min)))
+    (pop-to-buffer buffer)))
+
 (provide 'kittymacs-org-roam)
 ;;; kittymacs-org-roam.el ends here
 #+end_src
@@ -631,3 +765,5 @@ The active region's text is the prompt's input and the link's description."
 - In a note, =SPC n b= opens the backlinks panel; =SPC m g= in the panel
   refreshes it.
 - =C-u SPC n s= rebuilds a graph's index from nothing.
+- Type =#= and a tag at =SPC n f=: only the notes with that tag stay.
+  =SPC n t= lists the tags themselves, and =SPC n T= every tag with its notes.
