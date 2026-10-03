@@ -5,31 +5,33 @@
 
 [[file:index.org][Reading guide]] · [[file:34-terminal.org][Terminal]] · [[file:30-platform.org][Platform]] · [[file:41-leader.org][Leader]]
 
-Ownership: *user configuration*, distilled from Lambda-Emacs by Colin McLear
-(=lem-setup-shell=, =lem-setup-eshell=). [[file:30-platform.org][The platform chapter]] chooses the system
-shell and [[file:34-terminal.org][the terminal chapter]] owns =SPC o e=; this chapter configures Eshell
-and remote files.
+Ownership: *user configuration*.
+
+- Distilled from Lambda-Emacs by Colin McLear (=lem-setup-shell=,
+  =lem-setup-eshell=).
+- [[file:30-platform.org][The platform chapter]] chooses the system shell and [[file:34-terminal.org][the terminal chapter]] owns
+  =SPC o e=; this chapter configures Eshell and remote files.
 
 * What this gives you
 
-*Eshell* is a shell written in Lisp: it runs ordinary programs, but =cd=, =ls= and
-friends are Lisp, so you can call Emacs commands from the prompt (=ff file.txt=
-opens a file) and complete with the same machinery as everywhere else. What it
-cannot do is draw a full-screen program, so it hands those to [[file:34-terminal.org][the terminal]] —
-=htop=, =less= and =git log= open there and behave. Tramp opens files on remote
-machines over SSH as if they were local.
-
-Programs such as =git log= and =man= send long output through a /pager/ like
-=less=, which waits for keys and redraws the screen. In Eshell or =M-x shell=
-the output lands in an ordinary Emacs buffer that you can already scroll and
-search, so the pager only gets in the way. Emacs 30's =comint-pager= tells
-those shells, and only them, to set =PAGER=cat= for the programs they start;
-Eshell honours the same option. A real terminal from [[file:34-terminal.org][the terminal chapter]]
-keeps your usual pager, because there =less= works as it does anywhere else.
-
-Killing a buffer whose process is still running normally asks first. For a
-shell that question is noise, since ending the process is why you are killing
-the buffer, so the function that asks is taken off =kill-buffer-query-functions=.
+- *Eshell* is a shell written in Lisp: it runs ordinary programs, but =cd=,
+  =ls= and friends are Lisp.
+  - So Emacs commands run from the prompt (=ff file.txt= opens a file), with
+    the same completion machinery as everywhere else.
+  - It cannot draw a full-screen program, so it hands those to [[file:34-terminal.org][the terminal]]:
+    =htop=, =less= and =git log= open there and behave.
+- Tramp opens files on remote machines over SSH as if they were local.
+- Programs such as =git log= and =man= send long output through a /pager/
+  like =less=, which waits for keys and redraws the screen.
+  - In Eshell or =M-x shell= the output lands in an ordinary Emacs buffer you
+    can already scroll and search, so the pager only gets in the way.
+  - Emacs 30's =comint-pager= tells those shells, and only them, to set
+    =PAGER=cat= for the programs they start; Eshell honours the same option.
+  - A real terminal from [[file:34-terminal.org][the terminal chapter]] keeps your usual pager: there
+    =less= works as it does anywhere else.
+- Killing a buffer whose process is still running normally asks first.
+  - For a shell that is noise: ending the process is why you kill it.
+  - So the function that asks is taken off =kill-buffer-query-functions=.
 
 #+begin_src emacs-lisp
 ;;; kittymacs-shell.el --- Eshell and Tramp -*- lexical-binding: t; -*-
@@ -53,23 +55,25 @@ the buffer, so the function that asks is taken off =kill-buffer-query-functions=
 
 * The environment on Linux and macOS
 
-A graphical Emacs started from a launcher does not run your shell's
-profile, so =PATH= can be wrong. =exec-path-from-shell= copies the
-variables from your shell: =PATH= and =MANPATH=, the locale, and the two
-variables the =nix= commands read. On Linux it asks a plain non-interactive
-shell, which reads =~/.zshenv= or =$BASH_ENV=. On macOS it asks a login shell,
-because that is where the system's =path_helper= and Homebrew's =shellenv=
-line in =~/.zprofile= run; the startup chapter already put Homebrew on
-=exec-path= so this import only refines it.
-
-Two platforms keep the environment Emacs inherited, and the =:if= line means
-the package is not even installed there. On Windows the importer would ask
-PowerShell to evaluate POSIX shell syntax, which it cannot, and Windows
-programs inherit a correct environment anyway. Android is excluded for the
-opposite reason: the import would succeed, and that is the problem.
-=/system/bin/sh= evaluates the POSIX syntax quite happily and reports a =PATH=
-that has never heard of Termux, replacing the entries [[file:30-platform.org][the platform chapter]]
-has just added.
+- A graphical Emacs started from a launcher does not run your shell's
+  profile, so =PATH= can be wrong.
+- =exec-path-from-shell= copies your shell's =PATH= and =MANPATH=, the
+  locale, and the two variables the =nix= commands read.
+  - On Linux it asks a plain non-interactive shell, which reads =~/.zshenv=
+    or =$BASH_ENV=.
+  - On macOS it asks a login shell: that is where the system's =path_helper=
+    and Homebrew's =shellenv= line in =~/.zprofile= run.
+    - The startup chapter already put Homebrew on =exec-path=, so this
+      import only refines it.
+- Two platforms keep the environment Emacs inherited; the =:if= line means
+  the package is not even installed there.
+  - Windows: the importer would ask PowerShell to evaluate POSIX shell syntax,
+    which it cannot, and Windows programs inherit a correct environment
+    anyway.
+  - Android, for the opposite reason: the import would succeed, and that is
+    the problem. =/system/bin/sh= evaluates the POSIX syntax happily and
+    reports a =PATH= that has never heard of Termux, replacing the entries
+    [[file:30-platform.org][the platform chapter]] has just added.
 
 #+begin_src emacs-lisp
 (use-package exec-path-from-shell
@@ -86,13 +90,13 @@ has just added.
 
 * Eshell
 
-History and the last-directory ring persist under =var/etc/eshell/=, or
-wherever =kittymacs-eshell-dir= points if =private.el= sets it.
-Completion ignores case and cycles. Programs that need a terminal run in one,
-because [[file:34-terminal.org][the terminal chapter]] turns on
-=ghostel-eshell-visual-command-mode=. The prompt shows the directory, the Git
-branch when there is one, and a =λ= on its own line so long paths do not
-squeeze your command.
+- History and the last-directory ring persist under =var/etc/eshell/=, or
+  wherever =kittymacs-eshell-dir= points if =private.el= sets it.
+- Completion ignores case and cycles.
+- Programs that need a terminal run in one: [[file:34-terminal.org][the terminal chapter]] turns on
+  =ghostel-eshell-visual-command-mode=.
+- The prompt shows the directory, the Git branch when there is one, and a =λ=
+  on its own line, so long paths do not squeeze your command.
 
 #+begin_src emacs-lisp
 (defcustom kittymacs-eshell-dir (expand-file-name "eshell/" kittymacs-etc-dir)
@@ -140,9 +144,10 @@ squeeze your command.
 
 #+end_src
 
-Aliases are Lisp-defined so they are versioned with this file. =ff= opens
-a file, =d= a directory in Dired, =gs= Magit status, =up= a parent
-directory. =z= jumps to any directory you have visited, with completion.
+- Aliases are Lisp-defined, so they are versioned with this file.
+  - =ff= opens a file, =d= a directory in Dired, =gs= Magit status, =up= a
+    parent directory.
+- =z= jumps to any directory you have visited, with completion.
 
 #+begin_src emacs-lisp
 (defvar kittymacs-eshell-aliases
@@ -226,8 +231,8 @@ With REGEXP, go to the most recent directory matching it."
 
 * Remote files: Tramp
 
-=C-x C-f /ssh:host:/path= edits a remote file. SSH is the default method
-and connection state goes under the cache.
+- =C-x C-f /ssh:host:/path= edits a remote file.
+- SSH is the default method; connection state goes under the cache.
 
 #+begin_src emacs-lisp
 (setopt tramp-persistency-file-name (expand-file-name "tramp" kittymacs-cache-dir)
@@ -239,10 +244,11 @@ and connection state goes under the cache.
 
 * Meow in shells
 
-Shells start in Insert state: the keys belong to the prompt, and =SPC= types
-a space. Press =ESC= to enter Normal state and use the selection grammar on
-the output; the leader is available there, and =SPC m= offers the shell's
-own menu. =C-c C-SPC= reaches the leader without leaving Insert.
+- Shells start in Insert state: the keys belong to the prompt, and =SPC=
+  types a space.
+- =ESC= enters Normal state, for the selection grammar on the output.
+  - The leader is available there; in Eshell, =SPC m= offers its own menu.
+- =C-c C-SPC= reaches the leader without leaving Insert.
 
 #+begin_src emacs-lisp
 (with-eval-after-load 'meow
@@ -267,4 +273,5 @@ own menu. =C-c C-SPC= reaches the leader without leaving Insert.
 - =SPC o s= opens an Eshell for this project; =SPC o e= opens a real terminal.
 - =M-x eshell=, type =ff init.el=: the file opens. =z= then pick a directory.
 - Type =htop= in Eshell: it opens in a terminal buffer and works.
-- =ESC= in Eshell, select some output with =x=, =y= copies it; =i= goes back to typing.
+- =ESC= in Eshell, select some output with =x=, =y= copies it; =i= goes back
+  to typing.

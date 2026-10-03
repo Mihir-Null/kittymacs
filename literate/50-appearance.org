@@ -5,18 +5,23 @@
 
 [[file:index.org][Reading guide]] · [[file:55-dashboard.org][Dashboard]] · [[file:45-frames.org][Frames]]
 
-Ownership: *user configuration*. The font and theme choices are the user's;
-the highlighting defaults are distilled from Lambda-Emacs by Colin McLear
-(=lem-setup-theme=, =-fonts=, =-faces=). This module loads before anything
-is drawn, so the first frame already has the right font and colours.
+Ownership: *user configuration*.
+
+- The font and theme choices are the user's; the highlighting defaults are
+  distilled from Lambda-Emacs by Colin McLear (=lem-setup-theme=, =-fonts=,
+  =-faces=).
+- This module loads before anything is drawn, so the first frame already has
+  the right font and colours.
 
 * What this gives you
 
-Google Sans Code with Nerd Font icons when it is installed, the platform
-font otherwise; the Sonokai theme, tracked in this repository, with a
-light theme one toggle away (=SPC t t=); a compact mode line; icons in
-completion, Corfu and Dired that switch off automatically when the icon
-font is missing so a fresh machine never shows boxes.
+- Google Sans Code with Nerd Font icons when it is installed, the platform
+  font otherwise.
+- The Sonokai theme, tracked in this repository, with a light theme one
+  toggle away (=SPC t t=).
+- A compact mode line.
+- Icons in completion, Corfu and Dired that switch off automatically when the
+  icon font is missing, so a fresh machine never shows boxes.
 
 #+begin_src emacs-lisp
 ;;; kittymacs-ui.el --- Fonts, theme, mode line and icons -*- lexical-binding: t; -*-
@@ -67,12 +72,14 @@ Use t for a terminal configured with a Nerd Font, or nil to disable icons."
 
 * Fonts
 
-The editing font is resolved by family, including the shorter name
-Windows registers for the same font. Icons come from a single patched
-font that =nerd-icons= maps onto its own code points; mapping only those
-ranges keeps ordinary Unicode in the editing font. Symbols fall back to a
-platform symbol font. Fonts are applied to every new frame, which matters
-when Emacs runs as a daemon.
+- The editing font is resolved by family, including the shorter name Windows
+  registers for the same font.
+- Icons come from a single patched font that =nerd-icons= maps onto its own
+  code points.
+  - Mapping only those ranges keeps ordinary Unicode in the editing font.
+- Symbols fall back to a platform symbol font.
+- Fonts are applied to every new frame, which matters when Emacs runs as a
+  daemon.
 
 #+begin_src emacs-lisp
 (defun kittymacs-resolve-font-family ()
@@ -127,10 +134,11 @@ when Emacs runs as a daemon.
 
 * Theme
 
-Sonokai is a tracked port in =themes/= so it does not depend on a package
-update. Loading a theme disables the previous one first, so themes never
-stack. Anything that must be recomputed when colours change hangs on
-Emacs's own =enable-theme-functions=.
+- Sonokai is a tracked port in =themes/=, so it does not depend on a package
+  update.
+- Loading a theme disables the previous one first, so themes never stack.
+- Anything that must be recomputed when colours change hangs on Emacs's own
+  =enable-theme-functions=.
 
 #+begin_src emacs-lisp
 (setopt custom-safe-themes t)
@@ -163,11 +171,11 @@ Emacs's own =enable-theme-functions=.
 
 * Mode line and tabs
 
-=doom-modeline= is compact and shows the Meow state. The built-in tab bar
-appears once a second workspace exists and borrows the mode line's faces.
-=SPC t H= hides the mode line of the current buffer with
-=hide-mode-line-mode=, which is handy for a screenshot or a presentation;
-pressing it again brings the mode line back.
+- =doom-modeline= is compact and shows the Meow state.
+- The built-in tab bar appears once a second workspace exists and borrows the
+  mode line's faces.
+- =SPC t H= hides the current buffer's mode line with =hide-mode-line-mode=,
+  handy for a screenshot or a presentation; pressing it again brings it back.
 
 #+begin_src emacs-lisp
 (use-package doom-modeline
@@ -201,7 +209,7 @@ pressing it again brings the mode line back.
 
 * Icons in completion, Corfu and Dired
 
-Each is enabled only when the icon font is usable.
+- Each is enabled only when the icon font is usable.
 
 #+begin_src emacs-lisp
 (use-package nerd-icons-completion
@@ -233,10 +241,11 @@ Each is enabled only when the icon font is usable.
 
 * Spacing and highlights
 
-A little padding around the frame. Inactive windows dim so the active one
-is obvious, the current line pulses when you change window or page, and
-=TODO=, =FIXME= and numbers stand out in code. Recent edits flash briefly
-so you see what a command changed.
+- A little padding around the frame.
+- Inactive windows dim, so the active one is obvious.
+- The current line pulses when you change window or page.
+- =TODO=, =FIXME= and numbers stand out in code.
+- Recent edits flash briefly, so you see what a command changed.
 
 #+begin_src emacs-lisp
 (use-package spacious-padding
@@ -301,10 +310,12 @@ so you see what a command changed.
 
 * Distraction-free writing
 
-=SPC t w= toggles =writeroom-mode=: the frame goes full screen, the text sits
-in a centred column eighty characters wide, and the mode line and everything
-else around the text disappear until you press it again. It suits long prose
-more than code.
+- =SPC t w= toggles =writeroom-mode=:
+  - the frame goes full screen;
+  - the text sits in a centred column eighty characters wide;
+  - the mode line and everything else around the text disappear until you
+    press it again.
+- It suits long prose more than code.
 
 #+begin_src emacs-lisp
 (use-package writeroom-mode
@@ -315,7 +326,7 @@ more than code.
 
 * Programming buffers
 
-Line numbers and a highlighted current line in code; neither in prose.
+- Line numbers and a highlighted current line in code; neither in prose.
 
 #+begin_src emacs-lisp
 (defun kittymacs--programming-presentation ()
@@ -334,6 +345,8 @@ Line numbers and a highlighted current line in code; neither in prose.
 
 - =SPC t t= flips to the light theme and back.
 - =SPC t w= in an Org file hides everything but the text; =SPC t w= again
-  brings it back. =SPC t H= hides only the mode line.
-- =C-x C-+= grows the text one point at a time; =C-x C-0= resets.
+  brings it back.
+- =SPC t H= hides only the mode line.
+- =C-x C-+= grows the text 8% a step, about one point at the default size;
+  =C-x C-0= resets.
 - Set =kittymacs-icons= to =nil= in =private.el= to run without icon fonts.

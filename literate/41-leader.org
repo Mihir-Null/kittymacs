@@ -5,27 +5,30 @@
 
 [[file:index.org][Reading guide]] · [[file:40-editing.org][Selection-first editing]] · [[file:../ARCHITECTURE.md][Architecture]]
 
-Ownership: *kittymacs core*. This is the smallest piece of the configuration and
-the most important one. It makes =SPC= an ordinary Emacs prefix keymap while
-Meow is in Normal or Motion state, and it gives every major mode its own menu
-under =SPC m=. Nothing here knows about other packages or this machine.
+Ownership: *kittymacs core*.
+
+- The smallest and most important piece of the configuration.
+- Makes =SPC= an ordinary Emacs prefix keymap in Meow's Normal and Motion
+  states, and gives every major mode its own menu under =SPC m=.
+- Knows nothing about other packages or this machine.
 
 * Why a real keymap instead of Meow's keypad
 
-Meow ships a "keypad": press =SPC=, and Meow starts a small loop that reads
-keys one at a time and *translates* them into another key sequence
-(=SPC x f= becomes =C-x f=). That is clever, but it means =SPC f f= is not a
-binding anywhere. Emacs's own tools cannot see it: =C-h k= cannot describe it,
-=C-h b= does not list it, which-key shows the translated keys, and M-x
-annotations show the =C-x= form you never type. Earlier versions of this
-configuration patched those tools one by one.
-
-An Emacs keymap is just a tree of keys. If =SPC= is bound to a keymap in the
-Normal-state map, then =SPC f f= is a real binding: every help command,
-which-key and Marginalia see exactly the keys you press. Meow's documented
-helper for adding keys to a state accepts a keymap as the value, so the whole
-leader is two lines. The keypad is still available as the command
-=meow-keypad=; it is simply not bound unless you ask for it below.
+- Meow's "keypad": =SPC= starts a small loop that reads keys one at a time and
+  *translates* them into another key sequence (=SPC x f= becomes =C-x f=).
+- Clever, but =SPC f f= is then not a binding anywhere, so Emacs's own tools
+  cannot see it:
+  - =C-h k= cannot describe it; =C-h b= does not list it;
+  - which-key shows the translated keys;
+  - M-x annotations show the =C-x= form you never type.
+- Earlier versions patched those tools one by one.
+- An Emacs keymap is a tree of keys: bind =SPC= to one in the Normal-state map
+  and =SPC f f= is a real binding; every help command, which-key and
+  Marginalia see exactly the keys you press.
+- Meow's documented helper for adding keys to a state accepts a keymap as the
+  value, so the whole leader is two lines.
+- The keypad stays available as the command =meow-keypad=, unbound unless you
+  ask for it below.
 
 #+begin_src emacs-lisp
 ;;; kittymacs-leader.el --- A literal leader and localleaders for Meow -*- lexical-binding: t; -*-
@@ -61,11 +64,12 @@ Nil leaves `meow-keypad' unbound; it stays available as a command."
 
 * The leader map
 
-=kittymacs-leader-map= is a plain keymap. Add a command with =keymap-set=. To
-add a labelled group, bind a key to a cons of a label and a keymap; which-key
-prints the label instead of the anonymous "+prefix". Both forms are standard
-Emacs, not a kittymacs invention, so anything that understands keymaps
-understands the leader.
+- =kittymacs-leader-map= is a plain keymap:
+  - =keymap-set= adds a command;
+  - a key bound to a cons of a label and a keymap adds a labelled group;
+    which-key prints the label instead of the anonymous "+prefix".
+- Both forms are standard Emacs, not a kittymacs invention: anything that
+  understands keymaps understands the leader.
 
 #+begin_src emacs-lisp :tangle no
 (keymap-set kittymacs-leader-map "f f" #'find-file)
@@ -82,18 +86,20 @@ Add a command with `keymap-set'.  Add a labelled group with
 
 * Localleaders: one menu per major mode
 
-Evil has per-mode Normal-state keymaps; Meow does not. The native way to get
-a buffer-specific prefix is =emulation-mode-map-alists=: a list whose entries
-are alists of (MINOR-MODE-VARIABLE . KEYMAP), consulted before minor-mode and
-major-mode maps. An entry may be a *symbol* whose value is read in the current
-buffer, so a buffer-local variable there gives each buffer its own map. The
-entry below keys its map on Meow's own state variables, so the localleader
-appears in Normal and Motion and vanishes in Insert.
-
-Maps are registered per major mode in =kittymacs-localleader-alist= and composed
-along the mode's parents, most specific first. A map for =prog-mode= is
-inherited by every programming mode; a map for =emacs-lisp-mode= overrides the
-keys it redefines and inherits the rest.
+- Evil has per-mode Normal-state keymaps; Meow does not.
+- The native way to get a buffer-specific prefix is
+  =emulation-mode-map-alists=:
+  - a list of alists of (MINOR-MODE-VARIABLE . KEYMAP), consulted before
+    minor-mode and major-mode maps;
+  - an entry may be a *symbol* whose value is read in the current buffer, so a
+    buffer-local variable gives each buffer its own map.
+- The entry below keys its map on Meow's own state variables: the localleader
+  appears in Normal and Motion and vanishes in Insert.
+- Maps are registered per major mode in =kittymacs-localleader-alist= and
+  composed along the mode's parents, most specific first:
+  - a map for =prog-mode= is inherited by every programming mode;
+  - a map for =emacs-lisp-mode= overrides the keys it redefines and inherits
+    the rest.
 
 #+begin_src emacs-lisp
 (defvar kittymacs-localleader-alist nil
@@ -139,9 +145,9 @@ Calling this again for MODE replaces its map."
 
 #+end_src
 
-Defining a localleader is one form per mode. The rest of this configuration
-adds these next to the package they belong to, so the Magit chapter defines
-Magit's menu and the Org chapter defines Org's.
+- Defining a localleader is one form per mode.
+- Other chapters put each next to its package: the Magit chapter defines
+  Magit's menu, the Org chapter Org's.
 
 #+begin_src emacs-lisp :tangle no
 (kittymacs-define-localleader 'emacs-lisp-mode
@@ -151,11 +157,11 @@ Magit's menu and the Org chapter defines Org's.
 
 * Turning it on, and seeing what you have
 
-=kittymacs-leader-enable= binds the leader in both states, registers the
-localleader entry once, and refreshes every buffer. It is safe to call again.
-=kittymacs-describe-leader= opens the standard help view for the leader plus this
-buffer's localleader; =C-h k SPC f f= and which-key work without any help from
-this file.
+- =kittymacs-leader-enable= binds the leader in both states, registers the
+  localleader entry once and refreshes every buffer; safe to call again.
+- =kittymacs-describe-leader= opens the standard help view for the leader plus
+  this buffer's localleader.
+- =C-h k SPC f f= and which-key need no help from this file.
 
 #+begin_src emacs-lisp
 (defun kittymacs-describe-leader ()
@@ -185,11 +191,14 @@ Safe to call more than once."
 
 * Checking it
 
-[[file:../tests/kittymacs-leader-tests.el][kittymacs-leader-tests.el]] loads only Meow and this module and checks the
-five promises above: =SPC= is a prefix in Normal and Motion, a space in Insert
-still inserts a space, localleaders override and inherit along the mode
-lineage, other buffers see nothing, and the keypad is unbound unless
-=kittymacs-keypad-key= is set. Run it from the repository root:
+- [[file:../tests/kittymacs-leader-tests.el][kittymacs-leader-tests.el]] loads only Meow and this module and checks the
+  five promises above:
+  - =SPC= is a prefix in Normal and Motion;
+  - a space in Insert still inserts a space;
+  - localleaders override and inherit along the mode lineage;
+  - other buffers see nothing;
+  - the keypad is unbound unless =kittymacs-keypad-key= is set.
+- Run it from the repository root:
 
 #+begin_src sh :tangle no
 KITTYMACS_TEST_PACKAGES=/path/to/var/elpa emacs -Q --batch -l tests/kittymacs-leader-tests.el -f ert-run-tests-batch-and-exit

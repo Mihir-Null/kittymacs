@@ -5,20 +5,24 @@
 
 [[file:index.org][Reading guide]] · [[file:10-startup.org][Startup]] · [[file:45-frames.org][Frames]]
 
-Ownership: *user configuration*, distilled from Lambda-Emacs by Colin McLear
-(the =lem-setup-settings=, =-buffers=, =-windows=, =-scratch=, =-server= and
-=-colors= modules). Everything here is built into Emacs except five small
-packages. Nothing here is specific to one machine or operating system.
+Ownership: *user configuration*.
+
+- Distilled from Lambda-Emacs by Colin McLear: the =lem-setup-settings=,
+  =-buffers=, =-windows=, =-scratch=, =-server= and =-colors= modules.
+- All built into Emacs except five small packages.
+- Nothing is specific to one machine or operating system.
 
 * What this gives you
 
-Emacs's out-of-the-box defaults date from another era: backups litter your
-directories, prompts want the whole word "yes", tabs are eight columns wide
-and the bell rings. This chapter sets the defaults most people set, keeps all
-of Emacs's own state files under =var/= so the repository stays clean, and
-adds a few small helpers the leader menus use. Only values that differ from
-Emacs's own are written down, here and in every chapter: a setting that
-repeats a default would only make you wonder what it changes.
+- Emacs's out-of-the-box defaults date from another era: backups litter your
+  directories, prompts want the whole word "yes", tabs are eight columns
+  wide and the bell rings.
+- This chapter sets the defaults most people set and adds a few small
+  helpers the leader menus use.
+- Emacs's own state files go under =var/=, so the repository stays clean.
+- Every chapter writes down only values that differ from Emacs's own.
+  - A setting that repeats a default would only make you wonder what it
+    changes.
 
 #+begin_src emacs-lisp
 ;;; kittymacs-defaults.el --- Sane defaults -*- lexical-binding: t; -*-
@@ -32,10 +36,11 @@ repeats a default would only make you wonder what it changes.
 
 * The kittymacs options
 
-Every option this configuration defines belongs to the =kittymacs= group, or
-to a smaller group inside it, so =M-x customize-group RET kittymacs= lists
-them all in one place. The group is defined here because this module loads
-first, before any chapter adds an option to it.
+- Every option this configuration defines is in the =kittymacs= group or a
+  subgroup of it.
+  - So =M-x customize-group RET kittymacs= lists them all in one place.
+- The group is defined here because this module loads first, before any
+  chapter adds an option.
 
 #+begin_src emacs-lisp
 (defgroup kittymacs nil
@@ -47,17 +52,19 @@ first, before any chapter adds an option to it.
 
 * Where Emacs keeps its state
 
-Everything Emacs writes on its own (backups, history, caches, saved
-customizations) lives under =var/=, which Git ignores; [[file:10-startup.org][the startup chapter]]
-defines the three directories. Two subdirectories separate throwaway caches
-from state you might back up. The Customize file is state, not cache:
-preferences you set through =M-x customize= persist there across restarts.
-
-Only the file's /name/ is decided here. The file itself is loaded at the very
-end of =init.el=, after every chapter has run, because the chapters set many
-of the same options with =setopt= and =use-package ... :custom=, and whichever
-setting runs last wins. Loading your saved choices last means Customize
-always has the final word; [[file:10-startup.org][the startup chapter]] shows where.
+- Everything Emacs writes on its own (backups, history, caches, saved
+  customizations) lives under =var/=, which Git ignores;
+  [[file:10-startup.org][the startup chapter]] defines the three directories.
+  - Two subdirectories separate throwaway caches from state you might back
+    up.
+- The Customize file is state, not cache: preferences set through
+  =M-x customize= persist there across restarts.
+- Only its /name/ is decided here; =init.el= loads the file last, after
+  every chapter has run.
+  - The chapters set many of the same options with =setopt= and
+    =use-package ... :custom=, and whichever runs last wins.
+  - So Customize always has the final word; [[file:10-startup.org][the startup chapter]] shows
+    where.
 
 #+begin_src emacs-lisp
 ;; The directories are defined in early-init.el (see the startup chapter);
@@ -76,12 +83,13 @@ always has the final word; [[file:10-startup.org][the startup chapter]] shows wh
 
 * Files, saving and backups
 
-Backups and auto-save files go under the cache instead of beside your files.
-=auto-save-visited-mode= saves the file itself after a few idle seconds, so
-crashes lose little and you rarely think about saving. Lock files are off:
-they confuse tools that watch a directory, and this is a single-user setup.
-=savehist= remembers minibuffer history across sessions, and =so-long=
-keeps Emacs responsive when a file has enormous lines.
+- Backups and auto-save files go under the cache, not beside your files.
+- =auto-save-visited-mode= saves the file itself after a few idle seconds:
+  crashes lose little, and you rarely think about saving.
+- Lock files are off: they confuse tools that watch a directory, and this
+  is a single-user setup.
+- =savehist= remembers minibuffer history across sessions.
+- =so-long= keeps Emacs responsive when a file has enormous lines.
 
 #+begin_src emacs-lisp
 (setopt require-final-newline t
@@ -115,13 +123,15 @@ keeps Emacs responsive when a file has enormous lines.
 
 * Text and indentation
 
-Spaces, not tabs, four columns wide, and lines wrapped at eighty. The first
-three are /buffer-local/ options: every buffer can have its own value, and
-=setopt= sets the default that each new buffer starts with. =TAB=
-indents and, if the line is already indented, completes. Sentences end with
-one space. UTF-8 everywhere. =subword-mode= lets word commands stop inside
-=CamelCase=, and =visual-line-mode= wraps long lines at the window edge
-instead of scrolling sideways.
+- Spaces, not tabs, four columns wide; lines wrapped at eighty.
+  - All three are /buffer-local/ options: each buffer can have its own
+    value, and =setopt= sets the default new buffers start with.
+- =TAB= indents, or completes if the line is already indented.
+- Sentences end with one space.
+- UTF-8 everywhere.
+- =subword-mode= lets word commands stop inside =CamelCase=.
+- =visual-line-mode= wraps long lines at the window edge instead of
+  scrolling sideways.
 
 #+begin_src emacs-lisp
 (setopt indent-tabs-mode nil
@@ -138,8 +148,8 @@ instead of scrolling sideways.
 
 #+end_src
 
-=ws-butler= keeps whitespace tidy: it removes trailing whitespace only on
-lines you changed, so a commit never touches lines you did not edit.
+- =ws-butler= keeps whitespace tidy: it removes trailing whitespace only on
+  lines you changed, so a commit never touches lines you did not edit.
 
 #+begin_src emacs-lisp
 (use-package ws-butler
@@ -150,12 +160,13 @@ lines you changed, so a commit never touches lines you did not edit.
 
 * The interface
 
-Answer prompts with =y= or =n=, always in the minibuffer: even a command
-started from the mouse never opens an operating-system dialog box. No bell,
-no blinking cursor, and the mouse pointer hides while you type. Scrolling moves one line at a time and keeps a
-small margin. Buffers visiting files with the same name are told apart by
-their directory, files change on disk are reloaded automatically, and a
-right click opens a context menu.
+- Prompts take =y= or =n=, always in the minibuffer: even a command started
+  from the mouse never opens an operating-system dialog box.
+- No bell, no blinking cursor; the mouse pointer hides while you type.
+- Scrolling moves one line at a time, keeping a small margin.
+- Buffers visiting same-named files are told apart by their directory.
+- Files changed on disk are reloaded automatically.
+- A right click opens a context menu.
 
 #+begin_src emacs-lisp
 (setopt use-short-answers t
@@ -207,11 +218,13 @@ right click opens a context menu.
 
 #+end_src
 
-Undo is unlimited in practice, and Emacs no longer groups several edits into
-one undo step, which made undoing feel unpredictable. Meow's =u= undoes and
-=U= undoes only inside the selection. When you have undone past a fork,
-=SPC b u= draws the undo history as a tree: =f= and =b= move along it, =n=
-and =p= change branch, =RET= keeps the state under point.
+- Undo is unlimited in practice, and no longer groups several edits into
+  one step, which made undoing feel unpredictable.
+- Meow's =u= undoes; =U= undoes only inside the selection.
+- After undoing past a fork, =SPC b u= draws the history as a tree:
+  - =f= and =b= move along it;
+  - =n= and =p= change branch;
+  - =RET= keeps the state under point.
 
 #+begin_src emacs-lisp
 (fset 'undo-auto-amalgamate #'ignore)
@@ -233,12 +246,13 @@ and =p= change branch, =RET= keeps the state under point.
 
 * Windows inside a frame
 
-[[file:45-frames.org][The frames chapter]] makes new editing surfaces separate OS windows. Inside
-one frame you still sometimes split. =winner-mode= undoes window
-arrangements, =ace-window= jumps to a window by letter, and Shift-arrows move
-between windows. Popper collects transient buffers such as help and
-compilation output so one key toggles them; the frames chapter decides where
-they appear.
+- [[file:45-frames.org][The frames chapter]] makes new editing surfaces separate OS windows;
+  inside one frame you still sometimes split.
+- =winner-mode= undoes window arrangements.
+- =ace-window= jumps to a window by letter.
+- Shift-arrows move between windows.
+- Popper collects transient buffers, such as help and compilation output,
+  under one toggle key; the frames chapter decides where they appear.
 
 #+begin_src emacs-lisp
 (winner-mode 1)
@@ -274,9 +288,10 @@ they appear.
 
 * A scratch buffer that survives restarts
 
-The =*scratch*= buffer is a notepad. Killing it only buries it, and its text
-is saved to the cache on exit and every five minutes, then restored at the
-next start. =kittymacs-scratch-file= names the file.
+- The =*scratch*= buffer is a notepad: killing it only buries it.
+- Its text is saved to the cache on exit and whenever Emacs has been idle
+  for five minutes, then restored at the next start; =kittymacs-scratch-file=
+  names the file.
 
 #+begin_src emacs-lisp
 (defcustom kittymacs-scratch-file (expand-file-name "scratch" kittymacs-cache-dir)
@@ -311,9 +326,9 @@ next start. =kittymacs-scratch-file= names the file.
 
 * The Emacs server
 
-Running Emacs as a server lets =emacsclient= open files in this instance from
-a shell or a file manager, which matters when frames are your windows. It
-starts whenever Emacs has a display or runs as a daemon.
+- The server lets =emacsclient= open files in this instance from a shell or
+  a file manager, which matters when frames are your windows.
+- It starts whenever Emacs has a display or runs as a daemon.
 
 #+begin_src emacs-lisp
 (when (or window-system (daemonp))
@@ -326,14 +341,15 @@ starts whenever Emacs has a display or runs as a daemon.
 
 * Cycling through your own buffers
 
-=SPC [= and =SPC ]= are Emacs's =previous-buffer= and =next-buffer=: they
-step through the buffers this window has shown. Buffers whose names start
-with =*= or a space are Emacs's own (=*Messages*=, =*Help*=, the home page)
-rather than ones you opened, and =switch-to-prev-buffer-skip-regexp= tells
-Emacs to step over them. The same option applies whenever Emacs picks a
-buffer for a window by itself, for example after you kill the one it
-showed, so what appears is something you were working on. When nothing
-else is left, Emacs still shows one of its own buffers rather than nothing.
+- =SPC [= and =SPC ]= are Emacs's =previous-buffer= and =next-buffer=: they
+  step through the buffers this window has shown.
+- Buffers whose names start with =*= or a space are Emacs's own
+  (=*Messages*=, =*Help*=, the home page), not ones you opened.
+  - =switch-to-prev-buffer-skip-regexp= makes Emacs step over them.
+- The option also applies when Emacs picks a window's buffer by itself,
+  such as after you kill the one it showed.
+  - So what appears is something you were working on.
+- When nothing else is left, Emacs still shows one of its own buffers.
 
 #+begin_src emacs-lisp
 (setopt switch-to-prev-buffer-skip-regexp "\\`[ *]")
@@ -342,8 +358,8 @@ else is left, Emacs still shows one of its own buffers rather than nothing.
 
 * Small helpers
 
-Commands the leader menus use, and =rainbow-mode=, which colours colour
-names in place.
+- Commands the leader menus use.
+- =rainbow-mode= colours colour names in place.
 
 #+begin_src emacs-lisp
 (defun kittymacs-new-buffer (&optional frame)
@@ -375,8 +391,10 @@ names in place.
 
 * Try it
 
-- Open a file, edit, wait five seconds: it is saved. =C-x C-s= is rarely needed.
-- =M-x customize-variable RET fill-column=: the value persists in =var/etc/custom.el=.
+- Open a file, edit, wait five seconds: it is saved. =C-x C-s= is rarely
+  needed.
+- =M-x customize-variable RET fill-column=: the value persists in
+  =var/etc/custom.el=.
 - Split with =M-x split-window-below= (=C-x 2= makes a frame while frames-only
   mode is on), then =C-c <left>= (winner) brings the old layout back.
 - =M-`= toggles the last popup; =SPC [= and =SPC ]= cycle your own buffers.

@@ -5,24 +5,26 @@
 
 [[file:index.org][Reading guide]] · [[file:30-platform.org][Platform]] · [[file:35-shells.org][Shells]] · [[file:41-leader.org][Leader]]
 
-Ownership: *user configuration*. [[https://github.com/dakra/ghostel][ghostel]] by Daniel Kraus is the terminal
-emulator; this chapter chooses its settings, wires it to the packages this
-configuration already uses, and teaches it Meow's states. The integration
-recipes follow ghostel's own manual.
+Ownership: *user configuration*.
+
+- [[https://github.com/dakra/ghostel][ghostel]] by Daniel Kraus is the terminal emulator.
+- This chapter chooses its settings, wires it to the packages already in
+  use and teaches it Meow's states; the integration recipes follow
+  ghostel's manual.
 
 * What this gives you
 
-=SPC o e= opens a real terminal inside Emacs. Real means a program running
-there cannot tell the difference from a terminal window: =htop=, =vim=, =less=,
-=lazygit=, a TUI coding agent, a test runner that draws progress bars and asks
-=y/n= — they all behave. The terminal knows where it is (=cd= moves Emacs's
-directory with it), what you ran (=SPC m n= jumps between prompts), and what it
-printed (links are clickable, colours are exact).
-
-Ghostel is a thin Emacs layer over =libghostty-vt=, the terminal engine behind
-[[https://ghostty.org/][Ghostty]]. The engine is a small native library, so the first =SPC o e= offers to
-download it — about a megabyte, once per machine. Everything else is Emacs
-Lisp.
+- =SPC o e= opens a real terminal inside Emacs: programs cannot tell it from
+  a terminal window, so =htop=, =vim=, =less=, =lazygit=, a TUI coding agent,
+  a test runner that draws progress bars and asks =y/n= all behave.
+- The terminal knows:
+  - where it is: =cd= moves Emacs's directory with it;
+  - what you ran: =SPC m n= jumps between prompts;
+  - what it printed: links are clickable, colours exact.
+- Ghostel is a thin Emacs Lisp layer over =libghostty-vt=, the terminal
+  engine behind [[https://ghostty.org/][Ghostty]].
+  - The engine is a small native library: the first =SPC o e= offers to
+    download it, about a megabyte, once per machine.
 
 #+begin_src emacs-lisp
 ;;; kittymacs-terminal.el --- The terminal -*- lexical-binding: t; -*-
@@ -66,14 +68,13 @@ Lisp.
 
 * Where the native module lives
 
-Ghostel keeps its native module next to its own package directory by default.
-This configuration installs packages under =var/elpa/=, which =M-x package-upgrade=
-rewrites, so the module is kept in =var/ghostel/= instead: upgrading ghostel
-then never deletes a library that this Emacs has already mapped into memory.
-It is also the one thing this chapter must decide *before* ghostel loads.
-
-The module is downloaded on the first =SPC o e=, after asking. Nothing is
-fetched when Emacs starts, and nothing is fetched when this file loads.
+- The native module is kept in =var/ghostel/=, not beside ghostel's package
+  directory (its default) under =var/elpa/=.
+  - =M-x package-upgrade= rewrites =var/elpa/=; outside it, upgrading ghostel
+    never deletes a library this Emacs has already mapped into memory.
+  - This is the one thing this chapter must decide *before* ghostel loads.
+- The module is downloaded on the first =SPC o e=, after asking; nothing is
+  fetched when Emacs starts or when this file loads.
 
 #+begin_src emacs-lisp
 (defcustom kittymacs-terminal-module-directory
@@ -96,18 +97,19 @@ is what the terminal needs."
 
 ** Not on Android
 
-Ghostel asks two things of a platform that Android does not grant. It is
-installed with =:vc=, so the first start clones it with =git=, which the Android
-port does not ship. And it is a native module: upstream publishes prebuilt
-modules for the desktop platforms, none for =android-aarch64=, and the Android
-port is commonly built without dynamic module support at all — in which case
-=module-file-suffix= is nil and no module could be loaded however it arrived.
-
-Neither is worth an error message on every start, so ghostel is simply not
-installed there and Eshell takes =SPC o e=. Eshell is Lisp, needs no module and
-no subprocess to start, and where Termux is paired it runs Termux's programs
-like any other shell. That is a genuine loss — Eshell is not a terminal and
-will not run =htop= or a full-screen editor — and it is the honest one to take.
+- Ghostel needs two things Android does not grant:
+  - =git=: it is installed with =:vc=, so the first start clones it, and the
+    Android port ships no =git=;
+  - a native module: upstream publishes prebuilt ones for the desktop
+    platforms, none for =android-aarch64=, and the Android port is commonly
+    built without dynamic module support, leaving =module-file-suffix= nil:
+    no module could load however it arrived.
+- Neither is worth an error on every start, so ghostel is not installed
+  there and Eshell takes =SPC o e=.
+  - Eshell is Lisp, needs no module and no subprocess to start, and where
+    Termux is paired it runs Termux's programs like any other shell.
+  - A genuine loss, and the honest one to take: Eshell is not a terminal and
+    will not run =htop= or a full-screen editor.
 
 #+begin_src emacs-lisp
 (defcustom kittymacs-terminal-ghostel
@@ -121,17 +123,16 @@ whenever this is nil."
 
 * The terminal
 
-A terminal closes its buffer when the shell exits, but asks first if a command
-is still running. Terminals opened with =SPC o p= carry their project's name;
-set =ghostel-buffer-name-function= if you would rather they follow the title or
-the directory. Five megabytes of scrollback is
-kept and searchable with =consult-line= and =isearch= like any other buffer.
-
-OSC 52 is left off: it lets a program running in the terminal write your
-system clipboard, which is convenient over SSH and unpleasant when the output
-you just =cat='d was hostile. Turn it on per machine in =private.el= if you
-want it.
-
+- A terminal closes its buffer when the shell exits, asking first if a
+  command is still running.
+- Terminals opened with =SPC o p= carry their project's name;
+  =ghostel-buffer-name-function= can make them follow the title or the
+  directory instead.
+- Five megabytes of scrollback is kept, searchable with =consult-line= and
+  =isearch= like any buffer.
+- OSC 52 is left off: it lets a program in the terminal write your system
+  clipboard, convenient over SSH and unpleasant when the output you just
+  =cat='d was hostile. Turn it on per machine in =private.el=.
 - Ghostel and its Consult extension are installed from their *repository*,
   with =:vc=, not from an archive.
   - A =:vc= package is an ordinary Git checkout under =var/elpa/=, about ten
@@ -184,18 +185,18 @@ want it.
 
 * Meow in the terminal
 
-A terminal is the one buffer where the keys are not ours: =d= must delete a
-character in =vim=, not a selection. So terminals start in *Insert* state and
-ghostel's semi-char mode forwards almost everything to the program. Emacs
-keeps =C-c=, =C-x=, =C-u=, =C-h=, =M-x= and =M-:= (ghostel's
-=ghostel-keymap-exceptions=), so =C-c C-SPC= still opens the leader.
-
-Press =ESC= and the terminal *freezes*: Meow enters Normal state, ghostel
-enters copy mode, and the whole scrollback becomes an ordinary read-only
-buffer you can select, search and copy from with the grammar you already
-know. Press =i= and it thaws — output resumes and the keys go back to the
-shell. The two hooks below are what keep those two ideas in step; they are
-buffer-local, so they only ever apply to a terminal.
+- A terminal is the one buffer where the keys are not ours: =d= must delete a
+  character in =vim=, not a selection.
+- So terminals start in *Insert* state, and ghostel's semi-char mode forwards
+  almost everything to the program.
+  - Emacs keeps =C-c=, =C-x=, =C-u=, =C-h=, =M-x= and =M-:= (ghostel's
+    =ghostel-keymap-exceptions=), so =C-c C-SPC= still opens the leader.
+- =ESC= *freezes* the terminal: Meow enters Normal state, ghostel enters copy
+  mode, and the whole scrollback becomes an ordinary read-only buffer to
+  select, search and copy from with Meow's grammar.
+- =i= thaws it: output resumes and the keys go back to the shell.
+- The two hooks below keep those two ideas in step; being buffer-local, they
+  only apply to a terminal.
 
 #+begin_src emacs-lisp
 (defun kittymacs-terminal--freeze ()
@@ -220,15 +221,17 @@ The buffer becomes read-only, so Meow's grammar can select its output."
 
 ** Where the escape key goes
 
-=ESC= is the one genuinely ambiguous key. In a shell it should leave Insert
-state. In =vim=, =less=, =htop= or a full-screen coding agent it *is* the program's
-most important key, and stealing it makes the program unusable.
-
-Those programs all announce themselves the same way: they switch the terminal
-to its /alternate screen/. So =auto= sends =ESC= to the program exactly while one
-is running, and otherwise leaves Insert state. When the guess is wrong,
-=SPC m ESC= toggles this buffer for as long as it lives. Outside a terminal
-this command is plain =meow-insert-exit=, so nothing else changes.
+- =ESC= is the one genuinely ambiguous key:
+  - in a shell it should leave Insert state;
+  - in =vim=, =less=, =htop= or a full-screen coding agent it *is* the
+    program's most important key; stealing it makes the program unusable.
+- Those programs all switch the terminal to its /alternate screen/, so
+  =auto= sends =ESC= to the program exactly while one is running, and
+  otherwise leaves Insert state.
+  - When the guess is wrong, =SPC m ESC= toggles this buffer for its
+    lifetime.
+- Outside a terminal the command is plain =meow-insert-exit=; nothing else
+  changes.
 
 #+begin_src emacs-lisp
 (defcustom kittymacs-terminal-escape 'auto
@@ -273,10 +276,10 @@ this command is plain =meow-insert-exit=, so nothing else changes.
 
 #+end_src
 
-Terminals start in Insert; a finished =ghostel-compile= run is a report, so it
-starts in Motion like every other application buffer. Rebinding =ESC= in
-Meow's Insert-state map is what lets the command above run at all: that map is
-an emulation map and is consulted before the terminal's own keys.
+- Terminals start in Insert; a finished =ghostel-compile= run is a report, so
+  it starts in Motion like every other application buffer.
+- Rebinding =ESC= in Meow's Insert-state map lets the command above run at
+  all: that emulation map is consulted before the terminal's own keys.
 
 #+begin_src emacs-lisp
 (with-eval-after-load 'meow
@@ -289,22 +292,26 @@ an emulation map and is consulted before the terminal's own keys.
 
 * Opening one
 
-=SPC o e= and =SPC o p= are thin wrappers over =ghostel= and =ghostel-project=.
-They exist for one reason: the native module is downloaded on first use, and a
-user who declines that offer would otherwise meet
-=Symbol's function definition is void: ghostel--new= rather than a sentence
-saying what is missing and which command installs it.
+- =SPC o e= and =SPC o p= are thin wrappers over =ghostel= and
+  =ghostel-project=, for two reasons:
+  - The native module is downloaded on first use.
+    - A user who declines would otherwise meet
+      =Symbol's function definition is void: ghostel--new= instead of a
+      sentence saying what is missing and which command installs it.
+  - Where =kittymacs-terminal-ghostel= is nil (off by default on Android),
+    they open Eshell instead.
 
 ** MSYS2 on Windows
 
-PowerShell stays the ordinary shell. =SPC o m= is the separate, explicit
-choice of an MSYS2 UCRT64 login shell, which is where a Windows machine keeps
-its Unix tools. =MSYSTEM= selects the environment and =CHERE_INVOKING= keeps the
-directory you were in; both are set for the child process only, so Emacs's own
-environment is untouched. [[file:30-platform.org][The platform chapter]] owns =kittymacs-msys2-root=.
-
-Unlike the terminal this replaces, nothing here has to translate paths or
-substitute a POSIX helper: ghostel talks to Windows ConPTY directly.
+- PowerShell stays the ordinary shell; =SPC o m= is the separate, explicit
+  choice of an MSYS2 UCRT64 login shell, where a Windows machine keeps its
+  Unix tools.
+  - =MSYSTEM= selects the environment and =CHERE_INVOKING= keeps the
+    directory you were in, both for the child process only: Emacs's own
+    environment is untouched.
+  - [[file:30-platform.org][The platform chapter]] owns =kittymacs-msys2-root=.
+- Unlike the terminal this replaces, nothing here translates paths or
+  substitutes a POSIX helper: ghostel talks to Windows ConPTY directly.
 
 #+begin_src emacs-lisp
 (defun kittymacs-terminal--without-module (error)
@@ -353,33 +360,34 @@ With prefix ARG, create another one instead of reusing the existing buffer."
 
 * Integrations with the rest of this configuration
 
-*Projects.* =ghostel-project= opens a terminal at the project root and names it
-after the project, so =SPC o p= in any file lands where builds are run. It
-joins the menu =C-x p p= offers when you switch project, on =t=; the key is
-named here because =ghostel-project= has none in =project-prefix-map=, and
-without one the menu shows the entry but cannot run it.
-
-*Consult.* =consult-ghostel= picks a terminal with live preview, the way
-=SPC b b= picks a buffer, and creates one when you type a name that does not
-exist yet. It lives in ghostel's own repository and is fetched from there, as
-above; [[file:60-completion.org][the completion chapter]] has already installed the Consult it needs. =consult-ghostel-history= completes against the *shell's own*
-history — bash, zsh, fish and nushell — and types the choice at the prompt
-without submitting it, so you can edit before running. Loading it also
-teaches =consult-line= about soft-wrapped terminal rows, so a path that wrapped
-mid-word is still findable.
-
-- Its code is in =extensions/consult-ghostel/= of that repository, which the
-  =:lisp-dir= below names.
-- On Emacs 31, package-vc builds a checkout from the first spec it finds for
-  the package's name, and an archive's spec counts:
-  - MELPA's spec for =consult-ghostel= is only the URL, so the build used
-    package-vc's guess, ghostel's =lisp/=, and =consult-ghostel= was never
-    defined;
-  - package-vc reads =package-vc-selected-packages= before the archives, so
-    the spec goes there whenever package-vc loads, and installs, rebuilds and
-    upgrades all use it.
-- A checkout already built from =lisp/= (=SPC o E= fails: =consult-ghostel= is
-  not defined) is repaired by =M-x package-vc-rebuild RET consult-ghostel=.
+- *Projects.* =ghostel-project= opens a terminal at the project root, named
+  after the project, so =SPC o p= in any file lands where builds are run.
+  - It joins the switch-project menu (=C-x p p=) on =t=.
+  - The key is named here because =ghostel-project= has none in
+    =project-prefix-map=; without one the menu shows the entry but cannot
+    run it.
+- *Consult.* =consult-ghostel= picks a terminal with live preview, as
+  =SPC b b= picks a buffer, and creates one when you type a new name.
+  - =consult-ghostel-history= completes against the *shell's own* history
+    (bash, zsh, fish and nushell) and types the choice at the prompt without
+    submitting it, so you can edit before running.
+  - Its =consult-ghostel-mode=, not turned on here, would also teach
+    =consult-line= about soft-wrapped terminal rows, so a path that wrapped
+    mid-word stays findable.
+  - It lives in ghostel's own repository and is fetched from there, as above;
+    its code is in =extensions/consult-ghostel/=, which the =:lisp-dir= below
+    names.
+  - The Consult it needs is already installed by [[file:60-completion.org][the completion chapter]].
+  - On Emacs 31, package-vc builds a checkout from the first spec it finds
+    for the package's name, and an archive's spec counts:
+    - MELPA's spec for =consult-ghostel= is only the URL, so the build used
+      package-vc's guess, ghostel's =lisp/=, and =consult-ghostel= was never
+      defined;
+    - package-vc reads =package-vc-selected-packages= before the archives,
+      so the spec goes there whenever package-vc loads, and installs,
+      rebuilds and upgrades all use it.
+  - =M-x package-vc-rebuild RET consult-ghostel= repairs a checkout already
+    built from =lisp/= (=SPC o E= fails: =consult-ghostel= is not defined).
 
 #+begin_src emacs-lisp
 (when kittymacs-terminal-ghostel
@@ -404,18 +412,20 @@ mid-word is still findable.
 
 #+end_src
 
-*Eshell.* [[file:35-shells.org][Eshell]] is a Lisp shell and cannot draw a full-screen program, so it
-hands those to a real terminal: the commands in =eshell-visual-commands= (=htop=,
-=less=, =vim=, =git log=) open in a ghostel buffer. =ghostel foo= at the Eshell
-prompt does the same for anything else, once.
-
-*M-M-x shell and REPLs.* Comint's own colour handling understands the eight
-ANSI colours; ghostel's parser understands everything a modern program emits —
-true colour, curly and coloured underlines, clickable =OSC 8= links, and the
-directory the shell reports. It is a stream filter, not a terminal, so
-full-screen programs still belong in =SPC o e=. It needs the native module, so
-it is switched on only once that exists; a machine that has never opened a
-terminal keeps Emacs's own handling and nothing breaks.
+- *Eshell.* [[file:35-shells.org][Eshell]] is a Lisp shell and cannot draw a full-screen
+  program, so it hands those to a real terminal:
+  - the commands in =eshell-visual-commands= (=htop=, =less=, =vim=,
+    =git log=) open in a ghostel buffer;
+  - =ghostel foo= at the Eshell prompt does the same for anything else, once.
+- *M-x shell.* Comint's colour handling understands the eight ANSI
+  colours; ghostel's parser understands everything a modern program emits:
+  true colour, curly and coloured underlines, clickable =OSC 8= links, and the
+  directory the shell reports.
+  - It is a stream filter, not a terminal: full-screen programs still belong
+    in =SPC o e=.
+  - It needs the native module, so it is on only once that exists; a machine
+    that has never opened a terminal keeps Emacs's own handling and nothing
+    breaks.
 
 #+begin_src emacs-lisp
 (with-eval-after-load 'eshell
@@ -432,14 +442,15 @@ terminal keeps Emacs's own handling and nothing breaks.
 
 #+end_src
 
-*Compiling.* =ghostel-compile= runs a build in a real terminal and then presents
-it as a =compilation-mode= report: coloured output and progress bars while it
-runs, =next-error= and clickable file references when it finishes, and =C-c C-j=
-mid-run when the command turns out to want an answer. =SPC m t= runs it in any
-programming buffer. Emacs's own =compile= is left alone, because it is what
-=SPC m c=, Flymake and =project-compile= all go through; put
-=(ghostel-compile-global-mode 1)= in =private.el= to route those through the
-terminal too.
+- *Compiling.* =ghostel-compile= runs a build in a real terminal, then
+  presents it as a =compilation-mode= report.
+  - While it runs: coloured output and progress bars, and =C-c C-j= when the
+    command wants an answer.
+  - When it finishes: =next-error= and clickable file references.
+  - =SPC m t= runs it in any programming buffer.
+  - Emacs's own =compile= is left alone, because =SPC m c=, Flymake and
+    =project-compile= all go through it; =(ghostel-compile-global-mode 1)= in
+    =private.el= routes those through the terminal too.
 
 #+begin_src emacs-lisp
 ;; `ghostel-recompile' carries no autoload cookie, and `SPC m t' must work
@@ -460,19 +471,20 @@ terminal too.
 
 #+end_src
 
-*Themes.* Ghostel paints the terminal's sixteen colours from the active theme
-and repaints them on Emacs's own =enable-theme-functions=, so =SPC t t= changes
-the terminal with everything else. Nothing is needed here.
-
-*Frames.* A terminal is a buffer you work in, so [[file:45-frames.org][frames-only mode]] gives it its
-own OS window like any other. =SPC o e= from a second project therefore puts
-its terminal beside that project's code, not on top of it.
+- *Themes.* Ghostel paints the terminal's sixteen colours from the active
+  theme and repaints them on Emacs's own =enable-theme-functions=, so
+  =SPC t t= changes the terminal with everything else; nothing is needed
+  here.
+- *Frames.* A terminal is a buffer you work in, so [[file:45-frames.org][frames-only mode]] gives it
+  its own OS window: =SPC o e= from a second project puts its terminal beside
+  that project's code, not on top of it.
 
 * The mode menu
 
-=ESC= first — the menu lives in Normal state, like every other =SPC m=. Every
-entry here is also on a =C-c= key that works while you are typing, which is what
-ghostel's own manual documents; these are the labelled versions.
+- =ESC= first: the menu lives in Normal state, like every other =SPC m=.
+- Every entry but =k=, =b=, =ESC= and =M= is also on a =C-c= key that works
+  while you type, the keys ghostel's manual documents; these are the
+  labelled versions.
 
 #+begin_src emacs-lisp
 (kittymacs-define-localleader 'ghostel-mode
@@ -501,13 +513,12 @@ ghostel's own manual documents; these are the labelled versions.
 
 * Try it
 
-- =SPC o e=, then =htop=. =q= quits it. Now =SPC o e= and =vim=: =ESC= reaches vim,
-  because vim is drawing a full screen; =:q= leaves, and =ESC= goes back to
-  meaning Meow again.
-- Run something long, press =ESC=: output freezes and you are in Normal state.
+- =SPC o e=, then =htop=; =q= quits it. Now =SPC o e= and =vim=: =ESC= reaches
+  vim, because vim is drawing a full screen; =:q= leaves, and =ESC= means Meow
+  again.
+- Run something long, press =ESC=: output freezes; you are in Normal state.
   Select a line with =x=, copy it with =y=, press =i= to thaw.
 - =cd= somewhere in the terminal, then =SPC f f=: Emacs offers files from the
-  directory the shell is in.
-- Type =ghostel_cmd find-file README.md= in the terminal: Emacs opens the file.
-- =SPC o E= lists every terminal with a preview; type a name that does not
-  exist and you get a new one.
+  shell's directory.
+- Type =ghostel_cmd find-file README.md= in the terminal: Emacs opens it.
+- =SPC o E= lists every terminal with a preview; a new name creates one.

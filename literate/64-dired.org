@@ -5,16 +5,19 @@
 
 [[file:index.org][Reading guide]] · [[file:65-treemacs.org][Treemacs]] · [[file:41-leader.org][Leader]] · [[file:60-completion.org][Completion]]
 
-Ownership: *user configuration*, distilled from Lambda-Emacs by Colin McLear
-(=lem-setup-dired=). Dired is built into Emacs; three small packages colour
-it, narrow it and let it copy between directories.
+Ownership: *user configuration*.
+
+- Distilled from Lambda-Emacs by Colin McLear (=lem-setup-dired=).
+- Dired is built into Emacs; three small packages colour it, narrow it and
+  let it copy between directories.
 
 * What this gives you
 
-=SPC d= opens the directory of the current file. Move with =j= and =k=,
-enter a directory with =l= or =RET=, go up with =h=. Mark files with =m=,
-then copy, rename or delete the marks. Type =/= to narrow the listing as
-you type. =SPC m= shows the actions that matter, labelled.
+- =SPC d= opens the directory of the current file.
+- Move with =j= and =k=, enter a directory with =l= or =RET=, go up with =h=.
+- Mark files with =m=, then copy, rename or delete the marks.
+- =/= narrows the listing as you type.
+- =SPC m= shows the actions that matter, labelled.
 
 #+begin_src emacs-lisp
 ;;; kittymacs-dired.el --- The file manager -*- lexical-binding: t; -*-
@@ -30,14 +33,20 @@ you type. =SPC m= shows the actions that matter, labelled.
 
 * Behaviour
 
-Entering a directory, or going up with =h=, reuses the buffer instead of
-leaving a trail of Dired buffers: =dired-kill-when-opening-new-dired-buffer=
-applies to Dired's own =dired-up-directory= as well as to =RET=, and going up
-also puts point on the directory you came from. Copies and deletes recurse without asking per directory, and when
-two Dired windows are visible the other one is the default target, which
-makes copying between directories a two-step affair. Directories sort
-first: GNU =ls= does this with a switch, and on Windows and Android, where
-Emacs lists directories itself, a variable does.
+- Entering a directory, or going up with =h=, reuses the buffer instead of
+  leaving a trail of Dired buffers:
+  - =dired-kill-when-opening-new-dired-buffer= applies to Dired's own
+    =dired-up-directory= as well as to =RET=;
+  - going up also puts point on the directory you came from.
+- Copies and deletes recurse without asking per directory.
+- When two Dired windows are visible, the other one is the default target,
+  which makes copying between directories a two-step affair.
+- Directories sort first, except on macOS without GNU =ls=:
+  - GNU =ls= does this with a switch; on macOS it is used when installed as
+    =gls= (Homebrew's coreutils), since the system's BSD =ls= has no such
+    switch;
+  - on Windows and Android, where Emacs lists directories itself, a variable
+    does.
 
 #+begin_src emacs-lisp
 (setopt dired-kill-when-opening-new-dired-buffer t
@@ -77,10 +86,11 @@ Emacs lists directories itself, a variable does.
 
 * Extensions
 
-=diredfl= colours the listing by file type. =dired-narrow= filters the
-listing as you type. =dired-ranger= copies files to a clipboard so you can
-paste them in another directory, the way graphical file managers do. Large
-copies run in the background.
+- =diredfl= colours the listing by file type.
+- =dired-narrow= filters the listing as you type.
+- =dired-ranger= copies files to a clipboard so you can paste them in another
+  directory, the way graphical file managers do.
+- Large copies run in the background.
 
 #+begin_src emacs-lisp
 (use-package diredfl
@@ -107,17 +117,19 @@ copies run in the background.
 
 * A file tree at the side
 
-The sidebar that shows a project's directory structure is [[file:65-treemacs.org][Treemacs]], on the same
-=SPC t d= as before. Dired remains the place to *operate* on files — mark a
-dozen, rename them all, copy between two directories — and Treemacs the place
-to *see* where they are. =SPC f t= points the tree at the file you are editing;
-=SPC m o= in the tree opens a directory in Dired.
+- The sidebar that shows a project's directory structure is [[file:65-treemacs.org][Treemacs]], on
+  =SPC t d=.
+- Dired remains the place to *operate* on files: mark a dozen, rename them
+  all, copy between two directories.
+- Treemacs is the place to *see* where they are:
+  - =SPC f t= points the tree at the file you are editing;
+  - =SPC m o= in the tree opens a directory in Dired.
 
 * Meow in Dired
 
-Dired starts in Motion state so its own keys work; =j= and =k= move by
-line, and the leader is available. The localleader labels the operations a
-new user looks for.
+- Dired starts in Motion state, so its own keys work; =j= and =k= move by
+  line, and the leader is available.
+- The localleader labels the operations a new user looks for.
 
 #+begin_src emacs-lisp
 (with-eval-after-load 'meow
@@ -153,4 +165,5 @@ new user looks for.
 
 - =SPC d=, then =/= and type part of a name.
 - Mark two files with =m=, press =SPC m y=, go elsewhere, =SPC m p=.
-- =SPC m w= turns the listing into an editable buffer: rename by typing, =C-c C-c= to apply.
+- =SPC m w= turns the listing into an editable buffer: rename by typing,
+  =C-c C-c= to apply.

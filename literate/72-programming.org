@@ -5,18 +5,23 @@
 
 [[file:index.org][Reading guide]] · [[file:74-languages.org][Languages: Tree-sitter and Eglot]] · [[file:41-leader.org][Leader]]
 
-Ownership: *user configuration*, distilled from Lambda-Emacs by Colin McLear
-(=lem-setup-programming=, compilation from =lem-setup-shell=). Language
-parsers and language servers are in [[file:74-languages.org][their own chapter]]; this one is what
-every programming buffer gets regardless of language.
+Ownership: *user configuration*.
+
+- Distilled from Lambda-Emacs by Colin McLear (=lem-setup-programming=,
+  compilation from =lem-setup-shell=).
+- Language parsers and language servers are in [[file:74-languages.org][their own chapter]]; this one
+  is what every programming buffer gets regardless of language.
 
 * What this gives you
 
-Matching delimiters in rainbow colours, pairs that close themselves, and
-structural editing that never leaves a paren unbalanced. Flymake shows
-problems in the fringe as you type. =SPC m= in any programming buffer
-offers compile, recompile, the error list and a formatter; in Emacs Lisp
-it adds evaluation and debugging.
+- Matching delimiters in rainbow colours, pairs that close themselves, and
+  structural editing that never leaves a paren unbalanced.
+- Flymake shows problems in the fringe as you type.
+- =SPC m= in any programming buffer offers compile, recompile, the error list
+  and a formatter.
+  - In Emacs Lisp, evaluation, debugging and byte compilation take over some
+    of those keys (=c=, =r=, =e=, =d=, =D=, =i=); the error list and the
+    formatter stay.
 
 #+begin_src emacs-lisp
 ;;; kittymacs-programming.el --- What every programming buffer gets -*- lexical-binding: t; -*-
@@ -33,12 +38,14 @@ it adds evaluation and debugging.
 
 * Delimiters and structure
 
-=rainbow-delimiters= colours each nesting level. =electric-pair-mode= inserts
-the closing bracket. Puni is structural editing for every language: deleting
-never breaks a pair, and =C-)= and =C-(= slurp the next or previous
-expression into the current one. Embrace adds, changes and removes
-surrounding pairs (=SPC c s=). =iedit= edits every occurrence of a symbol at
-once (=SPC s c=).
+- =rainbow-delimiters= colours each nesting level.
+- =electric-pair-mode= inserts the closing bracket.
+- Puni is structural editing for every language:
+  - deleting never breaks a pair;
+  - =C-)= and =C-(= slurp the next or previous expression into the current
+    one.
+- Embrace adds, changes and removes surrounding pairs (=SPC c s=).
+- =iedit= edits every occurrence of a symbol at once (=SPC s c=).
 
 #+begin_src emacs-lisp
 (setopt prettify-symbols-unprettify-at-point t
@@ -84,9 +91,10 @@ once (=SPC s c=).
 
 * Indentation guides and aggressive indentation
 
-Guides draw a thin line at each indentation level. In Lisp buffers,
-=aggressive-indent= re-indents as you type, which is how Lisp is meant to
-feel; in other languages it fights with formatters, so it stays off.
+- Guides draw a thin line at each indentation level.
+- In Lisp buffers =aggressive-indent= re-indents as you type, which is how
+  Lisp is meant to feel.
+  - In other languages it fights with formatters, so it stays off.
 
 #+begin_src emacs-lisp
 (defun kittymacs--indent-guides ()
@@ -118,16 +126,17 @@ The package cannot derive its faces without a display."
 
 * Linting: Flymake
 
-Flymake is built in and runs a checker for the current language when one
-is available: Eglot provides one for any language server, =package-lint=
-checks Emacs Lisp packages, and =flymake-collection= adds checkers for
-common tools. Problems show in the left fringe and in the mode line;
-=SPC F= lists them.
-
-Flymake's own commands carry no autoload cookie, so until some buffer has
-switched =flymake-mode= on, =flymake-start= and its neighbours are not
-defined and the =SPC F= keys would fail. =:commands= declares them as
-autoloads, which makes each key load Flymake the first time it is pressed.
+- Flymake is built in and runs a checker for the current language when one
+  is available:
+  - Eglot provides one for any language server;
+  - =package-lint= checks Emacs Lisp packages;
+  - =flymake-collection= adds checkers for common tools.
+- Problems show in the left fringe and in the mode line; =SPC F= lists them.
+- Flymake's own commands carry no autoload cookie:
+  - until some buffer has switched =flymake-mode= on, =flymake-start= and its
+    neighbours are not defined and the =SPC F= keys would fail;
+  - =:commands= declares them as autoloads, so each key loads Flymake the
+    first time it is pressed.
 
 #+begin_src emacs-lisp
 (use-package flymake
@@ -161,9 +170,9 @@ autoloads, which makes each key load Flymake the first time it is pressed.
 
 * Compiling
 
-=compile= runs a command and links errors to source lines. A new
-compilation kills the old one, buffers save first, and the output scrolls
-to the first error.
+- =compile= runs a command and links errors to source lines.
+- A new compilation kills the old one, buffers save first, and the output
+  scrolls to the first error.
 
 #+begin_src emacs-lisp
 (setopt compilation-always-kill t
@@ -176,12 +185,14 @@ to the first error.
 
 * Emacs Lisp
 
-Lisp buffers get documentation in the echo area at once, =elisp-def= for
-jumping to definitions, snippets, and trailing whitespace marked so it never
-creeps into a commit. =lambda= is drawn as =λ= by the global
-=prettify-symbols-mode= above, which switches itself on in every mode that
-defines symbols to prettify. Shell scripts named like zsh files
-open in =sh-mode=.
+- Lisp buffers get:
+  - documentation in the echo area at once;
+  - =elisp-def= for jumping to definitions;
+  - snippets;
+  - trailing whitespace marked, so it never creeps into a commit.
+- =lambda= is drawn as =λ= by the global =prettify-symbols-mode= above,
+  which switches itself on in every mode that defines symbols to prettify.
+- Shell scripts named like zsh files open in =sh-mode=.
 
 #+begin_src emacs-lisp
 (setopt eldoc-idle-delay 0)
@@ -203,10 +214,11 @@ open in =sh-mode=.
 
 * Meow in programming buffers
 
-Programming buffers are ordinary text buffers, so they start in Normal
-state and the whole selection grammar applies. The localleader gives every
-language the same first menu, and Emacs Lisp adds its evaluation commands
-on top; a language chapter can add more for its own mode.
+- Programming buffers are ordinary text buffers, so they start in Normal
+  state and the whole selection grammar applies.
+- The localleader gives every language the same first menu:
+  - Emacs Lisp adds its evaluation commands on top;
+  - a language chapter can add more for its own mode.
 
 #+begin_src emacs-lisp
 (kittymacs-define-localleader 'prog-mode
@@ -242,5 +254,6 @@ on top; a language chapter can add more for its own mode.
 * Try it
 
 - In a Lisp buffer, put point after a form and press =SPC m e=.
-- Type =(= inside code: the =)= appears. Select an expression with =o=, press =d=: it is gone, balanced.
-- Break something on purpose: the fringe marks it; =SPC m e= lists it.
+- Type =(= inside code: the =)= appears. Select an expression with =o=,
+  press =d=: it is gone, balanced.
+- Break something on purpose: the fringe marks it; =SPC m E= lists it.

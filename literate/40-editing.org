@@ -5,28 +5,31 @@
 
 [[file:index.org][Reading guide]] · [[file:41-leader.org][The kittymacs leader]] · [[file:../lisp/keybindings.org][Cheat sheet]]
 
-Ownership: *user configuration*. The key grammar is adapted from Colin
-McLear's Meow setup (GPL-3.0-or-later). Meow is an external package; this
-chapter configures it and hands =SPC= to [[file:41-leader.org][the kittymacs leader]].
+Ownership: *user configuration*.
+
+- The key grammar is adapted from Colin McLear's Meow setup
+  (GPL-3.0-or-later).
+- Meow is an external package; this chapter configures it and hands =SPC= to
+  [[file:41-leader.org][the kittymacs leader]].
 
 * How Meow thinks
 
-Meow is modal, like Vim, but the order is reversed. In Vim you say *what to do*
-and then *what to do it to* (=d w=, delete a word). In Meow you first *select*
-something, extend the selection if you like, and then *act* on it (=w= marks
-a word, =d= deletes the selection). Because the selection is visible before
-you act, you always see what a command will touch, and Meow can print little
-hints on screen while you extend with =e= or a digit.
-
-Meow has a few *states*, shown in the mode line:
-
-- *Normal*: keys select and act. This is where you live.
-- *Insert*: keys type text. =i=, =a=, =c= and =A=/=I= enter it; =ESC= leaves.
-- *Motion*: for read-only application buffers such as Dired, Magit and Help.
-  The buffer keeps its own keys; only =j=/=k= and the leader are added.
-- *Beacon*: Meow's multiple-cursor mode. Unchanged here; see =M-x meow-tutor=.
-
-Run =M-x meow-tutor= once. It teaches the grammar interactively in an hour.
+- Meow is modal, like Vim, but the order is reversed:
+  - Vim: say *what to do*, then *what to do it to* (=d w=, delete a word);
+  - Meow: first *select* something, optionally extend it, then *act* on it
+    (=w= marks a word, =d= deletes the selection).
+- The selection is visible before you act, so:
+  - you always see what a command will touch;
+  - Meow can print hints on screen while you extend with =e= or a digit.
+- Meow's *states*, shown in the mode line:
+  - *Normal*: keys select and act; this is where you live.
+  - *Insert*: keys type text; =i=, =a=, =c= and =A=/=I= enter it, =ESC=
+    leaves.
+  - *Motion*: read-only application buffers such as Dired, Magit and Help
+    keep their own keys; only =j=/=k= and the leader are added.
+  - *Beacon*: Meow's multiple-cursor mode; unchanged here, see
+    =M-x meow-tutor=.
+- Run =M-x meow-tutor= once: it teaches the grammar interactively in an hour.
 
 * The module
 
@@ -44,11 +47,13 @@ Run =M-x meow-tutor= once. It teaches the grammar interactively in an hour.
 
 * The grammar
 
-Meow ships no default Normal-state keys; every configuration defines its own.
-This one keeps the layout Meow's own documentation and =meow-tutor= describe,
-so upstream help transfers. The lower-case key moves or selects, and the
-shifted key does the same while *extending* the current selection. Digits
-pick one of the numbered expansion hints Meow draws after a movement.
+- Meow ships no default Normal-state keys; every configuration defines its
+  own.
+  - This one keeps the layout Meow's own documentation and =meow-tutor=
+    describe, so upstream help transfers.
+- The lower-case key moves or selects; the shifted key does the same while
+  *extending* the current selection.
+- Digits pick one of the numbered expansion hints Meow draws after a movement.
 
 #+begin_src emacs-lisp
 (defun kittymacs-meow-setup ()
@@ -132,20 +137,21 @@ pick one of the numbered expansion hints Meow draws after a movement.
 
 * Things, starting states and package shims
 
-A *thing* is what =,= and =.= select: a word, a pair of brackets, a string.
-Angle brackets are added to the built-in set on =<=. =meow-mode-state-list= decides
-the state a buffer starts in, and each package chapter adds its own entries
-next to the package: Dired and Magit start in Motion, shells and terminals in
-Insert because their keys belong to the program. Once everything is set, Meow
-is enabled globally and the leader is attached.
-
-The numbered expansion hints keep their colours from the theme: Meow mixes
-the cursor colour into the region colour for the hint backgrounds and
-recomputes them each time a theme is enabled (=meow-use-dynamic-face-color=,
-left at its default of =t=), so the hints stand out from plain text and
-follow =SPC t t=. Neither doom-themes nor the Sonokai port styles these
-faces, so switching the option off, as the setup this was adapted from did,
-leaves the hints indistinguishable from text.
+- A *thing* is what =,= and =.= select: a word, a pair of brackets, a string.
+  - Angle brackets are added to the built-in set on =<=.
+- =meow-mode-state-list= decides the state a buffer starts in; each package
+  chapter adds its entries next to the package:
+  - Dired and Magit start in Motion;
+  - shells and terminals in Insert: their keys belong to the program.
+- Once everything is set, Meow is enabled globally and the leader attached.
+- The numbered expansion hints keep their colours from the theme
+  (=meow-use-dynamic-face-color=, left at its default of =t=):
+  - Meow mixes the cursor colour into the region colour for the hint
+    backgrounds, recomputed each time a theme is enabled;
+  - so the hints stand out from plain text and follow =SPC t t=.
+- Neither doom-themes nor the Sonokai port styles these faces: switching the
+  option off, as the setup this was adapted from did, leaves the hints
+  indistinguishable from text.
 
 #+begin_src emacs-lisp
 (use-package meow
@@ -165,11 +171,12 @@ leaves the hints indistinguishable from text.
 
 * Things from the syntax tree
 
-In a Tree-sitter mode (see [[file:74-languages.org][the languages chapter]]) the buffer has a real
-parse tree, and =meow-tree-sitter= turns its nodes into Meow things: =, f=
-selects inside the current function and =. f= the whole function; =a= is a
-class, =t= a test, =y= an entry, =,= a parameter, =/= a comment. In modes
-without a grammar these keys simply report that there is no parser.
+- In a Tree-sitter mode (see [[file:74-languages.org][the languages chapter]]) the buffer has a real
+  parse tree; =meow-tree-sitter= turns its nodes into Meow things:
+  - =, f= selects inside the current function, =. f= the whole function;
+  - =a= is a class, =t= a test, =y= an entry, =,= a parameter, =/= a
+    comment.
+- Without a grammar, these keys report that there is no parser.
 
 #+begin_src emacs-lisp
 (use-package meow-tree-sitter
@@ -189,5 +196,5 @@ without a grammar these keys simply report that there is no parser.
 
 * Where the keys are
 
-Every key under =SPC= is defined in [[file:42-keys.org][the keys chapter]]; each package
-chapter defines its own =SPC m= menu next to the package.
+- Every key under =SPC= is defined in [[file:42-keys.org][the keys chapter]].
+- Each package chapter defines its own =SPC m= menu next to the package.
