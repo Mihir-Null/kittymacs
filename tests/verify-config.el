@@ -123,6 +123,13 @@ Group maps are walked too.  Autoloaded commands count as commands."
       ;; Every key in the leader tree must run a command, not a void function.
       (dolist (binding (kittymacs-verify-uncallable-bindings kittymacs-leader-map []))
         (kittymacs-verify-check nil (format "SPC %s is not a command" binding)))
+      ;; A cached package directory hides a wrong build, so check the spec
+      ;; package-vc builds consult-ghostel from, not only its command.
+      (require 'package-vc)
+      (kittymacs-verify-check (equal (plist-get (alist-get 'consult-ghostel package-vc-selected-packages)
+                                                :lisp-dir)
+                                     "extensions/consult-ghostel")
+                       "package-vc would build consult-ghostel from the wrong folder")
       (kittymacs-verify-check (equal kittymacs-org-roam-directory
                               (expand-file-name "test-roam/" user-emacs-directory))
                        "Personal graph private override was overwritten")
