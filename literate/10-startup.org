@@ -256,6 +256,8 @@ So =private.el= has two kinds of settings, written two ways:
 
   - The =90= is the hook's /depth/: functions run in order of depth, and the
     chapters add theirs at the default of 0, so yours runs after them.
+    - Tabspaces is the exception: it turns on at 95, after yours, so it
+      reads your settings.
   - The =with-eval-after-load= inside is for the options a chapter sets only
     when its package loads, in =:config= or its own =with-eval-after-load=.
     - Emacs runs the forms waiting for a package in the order they were

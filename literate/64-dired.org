@@ -41,8 +41,10 @@ Ownership: *user configuration*.
 - Copies and deletes recurse without asking per directory.
 - When two Dired windows are visible, the other one is the default target,
   which makes copying between directories a two-step affair.
-- Directories sort first:
-  - GNU =ls= does this with a switch;
+- Directories sort first, except on macOS without GNU =ls=:
+  - GNU =ls= does this with a switch; on macOS it is used when installed as
+    =gls= (Homebrew's coreutils), since the system's BSD =ls= has no such
+    switch;
   - on Windows and Android, where Emacs lists directories itself, a variable
     does.
 
@@ -116,7 +118,7 @@ Ownership: *user configuration*.
 * A file tree at the side
 
 - The sidebar that shows a project's directory structure is [[file:65-treemacs.org][Treemacs]], on
-  the same =SPC t d= as before.
+  =SPC t d=.
 - Dired remains the place to *operate* on files: mark a dozen, rename them
   all, copy between two directories.
 - Treemacs is the place to *see* where they are:

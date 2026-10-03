@@ -293,11 +293,13 @@ The buffer becomes read-only, so Meow's grammar can select its output."
 * Opening one
 
 - =SPC o e= and =SPC o p= are thin wrappers over =ghostel= and
-  =ghostel-project=, for one reason: the native module is downloaded on first
-  use.
-  - A user who declines would otherwise meet
-    =Symbol's function definition is void: ghostel--new= instead of a
-    sentence saying what is missing and which command installs it.
+  =ghostel-project=, for two reasons:
+  - The native module is downloaded on first use.
+    - A user who declines would otherwise meet
+      =Symbol's function definition is void: ghostel--new= instead of a
+      sentence saying what is missing and which command installs it.
+  - Where =kittymacs-terminal-ghostel= is nil (off by default on Android),
+    they open Eshell instead.
 
 ** MSYS2 on Windows
 
@@ -369,8 +371,9 @@ With prefix ARG, create another one instead of reusing the existing buffer."
   - =consult-ghostel-history= completes against the *shell's own* history
     (bash, zsh, fish and nushell) and types the choice at the prompt without
     submitting it, so you can edit before running.
-  - Loading it also teaches =consult-line= about soft-wrapped terminal rows,
-    so a path that wrapped mid-word is still findable.
+  - Its =consult-ghostel-mode=, not turned on here, would also teach
+    =consult-line= about soft-wrapped terminal rows, so a path that wrapped
+    mid-word stays findable.
   - It lives in ghostel's own repository and is fetched from there, as above;
     its code is in =extensions/consult-ghostel/=, which the =:lisp-dir= below
     names.
@@ -414,7 +417,7 @@ With prefix ARG, create another one instead of reusing the existing buffer."
   - the commands in =eshell-visual-commands= (=htop=, =less=, =vim=,
     =git log=) open in a ghostel buffer;
   - =ghostel foo= at the Eshell prompt does the same for anything else, once.
-- *M-M-x shell and REPLs.* Comint's colour handling understands the eight ANSI
+- *M-x shell.* Comint's colour handling understands the eight ANSI
   colours; ghostel's parser understands everything a modern program emits:
   true colour, curly and coloured underlines, clickable =OSC 8= links, and the
   directory the shell reports.
@@ -479,8 +482,9 @@ With prefix ARG, create another one instead of reusing the existing buffer."
 * The mode menu
 
 - =ESC= first: the menu lives in Normal state, like every other =SPC m=.
-- Every entry is also on a =C-c= key that works while you type, the keys
-  ghostel's manual documents; these are the labelled versions.
+- Every entry but =k=, =b=, =ESC= and =M= is also on a =C-c= key that works
+  while you type, the keys ghostel's manual documents; these are the
+  labelled versions.
 
 #+begin_src emacs-lisp
 (kittymacs-define-localleader 'ghostel-mode

@@ -498,7 +498,7 @@ save that finishes the capture updates that graph's database."
 
 ** What this chapter asks of Org-roam
 
-- The =use-package= block at the end is the whole connection to Org-roam
+- The =use-package= block below is the whole connection to Org-roam
   beyond ordinary function calls: four hooks and one piece of advice.
   - =hack-local-variables-hook= (Emacs) restores a buffer's graph after its
     local variables are applied, in notes you open and in the buffers
@@ -762,8 +762,8 @@ its file tags, a heading note only under tags its file note lacks."
 
 * Try it
 
-- =SPC n s= in any buffer builds the personal graph's index; =SPC n f=
-  then offers its notes, and typing a new title captures one.
+- =SPC n s= in any buffer outside a project graph builds the personal graph's
+  index; =SPC n f= then offers its notes, and typing a new title captures one.
 - Open a file in a repository with the project =.dir-locals.el= above and
   press =SPC n f=: the prompt shows the repository's root, and only its
   notes are offered.

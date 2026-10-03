@@ -18,7 +18,10 @@ Ownership: *user configuration*.
   structural editing that never leaves a paren unbalanced.
 - Flymake shows problems in the fringe as you type.
 - =SPC m= in any programming buffer offers compile, recompile, the error list
-  and a formatter; in Emacs Lisp it adds evaluation and debugging.
+  and a formatter.
+  - In Emacs Lisp, evaluation, debugging and byte compilation take over some
+    of those keys (=c=, =r=, =e=, =d=, =D=, =i=); the error list and the
+    formatter stay.
 
 #+begin_src emacs-lisp
 ;;; kittymacs-programming.el --- What every programming buffer gets -*- lexical-binding: t; -*-
@@ -253,4 +256,4 @@ The package cannot derive its faces without a display."
 - In a Lisp buffer, put point after a form and press =SPC m e=.
 - Type =(= inside code: the =)= appears. Select an expression with =o=,
   press =d=: it is gone, balanced.
-- Break something on purpose: the fringe marks it; =SPC m e= lists it.
+- Break something on purpose: the fringe marks it; =SPC m E= lists it.

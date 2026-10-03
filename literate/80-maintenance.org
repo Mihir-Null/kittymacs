@@ -47,6 +47,8 @@ for the authoring commands.
     the end of the example.
     - Emacs runs that hook once =init.el= has finished; the depth of 90 puts
       it after the functions the chapters add.
+    - Tabspaces is the exception: it turns on at 95, after your function,
+      so it reads your settings.
 - If a chapter sets another package's option only when its package loads (in
   =:config= or a =with-eval-after-load=), wrap your =setopt= in
   =with-eval-after-load= inside the hook.

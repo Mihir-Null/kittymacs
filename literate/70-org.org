@@ -19,7 +19,7 @@ Ownership: *user configuration*.
 - Org looks clean: hidden markup, indented headings, pretty entities.
 - Org behaves predictably: no editing inside folded text; tasks log when
   done.
-- =SPC m= in an Org buffer lists the structure commands; =SPC m a= opens the
+- =SPC m= in an Org buffer lists the structure commands; =SPC o a= opens the
   agenda from anywhere.
 
 #+begin_src emacs-lisp
@@ -127,7 +127,8 @@ Ownership: *user configuration*.
 - The agenda:
   - starts on today;
   - hides done scheduled items;
-  - offers a =d= dashboard: today's agenda and the next actions.
+  - offers a =d= dashboard: today's agenda, tasks due soon and the next
+    actions.
 - Log mode is on from the start, listing closed and clocked items.
   - =t= used to mean that, before the option's type asked for the list
     itself.
@@ -368,8 +369,8 @@ Code that is already lexical expands as before."
 
 - =org-modern= draws headings, lists, checkboxes, tags, dates and tables the
   way a document viewer would, in the buffer and in the agenda.
-- The display chapter hides emphasis markers, so =org-appear= reveals them
-  while point is inside the marked text.
+- This chapter hides emphasis markers, so =org-appear= reveals them while
+  point is inside the marked text.
   - Editing =*bold*= never means guessing where the asterisks are.
 
 #+begin_src emacs-lisp
@@ -395,7 +396,7 @@ Code that is already lexical expands as before."
 - =@= counts as part of a word, so tags select cleanly.
 - The agenda, a special buffer, starts in Motion state.
 - The localleader collects the structure commands a new user needs.
-  - Each also has Org's own =C-c= key, which =C-h m= lists.
+  - Most also have Org's own =C-c= key, which =C-h m= lists.
 
 #+begin_src emacs-lisp
 (with-eval-after-load 'meow
@@ -445,7 +446,7 @@ Code that is already lexical expands as before."
 
 * Try it
 
-- =SPC m c t= from anywhere captures a task into the inbox.
+- =SPC o c t= from anywhere captures a task into the inbox.
 - In =inbox.org=, =SPC m t= cycles its state; =SPC m s= schedules it.
 - =SPC m a= shows today, due-soon and next actions together.
 - =SPC s Q= and =todo:TODO= list your open tasks grouped by file; =v g=,

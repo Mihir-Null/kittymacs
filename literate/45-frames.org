@@ -114,7 +114,7 @@ it in `private.el', before this module is loaded, to override."
   - That looks exactly like the command having gone wrong.
 - Instead these appear in a small window at the bottom of the frame you are
   in; =q= dismisses them and the frame is untouched.
-- This is the same rule as the sidebars above — a panel that serves the
+- This is the same rule as the sidebars below — a panel that serves the
   buffer next to it stays inside the frame — applied to the buffers Emacs
   raises on its own.
 

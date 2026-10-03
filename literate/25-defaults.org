@@ -289,8 +289,9 @@ Ownership: *user configuration*.
 * A scratch buffer that survives restarts
 
 - The =*scratch*= buffer is a notepad: killing it only buries it.
-- Its text is saved to the cache on exit and every five minutes, then
-  restored at the next start; =kittymacs-scratch-file= names the file.
+- Its text is saved to the cache on exit and whenever Emacs has been idle
+  for five minutes, then restored at the next start; =kittymacs-scratch-file=
+  names the file.
 
 #+begin_src emacs-lisp
 (defcustom kittymacs-scratch-file (expand-file-name "scratch" kittymacs-cache-dir)

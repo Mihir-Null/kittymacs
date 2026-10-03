@@ -166,7 +166,7 @@ Exclude trailing padding and compensate for leading indentation."
   first, in two columns.
   - So a fresh install says where to go before anything is opened.
 - Keys use the navigator face and descriptions the comment face; the
-  centering pass below aligns each line like the rest of the page.
+  centering pass above aligns each line like the rest of the page.
 - The rows are data, so adding one is adding a pair.
 
 #+name: kittymacs-dashboard-09-2

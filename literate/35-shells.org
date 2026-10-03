@@ -247,7 +247,7 @@ With REGEXP, go to the most recent directory matching it."
 - Shells start in Insert state: the keys belong to the prompt, and =SPC=
   types a space.
 - =ESC= enters Normal state, for the selection grammar on the output.
-  - The leader is available there, and =SPC m= offers the shell's own menu.
+  - The leader is available there; in Eshell, =SPC m= offers its own menu.
 - =C-c C-SPC= reaches the leader without leaving Insert.
 
 #+begin_src emacs-lisp

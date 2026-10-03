@@ -11,7 +11,8 @@ Ownership: *user configuration*.
   =-projects=, =-search=, =-tabs=).
 - Most of this is built into Emacs: =project.el=, =recentf=, =saveplace=,
   bookmarks and the tab bar.
-- Three packages add ripgrep front ends and workspaces.
+- Two packages add a ripgrep front end (=deadgrep=) and workspaces
+  (Tabspaces).
 
 * What this gives you
 

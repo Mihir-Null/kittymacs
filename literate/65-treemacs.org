@@ -51,7 +51,7 @@ Ownership: *user configuration*.
   - Otherwise it would create =.cache/= beside =init.el=, which Git does not
     ignore.
 - The sidebar is 35 columns and stays put; =SPC m w= sets a width and
-  =SPC m t w= unlocks dragging.
+  Treemacs's own =t w= unlocks dragging.
 - =treemacs-is-never-other-window= keeps =other-window=, =ace-window= and
   =C-x o= out of the tree.
   - A frame here normally holds one buffer and the tree, so without it every

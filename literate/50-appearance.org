@@ -347,5 +347,6 @@ Use t for a terminal configured with a Nerd Font, or nil to disable icons."
 - =SPC t w= in an Org file hides everything but the text; =SPC t w= again
   brings it back.
 - =SPC t H= hides only the mode line.
-- =C-x C-+= grows the text one point at a time; =C-x C-0= resets.
+- =C-x C-+= grows the text 8% a step, about one point at the default size;
+  =C-x C-0= resets.
 - Set =kittymacs-icons= to =nil= in =private.el= to run without icon fonts.

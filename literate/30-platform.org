@@ -267,7 +267,9 @@ MSYS2 keeps them under `usr/bin'."
   - what locale a Dock-launched Emacs has;
   - whether the title bar is light or dark.
 - This section decides, following Lambda-Emacs's =lem-setup-macos=.
-  - Everything is a plain variable that =private.el= can override.
+  - =private.el= can override the modifier keys (=kittymacs-macos-modifiers=)
+    and the locale (=LANG= is set only when unset); the rest is applied
+    unconditionally, after =private.el=.
   - None of it runs on another operating system.
 
 *** Modifier keys
@@ -504,7 +506,8 @@ to nil to leave the input method alone."
 ** Show a file in the desktop file manager
 
 - One command for every platform: Finder on macOS (=open -R= selects the
-  file), Explorer on Windows, the desktop's default handler elsewhere.
+  file), Explorer on Windows, Dired on Android, the desktop's default handler
+  elsewhere.
 - It takes the buffer's file, the file at point in Dired, or the current
   directory.
 - [[file:42-keys.org][The keys chapter]] binds it to =SPC f o=.

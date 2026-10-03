@@ -205,8 +205,8 @@ entry has the same shape accepted by `treesit-language-source-alist':
       straight back to =sh-mode=.
   - For JSON the built-in mode is =js-json-mode=; =json-mode= is a separate
     package this configuration does not install.
-- The YAML, TypeScript and Typst rows name third-party modes and only matter
-  when one of those packages is installed.
+- The YAML, TypeScript, Typst and Nix rows name third-party modes and only
+  matter when one of those packages is installed.
 
 #+name: kittymacs-treesit-06-1
 #+begin_src emacs-lisp
@@ -481,7 +481,7 @@ until the language server for a mode is deliberately installed on each machine."
 - Eglot supplies server communication; core xref and Flymake expose
   navigation and diagnostics.
 - Servers start only when asked, with =SPC l e=, unless a mode is listed in
-  the option below.
+  the option above.
 
 #+name: kittymacs-languages-04-1
 #+begin_src emacs-lisp

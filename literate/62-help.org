@@ -121,8 +121,12 @@ Ownership: *user configuration*.
   with Transient:
   - Dired, Info, calc, isearch, bookmarks, ibuffer, the agenda, compilation,
     Eshell, the regexp builder.
-- Each menu is on =?= in that mode's =SPC m= menu and on =C-o= in the mode's
-  own map, Casual's convention.
+- Each menu is on =?= in that mode's =SPC m= menu, on =C-o= in the mode's own
+  map (Casual's convention), or on both:
+  - both: Dired, Info, ibuffer, compilation;
+  - =C-o= only: calc, isearch, bookmarks, the regexp builder;
+  - =SPC m ?= only: the agenda and Eshell, and the Help, Org and Emacs Lisp
+    modes.
 - =SPC c m= opens the general editing menu from any buffer.
 
 #+begin_src emacs-lisp

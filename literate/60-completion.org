@@ -47,7 +47,7 @@ Ownership: *user configuration*.
   - candidates cycle at the end;
   - the list keeps a fixed height;
   - directories sort before files.
-- The two extensions are part of Vertico itself:
+- The extensions are part of Vertico itself:
   - =vertico-directory= makes =DEL= delete a whole path component and tidies
     shadowed paths;
   - =vertico-repeat= resumes the last completion session (=SPC s l=).
@@ -373,7 +373,7 @@ Ownership: *user configuration*.
   - The rest are on =SPC c p= ([[file:42-keys.org][the keys chapter]]), as explicit commands for when
     you want a particular kind of candidate.
 - Emacs 30's own text-mode source, the spell checker's dictionary, is off;
-  =SPC c p w= asks for it explicitly.
+  =SPC c p w= asks for Cape's dictionary source, =cape-dict=, explicitly.
   - With =corfu-auto= it would run Hunspell a few times per word.
   - On Windows there is no word list for it to read, so every attempt costs
     a process and logs an error.

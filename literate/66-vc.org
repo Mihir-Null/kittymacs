@@ -69,7 +69,7 @@ Ownership: *user configuration*.
   - Magit selects whatever window it gets back, and a =nil= there is an
     error rather than a fallback.
 - The status buffer refreshes when you save a file.
-- Stashes and untracked files start folded.
+- Stashes, untracked files and unpushed commits start folded.
 
 #+begin_src emacs-lisp
 (defun kittymacs-magit-display-buffer (buffer)
@@ -112,8 +112,9 @@ Ownership: *user configuration*.
   - this buffer's repository first;
   - then the repository of the project you are working in;
   - only then Magit's own prompt.
-- From the home page =SPC v s= now opens the project you last touched
-  instead of interrogating you.
+- From the home page both checks start from the page's own
+  =default-directory=; when neither finds a repository, =SPC v s= falls
+  back to Magit's own prompt.
 
 #+begin_src emacs-lisp
 (defun kittymacs--repository-root (directory)
@@ -216,7 +217,8 @@ Falls back to `magit-status', which asks, when neither is a repository."
 - Commit message buffers are for typing; the section above starts them in
   Insert state.
 - The localleader labels the most common Magit commands for anyone who does
-  not yet know them; each opens Magit's own menu.
+  not yet know them; most open Magit's own menu, but stage, unstage, discard
+  and refresh act directly.
 
 #+begin_src emacs-lisp
 (with-eval-after-load 'meow
