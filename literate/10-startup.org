@@ -5,59 +5,71 @@
 
 [[file:index.org][Reading guide]] · [[file:25-defaults.org][Defaults]] · [[file:80-maintenance.org][Maintenance]]
 
-Ownership: *user configuration*. These are the only two files Emacs reads on
-its own. Together they are about a hundred lines: the first decides where
-files live and how packages are fetched, the second loads the chapters in
-order. Nothing else is special.
+Ownership: *user configuration*.
+
+- These are the only two files Emacs reads on its own; nothing else is
+  special.
+- Together they are about a hundred lines:
+  - the first decides where files live and how packages are fetched;
+  - the second loads the chapters in order.
 
 * What happens when Emacs starts
 
 1. Emacs reads =early-init.el= *before* it creates a frame or activates
-   packages. That is the moment to say where packages live, to switch off
-   toolbars so they never flash, and to postpone garbage collection.
-2. Emacs then reads =init.el=. It activates the installed packages, loads
+   packages. That is the moment to:
+   - say where packages live;
+   - switch off toolbars, so they never flash;
+   - postpone garbage collection.
+2. Emacs then reads =init.el=, which activates the installed packages, loads
    =use-package=, and requires each generated module in dependency order:
-   defaults and platform first, then the look, then editing and the
-   integrations, then the applications, and frames policy last so nothing
-   later can undo it.
+   - defaults and platform first, then the look, then editing and the
+     integrations, then the applications;
+   - frames policy last, so nothing later can undo it.
 3. Packages are declared where they are used, with =use-package … :ensure t=.
-   A fresh clone installs them on first start; an existing =var/elpa= is used
-   as is. Global modes are switched on one way throughout: a built-in mode
-   with =(mode 1)= right after its settings, a package's mode in the
-   =:config= of its =use-package=, which runs once the package has loaded.
-   =:bind= and =:hook= would otherwise postpone loading until a key or hook
-   is used, so a package whose mode must be on from the start also says
-   =:demand t=. The one exception is Tabspaces, whose mode reads some of its
-   options only as it turns on; it is turned on after =init.el= finishes, so
-   your settings reach it (the navigation chapter explains). GNU ELPA's
-   index is signed, and Emacs verifies it with =gpg=;
-   install [[https://gpg4win.org/][Gpg4win]] on Windows so that check can run; the startup file puts it
-   first on =exec-path=, because the =gpg= that Git for Windows ships comes
-   first otherwise and cannot use a Windows keyring directory. On macOS an
-   Emacs started from the Dock has no shell =PATH=, so the startup file puts
-   the Nix profiles and Homebrew's directory on =exec-path= when they exist;
-   =brew install gnupg= or the [[file:../nix/README.org][Nix module]] is enough. Without a native =gpg=
-   the check is skipped rather than silently losing the archive.
+   - A fresh clone installs them on first start; an existing =var/elpa= is
+     used as is.
+   - Global modes are switched on one way throughout:
+     - a built-in mode with =(mode 1)= right after its settings;
+     - a package's mode in the =:config= of its =use-package=, which runs
+       once the package has loaded;
+     - a package whose mode must be on from the start also says =:demand t=,
+       because =:bind= and =:hook= would otherwise postpone loading until a
+       key or hook is used;
+     - the one exception is Tabspaces, whose mode reads some options only as
+       it turns on: it is turned on after =init.el= finishes, so your
+       settings reach it (the navigation chapter explains).
+   - GNU ELPA's index is signed, and Emacs verifies it with =gpg=:
+     - Windows: install [[https://gpg4win.org/][Gpg4win]] so the check can run; the startup file puts
+       it first on =exec-path=, because Git for Windows' =gpg= would
+       otherwise come first and cannot use a Windows keyring directory.
+     - macOS: an Emacs started from the Dock has no shell =PATH=, so the
+       startup file puts the Nix profiles and Homebrew's directory on
+       =exec-path= when they exist; =brew install gnupg= or the
+       [[file:../nix/README.org][Nix module]] is enough.
+     - Without a native =gpg= the check is skipped rather than silently
+       losing the archive.
 
 * early-init.el
 :PROPERTIES:
 :header-args:emacs-lisp: :tangle ../early-init.el :eval never :comments no :padline no :mkdirp yes
 :END:
 
-Everything Emacs writes goes under =var/=, which Git ignores: packages,
-caches, native-compiled files, saved settings.
-
-This file sets options with =setq=, although every chapter after it uses
-=setopt=. =setopt= checks a value against the option's type, and to know the
-type it loads Customize and the library that defines the option; for the
-package options below that is =package.el= with its URL and EIEIO libraries.
-Here that would cost some thirty milliseconds before the first frame
-appears. =init.el= loads them a moment later anyway, once the frame is
-already on screen. Package activation is left to
-=init.el= so it happens in one known place. Three settings make startup
-quicker: no garbage collection until the end, no implied frame resizing, and
-frames created without the toolbar and the menu bar rather than with ones that
-are then removed. =SPC t m= brings the menu bar back when you want it.
+- Everything Emacs writes goes under =var/=, which Git ignores: packages,
+  caches, native-compiled files, saved settings.
+- This file sets options with =setq=; every later chapter uses =setopt=.
+  - =setopt= checks a value against the option's type; to know the type it
+    loads Customize and the library that defines the option.
+  - For the package options below that is =package.el= with its URL and
+    EIEIO libraries, which would cost some thirty milliseconds before the
+    first frame appears.
+  - =init.el= loads them a moment later anyway, once the frame is on screen.
+- Package activation is left to =init.el=, so it happens in one known place.
+- Three settings make startup quicker:
+  - no garbage collection until the end;
+  - no implied frame resizing;
+  - frames created without the toolbar and the menu bar, rather than with
+    ones that are then removed.
+- =SPC t m= brings the menu bar back.
 
 #+begin_src emacs-lisp
 ;;; early-init.el --- Before the first frame -*- lexical-binding: t; -*-
@@ -144,15 +156,19 @@ are then removed. =SPC t m= brings the menu bar back when you want it.
 :header-args:emacs-lisp: :tangle ../init.el :eval never :comments no :padline no :mkdirp yes
 :END:
 
-The composition root. Each =require= is one chapter of this guide. The
-order matters only where a module uses another: defaults define the
-directories, the platform chapter defines the paths that =private.el= may
-override, the UI must exist before the dashboard measures text, Meow must be
-up before the keys chapter binds the leader, the terminal comes after the
-programming chapter whose mode menu it extends, and frames policy goes last.
-Two files of your own are read along the way: =private.el= early, right after
-the platform chapter, and the Customize file at the very end; the last
-section of this chapter explains why they sit where they do.
+- The composition root: each =require= is one chapter of this guide.
+- The order matters only where a module uses another:
+  - defaults define the directories;
+  - the platform chapter defines the paths that =private.el= may override;
+  - the UI must exist before the dashboard measures text;
+  - Meow must be up before the keys chapter binds the leader;
+  - the terminal comes after the programming chapter, whose mode menu it
+    extends;
+  - frames policy goes last.
+- Two files of your own are read along the way:
+  - =private.el= early, right after the platform chapter;
+  - the Customize file at the end.
+- The last section of this chapter explains why they sit where they do.
 
 #+begin_src emacs-lisp
 ;;; init.el --- kittymacs -*- lexical-binding: t; -*-
@@ -206,25 +222,26 @@ section of this chapter explains why they sit where they do.
 
 * Machine-specific settings
 
-=private.el= next to the generated modules is loaded once, after the
-platform variables exist and before anything reads them. It is ignored by
-Git. Copy =private.example.el= to start one, or press =SPC C p=.
-
-Loading it early is deliberate, and it has one consequence worth
-understanding. Many chapters read a =kittymacs-= option /while they load/:
-the languages chapter looks at =kittymacs-language-packages= to decide which
-packages to install, and the appearance chapter loads =kittymacs-theme=. Those
-options must already have your value when the chapter runs, so =private.el=
-comes first. But the chapters that load afterwards also set options of the
-packages they configure, with =setopt= or =use-package ... :custom=, and a
-later setting simply replaces an earlier one. If =private.el= said
-=(setopt ghostel-enable-osc52 t)= at top level, the terminal chapter would
-set it back to =nil= a moment later and you would never know why.
+- =private.el= next to the generated modules is loaded once, after the
+  platform variables exist and before anything reads them.
+- Git ignores it. Copy =private.example.el= to start one, or press =SPC C p=.
+- Loading it early is deliberate, with one consequence worth understanding:
+  - Many chapters read a =kittymacs-= option /while they load/; it must
+    already have your value, so =private.el= comes first.
+    - The languages chapter looks at =kittymacs-language-packages= to decide
+      which packages to install.
+    - The appearance chapter loads =kittymacs-theme=.
+  - But chapters loading afterwards also set options of the packages they
+    configure (=setopt= or =use-package ... :custom=), and a later setting
+    replaces an earlier one.
+  - If =private.el= said =(setopt ghostel-enable-osc52 t)= at top level, the
+    terminal chapter would set it back to =nil= a moment later and you would
+    never know why.
 
 So =private.el= has two kinds of settings, written two ways:
 
-- *kittymacs options* go at top level with =setopt=. They are read while
-  the chapters load, which is exactly why the file is early.
+- *kittymacs options*, read while the chapters load, go at top level with
+  =setopt=.
 - *Options of packages that a chapter also sets* go in a function on
   =after-init-hook=, which Emacs runs once =init.el= has finished:
 
@@ -237,17 +254,19 @@ So =private.el= has two kinds of settings, written two ways:
             90)
   #+end_src
 
-  The =90= is the hook's /depth/: functions run in order of depth, and the
-  chapters add theirs at the default of 0, so yours runs after them. The
-  =with-eval-after-load= inside is for the options a chapter sets only when
-  its package loads, in =:config= or its own =with-eval-after-load=. Emacs
-  runs the forms waiting for a package in the order they were registered;
-  registering yours inside the hook puts it after every chapter's, so it runs
-  last there too.
+  - The =90= is the hook's /depth/: functions run in order of depth, and the
+    chapters add theirs at the default of 0, so yours runs after them.
+  - The =with-eval-after-load= inside is for the options a chapter sets only
+    when its package loads, in =:config= or its own =with-eval-after-load=.
+    - Emacs runs the forms waiting for a package in the order they were
+      registered; registering yours inside the hook puts it after every
+      chapter's, so it runs last there too.
 
-Settings saved with =M-x customize= need none of this. The Customize file,
-=var/etc/custom.el=, is loaded on the last line of =init.el=, after every
-chapter, so what you set there wins over the chapters. Customize is the right
-place for package options; a =kittymacs-= option that a chapter reads while it
-loads belongs in =private.el=, because by the time the Customize file loads,
-that chapter has already made its decision.
+Settings saved with =M-x customize= need none of this:
+
+- The Customize file, =var/etc/custom.el=, is loaded on the last line of
+  =init.el=, after every chapter, so its settings win over the chapters.
+- Customize is the right place for package options.
+- A =kittymacs-= option that a chapter reads while it loads belongs in
+  =private.el=: by the time the Customize file loads, that chapter has
+  already made its decision.

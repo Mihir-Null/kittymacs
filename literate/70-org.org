@@ -5,19 +5,22 @@
 
 [[file:index.org][Reading guide]] · [[file:30-platform.org][Platform]] · [[file:41-leader.org][Leader]]
 
-Ownership: *user configuration*. The directory and capture templates are the
-user's own minimal policy; the defaults are distilled from Lambda-Emacs by
-Colin McLear (=lem-setup-org-base=, =lem-setup-org-settings=), without his
-personal files and export workflows.
+Ownership: *user configuration*.
+
+- The directory and capture templates are the user's own minimal policy.
+- The defaults are distilled from Lambda-Emacs by Colin McLear
+  (=lem-setup-org-base=, =lem-setup-org-settings=), without his personal
+  files and export workflows.
 
 * What this gives you
 
-One inbox file under a portable Org directory, two capture templates, an
-agenda, and searches by tag and by query. Org is configured to look clean
-(hidden markup, indented headings, pretty entities) and to behave
-predictably (no editing inside folded text, tasks log when they are done).
-=SPC m= in an Org buffer lists the structure commands; =SPC m a= opens the
-agenda from anywhere.
+- One inbox file under a portable Org directory, two capture templates, an
+  agenda, and searches by tag and by query.
+- Org looks clean: hidden markup, indented headings, pretty entities.
+- Org behaves predictably: no editing inside folded text; tasks log when
+  done.
+- =SPC m= in an Org buffer lists the structure commands; =SPC m a= opens the
+  agenda from anywhere.
 
 #+begin_src emacs-lisp
 ;;; kittymacs-org.el --- Notes, tasks and the agenda -*- lexical-binding: t; -*-
@@ -35,10 +38,11 @@ agenda from anywhere.
 
 * Where notes live
 
-=kittymacs-org-directory= comes from [[file:30-platform.org][the platform chapter]] so a machine can
-override it in =private.el=. Everything captured lands in =inbox.org=,
-which =SPC o i= opens; the agenda reads every file in the directory. Done tasks are archived
-into a dated tree in one archive file.
+- =kittymacs-org-directory= comes from [[file:30-platform.org][the platform chapter]] so a machine
+  can override it in =private.el=.
+- Captures land in =inbox.org=; =SPC o i= opens it.
+- The agenda reads every file in the directory.
+- Done tasks are archived into a dated tree in one archive file.
 
 #+begin_src emacs-lisp
 (make-directory kittymacs-org-directory t)
@@ -63,14 +67,17 @@ into a dated tree in one archive file.
 
 * How Org looks and behaves
 
-Markup is hidden and headings are indented, so a document reads like a
-document; indenting also hides every star of a heading but the last. Editing inside folded text is refused rather than silently
-mangling it. New headings go after the current subtree's content, =RET=
-follows links, and =C-a=/=C-e= respect heading stars. Source blocks already
-use their language's colours and =TAB= by default; here they also keep their
-indentation exactly as written. Files open unfolded: Org 9.7
-spells that =nofold= and no longer accepts =nil=, and =setopt= checks the
-type at startup, so the symbol matters.
+- Markup is hidden and headings are indented, so a document reads like a
+  document.
+  - Indenting also hides every star of a heading but the last.
+- Editing inside folded text is refused rather than silently mangling it.
+- New headings go after the current subtree's content.
+- =RET= follows links; =C-a=/=C-e= respect heading stars.
+- Source blocks keep their indentation exactly as written; their language's
+  colours and =TAB= are already the default.
+- Files open unfolded.
+  - Org 9.7 spells that =nofold= and no longer accepts =nil=; =setopt=
+    checks the type at startup, so the symbol matters.
 
 #+begin_src emacs-lisp
 (setopt org-hide-emphasis-markers t
@@ -113,14 +120,18 @@ type at startup, so the symbol matters.
 
 * Tasks and the agenda
 
-A task is =TODO=, then maybe =NEXT= or =WAITING=, then =DONE= or
-=CANCELED=. Finishing a task records the time in a drawer, and a parent
-cannot be done while its children are not. The agenda starts on today,
-hides scheduled items that are done, and offers a =d= dashboard with
-today's agenda and the next actions. Log mode is on from the start and
-lists closed and clocked items, which is what =t= used to mean before
-the option's type asked for the list itself. Refiling completes across
-every agenda file to eight levels deep.
+- A task is =TODO=, then maybe =NEXT= or =WAITING=, then =DONE= or
+  =CANCELED=.
+- Finishing a task records the time in a drawer.
+- A parent cannot be done while its children are not.
+- The agenda:
+  - starts on today;
+  - hides done scheduled items;
+  - offers a =d= dashboard: today's agenda and the next actions.
+- Log mode is on from the start, listing closed and clocked items.
+  - =t= used to mean that, before the option's type asked for the list
+    itself.
+- Refiling completes across every agenda file to eight levels deep.
 
 #+begin_src emacs-lisp
 (setopt org-todo-keywords '((sequence "TODO(t)" "NEXT(n)" "WAITING(w@/!)" "|" "DONE(d)" "CANCELED(c@)"))
@@ -325,11 +336,13 @@ Code that is already lexical expands as before."
 
 * Export and files
 
-Exports get smart quotes, tolerate broken links and omit the HTML
-postamble. Headings tagged =:ignore:= export their contents but not
-their title. Office documents open in their default application. =SPC m w=
-wraps the region in a source, quote or example block, or inserts an empty
-one; it is Org's own =org-insert-structure-template=, also on =C-c C-,=.
+- Exports get smart quotes, tolerate broken links and omit the HTML
+  postamble.
+- Headings tagged =:ignore:= export their contents but not their title.
+- Office documents open in their default application.
+- =SPC m w= wraps the region in a source, quote or example block, or inserts
+  an empty one.
+  - Org's own =org-insert-structure-template=, also on =C-c C-,=.
 
 #+begin_src emacs-lisp
 (setopt org-export-with-smart-quotes t
@@ -353,11 +366,11 @@ one; it is Org's own =org-insert-structure-template=, also on =C-c C-,=.
 
 * Looking the part
 
-=org-modern= draws headings, lists, checkboxes, tags, dates and tables the
-way a document viewer would, in the buffer and in the agenda. Because the
-display chapter hides emphasis markers, =org-appear= reveals them while
-point is inside the marked text, so editing =*bold*= never means guessing
-where the asterisks are.
+- =org-modern= draws headings, lists, checkboxes, tags, dates and tables the
+  way a document viewer would, in the buffer and in the agenda.
+- The display chapter hides emphasis markers, so =org-appear= reveals them
+  while point is inside the marked text.
+  - Editing =*bold*= never means guessing where the asterisks are.
 
 #+begin_src emacs-lisp
 (use-package org-modern
@@ -378,11 +391,11 @@ where the asterisks are.
 
 * Meow in Org
 
-Org buffers are text, so they start in Normal state with the full grammar;
-=@= counts as part of a word so tags select cleanly. The agenda is a
-special buffer and starts in Motion state. The localleader collects the
-structure commands a new user needs; every one of them also has Org's
-own =C-c= key, which =C-h m= lists.
+- Org buffers are text, so they start in Normal state with the full grammar.
+- =@= counts as part of a word, so tags select cleanly.
+- The agenda, a special buffer, starts in Motion state.
+- The localleader collects the structure commands a new user needs.
+  - Each also has Org's own =C-c= key, which =C-h m= lists.
 
 #+begin_src emacs-lisp
 (with-eval-after-load 'meow

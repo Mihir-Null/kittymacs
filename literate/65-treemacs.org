@@ -5,24 +5,28 @@
 
 [[file:index.org][Reading guide]] · [[file:64-dired.org][Dired]] · [[file:68-navigation.org][Navigation]] · [[file:45-frames.org][Frames]]
 
-Ownership: *user configuration*. [[https://github.com/Alexander-Miller/treemacs][Treemacs]] by Alexander Miller is the file tree;
-this chapter scopes it to the project you are in, points its state files at
-=var/=, and gives it the icons, Git colours and Meow state the rest of this
-configuration uses.
+Ownership: *user configuration*.
+
+- [[https://github.com/Alexander-Miller/treemacs][Treemacs]] by Alexander Miller is the file tree. This chapter:
+  - scopes it to the current project;
+  - points its state files at =var/=;
+  - gives it the icons, Git colours and Meow state the rest of this
+    configuration uses.
 
 * What this gives you
 
-=SPC t d= opens a sidebar down the left of the frame showing the directory
-structure of the project you are working in. Move with =j= and =k=, open a
-directory with =TAB=, open a file with =RET=. It follows you: change to a
-buffer from another project and the tree switches to that project, without
-being asked. Files are coloured by their Git status, and the tree notices
-changes on disk — including the ones Magit makes when you stage or commit.
-
-It is a *panel*, not a buffer you edit, so it stays inside the current frame
-rather than becoming an OS window of its own ([[file:45-frames.org][the frames chapter]] explains that
-distinction). =SPC o t= jumps into it, =q= leaves it, and =SPC f t= reveals
-whatever file you are editing.
+- =SPC t d= opens a sidebar down the left of the frame showing the current
+  project's directory structure.
+  - =j= and =k= move, =TAB= opens a directory, =RET= opens a file.
+- It follows you: change to a buffer from another project and the tree
+  switches to that project, unasked.
+- Files are coloured by their Git status; the tree notices changes on disk,
+  including Magit's when you stage or commit.
+- It is a *panel*, not a buffer you edit, so it stays inside the current frame
+  instead of becoming its own OS window ([[file:45-frames.org][the frames chapter]] explains the
+  distinction).
+- =SPC o t= jumps into it, =q= leaves it, =SPC f t= reveals the file you are
+  editing.
 
 #+begin_src emacs-lisp
 ;;; kittymacs-treemacs.el --- The project tree -*- lexical-binding: t; -*-
@@ -43,25 +47,26 @@ whatever file you are editing.
 
 * The tree
 
-Everything Treemacs writes goes under =var/=, like every other package here:
-without this it would create =.cache/= beside =init.el=, which Git does not
-ignore.
-
-The sidebar is 35 columns and stays put; =SPC m w= sets a width and =SPC m t w=
-unlocks dragging. =treemacs-is-never-other-window= keeps =other-window=,
-=ace-window= and =C-x o= out of the tree, which matters here because a frame
-normally holds one buffer and the tree: without it, every "other window"
-lands in the sidebar. Single-child directories are collapsed into one line
-so a deep package path does not cost five rows, which needs Python 3; where
-there is none, the tree simply shows every level.
-
-The tree hides nothing but the =.git= directory itself. Dotfiles are shown,
-and so are files that Git ignores, such as build output or a local
-=private.el=: a sidebar that silently leaves out files which exist on disk
-is more confusing than one that shows a few extra. Treemacs can hide ignored
-files with =treemacs-hide-gitignored-files-mode=; it is off by default, and
-switched off explicitly below so that the choice is written down. Note the
-=-1=: a minor mode called from Lisp with =nil= is turned *on*, not off.
+- Everything Treemacs writes goes under =var/=, like every other package here.
+  - Otherwise it would create =.cache/= beside =init.el=, which Git does not
+    ignore.
+- The sidebar is 35 columns and stays put; =SPC m w= sets a width and
+  =SPC m t w= unlocks dragging.
+- =treemacs-is-never-other-window= keeps =other-window=, =ace-window= and
+  =C-x o= out of the tree.
+  - A frame here normally holds one buffer and the tree, so without it every
+    "other window" lands in the sidebar.
+- Single-child directories collapse into one line, so a deep package path
+  does not cost five rows.
+  - This needs Python 3; without it the tree shows every level.
+- The tree hides only the =.git= directory itself: dotfiles are shown, and so
+  are files Git ignores, such as build output or a local =private.el=.
+  - Silently leaving out files that exist on disk confuses more than showing
+    a few extra.
+- =treemacs-hide-gitignored-files-mode= can hide ignored files; it is off by
+  default, and switched off explicitly below so the choice is written down.
+  - Note the =-1=: a minor mode called from Lisp with =nil= is turned *on*,
+    not off.
 
 #+begin_src emacs-lisp
 (use-package treemacs
@@ -119,15 +124,18 @@ switched off explicitly below so that the choice is written down. Note the
 
 * Icons, workspaces and Magit
 
-Three small packages connect Treemacs to what this configuration already
-runs. *Nerd Font icons* replace the default PNG icons so the tree matches the
-completion, Corfu and Dired icons; the check is the same one [[file:50-appearance.org][the appearance
-chapter]] uses, so a machine without the font gets the plain theme instead of
-boxes. *Workspaces* — [[file:68-navigation.org][the navigation chapter]] gives each tab its own set of
-buffers, and =treemacs-tab-bar= gives each tab its own tree to match, so
-switching workspace switches the sidebar with it. *Magit* closes the one gap
-in filesystem watching: staging and committing change Git's index rather than
-your files, so Treemacs would not otherwise notice that the colours changed.
+- Three small packages connect Treemacs to what this configuration already
+  runs.
+- *Nerd Font icons* replace the default PNG icons, so the tree matches the
+  completion, Corfu and Dired icons.
+  - Same check as [[file:50-appearance.org][the appearance chapter]], so a machine without the font
+    gets the plain theme instead of boxes.
+- *Workspaces*: [[file:68-navigation.org][the navigation chapter]] gives each tab its own buffers, and
+  =treemacs-tab-bar= its own tree to match.
+  - Switching workspace switches the sidebar with it.
+- *Magit* closes the one gap in filesystem watching.
+  - Staging and committing change Git's index, not your files, so Treemacs
+    would not otherwise notice the colours changed.
 
 #+begin_src emacs-lisp
 (use-package treemacs-nerd-icons
@@ -154,14 +162,14 @@ your files, so Treemacs would not otherwise notice that the colours changed.
 
 * Meow in the tree
 
-The tree is an application buffer, so it starts in *Motion* state: Treemacs's
-own keys are the interface and Meow adds only =j=/=k= and the leader. Treemacs
-already reads =h= and =l= as collapse and expand, which is the same shape as
-Dired here.
-
-The menu below labels what a new user looks for. =SPC m ?= opens Treemacs's
-own help, which lists every key it has — the same convention =?= follows in
-every other mode menu in this configuration.
+- The tree is an application buffer, so it starts in *Motion* state.
+  - Treemacs's own keys are the interface; Meow adds only =j=/=k= and the
+    leader.
+  - Treemacs already reads =h= and =l= as collapse and expand, the same shape
+    as Dired here.
+- The menu below labels what a new user looks for.
+- =SPC m ?= opens Treemacs's own help, listing every key it has: the
+  convention =?= follows in every other mode menu here.
 
 #+begin_src emacs-lisp
 (with-eval-after-load 'meow
@@ -195,8 +203,8 @@ every other mode menu in this configuration.
 
 * Try it
 
-- =SPC t d= in any file of a project. =j= and =k= move, =TAB= opens a directory,
-  =RET= opens a file in the window beside the tree.
+- =SPC t d= in any file of a project. =j= and =k= move, =TAB= opens a
+  directory, =RET= opens a file in the window beside the tree.
 - Open a file from a different project (=SPC p p=): the tree follows.
 - Edit a file and save it: its name changes colour. Stage it with =SPC v s=
   then =s=, and the colour changes again without a refresh.

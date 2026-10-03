@@ -5,16 +5,20 @@
 
 [[file:index.org][Reading guide]] · [[file:10-startup.org][Startup]] · [[file:66-vc.org][Version control]]
 
-Ownership: *user configuration*. [[https://github.com/davidshepherd7/frames-only-mode][frames-only-mode]] supplies the frame lifecycle;
-this module fits it to the deferred Magit setup and the leader keys.
-An Emacs frame is an OS window; an Emacs window is a pane inside that frame.
-Load this module after Help and Org so their defaults cannot undo the policy.
+Ownership: *user configuration*.
+
+- [[https://github.com/davidshepherd7/frames-only-mode][frames-only-mode]] supplies the frame lifecycle; this module fits it
+  to the deferred Magit setup and the leader keys.
+- An Emacs frame is an OS window; an Emacs window is a pane inside that frame.
+- Load this module after Help and Org, so their defaults cannot undo the
+  policy.
 
 * Keep ordinary editor frames native
 
-Native decorations, positioning and sizing remain under the desktop window
-manager's control. Ordinary file and buffer switching still uses the current frame;
-commands that would pop up an auxiliary buffer can create a separate frame.
+- Native decorations, positioning and sizing remain under the desktop window
+  manager's control.
+- Ordinary file and buffer switching still uses the current frame; commands
+  that would pop up an auxiliary buffer can create a separate frame.
 
 #+begin_src emacs-lisp
 ;;; kittymacs-frames.el --- Desktop-managed Emacs frames -*- lexical-binding: t; -*-
@@ -26,15 +30,15 @@ commands that would pop up an auxiliary buffer can create a separate frame.
 
 * Android has no window manager to delegate to
 
-This chapter's premise is that /the desktop window manager arranges Emacs/.
-Android has no such thing. It does map frames one-to-one onto activities, so
-the policy technically works — and the result is that every Help buffer, Magit
-status and completion panel becomes a separate full-screen entry in the task
-switcher, which the user then has to dismiss by hand. The premise fails, so the
-policy is off by default and Emacs's own windows do the arranging.
-
-The option is real rather than a hard-coded refusal: a tablet in desktop mode,
-or a device driving an external display, is a plausible place to want it back.
+- This chapter's premise is that /the desktop window manager arranges Emacs/;
+  Android has no such thing.
+  - It maps frames one-to-one onto activities, so the policy technically
+    works, but every Help buffer, Magit status and completion panel becomes
+    a separate full-screen entry in the task switcher, dismissed by hand.
+- So the policy is off by default there; Emacs's own windows do the
+  arranging.
+- It is an option, not a hard-coded refusal: a tablet in desktop mode, or a
+  device driving an external display, may want it back.
 
 #+begin_src emacs-lisp
 (defcustom kittymacs-frames-only
@@ -49,32 +53,35 @@ it in `private.el', before this module is loaded, to override."
 
 * Magit gets a frame
 
-[[file:66-vc.org][The version-control chapter]] sets Magit's display function: a frame while
-this mode is on, the traditional split otherwise. Modern Magit closes frames
-it created through =quit-window=. The package's own legacy Magit overrides are
-excluded below: they can delete terminal frames and unbind Magit variables
-when the mode is disabled after Magit loaded lazily.
-
+- [[file:66-vc.org][The version-control chapter]] sets Magit's display function: a frame
+  while this mode is on, the traditional split otherwise.
+- Modern Magit closes frames it created through =quit-window=.
+- The package's own legacy Magit overrides are excluded below.
+  - They can delete terminal frames and unbind Magit variables when the mode
+    is disabled after Magit loaded lazily.
 
 * Enable frames and preserve completion panels
 
-The package uses =pop-up-frames= only on graphical displays. Its defaults put
-Org agenda and source editing in frames and clean up temporary frames when
-quitting their buffers. Vertico's top side window, Transient menus and Corfu's
-child-frame suggestions remain attached to their editor. These are temporary
-controls, so they should not become separate desktop editing windows.
-
-Popper, from [[file:25-defaults.org][the defaults chapter]], normally shows Help and compilation
-buffers in a window of its own inside the frame. Turn off only its display
-control while frame mode is active; popup tracking
-and cycling remain available, and disabling frame mode restores its placement.
-
-The split commands themselves, =split-window-below= and =split-window-right=,
-are remapped to frame creation inside the minor mode map. A remap applies to
-every key bound to the command, so =C-x 2=, =C-x 3= and the leader's =SPC w h=
-and =SPC w v= all make a frame while the mode is on, and =M-x frames-only-mode=
-turns them back into splits when disabled. A remap is a property of keys, not
-of the command: =M-x split-window-below= still splits the current frame.
+- The package uses =pop-up-frames= only on graphical displays.
+- Its defaults put Org agenda and source editing in frames and clean up
+  temporary frames when quitting their buffers.
+- Vertico's top side window, Transient menus and Corfu's child-frame
+  suggestions remain attached to their editor.
+  - They are temporary controls, so they should not become separate desktop
+    editing windows.
+- Popper, from [[file:25-defaults.org][the defaults chapter]], normally shows Help and
+  compilation buffers in a window of its own inside the frame.
+  - Only its display control is off while frame mode is active; popup
+    tracking and cycling remain available.
+  - Disabling frame mode restores its placement.
+- The split commands, =split-window-below= and =split-window-right=, are
+  remapped to frame creation inside the minor mode map.
+  - A remap applies to every key bound to the command, so =C-x 2=, =C-x 3=
+    and the leader's =SPC w h= and =SPC w v= all make a frame while the
+    mode is on.
+  - =M-x frames-only-mode= turns them back into splits when disabled.
+  - A remap is a property of keys, not of the command:
+    =M-x split-window-below= still splits the current frame.
 
 #+begin_src emacs-lisp
 (use-package frames-only-mode
@@ -99,16 +106,17 @@ of the command: =M-x split-window-below= still splits the current frame.
 
 * Diagnostics are not editing surfaces
 
-A warning, a byte-compilation log or a backtrace is something Emacs is telling
-you, not a buffer you work in, so it does not deserve an operating-system
-window of its own. Left alone it gets one: the first Magit of a session used
-to raise a =*Warnings*= window on top of the Magit window it had just made,
-which looks exactly like the command having gone wrong.
-
-These appear in a small window at the bottom of the frame you are in instead.
-=q= dismisses them and the frame is untouched. This is the same rule as the
-sidebars above — a panel that serves the buffer next to it stays inside the
-frame — applied to the buffers Emacs raises on its own.
+- A warning, a byte-compilation log or a backtrace does not deserve an
+  operating-system window of its own.
+  - It is something Emacs is telling you, not a buffer you work in.
+- Left alone it gets one: the first Magit of a session used to raise a
+  =*Warnings*= window on top of the Magit window it had just made.
+  - That looks exactly like the command having gone wrong.
+- Instead these appear in a small window at the bottom of the frame you are
+  in; =q= dismisses them and the frame is untouched.
+- This is the same rule as the sidebars above — a panel that serves the
+  buffer next to it stays inside the frame — applied to the buffers Emacs
+  raises on its own.
 
 #+begin_src emacs-lisp
 (dolist (pattern '("\\`\\*Warnings\\*\\'"
@@ -129,13 +137,15 @@ frame — applied to the buffers Emacs raises on its own.
 
 * What stays inside the frame
 
-Only *full buffers* go to frames. Panels that ask for a side window keep it:
-the file-tree and outline sidebars (=SPC t d=, =SPC t o=), Vertico's
-candidate list, which-key, Transient menus and Corfu. The mode line, the
-fringe gutters and the minibuffer are per frame anyway. The rule of thumb
-when adding a package: a buffer you read or edit gets a frame; a panel that
-serves the buffer next to it uses =display-buffer-in-side-window=, which this
-mode leaves alone.
+- Only *full buffers* go to frames.
+- Panels that ask for a side window keep it: the file-tree and outline
+  sidebars (=SPC t d=, =SPC t o=), Vertico's candidate list, which-key,
+  Transient menus and Corfu.
+- The mode line, the fringe gutters and the minibuffer are per frame anyway.
+- The rule of thumb when adding a package:
+  - a buffer you read or edit gets a frame;
+  - a panel that serves the buffer next to it uses
+    =display-buffer-in-side-window=, which this mode leaves alone.
 
 * Everyday commands and recovery
 
@@ -143,11 +153,12 @@ mode leaves alone.
   =M-x split-window-below= and =M-x split-window-right= split inside one.
 - =C-x 4= uses the other-frame commands normally under =C-x 5=.
 - =C-x 5 f= visits a file in another frame; =C-x 5 b= selects a buffer there.
-- =C-x 5 0= closes a frame. Desktop window-manager shortcuts can arrange it.
-- =M-x frames-only-mode= toggles this policy for the session. Internal panes
-  already on screen are not deleted when enabling the mode.
-
-The graphical integration checks are in [[file:../tests/kittymacs-frames-tests.el][kittymacs-frames-tests.el]]. Load them after
-ordinary GUI startup and run =M-x ert RET ^kittymacs-frames- RET=. They exercise
-auxiliary-frame creation and cleanup, the completion side window, and Magit's
-lazy load and return to internal splits when the mode is disabled.
+- =C-x 5 0= closes a frame; desktop window-manager shortcuts can arrange it.
+- =M-x frames-only-mode= toggles this policy for the session; enabling it
+  does not delete internal panes already on screen.
+- The graphical integration checks are in [[file:../tests/kittymacs-frames-tests.el][kittymacs-frames-tests.el]].
+  - Load them after ordinary GUI startup and run
+    =M-x ert RET ^kittymacs-frames- RET=.
+  - They exercise auxiliary-frame creation and cleanup, the completion side
+    window, and Magit's lazy load and return to internal splits when the
+    mode is disabled.

@@ -5,18 +5,28 @@
 
 [[file:index.org][Reading guide]] · [[file:72-programming.org][Programming]] · [[file:40-editing.org][Editing]]
 
-Ownership: *subsequent development*. Tree-sitter integration, Eglot, Flymake and xref are Emacs facilities. Grammars, compilers and language-server executables are separate dependencies. This layer pins each grammar recipe to an exact revision and switches a mode to its Tree-sitter version only when the grammar actually loads. Installing parsers and starting language servers remain explicit actions.
+Ownership: *subsequent development*.
+
+- Tree-sitter integration, Eglot, Flymake and xref are Emacs facilities.
+- Grammars, compilers and language-server executables are separate
+  dependencies.
+- This layer pins each grammar recipe to an exact revision and switches a
+  mode to its Tree-sitter version only when the grammar actually loads.
+- Installing parsers and starting language servers remain explicit actions.
 
 * kittymacs-treesit
 :PROPERTIES:
 :header-args:emacs-lisp: :tangle ../lisp/kittymacs-treesit.el :eval never :comments no :padline no :mkdirp yes
 :END:
 
-Deployed file: [[file:../lisp/kittymacs-treesit.el][lisp/kittymacs-treesit.el]]. Edit the blocks here; generated Lisp is kept in Git for ordinary startup and review.
+- Deployed file: [[file:../lisp/kittymacs-treesit.el][lisp/kittymacs-treesit.el]].
+- Edit the blocks here; generated Lisp is kept in Git for ordinary startup
+  and review.
 
 ** Load cl-lib
 
-Load this dependency before evaluating the forms that use its functions or variables. This preserves the existing startup dependency order.
+- Loaded before the forms that use its functions or variables; this
+  preserves the existing startup dependency order.
 
 #+name: kittymacs-treesit-01-1
 #+begin_src emacs-lisp
@@ -36,7 +46,7 @@ Load this dependency before evaluating the forms that use its functions or varia
 
 ** Load rx
 
-Load this dependency before evaluating the forms that use its functions or variables. This preserves the existing startup dependency order.
+- Loaded for the same reason as cl-lib.
 
 #+name: kittymacs-treesit-02-1
 #+begin_src emacs-lisp
@@ -45,7 +55,7 @@ Load this dependency before evaluating the forms that use its functions or varia
 
 ** Load treesit
 
-Load this dependency before evaluating the forms that use its functions or variables. This preserves the existing startup dependency order.
+- Loaded for the same reason as cl-lib.
 
 #+name: kittymacs-treesit-03-1
 #+begin_src emacs-lisp
@@ -54,7 +64,8 @@ Load this dependency before evaluating the forms that use its functions or varia
 
 ** Group customization options
 
-This Custom group gives the following settings a discoverable home in Emacs's built-in customization interface.
+- This Custom group gives the following settings a discoverable home in
+  Emacs's built-in customization interface.
 
 #+name: kittymacs-treesit-04-1
 #+begin_src emacs-lisp
@@ -65,7 +76,13 @@ This Custom group gives the following settings a discoverable home in Emacs's bu
 
 ** Keep compiled grammars in the writable cache
 
-The configuration checkout stays source-only. Compiled parser libraries belong under the disposable kittymacs cache. The current directory is placed first before every grammar availability check and explicit installation, so changing this option through Customize or =setopt= after startup takes effect immediately. Set it in =private.el= to choose the location before startup.
+- The configuration checkout stays source-only; compiled parser libraries
+  belong under the disposable kittymacs cache.
+- The current directory is placed first before every grammar availability
+  check and explicit installation.
+  - Changing this option through Customize or =setopt= after startup takes
+    effect immediately.
+- Set it in =private.el= to choose the location before startup.
 
 #+name: kittymacs-treesit-cache-1
 #+begin_src emacs-lisp
@@ -87,7 +104,11 @@ The configuration checkout stays source-only. Compiled parser libraries belong u
 
 ** Select a native Windows compiler locally
 
-The Nix grammar recipe uses MSYS2's UCRT64 GCC by absolute path when it is available on Windows. This is a per-recipe compiler choice: it does not change =PATH= or =exec-path= for Emacs or child processes. Other platforms retain Emacs's normal compiler discovery.
+- On Windows, the Nix grammar recipe uses MSYS2's UCRT64 GCC by absolute
+  path when it is available.
+- This is a per-recipe compiler choice: it does not change =PATH= or
+  =exec-path= for Emacs or child processes.
+- Other platforms keep Emacs's normal compiler discovery.
 
 #+name: kittymacs-treesit-nix-source-1
 #+begin_src emacs-lisp
@@ -106,9 +127,14 @@ The Nix grammar recipe uses MSYS2's UCRT64 GCC by absolute path when it is avail
 
 ** Pin compatible grammar revisions
 
-Exact source revisions keep the chosen generated parsers within the intended Emacs 30 ABI range. These recipes identify source; they do not download or compile anything during startup.
-
-The following blocks are consecutive fragments of this source section. Some share an open Lisp form; edit them here and rebuild the whole chapter rather than evaluating a fragment on its own.
+- Exact source revisions keep the chosen generated parsers within the
+  intended Emacs 30 ABI range.
+- The recipes identify source; they do not download or compile anything
+  during startup.
+- The following blocks are consecutive fragments of this source section;
+  some share an open Lisp form.
+  - Edit them here and rebuild the whole chapter rather than evaluating a
+    fragment on its own.
 
 #+name: kittymacs-treesit-05-1
 #+begin_src emacs-lisp
@@ -145,7 +171,8 @@ The following blocks are consecutive fragments of this source section. Some shar
 
 *** Pin compatible grammar revisions: continued 2
 
-Continue the same definition in its original scope. This fragment follows the preceding block directly in the deployed file.
+- Continues the same definition in its original scope, directly after the
+  preceding block in the deployed file.
 
 #+name: kittymacs-treesit-05-2
 #+begin_src emacs-lisp
@@ -166,9 +193,20 @@ entry has the same shape accepted by `treesit-language-source-alist':
 
 ** Describe candidate mode replacements
 
-This table is a set of possibilities. The availability check below decides which remaps can actually be installed.
-
-The first column must name the mode Emacs really chooses for a file, or the remap never fires. For shell scripts that is =sh-mode=: there is no =bash-mode=. =sh-mode= edits every Bourne-family and C-shell dialect, while =bash-ts-mode= only understands Bash, but the remap is still safe, because =bash-ts-mode= checks the script's shell when it starts and hands anything that is not Bash or plain =sh= straight back to =sh-mode=. For JSON the built-in mode is =js-json-mode=; =json-mode= is a separate package this configuration does not install. The YAML, TypeScript and Typst rows name third-party modes and only matter when one of those packages is installed.
+- This table is a set of possibilities; the availability check below
+  decides which remaps can actually be installed.
+- The first column must name the mode Emacs really chooses for a file, or
+  the remap never fires.
+  - For shell scripts that is =sh-mode=: there is no =bash-mode=.
+    - =sh-mode= edits every Bourne-family and C-shell dialect;
+      =bash-ts-mode= only understands Bash.
+    - The remap is still safe: =bash-ts-mode= checks the script's shell
+      when it starts and hands anything that is not Bash or plain =sh=
+      straight back to =sh-mode=.
+  - For JSON the built-in mode is =js-json-mode=; =json-mode= is a separate
+    package this configuration does not install.
+- The YAML, TypeScript and Typst rows name third-party modes and only matter
+  when one of those packages is installed.
 
 #+name: kittymacs-treesit-06-1
 #+begin_src emacs-lisp
@@ -186,7 +224,8 @@ The first column must name the mode Emacs really chooses for a file, or the rema
 
 ** Probe the actual parser library
 
-A grammar recipe alone is not a usable parser. Ask Emacs whether it can load the language before selecting a Tree-sitter major mode.
+- A grammar recipe alone is not a usable parser, so Emacs is asked whether
+  it can load the language before a Tree-sitter major mode is selected.
 
 #+name: kittymacs-treesit-07-1
 #+begin_src emacs-lisp
@@ -201,7 +240,10 @@ A grammar recipe alone is not a usable parser. Ask Emacs whether it can load the
 
 ** Replace moving recipes with pins
 
-Write the pinned recipes into Emacs's own =treesit-language-source-alist=, replacing any entry it already has for the same language, so Emacs's installer uses them too.
+- The pinned recipes are written into Emacs's own
+  =treesit-language-source-alist=, replacing any entry for the same
+  language.
+  - So Emacs's installer uses them too.
 
 #+name: kittymacs-treesit-08-1
 #+begin_src emacs-lisp
@@ -214,7 +256,9 @@ Write the pinned recipes into Emacs's own =treesit-language-source-alist=, repla
 
 ** Handle exact Git revisions
 
-Some Emacs versions treat a revision like a branch during shallow clone. The local adapter handles raw commit identifiers with a detached fetch and retains the ordinary path for other references.
+- Some Emacs versions treat a revision like a branch during shallow clone.
+- The local adapter handles raw commit identifiers with a detached fetch;
+  other references keep the ordinary path.
 
 #+name: kittymacs-treesit-09-1
 #+begin_src emacs-lisp
@@ -247,7 +291,8 @@ ORIGINAL-FUNCTION unchanged."
 
 ** Keep classic modes as a working fallback
 
-A replacement is installed only when both the target mode and its grammar work. Refreshing removes stale choices if a parser becomes unavailable.
+- A replacement is installed only when its target mode and grammar both work.
+- Refreshing removes stale choices if a parser becomes unavailable.
 
 #+name: kittymacs-treesit-10-1
 #+begin_src emacs-lisp
@@ -273,7 +318,9 @@ only when its target mode exists and its grammar loads successfully."
 
 ** Install one parser on request
 
-This interactive command checks the selected recipe and delegates compilation to Emacs. Git and a working compiler must already be available.
+- This interactive command checks the selected recipe and delegates
+  compilation to Emacs.
+- Git and a working compiler must already be available.
 
 #+name: kittymacs-treesit-11-1
 #+begin_src emacs-lisp
@@ -300,7 +347,8 @@ This interactive command checks the selected recipe and delegates compilation to
 
 ** Install the pinned set on request
 
-This bulk command is an explicit maintenance action. Normal startup only configures recipes and checks availability.
+- This bulk command is an explicit maintenance action; normal startup only
+  configures recipes and checks availability.
 
 #+name: kittymacs-treesit-12-1
 #+begin_src emacs-lisp
@@ -321,7 +369,8 @@ This bulk command is an explicit maintenance action. Normal startup only configu
 
 ** Apply the pinned recipe policy now
 
-Register the pinned recipes as the module loads. This configures source locations without installing parsers.
+- The pinned recipes are registered as the module loads, configuring source
+  locations without installing parsers.
 
 #+name: kittymacs-treesit-13-1
 #+begin_src emacs-lisp
@@ -330,7 +379,8 @@ Register the pinned recipes as the module loads. This configures source location
 
 ** Select currently usable modes
 
-Recompute remaps from the parsers and major modes available on this machine at startup.
+- At startup, remaps are recomputed from the parsers and major modes
+  available on this machine.
 
 #+name: kittymacs-treesit-14-1
 #+begin_src emacs-lisp
@@ -339,7 +389,8 @@ Recompute remaps from the parsers and major modes available on this machine at s
 
 ** Install the exact-revision adapter once
 
-Guard the advice so reloading the module cannot stack duplicate wrappers around the grammar clone helper.
+- The advice is guarded, so reloading the module cannot stack duplicate
+  wrappers around the grammar clone helper.
 
 #+name: kittymacs-treesit-15-1
 #+begin_src emacs-lisp
@@ -351,7 +402,8 @@ Guard the advice so reloading the module cannot stack duplicate wrappers around 
 
 ** Publish the module
 
-The core require/provide protocol records that this file loaded. Later requires can reuse the feature without evaluating the module again.
+- The core require/provide protocol records that this file loaded.
+- Later requires can reuse the feature without evaluating the module again.
 
 #+name: kittymacs-treesit-17-1
 #+begin_src emacs-lisp
@@ -364,11 +416,14 @@ The core require/provide protocol records that this file loaded. Later requires 
 :header-args:emacs-lisp: :tangle ../lisp/kittymacs-languages.el :eval never :comments no :padline no :mkdirp yes
 :END:
 
-Deployed file: [[file:../lisp/kittymacs-languages.el][lisp/kittymacs-languages.el]]. Edit the blocks here; generated Lisp is kept in Git for ordinary startup and review.
+- Deployed file: [[file:../lisp/kittymacs-languages.el][lisp/kittymacs-languages.el]].
+- Edit the blocks here; generated Lisp is kept in Git for ordinary startup
+  and review.
 
 ** Group customization options
 
-This Custom group gives the following settings a discoverable home in Emacs's built-in customization interface.
+- This Custom group gives the following settings a discoverable home in
+  Emacs's built-in customization interface.
 
 #+name: kittymacs-languages-01-1
 #+begin_src emacs-lisp
@@ -389,7 +444,9 @@ This Custom group gives the following settings a discoverable home in Emacs's bu
 
 ** Opt into language editing packages
 
-The default is empty. Nix, Racket and Guile package choices can be made locally without assuming their runtimes exist on every machine.
+- The default is empty.
+- Nix, Racket and Guile package choices can be made locally, without
+  assuming their runtimes exist on every machine.
 
 #+name: kittymacs-languages-02-1
 #+begin_src emacs-lisp
@@ -404,7 +461,9 @@ not need to be listed here."
 
 ** Keep automatic servers opt-in
 
-An empty list means buffers do not start language servers merely by opening a file. Add modes only after installing their server executables.
+- An empty list means buffers do not start language servers merely by
+  opening a file.
+- Add modes only after installing their server executables.
 
 #+name: kittymacs-languages-03-1
 #+begin_src emacs-lisp
@@ -419,7 +478,10 @@ until the language server for a mode is deliberately installed on each machine."
 
 ** Use the built-in LSP client
 
-Eglot supplies server communication while core xref and Flymake expose navigation and diagnostics. Servers start only when asked, with =SPC l e=, unless a mode is listed in the option below.
+- Eglot supplies server communication; core xref and Flymake expose
+  navigation and diagnostics.
+- Servers start only when asked, with =SPC l e=, unless a mode is listed in
+  the option below.
 
 #+name: kittymacs-languages-04-1
 #+begin_src emacs-lisp
@@ -435,7 +497,7 @@ Eglot supplies server communication while core xref and Flymake expose navigatio
 
 **  eglot auto start hooks
 
-Mode hooks currently managed by `kittymacs-eglot-apply-auto-start-modes'.
+- Mode hooks currently managed by =kittymacs-eglot-apply-auto-start-modes=.
 
 #+name: kittymacs-languages-05-1
 #+begin_src emacs-lisp
@@ -445,7 +507,8 @@ Mode hooks currently managed by `kittymacs-eglot-apply-auto-start-modes'.
 
 ** Reconcile opt-in hooks
 
-Track the hooks installed by this module so changing the opt-in list removes obsolete hooks as well as adding new ones.
+- The module tracks the hooks it installs, so changing the opt-in list
+  removes obsolete hooks as well as adding new ones.
 
 #+name: kittymacs-languages-06-1
 #+begin_src emacs-lisp
@@ -463,7 +526,8 @@ Track the hooks installed by this module so changing the opt-in list removes obs
 
 ** Apply the current server opt-ins
 
-Install only the auto-start hooks explicitly named by user policy. The empty default starts no servers.
+- Only the auto-start hooks explicitly named by user policy are installed.
+- The empty default starts no servers.
 
 #+name: kittymacs-languages-10-1
 #+begin_src emacs-lisp
@@ -472,7 +536,9 @@ Install only the auto-start hooks explicitly named by user policy. The empty def
 
 ** Opt into Nix editing
 
-Only request nix-mode when the user includes nix in kittymacs-language-packages. This does not install the Nix runtime or a language server.
+- nix-mode is requested only when the user includes nix in
+  kittymacs-language-packages.
+- This does not install the Nix runtime or a language server.
 
 #+name: kittymacs-languages-11-1
 #+begin_src emacs-lisp
@@ -486,7 +552,8 @@ Only request nix-mode when the user includes nix in kittymacs-language-packages.
 
 ** Opt into Racket editing
 
-Only request racket-mode when selected. The Racket runtime remains a separate platform dependency.
+- racket-mode is requested only when selected.
+- The Racket runtime remains a separate platform dependency.
 
 #+name: kittymacs-languages-12-1
 #+begin_src emacs-lisp
@@ -498,7 +565,8 @@ Only request racket-mode when selected. The Racket runtime remains a separate pl
 
 ** Opt into Guile interaction
 
-Geiser and its Guile adapter are conditional editing packages, independent of installing Guile itself.
+- Geiser and its Guile adapter are conditional editing packages,
+  independent of installing Guile itself.
 
 #+name: kittymacs-languages-13-1
 #+begin_src emacs-lisp
@@ -513,7 +581,8 @@ Geiser and its Guile adapter are conditional editing packages, independent of in
 
 ** Publish the module
 
-The core require/provide protocol records that this file loaded. Later requires can reuse the feature without evaluating the module again.
+- The core require/provide protocol records that this file loaded.
+- Later requires can reuse the feature without evaluating the module again.
 
 #+name: kittymacs-languages-14-1
 #+begin_src emacs-lisp
