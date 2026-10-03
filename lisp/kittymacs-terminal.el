@@ -200,6 +200,13 @@ With prefix ARG, create another one instead of reusing the existing buffer."
   (with-eval-after-load 'project
     (add-to-list 'project-switch-commands '(ghostel-project "Terminal" ?t) t)))
 
+(defvar package-vc-selected-packages)
+(when kittymacs-terminal-ghostel
+  (with-eval-after-load 'package-vc
+    (add-to-list 'package-vc-selected-packages
+                 '(consult-ghostel :url "https://github.com/dakra/ghostel"
+                                   :lisp-dir "extensions/consult-ghostel"))))
+
 (use-package consult-ghostel
   :vc (:url "https://github.com/dakra/ghostel"
        :lisp-dir "extensions/consult-ghostel" :rev :newest)

@@ -132,13 +132,13 @@ system clipboard, which is convenient over SSH and unpleasant when the output
 you just =cat='d was hostile. Turn it on per machine in =private.el= if you
 want it.
 
-Ghostel is the one package here installed from its *repository* rather than an
-archive, with =:vc=, which is upstream's own documented method. Both reasons are
-practical: MELPA's ghostel build is broken at the time of writing — its index
-advertises a tarball that answers 404 — and the Consult extension below has
-never been published there at all. A =:vc= package is an ordinary Git checkout
-under =var/elpa/=, about ten megabytes, cloned once; =M-x package-vc-upgrade=
-updates it. Move both to =:ensure t= when MELPA carries them.
+- Ghostel and its Consult extension are installed from their *repository*,
+  with =:vc=, not from an archive.
+  - A =:vc= package is an ordinary Git checkout under =var/elpa/=, about ten
+    megabytes, cloned once; =M-x package-vc-upgrade= updates it.
+  - MELPA carries both, and upstream's README installs from it. Moving
+    them to =:ensure t= means deleting the two checkouts on every machine:
+    package.el counts a checkout as installed and would keep it.
 
 #+begin_src emacs-lisp
 (use-package ghostel
@@ -368,10 +368,30 @@ without submitting it, so you can edit before running. Loading it also
 teaches =consult-line= about soft-wrapped terminal rows, so a path that wrapped
 mid-word is still findable.
 
+- Its code is in =extensions/consult-ghostel/= of that repository, which the
+  =:lisp-dir= below names.
+- On Emacs 31, package-vc builds a checkout from the first spec it finds for
+  the package's name, and an archive's spec counts:
+  - MELPA's spec for =consult-ghostel= is only the URL, so the build used
+    package-vc's guess, ghostel's =lisp/=, and =consult-ghostel= was never
+    defined;
+  - package-vc reads =package-vc-selected-packages= before the archives, so
+    the spec goes there whenever package-vc loads, and installs, rebuilds and
+    upgrades all use it.
+- A checkout already built from =lisp/= (=SPC o E= fails: =consult-ghostel= is
+  not defined) is repaired by =M-x package-vc-rebuild RET consult-ghostel=.
+
 #+begin_src emacs-lisp
 (when kittymacs-terminal-ghostel
   (with-eval-after-load 'project
     (add-to-list 'project-switch-commands '(ghostel-project "Terminal" ?t) t)))
+
+(defvar package-vc-selected-packages)
+(when kittymacs-terminal-ghostel
+  (with-eval-after-load 'package-vc
+    (add-to-list 'package-vc-selected-packages
+                 '(consult-ghostel :url "https://github.com/dakra/ghostel"
+                                   :lisp-dir "extensions/consult-ghostel"))))
 
 (use-package consult-ghostel
   :vc (:url "https://github.com/dakra/ghostel"
