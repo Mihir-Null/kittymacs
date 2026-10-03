@@ -66,6 +66,8 @@
   "o" (cons "outline" #'consult-outline)
   "h" (cons "org heading" #'consult-org-heading)
   "a" (cons "org agenda" #'consult-org-agenda)
+  "q" (cons "org query, jump" #'kittymacs-org-ql-find)
+  "Q" (cons "org query, list" #'kittymacs-org-ql-search)
   "k" (cons "kill ring" #'consult-yank-pop)
   "m" (cons "mark ring" #'consult-mark)
   "t" (cons "todo keywords" #'hl-todo-occur)
@@ -219,6 +221,8 @@
 (defvar-keymap kittymacs-notes-map
   :doc "Linked notes in the current graph."
   "f" (cons "find node" #'kittymacs-org-roam-find)
+  "t" (cons "find node by tag" #'kittymacs-org-roam-find-by-tag)
+  "T" (cons "tag index" #'kittymacs-org-roam-tag-index)
   "i" (cons "insert ID link" #'kittymacs-org-roam-insert)
   "c" (cons "capture (show destination)" #'kittymacs-org-roam-capture)
   "b" (cons "backlinks panel" #'kittymacs-org-roam-backlinks)

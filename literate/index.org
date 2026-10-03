@@ -53,8 +53,8 @@ section describing states and the =SPC m= menu, and "Try it" at the end.
 | [[file:65-treemacs.org][Treemacs]]        | The project tree in a sidebar                                                      |
 | [[file:66-vc.org][Version control]] | Magit and VC                                                                       |
 | [[file:68-navigation.org][Navigation]]      | Recent files, places, projects, search tools, workspaces                           |
-| [[file:70-org.org][Org]]             | Notes, tasks, the agenda                                                           |
-| [[file:71-org-roam.org][Org-roam]]        | Linked notes: personal and project graphs, capture, backlinks                      |
+| [[file:70-org.org][Org]]             | Notes, tasks, the agenda, searches by tag and by query                             |
+| [[file:71-org-roam.org][Org-roam]]        | Linked notes: personal and project graphs, capture, backlinks, tags                |
 | [[file:72-programming.org][Programming]]     | Delimiters, structural editing, linting, compiling, Emacs Lisp                     |
 | [[file:74-languages.org][Languages]]       | Tree-sitter grammars and opt-in language servers                                   |
 | [[file:80-maintenance.org][Maintenance]]     | Private overrides and the build commands                                           |

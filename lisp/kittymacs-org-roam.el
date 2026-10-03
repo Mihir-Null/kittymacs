@@ -178,17 +178,24 @@ save that finishes the capture updates that graph's database."
    scope (lambda ()
            (let ((kittymacs--org-roam-capture-scope scope))
              (org-roam-capture- :node node :props props)))))
-(defun kittymacs--org-roam-read (scope &optional require-match initial)
+(defun kittymacs--org-roam-read (scope &optional require-match initial filter)
   "Read a node of the graph SCOPE, starting from INITIAL input.
-REQUIRE-MATCH allows only existing nodes."
+REQUIRE-MATCH allows only existing nodes.  FILTER, a function of a node,
+offers only the nodes for which it returns non-nil."
   (kittymacs--org-roam-call
    scope (lambda ()
-           (org-roam-node-read initial nil nil require-match
+           (org-roam-node-read initial filter nil require-match
                                (format "Node (%s): " (car scope))))))
 
 (defun kittymacs--org-roam-project-p (scope)
   "Whether SCOPE is a graph other than the personal one."
   (not (file-equal-p (car scope) (default-value 'org-roam-directory))))
+
+(defun kittymacs--org-roam-open (scope node)
+  "Show NODE, an existing note of the graph SCOPE, in a buffer given that graph."
+  (with-current-buffer (find-file-noselect (org-roam-node-file node))
+    (kittymacs--org-roam-set-scope scope))
+  (org-roam-node-open node nil t))
 
 (defun kittymacs-org-roam-find ()
   "Find a note in this graph; a project graph offers only existing notes."
@@ -198,10 +205,7 @@ REQUIRE-MATCH allows only existing nodes."
          (node (kittymacs--org-roam-read scope (kittymacs--org-roam-project-p scope))))
     (with-current-buffer origin
       (if (org-roam-node-file node)
-          (progn
-            (with-current-buffer (find-file-noselect (org-roam-node-file node))
-              (kittymacs--org-roam-set-scope scope))
-            (org-roam-node-open node nil t))
+          (kittymacs--org-roam-open scope node)
         (kittymacs--org-roam-capture-node scope node '(:finalize find-file))))))
 
 (defun kittymacs-org-roam-insert ()
@@ -274,6 +278,91 @@ The active region's text is the prompt's input and the link's description."
   "g" (cons "refresh backlinks" #'org-roam-buffer-refresh)
   "s" (cons "sync graph" #'kittymacs-org-roam-sync)
   "f" (cons "find node" #'kittymacs-org-roam-find))
+(setopt org-roam-node-display-template
+        (concat "${title:*} " (propertize "${tags:24}" 'face 'org-tag)))
+(defun kittymacs--org-roam-tag-counts (scope)
+  "Return the tags of the graph SCOPE as (TAG . NOTES) pairs, sorted by tag."
+  (kittymacs--org-roam-call
+   scope (lambda ()
+           (mapcar (lambda (row) (cons (car row) (cadr row)))
+                   (org-roam-db-query [:select [tag (funcall count *)] :from tags
+                                       :group-by tag :order-by [(asc tag)]])))))
+
+(defun kittymacs--org-roam-read-tag (scope)
+  "Read a tag of the graph SCOPE; the list says how many notes carry each."
+  (let ((counts (or (kittymacs--org-roam-tag-counts scope)
+                    (user-error "No tags in %s; SPC n s indexes the graph" (car scope)))))
+    (completing-read
+     (format "Tag (%s): " (car scope))
+     (lambda (string predicate action)
+       (if (eq action 'metadata)
+           `(metadata
+             (annotation-function
+              . ,(lambda (tag)
+                   (let ((notes (alist-get tag counts nil nil #'equal)))
+                     (format "  %d note%s" notes (if (= notes 1) "" "s"))))))
+         (complete-with-action action counts string predicate)))
+     nil t)))
+
+(defun kittymacs-org-roam-find-by-tag ()
+  "Find a note of this graph by choosing one of the graph's tags first."
+  (interactive)
+  (let* ((scope (kittymacs--org-roam-scope))
+         (origin (current-buffer))
+         (tag (kittymacs--org-roam-read-tag scope))
+         (node (kittymacs--org-roam-read
+                scope t nil (lambda (node) (member tag (org-roam-node-tags node))))))
+    (with-current-buffer origin
+      (kittymacs--org-roam-open scope node))))
+
+(defun kittymacs--org-roam-tagged-notes (scope)
+  "Return the tags of the graph SCOPE with the notes listed under each.
+The value is a list of (TAG . NOTES), sorted by tag; a note is a list
+\(ID TITLE FILE LEVEL), file notes first.  A file note is listed under
+its file tags, a heading note only under tags its file note lacks."
+  (let ((rows (kittymacs--org-roam-call
+               scope (lambda ()
+                       (org-roam-db-query
+                        [:select [tags:tag nodes:id nodes:title nodes:file nodes:level]
+                         :from tags :inner-join nodes :on (= tags:node-id nodes:id)
+                         :order-by [(asc tags:tag) (asc nodes:file) (asc nodes:pos)]]))))
+        (file-tags (make-hash-table :test #'equal))
+        groups)
+    (pcase-dolist (`(,tag ,_ ,_ ,file ,level) rows)
+      (when (zerop level) (puthash (cons file tag) t file-tags)))
+    (pcase-dolist (`(,tag ,id ,title ,file ,level) rows)
+      (unless (and (> level 0) (gethash (cons file tag) file-tags))
+        (push (list id title file level) (alist-get tag groups nil nil #'equal))))
+    (sort (mapcar (lambda (group)
+                    ;; File notes first; `sort' is stable, so the rest keep
+                    ;; the order of their files and positions.
+                    (cons (car group)
+                          (sort (nreverse (cdr group))
+                                (lambda (a b) (and (zerop (nth 3 a)) (> (nth 3 b) 0))))))
+                  groups)
+          (lambda (a b) (string< (car a) (car b))))))
+
+(defun kittymacs-org-roam-tag-index ()
+  "List this graph's tags in an Org buffer, each with links to its notes."
+  (interactive)
+  (let* ((scope (kittymacs--org-roam-scope))
+         (groups (or (kittymacs--org-roam-tagged-notes scope)
+                     (user-error "No tags in %s; SPC n s indexes the graph" (car scope))))
+         (root (abbreviate-file-name (car scope)))
+         (buffer (get-buffer-create (format "*org-roam tags: %s*" root))))
+    (with-current-buffer buffer
+      (erase-buffer)
+      (org-mode)
+      (kittymacs--org-roam-set-scope scope)
+      (insert (format "#+title: Tags in %s\n\n" root))
+      (pcase-dolist (`(,tag . ,notes) groups)
+        (insert (format "* %s (%d)\n" tag (length notes)))
+        (pcase-dolist (`(,id ,title ,file ,_) notes)
+          (insert "- " (org-link-make-string (concat "id:" id) title)
+                  " · " (file-relative-name file (car scope)) "\n")))
+      (set-buffer-modified-p nil)
+      (goto-char (point-min)))
+    (pop-to-buffer buffer)))
 
 (provide 'kittymacs-org-roam)
 ;;; kittymacs-org-roam.el ends here

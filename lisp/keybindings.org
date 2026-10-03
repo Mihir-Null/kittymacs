@@ -225,11 +225,23 @@ New editing surfaces are OS windows (frames); your window manager arranges them.
 | =M-`=               | toggle the last popup              |
 | =C-x C-+= / =C-x C-0= | text bigger / reset                |
 
+* Org headings by tag or query
+
+| Key     | Does                                              | Command                 |
+|---------+---------------------------------------------------+-------------------------|
+| SPC s h | Jump to a heading here; type :tag: to filter      | consult-org-heading     |
+| SPC s q | Jump to a heading by query, such as tags:decision | kittymacs-org-ql-find   |
+| SPC s Q | List the headings a query matches, by file        | kittymacs-org-ql-search |
+
+In that list, =g= runs the query again and =v= changes it or its grouping.
+
 * Linked notes (current graph)
 
 | Key | Action | Command |
 |-----+--------+---------|
-| SPC n f | Find node | kittymacs-org-roam-find |
+| SPC n f | Find node; type #tag to keep only that tag | kittymacs-org-roam-find |
+| SPC n t | Find node by tag, from the graph's tags | kittymacs-org-roam-find-by-tag |
+| SPC n T | Every tag with its notes | kittymacs-org-roam-tag-index |
 | SPC n i | Insert ID link | kittymacs-org-roam-insert |
 | SPC n c | Capture with destination | kittymacs-org-roam-capture |
 | SPC n b | Backlinks side panel | kittymacs-org-roam-backlinks |

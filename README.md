@@ -36,6 +36,7 @@ The first start installs the Emacs Lisp packages it needs into `var/elpa/`. The 
 - `SPC SPC` runs any command by name. `SPC` then a letter opens a group; wait for the popup or press `C-h`.
 - `SPC h ?` opens the cheat sheet; `SPC h t` starts Meow's interactive tutorial; `SPC h k` explains any key.
 - `SPC f f` opens a file, `SPC b b` switches buffers, `SPC s s` searches lines, `SPC v s` opens Magit.
+- `SPC s Q` lists the Org headings a query matches, such as `tags:decision` or `todo:NEXT`, grouped by file ([Org QL](https://github.com/alphapapa/org-ql)); `SPC s q` jumps to one.
 - `SPC o e` opens a real terminal ([ghostel](https://github.com/dakra/ghostel)), or Eshell on the Android port, and `SPC t d` the project tree ([Treemacs](https://github.com/Alexander-Miller/treemacs)).
 - `SPC m` is the menu for the current mode: in Org it schedules and captures, in Dired it copies and renames, in Magit it stages and commits.
 - `SPC C c` opens the reading guide when you want to change something.
@@ -133,8 +134,10 @@ Much of the policy is distilled from [Lambda-Emacs](https://codeberg.org/Lambda-
 ## Linked notes
 
 `SPC n` opens the Org-roam menu: find (`f`), insert (`i`), capture (`c`),
-backlinks (`b`) and sync (`s`). Each command works on the graph of the current
-buffer. The personal graph defaults to the Org directory. A repository becomes a
+backlinks (`b`) and sync (`s`), plus find by tag (`t`) and a tag index (`T`).
+Each command works on the graph of the current buffer. The find prompt shows
+every note's tags, so typing `#decision` keeps only the notes tagged
+`decision`. The personal graph defaults to the Org directory. A repository becomes a
 graph of its own with a `.dir-locals.el` at its root:
 
 ```elisp
