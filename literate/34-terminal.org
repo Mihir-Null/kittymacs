@@ -97,14 +97,11 @@ is what the terminal needs."
 
 ** Not on Android
 
-- Ghostel needs two things Android does not grant:
-  - =git=: it is installed with =:vc=, so the first start clones it, and the
-    Android port ships no =git=;
-  - a native module: upstream publishes prebuilt ones for the desktop
-    platforms, none for =android-aarch64=, and the Android port is commonly
-    built without dynamic module support, leaving =module-file-suffix= nil:
-    no module could load however it arrived.
-- Neither is worth an error on every start, so ghostel is not installed
+- Ghostel is a native module, and the Android port is commonly built
+  without dynamic module support, leaving =module-file-suffix= nil: no
+  module could load however it arrived.
+  - Upstream ships an =aarch64-android= module, built for Termux's Emacs.
+- That is not worth an error on every start, so ghostel is not installed
   there and Eshell takes =SPC o e=.
   - Eshell is Lisp, needs no module and no subprocess to start, and where
     Termux is paired it runs Termux's programs like any other shell.
@@ -115,8 +112,8 @@ is what the terminal needs."
 (defcustom kittymacs-terminal-ghostel
   (not (eq system-type 'android))
   "Whether ghostel provides the terminal.
-Off on Android, which has neither `git' for ghostel's `:vc' checkout nor a
-prebuilt native module.  `kittymacs-terminal-open' falls back to Eshell
+Off on Android, whose port is commonly built without the dynamic module
+support ghostel needs.  `kittymacs-terminal-open' falls back to Eshell
 whenever this is nil."
   :type 'boolean)
 #+end_src
@@ -133,53 +130,54 @@ whenever this is nil."
 - OSC 52 is left off: it lets a program in the terminal write your system
   clipboard, convenient over SSH and unpleasant when the output you just
   =cat='d was hostile. Turn it on per machine in =private.el=.
-- Ghostel and its Consult extension are installed from their *repository*,
-  with =:vc=, not from an archive.
-  - A =:vc= package is an ordinary Git checkout under =var/elpa/=, about ten
-    megabytes, cloned once; =M-x package-vc-upgrade= updates it.
-  - MELPA carries both, and upstream's README installs from it. Moving
-    them to =:ensure t= means deleting the two checkouts on every machine:
-    package.el counts a checkout as installed and would keep it.
+- Ghostel and its Consult extension come from MELPA, as upstream's README
+  installs them; =M-x package-upgrade= updates them like any package.
+  - Both declarations sit inside =(when kittymacs-terminal-ghostel ...)=:
+    =:ensure= installs a package even when its =:if= is nil, and Android
+    should not download a terminal it will not run.
+  - A Git checkout of either, left by an install made with =:vc=, stays:
+    package.el counts it as installed. =M-x package-delete= =consult-ghostel=,
+    then =ghostel=, and a restart installs MELPA's.
 
 #+begin_src emacs-lisp
-(use-package ghostel
-  :vc (:url "https://github.com/dakra/ghostel" :lisp-dir "lisp" :rev :newest)
-  :if kittymacs-terminal-ghostel
-  :defer t
-  :commands (ghostel ghostel-project ghostel-other ghostel-list-buffers
-             ghostel-create ghostel-exec ghostel-compile ghostel-recompile)
-  :custom
-  (ghostel-module-directory kittymacs-terminal-module-directory)
-  (ghostel-kill-buffer-on-exit t)
-  (ghostel-query-before-killing 'auto)
-  (ghostel-max-scrollback (* 5 1024 1024))
-  (ghostel-scroll-on-input t)
-  (ghostel-enable-osc52 nil)
-  (ghostel-detect-password-prompts t)
-  :config
-  ;; Ghostel runs $SHELL, which native Windows does not set; follow the shell
-  ;; the platform chapter picked instead of ghostel's /bin/sh fallback.
-  (when (and (eq system-type 'windows-nt) (not (getenv "SHELL")))
-    (setopt ghostel-shell (or explicit-shell-file-name shell-file-name)))
+(when kittymacs-terminal-ghostel
+  (use-package ghostel
+    :ensure t
+    :defer t
+    :commands (ghostel ghostel-project ghostel-other ghostel-list-buffers
+               ghostel-create ghostel-exec ghostel-compile ghostel-recompile)
+    :custom
+    (ghostel-module-directory kittymacs-terminal-module-directory)
+    (ghostel-kill-buffer-on-exit t)
+    (ghostel-query-before-killing 'auto)
+    (ghostel-max-scrollback (* 5 1024 1024))
+    (ghostel-scroll-on-input t)
+    (ghostel-enable-osc52 nil)
+    (ghostel-detect-password-prompts t)
+    :config
+    ;; Ghostel runs $SHELL, which native Windows does not set; follow the shell
+    ;; the platform chapter picked instead of ghostel's /bin/sh fallback.
+    (when (and (eq system-type 'windows-nt) (not (getenv "SHELL")))
+      (setopt ghostel-shell (or explicit-shell-file-name shell-file-name)))
 
-  ;; A shell inside the terminal can call these Emacs commands by name:
-  ;;   ghostel_cmd find-file README.md
-  ;;   ghostel_cmd magit-status
-  ;; Only the listed commands can be reached, and every argument is a string.
-  (dolist (command '(("magit-status" magit-status)
-                     ("find-file-other-frame" find-file-other-frame)
-                     ("treemacs-find-file" treemacs-find-file)))
-    (add-to-list 'ghostel-eval-cmds command))
+    ;; A shell inside the terminal can call these Emacs commands by name:
+    ;;   ghostel_cmd find-file README.md
+    ;;   ghostel_cmd magit-status
+    ;; Only the listed commands can be reached, and every argument is a string.
+    (dolist (command '(("magit-status" magit-status)
+                       ("find-file-other-frame" find-file-other-frame)
+                       ("treemacs-find-file" treemacs-find-file)))
+      (add-to-list 'ghostel-eval-cmds command))
 
-  ;; Integrations that ship with ghostel and only make sense once it is here:
-  ;; ghostel: links in Org, bookmarks that reopen a terminal where it was,
-  ;; terminals that survive a desktop session, and Lisp input methods
-  ;; (Hangul, Quail) composing into the terminal rather than the buffer.
-  (require 'ghostel-org nil t)
-  (require 'ghostel-bookmark nil t)
-  (require 'ghostel-desktop nil t)
-  (when (require 'ghostel-ime nil t)
-    (add-hook 'ghostel-mode-hook #'ghostel-ime-mode)))
+    ;; Integrations that ship with ghostel and only make sense once it is here:
+    ;; ghostel: links in Org, bookmarks that reopen a terminal where it was,
+    ;; terminals that survive a desktop session, and Lisp input methods
+    ;; (Hangul, Quail) composing into the terminal rather than the buffer.
+    (require 'ghostel-org nil t)
+    (require 'ghostel-bookmark nil t)
+    (require 'ghostel-desktop nil t)
+    (when (require 'ghostel-ime nil t)
+      (add-hook 'ghostel-mode-hook #'ghostel-ime-mode))))
 
 #+end_src
 
@@ -371,44 +369,27 @@ With prefix ARG, create another one instead of reusing the existing buffer."
   - =consult-ghostel-history= completes against the *shell's own* history
     (bash, zsh, fish and nushell) and types the choice at the prompt without
     submitting it, so you can edit before running.
-  - Its =consult-ghostel-mode=, not turned on here, would also teach
-    =consult-line= about soft-wrapped terminal rows, so a path that wrapped
-    mid-word stays findable.
-  - It lives in ghostel's own repository and is fetched from there, as above;
-    its code is in =extensions/consult-ghostel/=, which the =:lisp-dir= below
-    names.
+  - =consult-ghostel-mode= turns on once ghostel and Consult have loaded:
+    - =consult-line= matches across soft-wrapped terminal rows, so a path
+      that wrapped mid-word stays findable;
+    - =g= narrows =consult-buffer= and =consult-project-buffer= to
+      terminals, and =consult-bookmark= to terminal bookmarks;
+    - Marginalia shows each terminal's title beside its name.
   - The Consult it needs is already installed by [[file:60-completion.org][the completion chapter]].
-  - On Emacs 31, package-vc builds a checkout from the first spec it finds
-    for the package's name, and an archive's spec counts:
-    - MELPA's spec for =consult-ghostel= is only the URL, so the build used
-      package-vc's guess, ghostel's =lisp/=, and =consult-ghostel= was never
-      defined;
-    - package-vc reads =package-vc-selected-packages= before the archives,
-      so the spec goes there whenever package-vc loads, and installs,
-      rebuilds and upgrades all use it.
-  - =M-x package-vc-rebuild RET consult-ghostel= repairs a checkout already
-    built from =lisp/= (=SPC o E= fails: =consult-ghostel= is not defined).
 
 #+begin_src emacs-lisp
 (when kittymacs-terminal-ghostel
   (with-eval-after-load 'project
-    (add-to-list 'project-switch-commands '(ghostel-project "Terminal" ?t) t)))
+    (add-to-list 'project-switch-commands '(ghostel-project "Terminal" ?t) t))
 
-(defvar package-vc-selected-packages)
-(when kittymacs-terminal-ghostel
-  (with-eval-after-load 'package-vc
-    (add-to-list 'package-vc-selected-packages
-                 '(consult-ghostel :url "https://github.com/dakra/ghostel"
-                                   :lisp-dir "extensions/consult-ghostel"))))
-
-(use-package consult-ghostel
-  :vc (:url "https://github.com/dakra/ghostel"
-       :lisp-dir "extensions/consult-ghostel" :rev :newest)
-  :if kittymacs-terminal-ghostel
-  :after (ghostel consult)
-  :demand t
-  :bind (:map ghostel-semi-char-mode-map
-         ("C-c h" . consult-ghostel-history)))
+  (use-package consult-ghostel
+    :ensure t
+    :after (ghostel consult)
+    :demand t
+    :bind (:map ghostel-semi-char-mode-map
+           ("C-c h" . consult-ghostel-history))
+    :config
+    (consult-ghostel-mode 1)))
 
 #+end_src
 

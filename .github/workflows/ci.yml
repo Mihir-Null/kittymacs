@@ -90,13 +90,16 @@ jobs:
         uses: jcs090218/setup-emacs@54b61ac9c1d7011a54d2b6d66dedbcddf20e2fb9 # master as of 2026-09-24
         with:
           version: ${{ matrix.emacs }}
+      # A restored directory keeps every package it holds, so a package that
+      # moves to another source (a Git checkout to an archive, say) is only
+      # tested once the cache starts over: raise the number after "elpa-".
       - name: Restore the package directory
         if: github.event_name != 'schedule'
         uses: actions/cache@v6
         with:
           path: var/elpa
-          key: elpa-${{ runner.os }}-${{ matrix.emacs }}-${{ hashFiles('lisp/*.el', 'early-init.el', 'init.el') }}
-          restore-keys: elpa-${{ runner.os }}-${{ matrix.emacs }}-
+          key: elpa-2-${{ runner.os }}-${{ matrix.emacs }}-${{ hashFiles('lisp/*.el', 'early-init.el', 'init.el') }}
+          restore-keys: elpa-2-${{ runner.os }}-${{ matrix.emacs }}-
       - name: Install packages by starting the configuration
         run: |
           emacs -Q --batch \
