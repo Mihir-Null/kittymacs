@@ -12,6 +12,9 @@
 # installs its packages under var/ and keeps private.el beside the modules,
 # and both must stay writable.
 #
+# The daemon is started with --init-directory on that link, because Emacs
+# prefers ~/.emacs.d whenever one exists; see `initDirectory'.
+#
 # flake.nix applies the first function to the flake itself, so the clone can
 # default to the revision of the kittymacs flake that the host locked.
 { self }:
@@ -112,6 +115,30 @@ in
         Mac, turn on this option or the nix-darwin module's, not both.
       '';
     };
+
+    initDirectory = lib.mkOption {
+      type = lib.types.nullOr lib.types.str;
+      default = if cfg.source == null then null else "${config.xdg.configHome}/emacs";
+      defaultText = lib.literalMD ''
+        `~/.config/emacs` under `xdg.configHome`, the link `source` creates;
+        null when `source` is null
+      '';
+      example = "/Users/me/src/kittymacs";
+      description = ''
+        Directory the `daemon` names to Emacs as `--init-directory`, so the
+        server reads this configuration whatever else the home directory
+        holds.  Emacs looks in `~/.config/emacs` only when `~/.emacs.d` does
+        not exist, and an empty `~/.emacs.d` is enough to win: a home that
+        ran Emacs before this module keeps the server on a stock Emacs with
+        no error anywhere, and the server itself writes an `~/.emacs.d` as
+        soon as it starts, so the state sustains itself.  Naming the
+        directory takes the decision away from the home directory.  The
+        default is the link rather than `source`, so `user-emacs-directory`
+        reads as it does on a home with no `~/.emacs.d` at all.  Needs Emacs
+        29 or later; null passes nothing and leaves the choice to Emacs, as
+        it is for an Emacs started by hand.
+      '';
+    };
   };
 
   config = lib.mkIf cfg.enable {
@@ -187,10 +214,14 @@ in
           fi
         '');
 
+    # extraOptions reaches the systemd unit's ExecStart and the launchd
+    # agent's ProgramArguments alike, and concatenates with anything the
+    # home sets itself, so `initDirectory` costs a user nothing.
     services.emacs = lib.mkIf cfg.daemon {
       enable = true;
       inherit (cfg) package;
       client.enable = true;
+      extraOptions = lib.optional (cfg.initDirectory != null) "--init-directory=${cfg.initDirectory}";
     };
   };
 }

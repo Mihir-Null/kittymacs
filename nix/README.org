@@ -43,7 +43,8 @@ Add the flake as an input and import the module:
 
 Then clone the configuration somewhere writable, or let [[*home-manager][the home-manager
 module]] clone it for you. Emacs looks in =~/.config/emacs= when =~/.emacs.d=
-does not exist:
+does not exist -- so move an =~/.emacs.d= an earlier install left behind,
+since Emacs prefers it, empty or not, and never looks further:
 
 #+begin_src sh
 git clone https://github.com/Mihir-Null/kittymacs.git ~/.config/emacs
@@ -111,6 +112,15 @@ Options under =programs.kittymacs=:
   Off by default. Where no systemd user session runs (nix-on-droid, WSL
   without systemd) the service file is written but nothing starts it. On a
   Mac use this option or the nix-darwin module's, not both.
+- =initDirectory= :: the directory the daemon names to Emacs as
+  =--init-directory=. Defaults to the link above, =~/.config/emacs=, and to
+  null when =source= is null; null passes nothing. Emacs reads
+  =~/.config/emacs= only when =~/.emacs.d= does not exist, and an empty
+  =~/.emacs.d= is enough to win, so on a home that ran Emacs before this
+  module the daemon serves a stock Emacs and says nothing about why --
+  and, having no configuration, writes an =~/.emacs.d= of its own as it
+  starts, which keeps it that way. Naming the directory settles it. Needs
+  Emacs 29 or later.
 - =package= :: the Emacs to install and, with =daemon=, to run. Default
   =pkgs.emacs=.
 - =installPackages= :: install Emacs and the tools into the user profile.
