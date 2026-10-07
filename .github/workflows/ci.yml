@@ -159,7 +159,10 @@ jobs:
           options=$(nix eval --no-write-lock-file \
             --override-input kittymacs "git+file://$PWD?shallow=1" \
             --json ./nix/example-nix-on-droid#nixOnDroidConfigurations.default.config.home-manager.config \
-            --apply 'c: { inherit (c.programs.kittymacs) repository revision daemon; clones = builtins.isString c.home.activation.cloneKittymacs.data; }')
+            --apply 'c: { inherit (c.programs.kittymacs) repository revision daemon initDirectory; clones = builtins.isString c.home.activation.cloneKittymacs.data; }')
           echo "$options"
           test "$(jq -r .revision <<<"$options")" = "$(git rev-parse HEAD)"
           test "$(jq -r .clones <<<"$options")" = true
+          # The daemon must name the link, not leave the directory to
+          # whatever the home holds; `source' is set there, so it is not null.
+          test "$(jq -r '.initDirectory | endswith("/.config/emacs")' <<<"$options")" = true
