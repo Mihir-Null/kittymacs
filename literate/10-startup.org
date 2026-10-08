@@ -76,6 +76,14 @@ Ownership: *user configuration*.
     a manager that checks the result may keep asking again.
   - It is set here, before the first frame exists, so that frame is sized
     the same way as every later one.
+- Under WSLg, frames have no title bar or border of their own.
+  - WSLg's compositor draws a frame around every X11 window, and GTK draws one
+    around Wayland windows; on Windows the window manager already shows where
+    each window is, so that frame only takes space.
+  - =undecorated= asks for no frame.  Windows is where WSLg windows are moved
+    and resized, by a tiling window manager or by keyboard.
+  - WSLg is recognised by =/mnt/wslg=, which every WSL distribution sees.  The
+    daemon is started by systemd, whose environment may lack =WSL_DISTRO_NAME=.
 
 #+begin_src emacs-lisp
 ;;; early-init.el --- Before the first frame -*- lexical-binding: t; -*-
@@ -150,6 +158,9 @@ Ownership: *user configuration*.
 (push '(tool-bar-lines . 0) default-frame-alist)
 (push '(menu-bar-lines . 0) default-frame-alist)
 (push '(vertical-scroll-bars) default-frame-alist)
+;; WSLg: no compositor frame; Windows already frames and places the window.
+(when (file-directory-p "/mnt/wslg")
+  (push '(undecorated . t) default-frame-alist))
 ;; The frame parameter hides the menu bar; the mode has to agree, or the
 ;; first `SPC t m' would switch a hidden menu bar "off" and show nothing.
 (menu-bar-mode -1)
