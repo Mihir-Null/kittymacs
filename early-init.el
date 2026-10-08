@@ -70,6 +70,9 @@
 (push '(tool-bar-lines . 0) default-frame-alist)
 (push '(menu-bar-lines . 0) default-frame-alist)
 (push '(vertical-scroll-bars) default-frame-alist)
+;; WSLg: no compositor frame; Windows already frames and places the window.
+(when (file-directory-p "/mnt/wslg")
+  (push '(undecorated . t) default-frame-alist))
 ;; The frame parameter hides the menu bar; the mode has to agree, or the
 ;; first `SPC t m' would switch a hidden menu bar "off" and show nothing.
 (menu-bar-mode -1)
