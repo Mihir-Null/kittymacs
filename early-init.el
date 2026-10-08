@@ -59,6 +59,10 @@
 (setq gc-cons-threshold most-positive-fixnum)
 (add-hook 'emacs-startup-hook (lambda () (setq gc-cons-threshold (* 64 1024 1024))))
 
+;; Size frames by the pixel, so a tiling window manager's tile is filled
+;; exactly instead of to the nearest whole character cell.
+(setq frame-resize-pixelwise t)
+
 (setq frame-inhibit-implied-resize t
       inhibit-startup-screen t
       initial-scratch-message nil

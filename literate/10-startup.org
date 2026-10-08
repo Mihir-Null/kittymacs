@@ -70,6 +70,12 @@ Ownership: *user configuration*.
   - frames created without the toolbar and the menu bar, rather than with
     ones that are then removed.
 - =SPC t m= brings the menu bar back.
+- Frames are sized by the pixel, not by whole lines and columns.
+  - A tiling window manager asks for an exact rectangle.  Rounded down to
+    the character grid, the frame falls a few pixels short of its tile, and
+    a manager that checks the result may keep asking again.
+  - It is set here, before the first frame exists, so that frame is sized
+    the same way as every later one.
 
 #+begin_src emacs-lisp
 ;;; early-init.el --- Before the first frame -*- lexical-binding: t; -*-
@@ -132,6 +138,10 @@ Ownership: *user configuration*.
 
 (setq gc-cons-threshold most-positive-fixnum)
 (add-hook 'emacs-startup-hook (lambda () (setq gc-cons-threshold (* 64 1024 1024))))
+
+;; Size frames by the pixel, so a tiling window manager's tile is filled
+;; exactly instead of to the nearest whole character cell.
+(setq frame-resize-pixelwise t)
 
 (setq frame-inhibit-implied-resize t
       inhibit-startup-screen t
