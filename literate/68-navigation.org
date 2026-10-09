@@ -1,28 +1,31 @@
+:PROPERTIES:
+:ID: e4d65984-892d-4046-b718-d4265ab74215
+:END:
+
 #+TITLE: Getting around: projects, recent files, search and workspaces
-#+OPTIONS: toc:3 num:nil
+#+FILETAGS: :apps:
 #+STARTUP: overview
 #+PROPERTY: header-args:emacs-lisp :tangle ../lisp/kittymacs-navigation.el :eval never :comments no :padline no :mkdirp yes
 
-[[file:index.org][Reading guide]] · [[file:60-completion.org][Completion]] · [[file:30-platform.org][Platform]]
+- Getting around files, projects and workspaces:
+  + Emacs remembers where you were in every file and which files you opened recently (=SPC f r=);
+  + a /project/ is any Git repository or directory with a marker file; =SPC p= finds files, buffers and text inside one;
+  + a /workspace/ is a tab with its own set of buffers, usually one per project, under =SPC W=;
+  + searches use ripgrep when it is installed.
+- Most of it is built into Emacs (=project.el=, =recentf=, =saveplace=, bookmarks, the tab bar); packages add jumping (Avy), a ripgrep buffer (=deadgrep=), live replacement (=visual-regexp=) and workspaces (Tabspaces).
+- Leans on [[id:42b02bb4-ea68-4981-b427-35705bf162f4][the completion chapter]] for Consult, [[id:3fd783cd-deb8-48aa-bb44-0d9b16535365][the defaults chapter]] for the cache directory and [[id:afa6b7fd-742a-4c15-86a6-32e3e8027b0e][the platform chapter]]; [[id:53ad53ed-155f-47dc-973d-7be18de2893c][the keys chapter]] binds the commands.
+- Distilled from Lambda-Emacs by Colin McLear (=lem-setup-navigation=, =-projects=, =-search=, =-tabs=).
 
-Ownership: *user configuration*.
+* Remembering places and files
 
-- Distilled from Lambda-Emacs by Colin McLear (=lem-setup-navigation=,
-  =-projects=, =-search=, =-tabs=).
-- Most of this is built into Emacs: =project.el=, =recentf=, =saveplace=,
-  bookmarks and the tab bar.
-- Two packages add a ripgrep front end (=deadgrep=) and workspaces
-  (Tabspaces).
-
-* What this gives you
-
-- Emacs remembers where you were in every file and which files you opened
-  recently (=SPC f r=).
-- A *project* is any Git repository or directory with a marker file; =SPC p=
-  finds files, buffers and text inside one.
-- A *workspace* is a tab with its own set of buffers, usually one per
-  project, under =SPC W=.
-- Searches use ripgrep when it is installed.
+- =save-place-mode= reopens every file where you left it, and keeps the place of a file it cannot read right now.
+- =recentf= keeps the last 500 files, for =SPC f r= and the home page.
+- Places, recent files and bookmarks are saved under the cache directory.
+- =C-"= jumps to the last change in the buffer.
+- URLs and e-mail addresses are clickable in compilation, shell, Eshell and text buffers, and in the comments and strings of code.
+- The outline sidebar (=SPC t o=) lists the buffer's headings or definitions in a side window on the right of the same frame, and follows point.
+  + It registers its side-window placement, so frames-only mode never gives it a frame.
+- =SPC b j= jumps to a heading or definition with completion: Org headings in Org, the outline elsewhere.
 
 #+begin_src emacs-lisp
 ;;; kittymacs-navigation.el --- Projects, places, search and workspaces -*- lexical-binding: t; -*-
@@ -36,11 +39,6 @@ Ownership: *user configuration*.
 (require 'kittymacs-platform)
 
 #+end_src
-
-* Remembering places and files
-
-- The outline sidebar (=SPC t o=) lists the current buffer's headings or
-  definitions in a side window of the same frame, and follows point.
 
 #+begin_src emacs-lisp
 (setopt save-place-file (expand-file-name "saved-places" kittymacs-cache-dir)
@@ -84,11 +82,17 @@ Ownership: *user configuration*.
 
 * Jump to anything on screen
 
-- Avy overlays a letter on every match of what you type; press the letter
-  and point is there.
-  - =SPC j j= waits for a character or two;
-  - =SPC j l= picks a line, =SPC j w= a word.
-- It works across every window of the frame.
+- Avy overlays a letter on every match of what you type; press the letter and point is there.
+- It works across every window of the frame; a pause of 0.4 s ends the input.
+
+| Key       | Jumps to                    |
+|-----------+-----------------------------|
+| =SPC j j= | a character or two you type |
+| =SPC j l= | a line                      |
+| =SPC j w= | a word                      |
+| =SPC j s= | a symbol                    |
+| =SPC j e= | the end of a line           |
+| =SPC j i= | a character in this line    |
 
 #+begin_src emacs-lisp
 (use-package avy
@@ -104,13 +108,13 @@ Ownership: *user configuration*.
 
 * Projects
 
-- =project.el= is Emacs's project layer.
-- Switching to a project asks what to do there; the menu includes Magit on
-  =G=.
-  - A command in that menu names its key when =project-prefix-map= has no
-    key for it; [[file:42-keys.org][the keys chapter]] leaves that map as Emacs defines it.
-- Extra root markers let non-Git directories count as projects.
-- Ripgrep backs =xref= searches.
+- =project.el= is Emacs's project layer; the project list is saved under the cache.
+- Switching to a project asks what to do there: find a file, a regexp or a directory, VC-Dir, or Magit on =G=.
+  + A command in that menu names its key when =project-prefix-map= has no key for it; [[id:53ad53ed-155f-47dc-973d-7be18de2893c][the keys chapter]] leaves that map as Emacs defines it.
+- Extra root markers let non-Git directories count as projects: =.dir-locals.el=, =.project.el=, =package.json=, =requirements.txt=, =autogen.sh=.
+- Ripgrep backs =xref= searches when =rg= is installed.
+- Projects whose directories no longer exist are forgotten when =project.el= loads.
+- =SPC p t= opens the directory where projects live (=kittymacs-project-directory=).
 
 #+begin_src emacs-lisp
 (defun kittymacs-projects-directory ()
@@ -139,7 +143,7 @@ Ownership: *user configuration*.
 
 - Consult's ripgrep (=SPC s d=) is the everyday search.
 - =deadgrep= (=SPC s D=) gives a results buffer you can keep and revisit.
-- =visual-regexp= shows replacements live before you commit to them.
+- =visual-regexp= (=SPC s r=) shows replacements live before you commit to them.
 
 #+begin_src emacs-lisp
 (use-package deadgrep :ensure t :commands deadgrep)
@@ -152,29 +156,26 @@ Ownership: *user configuration*.
 
 #+end_src
 
-* Workspaces: tabs with their own buffers
+* Workspaces: tabs with their own buffers :decision:
+:PROPERTIES:
+:ID: 826962f8-d451-4444-8e0e-d0f0024da8b6
+:END:
 
 - The tab bar holds window configurations.
-- Tabspaces turns each tab into a workspace whose buffer list shows only the
-  buffers opened inside it:
-  - =SPC b b= in a project's tab lists that project's buffers;
-  - the full list is a narrow key away.
-- A new tab starts on the scratch buffer.
-- Tabspaces is the one global mode this configuration does not switch on in
-  =:config=.
-  - The mode reads some of its options only when it turns on:
-    - whether =switch-to-buffer= shows the workspace's buffers
-      (=tabspaces-use-filtered-buffers-as-default=);
-    - whether sessions are saved and restored (=tabspaces-session=,
-      =tabspaces-session-auto-restore=);
-    - whether the echo area names the workspace
-      (=tabspaces-echo-area-enable=).
-  - Changing one of them later does nothing until the mode is turned off
-    and on again.
-- So it is turned on from =after-init-hook= at depth 95, after the Customize
-  file and after the =private.el= function at depth 90 (see
-  [[file:10-startup.org::*Machine-specific settings][Machine-specific settings]]).
-  - A value set in either place is the one it reads.
+  + Tabs show their numbers; a new tab opens rightmost on the scratch buffer.
+  + No new-tab or close buttons; closing the last tab turns the tab bar off.
+- =SPC TAB= (=kittymacs-tab-dwim=) creates a tab when there is none, switches when there are two, and otherwise asks which.
+- Tabspaces turns each tab into a workspace whose buffer list shows only the buffers opened inside it; the first is called "Home".
+  + =SPC b b= in a project's tab lists that project's buffers first.
+  + The full list is a narrow key away; =w= narrows back to the workspace.
+  + Turning Tabspaces off restores Consult's ordinary buffer list.
+- Tabspaces is the one global mode this configuration does not switch on in =:config=; it turns on from =after-init-hook= at depth 95.
+  + The mode reads some of its options only when it turns on:
+    - whether =switch-to-buffer= shows the workspace's buffers (=tabspaces-use-filtered-buffers-as-default=);
+    - whether sessions are saved and restored (=tabspaces-session=, =tabspaces-session-auto-restore=);
+    - whether the echo area names the workspace (=tabspaces-echo-area-enable=).
+  + Changing one of them later does nothing until the mode is turned off and on again.
+  + Depth 95 is after the Customize file and after the =private.el= function at depth 90 ("Machine-specific settings" in [[id:40302e33-d2b2-4c0b-9bc3-1f9e121307e1][the startup chapter]]), so a value set in either place is the one it reads.
 
 #+begin_src emacs-lisp
 (setopt tab-bar-tab-hints t
@@ -233,9 +234,12 @@ Ownership: *user configuration*.
 ;;; kittymacs-navigation.el ends here
 #+end_src
 
-* Try it
+* Check
 
-- =SPC p p= opens a project in its own workspace; =SPC b b= now lists only
-  its buffers.
+- =SPC p p= opens a project in its own workspace; =SPC b b= now lists only its buffers.
 - =SPC s d= then a word: ripgrep across the project, with live preview.
 - =SPC f r= for recent files; reopen one and you are where you left off.
+- =SPC j j= then a character: letters appear on every match in the frame.
+- =SPC t o=: the outline sidebar opens on the right and follows point.
+- =C-h v after-init-hook=: =tabspaces-mode= comes after the =private.el= function.
+- =just test-packages=: the startup verifier replays a real startup, after-init hooks included, and fails on any warning.

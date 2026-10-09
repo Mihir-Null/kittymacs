@@ -1,37 +1,26 @@
-#+TITLE: Dashboard: home and discovery
-#+OPTIONS: toc:3 num:nil
-#+STARTUP: overview
-#+PROPERTY: header-args:emacs-lisp :eval never :comments no :padline no :mkdirp yes
-
-[[file:index.org][Reading guide]] · [[file:50-appearance.org][Appearance]] · [[file:42-keys.org][Keys]]
-
-Ownership: *subsequent development*.
-
-- The external dashboard package presents core recentf, project.el and
-  bookmarks.
-- Our additions:
-  - the kittymacs banner and the home layout;
-  - callbacks to the landing pages: the cheat sheet, the reading guide, the
-    leader tree and Meow's tutor;
-  - a short guide to the first keys, font-aware centering and the literate
-    Config destination.
-- No second project or workspace database is introduced.
-
-* kittymacs-dashboard
 :PROPERTIES:
-:header-args:emacs-lisp: :tangle ../lisp/kittymacs-dashboard.el :eval never :comments no :padline no :mkdirp yes
+:ID: e73c0805-dc30-4671-a448-65a78921ec92
 :END:
 
-- Deployed file: [[file:../lisp/kittymacs-dashboard.el][lisp/kittymacs-dashboard.el]].
-- Edit the blocks here; generated Lisp is kept in Git for ordinary startup
-  and review.
+#+TITLE: Dashboard: home and discovery
+#+FILETAGS: :interface:
+#+STARTUP: overview
+#+PROPERTY: header-args:emacs-lisp :tangle ../lisp/kittymacs-dashboard.el :eval never :comments no :padline no :mkdirp yes
 
-** The module needs the fonts first
+- A home page, =*home*=: the dashboard package presenting Emacs's own recent files, =project.el= projects and bookmarks.
+- kittymacs adds the banner and layout, buttons to the landing pages (the cheat sheet, the reading guide, the leader tree, Meow's tutor), a guide to the first keys, font-aware centring and the literate Config button.
+- No second project or workspace database: the lists come from what Emacs already keeps.
+- Leans on [[id:0286f652-e861-4e61-9ca6-91e225c8939d][the appearance chapter]] for fonts and icons and on [[id:53ad53ed-155f-47dc-973d-7be18de2893c][the keys chapter]] for the =SPC= keys it advertises.
 
-- The home page measures its text to centre it, so the appearance module,
-  which chooses the fonts, loads before this one.
+* The cheat sheet, offline
 
-#+name: kittymacs-dashboard-01-1
+- The module requires =kittymacs-ui= first: the page measures its text to centre it, so the fonts must already be chosen.
+- The cheat sheet is an Org file in =lisp/= (=keybindings.org=), so it opens without a network.
+- One command opens it from three places:
+  + =?= on the home page;
+  + =SPC h ?= anywhere else;
+  + the "Keys & commands" button.
+
 #+begin_src emacs-lisp
 ;;; kittymacs-dashboard.el --- Doom-like home page -*- lexical-binding: t; -*-
 ;; Generated from literate/55-dashboard.org; edit the Org source, then tangle.
@@ -45,13 +34,6 @@ Ownership: *subsequent development*.
 (require 'kittymacs-ui)
 #+end_src
 
-** Keep help available offline
-
-- The cheat sheet is an Org file in =lisp/=, so it opens without a network.
-- =?= on the home page, =SPC h ?= anywhere else and the "Keys & commands"
-  button all run this one command.
-
-#+name: kittymacs-dashboard-02-1
 #+begin_src emacs-lisp
 (defun kittymacs-dashboard-open-cheatsheet (&rest _)
   "Open the local keybindings and commands cheat sheet."
@@ -59,20 +41,14 @@ Ownership: *subsequent development*.
   (find-file (expand-file-name "keybindings.org" kittymacs-lisp-dir)))
 #+end_src
 
-** Buttons that run commands
+* Buttons that run commands
 
-- Each button runs a command: open a file, switch project, open a recent file,
-  the agenda, the scratch buffer, the reading guide, the cheat sheet, Meow's
-  tutorial, and the [[file:42-keys.org][keys chapter]] that lists the whole =SPC= tree.
+- Each button runs a command: open a file, switch project, open a recent file, the agenda, the scratch buffer, the reading guide, the cheat sheet, Meow's tutorial, and [[id:53ad53ed-155f-47dc-973d-7be18de2893c][the keys chapter]], which lists the whole =SPC= tree.
 - Dashboard calls a button's action with the button itself as its argument.
-  - A command like =find-file= cannot be the action directly: it would take
-    the button for a file name.
-  - =kittymacs--dashboard-run= wraps a command in a function that ignores the
-    argument and runs the command as =M-x= would.
-- The two commands written for this chapter and the literate one accept and
-  ignore the argument themselves, so they need no wrapper.
+  + A command like =find-file= cannot be the action directly: it would take the button for a file name.
+  + =kittymacs--dashboard-run= wraps a command in a function that ignores the argument and runs the command as =M-x= would.
+- The cheat-sheet and keys-chapter commands written here, and the literate =kittymacs-literate-open=, accept and ignore the argument themselves, so they need no wrapper.
 
-#+name: kittymacs-dashboard-02-2
 #+begin_src emacs-lisp
 (defun kittymacs--dashboard-run (command)
   "Return a dashboard button action that runs COMMAND interactively."
@@ -84,18 +60,19 @@ Ownership: *subsequent development*.
   (find-file (expand-file-name "literate/42-keys.org" user-emacs-directory)))
 #+end_src
 
-** Center rendered text rather than character counts
+* Centring what is rendered, not characters :concept:
+:PROPERTIES:
+:ID: d9285bd0-2543-40af-ac5f-f09086967bf8
+:END:
 
-- Icons, proportional headings and display overlays have different pixel
-  widths.
-  - So the centering pass measures the actual buffer line, excludes trailing
-    padding and compensates for indentation before adding a display prefix.
-- This retains the centering fix from the preceding development.
-- The following blocks are consecutive fragments of this source section.
-  - Some share an open Lisp form: edit them here and rebuild the whole
-    chapter rather than evaluating a fragment alone.
+- Icons, proportional headings and display overlays have different pixel widths, so counting characters centres badly.
+- The centring pass measures each actual buffer line instead:
+  1. skip leading and trailing blanks, so trailing padding does not count;
+  2. measure the visible span and the indentation before it with =window-text-pixel-size=;
+  3. give the line a display-space prefix aligned to =(- center offset)=.
+- The prefix is relative to the window centre, so it follows window resizing without remeasuring.
+- During =after-init= the buffer may not be displayed yet, so the pass shows it in the selected window while it measures.
 
-#+name: kittymacs-dashboard-08-1
 #+begin_src emacs-lisp
 (defun kittymacs--dashboard-center-lines ()
   "Center each visible dashboard line using its rendered pixel width.
@@ -125,16 +102,6 @@ Exclude trailing padding and compensate for leading indentation."
                                     (selected-window) start last t)))
                        (indent (car (window-text-pixel-size
                                      (selected-window) start first t)))
-#+end_src
-
-*** Place the visible span at the window center
-
-- The measured width and indentation become a display-space prefix.
-- The center-relative expression follows window resizing; font and theme
-  changes trigger a fresh measurement.
-
-#+name: kittymacs-dashboard-08-2
-#+begin_src emacs-lisp
                        (offset (/ (+ width indent) 2.0))
                        (prefix (propertize
                                 " " 'display
@@ -144,13 +111,10 @@ Exclude trailing padding and compensate for leading indentation."
             (forward-line)))))))
 #+end_src
 
-** Refresh measurements when presentation changes
+- Font and theme changes do change widths, so they trigger a fresh measurement.
+  + Only a visible home page is measured.
+  + The font, theme and initial window-setup hooks call this after their changes settle ([[*The home page]]).
 
-- Only a visible dashboard needs measuring.
-- Font, theme and initial window setup hooks use this helper after their
-  changes settle.
-
-#+name: kittymacs-dashboard-09-1
 #+begin_src emacs-lisp
 (defun kittymacs--dashboard-recenter (&rest _)
   "Recompute visible dashboard text metrics after a font or theme change."
@@ -160,16 +124,19 @@ Exclude trailing padding and compensate for leading indentation."
         (kittymacs--dashboard-center-lines)))))
 #+end_src
 
-** A guide to the first keys
+* A guide to the first keys
 
-- The home page ends with the six keys the README and the cheat sheet teach
-  first, in two columns.
-  - So a fresh install says where to go before anything is opened.
-- Keys use the navigator face and descriptions the comment face; the
-  centering pass above aligns each line like the rest of the page.
-- The rows are data, so adding one is adding a pair.
+- The page ends with the six keys the README and the cheat sheet teach first, in two columns, so a fresh install says where to go before anything is opened.
 
-#+name: kittymacs-dashboard-09-2
+| Key       | Does                  | Key       | Does              |
+|-----------+-----------------------+-----------+-------------------|
+| =SPC SPC= | run a command by name | =SPC h ?= | the cheat sheet   |
+| =SPC f f= | open a file           | =SPC h t= | Meow's tutorial   |
+| =SPC m=   | menu for this mode    | =SPC C c= | the reading guide |
+
+- Keys use the navigator face, descriptions the comment face; the centring pass aligns each line like the rest of the page.
+- The rows are data: adding one is adding a row to =kittymacs-dashboard-key-guide=.
+
 #+begin_src emacs-lisp
 (defvar kittymacs-dashboard-key-guide
   '(("SPC SPC" "run a command by name" "SPC h ?" "the cheat sheet")
@@ -189,19 +156,18 @@ Exclude trailing padding and compensate for leading indentation."
               "\n"))))
 #+end_src
 
-** Assemble the home page
+* The home page
 
-- Everything the page shows is a dashboard option, set with =:custom= like
-  any other package's:
-  - the kittymacs banner and the three button rows;
-  - bounded lists from Emacs's own recent files, projects and bookmarks;
-  - the key guide.
-- The last item of =dashboard-startupify-list= is the centering pass above,
-  so it measures the finished page.
+- Everything the page shows is a dashboard option, set with =:custom= like any other package's:
+  + the kittymacs banner and the three button rows;
+  + bounded lists from Emacs's own recent files (5), projects (5) and bookmarks (3), on =r=, =p= and =b=;
+  + the init line (Emacs version and start-up time) and the key guide.
+- Icons appear only when =kittymacs-icons-available-p= says the font has them.
+- The last item of =dashboard-startupify-list= is the centring pass, so it measures the finished page.
 - =?= opens the cheat sheet from the home page.
+- The recentring hook runs at depth 100 on =window-setup-hook=, =after-setting-font-hook= and =enable-theme-functions=.
 - The page is skipped when Emacs was started with a file to open.
 
-#+name: kittymacs-dashboard-10-1
 #+begin_src emacs-lisp
 (use-package dashboard
   :ensure t
@@ -284,27 +250,32 @@ Exclude trailing padding and compensate for leading indentation."
   (dashboard-setup-startup-hook))
 #+end_src
 
-** Apply policy after kittymacs-meow
+* Meow on the home page :meow:
+:PROPERTIES:
+:ID: 545c730c-f8a5-4b01-bb3a-c39a4f04ce0c
+:END:
 
-- Waiting for the feature avoids racing its initialization.
-- The following policy takes effect once its variables, maps or hooks exist;
-  it does not force an unrelated feature to load now.
+- The home page starts in Motion state.
+  + The page's own keys (=r=, =p=, =b=, =?= and the item shortcuts) keep working alongside Meow's =j=/=k= and =SPC=.
+- No =SPC m= menu: the page's keys are already single letters.
+- The setting waits for Meow to load rather than racing its initialization, and does not force Meow to load early.
 
-#+name: kittymacs-dashboard-11-1
 #+begin_src emacs-lisp
 ;; Keep r/p/b/? and dashboard item shortcuts alongside Meow j/k and SPC.
 (with-eval-after-load 'meow
   (add-to-list 'meow-mode-state-list '(dashboard-mode . motion)))
 #+end_src
 
-** Publish the module
-
-- The core require/provide protocol records that this file loaded.
-- Later requires can reuse the feature without evaluating the module again.
-
-#+name: kittymacs-dashboard-12-1
 #+begin_src emacs-lisp
 (provide 'kittymacs-dashboard)
 ;;; kittymacs-dashboard.el ends here
 #+end_src
 
+* Check
+
+- Start Emacs with no file argument: =*home*= shows the banner, three button rows, the lists and the key guide, centred.
+- Start it with a file: the file opens and the home page does not.
+- =?= on the home page opens the cheat sheet; =j=/=k= move; =r=, =p=, =b= jump to a list.
+- Change the font size or theme: the page recentres.
+- =SPC o h= reopens the home page.
+- =just tangle-check= confirms =lisp/kittymacs-dashboard.el= matches this page.

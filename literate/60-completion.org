@@ -1,33 +1,41 @@
+:PROPERTIES:
+:ID: 42b02bb4-ea68-4981-b427-35705bf162f4
+:END:
+
 #+TITLE: Completion: Vertico, Consult, Embark, Corfu
-#+OPTIONS: toc:3 num:nil
+#+FILETAGS: :interface:
 #+STARTUP: overview
 #+PROPERTY: header-args:emacs-lisp :tangle ../lisp/kittymacs-completion.el :eval never :comments no :padline no :mkdirp yes
 
-[[file:index.org][Reading guide]] · [[file:25-defaults.org][Defaults]] · [[file:41-leader.org][Leader]] · [[file:62-help.org][Help]]
-
-Ownership: *user configuration*.
-
+- Two kinds of completion: in the /minibuffer/, whenever Emacs asks for a file, buffer, command or anything else; and /in the buffer/, as you type. Plus templates.
+- The packages are the "minad stack" by Daniel Mendler and Omar Antolín: each does one thing and uses Emacs's own completion machinery rather than replacing it.
 - Distilled from Lambda-Emacs by Colin McLear (=lem-setup-completion=).
-- The packages are the "minad stack": small and composable, by Daniel
-  Mendler and Omar Antolín.
-  - Each does one thing and uses Emacs's own completion machinery rather
-    than replacing it.
+- Leans on [[id:3fd783cd-deb8-48aa-bb44-0d9b16535365][the defaults chapter]] for its directories; [[id:53ad53ed-155f-47dc-973d-7be18de2893c][the keys chapter]] binds the commands under =SPC=; [[id:8545f3ea-11d0-420b-a823-22a344e56f1e][the help chapter]] is the other half of discovery.
 
-* What this gives you
+| Package                                | Does                                             | Reach it                        |
+|----------------------------------------+--------------------------------------------------+---------------------------------|
+| Vertico                                | shows minibuffer candidates as a list            | any prompt                      |
+| Orderless                              | matches space-separated words in any order       | typing in any prompt            |
+| Marginalia                             | adds a column of context to each candidate       | any prompt                      |
+| Consult                                | searches and jumps, with live preview            | =SPC s s=, =SPC s d=, =SPC b b= |
+| Embark                                 | acts on a candidate or the thing at point        | =C-.=                           |
+| Corfu                                  | pops up completions in the buffer as you type    | typing                          |
+| Cape                                   | adds in-buffer completion sources                | =SPC c p=                       |
+| =flyspell-correct=, =consult-flyspell= | puts spelling corrections through the same stack | =C-;=, =SPC s p=                |
+| Yasnippet                              | expands text templates                           | =C-'=, =SPC i s=                |
 
-- Two kinds of completion:
-  - In the *minibuffer*, whenever Emacs asks you for a file, buffer, command
-    or anything else:
-    - Vertico shows candidates in a list;
-    - Orderless lets you type words in any order to narrow them;
-    - Marginalia adds a column of context;
-    - Consult provides the searches: =SPC s s= for lines, =SPC s d= for
-      ripgrep, =SPC b b= for buffers;
-    - Embark lets you *act* on a candidate without picking it first.
-  - *In the buffer*:
-    - Corfu pops up completions as you type;
-    - Cape adds sources such as file names and dictionary words.
-- Yasnippet expands templates.
+* The candidate list: Vertico
+
+- Vertico shows the candidates as a list:
+  + candidates cycle at the end;
+  + the list keeps a fixed height;
+  + file candidates sort by history, length and name, then directories before files;
+  + =ESC= quits; =M-RET= exits with exactly what you typed.
+- The extensions are part of Vertico itself:
+  + =vertico-directory= makes =DEL= delete a whole path component and tidies shadowed paths;
+  + =vertico-repeat= resumes the last completion session (=SPC s l=);
+  + =vertico-buffer= puts the list in a side window at the top of the frame, 12 lines high, which [[id:f1d045c2-e2dc-4514-ab17-dd982ed6be00][the frames chapter]] keeps attached to the editing frame.
+- The module needs only the defaults module's directories, loaded first.
 
 #+begin_src emacs-lisp
 ;;; kittymacs-completion.el --- Minibuffer and in-buffer completion -*- lexical-binding: t; -*-
@@ -40,19 +48,6 @@ Ownership: *user configuration*.
 (require 'kittymacs-defaults)
 
 #+end_src
-
-* The minibuffer
-
-- Vertico is the list:
-  - candidates cycle at the end;
-  - the list keeps a fixed height;
-  - directories sort before files.
-- The extensions are part of Vertico itself:
-  - =vertico-directory= makes =DEL= delete a whole path component and tidies
-    shadowed paths;
-  - =vertico-repeat= resumes the last completion session (=SPC s l=).
-- The candidate list lives in a window at the top of the frame, which
-  [[file:45-frames.org][the frames chapter]] keeps attached to the editing frame.
 
 #+begin_src emacs-lisp
 (defun kittymacs-vertico-directories-first (files)
@@ -102,17 +97,16 @@ Ownership: *user configuration*.
 
 #+end_src
 
-- A few minibuffer settings from the Vertico README:
-  - mark multi-selection prompts;
-  - keep the cursor out of the prompt text;
-  - allow a minibuffer command to start another (Embark relies on that).
-- A /multi-selection/ prompt, from =completing-read-multiple=, accepts
-  several answers separated by commas, but on Emacs 30 nothing on screen
-  says so.
-  - The advice below prefixes such prompts with =[CRM]=.
-  - Emacs 31 shows its own indicator (the option =crm-prompt=), so the
-    advice is only added on older versions; otherwise the prompt would
-    carry two.
+* Minibuffer settings
+
+- A few settings from the Vertico README:
+  + mark multi-selection prompts;
+  + keep the cursor out of the prompt text;
+  + allow a minibuffer command to start another (Embark relies on that).
+- File and buffer names, and completion in general, ignore case.
+- A /multi-selection/ prompt, from =completing-read-multiple=, accepts several answers separated by commas, but on Emacs 30 nothing on screen says so.
+  + The advice below prefixes such prompts with =[CRM]=.
+  + Emacs 31 shows its own indicator (the option =crm-prompt=), so the advice is added only on older versions; otherwise the prompt would carry two.
 
 #+begin_src emacs-lisp
 (defun kittymacs--crm-indicator (args)
@@ -133,10 +127,8 @@ Ownership: *user configuration*.
 
 * Matching: Orderless
 
-- Type =buf sw= and =switch-to-buffer= matches: every space-separated word
-  must appear somewhere, in any order.
-- File names also get =partial-completion=, so =/u/l/b= expands to
-  =/usr/local/bin=.
+- Type =buf sw= and =switch-to-buffer= matches: every space-separated word must appear somewhere, in any order.
+- File names also get =partial-completion=, so =/u/l/b= expands to =/usr/local/bin=.
 
 #+begin_src emacs-lisp
 (use-package orderless
@@ -151,11 +143,11 @@ Ownership: *user configuration*.
 * Context: Marginalia
 
 - Marginalia annotates each candidate:
-  - a command's key binding and docstring;
-  - a buffer's mode and file;
-  - a file's size and date.
-- The leader is a real keymap, so the key column shows =SPC f f= when that
-  is how a command is reached.
+  + a command's key binding and docstring;
+  + a buffer's mode and file;
+  + a file's size and date.
+- The leader is a real keymap, so the key column shows =SPC f f= when that is how a command is reached ([[id:e5942eb0-4389-447d-9317-d9178adcaaae][the leader chapter]]).
+- =C-M-a= in the minibuffer, or =A= in Embark's menu, cycles the annotation level.
 
 #+begin_src emacs-lisp
 (use-package marginalia
@@ -173,10 +165,14 @@ Ownership: *user configuration*.
 * Searching and jumping: Consult
 
 - Consult supplies the commands the leader's search and buffer menus call.
-  - They preview the candidate as you move through the list.
-  - =M-n= inserts the thing at point.
+  + They preview the candidate as you move through the list, after a 0.2 s pause for searches, files, bookmarks and themes.
+  + =M-n= inserts the thing at point.
 - Ripgrep results appear after two characters.
-- Xref (go to definition, find references) goes through Consult too.
+- Xref (go to definition, find references) and the register preview go through Consult too.
+- Two commands written here:
+  + =kittymacs-search-symbol-at-point= (=SPC s .=) searches the buffer's lines for the symbol at point;
+  + =kittymacs-search-manuals= (=SPC h s=) searches the Emacs, Org and completion-stack Info manuals.
+- =consult-dir= (=C-x C-d=, =SPC f D=) picks a directory; inside a Vertico prompt =C-x C-d= switches the prompt there and =C-x C-j= jumps to a file in it.
 
 #+begin_src emacs-lisp
 (use-package consult
@@ -225,14 +221,22 @@ Ownership: *user configuration*.
 
 * Acting on things: Embark
 
-- Embark turns the thing at point, or the current minibuffer candidate, into
-  a menu of actions:
-  - =C-.= on a file name offers to open, delete, copy or rename it;
-  - on a symbol it offers help and definitions.
+- Embark turns the thing at point, or the current minibuffer candidate, into a menu of actions:
+  + =C-.= on a file name offers to open, delete, copy or rename it;
+  + on a symbol it offers help and definitions.
 - which-key draws the menu, so it looks like the leader.
-- =C-h B= lists every key bound in the current context: the fastest way to
-  explore a mode.
-- Two extra file actions open Dired or ripgrep in the file's directory.
+  + When Embark switches to its completing-read prompter, the which-key popup is hidden first.
+- =C-h B= lists every key bound in the current context: the fastest way to explore a mode.
+- Extra file actions: =x= opens the file externally, =D= opens Dired in its directory, =g= runs ripgrep there.
+
+| Key     | Where                 | Does                              |
+|---------+-----------------------+-----------------------------------|
+| =C-.=   | everywhere            | act on the target                 |
+| =C->=   | everywhere            | act on every candidate            |
+| =M-.=   | everywhere            | the default action for the target |
+| =C-S-o= | completion minibuffer | act                               |
+| =;=     | =*Completions*= list  | act                               |
+| =C-h B= | everywhere            | list the bindings in this context |
 
 #+begin_src emacs-lisp
 ;; Embark's variable, bound dynamically below even before Embark has loaded.
@@ -300,23 +304,27 @@ Ownership: *user configuration*.
 
 #+end_src
 
-* In the buffer: Corfu and Cape
+* Completion in the buffer: Corfu
 
-- Corfu pops up after a short pause while you type:
-  - =C-j= and =C-k= move;
-  - =RET= or =TAB= accept;
-  - =ESC= dismisses;
-  - a second pause shows documentation for the highlighted candidate.
-- The icons in the margin come from [[file:50-appearance.org][the appearance chapter]].
-- In Eshell the popup only appears on request, with =TAB=, as it would in
-  Bash or Zsh.
-- The two accepting keys then differ, as Corfu's manual suggests:
-  - =RET= is bound to =corfu-send=, which inserts the candidate and, in
-    Eshell or a comint shell such as =M-x shell=, also runs the line, so you
-    do not press =RET= twice;
-  - =TAB= only inserts, so you can complete a file name and keep typing the
-    command;
-  - outside shells =corfu-send= does exactly what =corfu-insert= does.
+- Corfu pops up after a short pause while you type; a second pause (1 s) shows documentation for the highlighted candidate.
+- The icons in the margin come from [[id:0286f652-e861-4e61-9ca6-91e225c8939d][the appearance chapter]].
+- Corfu also runs in minibuffers that offer completion at point, such as =M-:=.
+- In Eshell the popup appears only on request, with =TAB=, as it would in Bash or Zsh.
+- =RET= and =TAB= differ, as Corfu's manual suggests:
+  + =RET= is =corfu-send=: it inserts the candidate and, in Eshell or a comint shell such as =M-x shell=, also runs the line, so you do not press =RET= twice;
+  + =TAB= only inserts, so you can complete a file name and keep typing the command;
+  + outside shells =corfu-send= does exactly what =corfu-insert= does.
+
+| Key           | Does                                         |
+|---------------+----------------------------------------------|
+| =C-j= / =C-k= | next / previous candidate                    |
+| =RET=         | insert, and run the line in a shell          |
+| =TAB=         | insert only                                  |
+| =ESC=         | dismiss                                      |
+| =M-SPC=       | insert a separator, to add an Orderless word |
+| =M-l=         | show the candidate's location                |
+| =M-/=         | =dabbrev-completion=, outside the popup      |
+| =C-M-/=       | =dabbrev-expand=, outside the popup          |
 
 #+begin_src emacs-lisp
 (defun kittymacs--corfu-in-minibuffer ()
@@ -368,15 +376,18 @@ Ownership: *user configuration*.
 
 #+end_src
 
-- Cape adds completion *sources*.
-  - File names and language keywords are always on.
-  - The rest are on =SPC c p= ([[file:42-keys.org][the keys chapter]]), as explicit commands for when
-    you want a particular kind of candidate.
-- Emacs 30's own text-mode source, the spell checker's dictionary, is off;
-  =SPC c p w= asks for Cape's dictionary source, =cape-dict=, explicitly.
-  - With =corfu-auto= it would run Hunspell a few times per word.
-  - On Windows there is no word list for it to read, so every attempt costs
-    a process and logs an error.
+* Completion sources: Cape :decision:
+:PROPERTIES:
+:ID: c99f20a9-7f0a-476f-b1c2-90f57d8934de
+:END:
+
+- Cape adds completion /sources/.
+  + File names and language keywords are always on.
+  + The rest are explicit commands on =SPC c p= ([[id:53ad53ed-155f-47dc-973d-7be18de2893c][the keys chapter]]), for when you want a particular kind of candidate.
+- Emacs 30's own text-mode source, the spell checker's dictionary, is off; =SPC c p w= asks for Cape's dictionary source, =cape-dict=, explicitly.
+  + With =corfu-auto= it would run Hunspell a few times per word.
+  + On Windows there is no word list for it to read, so every attempt costs a process and logs an error.
+- Shell completion (=pcomplete=) is wrapped to stay silent.
 
 #+begin_src emacs-lisp
 (setopt text-mode-ispell-word-completion nil)
@@ -393,11 +404,9 @@ Ownership: *user configuration*.
 
 * Correcting spelling
 
-- [[file:30-platform.org][The platform chapter]] finds the spell checker and turns Flyspell on; these
-  two put its suggestions through the completion stack.
+- [[id:afa6b7fd-742a-4c15-86a6-32e3e8027b0e][The platform chapter]] finds the spell checker and turns Flyspell on; these two put its suggestions through the completion stack.
 - =C-;= corrects the word at point.
-- =SPC s p= lists every mistake in the buffer with preview, the same way
-  =SPC s s= lists lines.
+- =SPC s p= lists every mistake in the buffer with preview, the same way =SPC s s= lists lines.
 
 #+begin_src emacs-lisp
 (use-package flyspell-correct
@@ -414,10 +423,13 @@ Ownership: *user configuration*.
 * Templates: Yasnippet
 
 - Snippets are text templates with fields.
-- Type a key and press =C-'= to expand, or pick one with =SPC i s=.
+- Type a key and press =C-'= to expand, or pick one with =SPC i s=; =SPC i S= starts a new one.
 - Your own snippets live under =var/etc/snippets/<major-mode>/=.
-  - Set =kittymacs-snippets-dir= in =private.el= to keep them somewhere
-    else, such as a directory you back up.
+  + Set =kittymacs-snippets-dir= in =private.el= to keep them somewhere else, such as a directory you back up.
+- Snippets do not expand inside Org source blocks.
+- Yasnippet loads a second after startup.
+  + It has no autoload cookies, so the two commands =SPC i= binds are declared to work before then.
+- Its =backquote-change= warning is suppressed.
 
 #+begin_src emacs-lisp
 (defcustom kittymacs-snippets-dir (expand-file-name "snippets/" kittymacs-etc-dir)
@@ -450,22 +462,26 @@ Ownership: *user configuration*.
 ;;; kittymacs-completion.el ends here
 #+end_src
 
-* Meow and completion
+* Meow and completion :meow:
+:PROPERTIES:
+:ID: 0d3c69ce-4f58-421d-98d3-183b5350faba
+:END:
 
-- Nothing special is needed.
-- The minibuffer always starts in Insert state, so typing filters
-  immediately; =ESC= quits it.
+- Nothing special is needed, and there is no =SPC m= menu: completion has no buffers of its own to start in a state.
+- The minibuffer always starts in Insert state, so typing filters immediately; =ESC= quits it.
 - Corfu's popup reads =C-j=/=C-k= before Meow sees them.
 - Embark's =C-.= works in every state.
-- Meow adds the leader, backed by the Consult commands above:
-  - =SPC s= for searches;
-  - =SPC b= for buffers;
-  - =SPC f= for files.
+- The leader reaches the Consult commands above:
+  + =SPC s= for searches;
+  + =SPC b= for buffers;
+  + =SPC f= for files.
 
-* Try it
+* Check
 
-- =SPC SPC= then type =th lin= to find =thing-at-point= style commands:
-  words in any order.
-- =SPC s s=, type a word, watch the buffer scroll to each match as you move.
-- =SPC f f=, move to a file, press =C-.= and read the actions.
+- =SPC SPC= then =th lin=: =thing-at-point= style commands match, words in any order.
+- =SPC s s=, type a word, move through the list: the buffer scrolls to each match.
+- =SPC f f=, move to a file, =C-.=: which-key lists the actions.
 - In a Lisp buffer, type =(def= and wait: Corfu opens; =C-j= moves down.
+- In Eshell, type =ls ~/= and press =TAB=: the popup opens only now; =RET= on a candidate runs the line.
+- =C-h B=: every key bound here, searchable.
+- =just test-packages=: the startup verifier replays a real startup with the installed packages and fails on any warning.

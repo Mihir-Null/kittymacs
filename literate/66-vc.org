@@ -1,31 +1,34 @@
+:PROPERTIES:
+:ID: f6ccd2da-4b3f-4392-b439-3966fc9d3db8
+:END:
+
 #+TITLE: Version control: Magit and VC
-#+OPTIONS: toc:3 num:nil
+#+FILETAGS: :apps:
 #+STARTUP: overview
 #+PROPERTY: header-args:emacs-lisp :tangle ../lisp/kittymacs-vc.el :eval never :comments no :padline no :mkdirp yes
 
-[[file:index.org][Reading guide]] · [[file:41-leader.org][Leader]] · [[file:45-frames.org][Frames]]
-
-Ownership: *user configuration*.
-
+- Magit is the Git interface: =SPC v s= opens the status buffer for the repository you are in, and everything happens from there.
+  + Stage with =s=, commit with =c c=, push with =P p=; every prefix opens a menu that lists its options.
+- Emacs's own VC layer handles the small things: following symlinks, annotating lines, resolving conflict markers.
+- Leans on [[id:e5942eb0-4389-447d-9317-d9178adcaaae][the leader]] for =SPC m=, [[id:afa6b7fd-742a-4c15-86a6-32e3e8027b0e][the platform chapter]] for the spell checker, and [[id:f1d045c2-e2dc-4514-ab17-dd982ed6be00][the frames chapter]] for frames-only mode.
 - Distilled from Lambda-Emacs by Colin McLear (=lem-setup-vc=).
-- Magit is the Git interface; Emacs's own VC layer handles the small things,
-  such as following symlinks and annotating lines.
 
-* What this gives you
+* VC, diffs and merge conflicts
 
-- =SPC v s= opens Magit's status buffer for the repository you are in.
-- Everything happens from there: stage with =s=, commit with =c c=, push
-  with =P p=; every prefix opens a menu that lists its options.
-- Diffs are refined word by word.
-- Commit messages are wrapped at eighty columns.
-- When a merge leaves conflict markers in a file, =smerge-mode= offers to
-  keep one side or the other.
-  - Its commands live under =C-c v= here rather than the default =C-c ^=:
-    =C-c v n= next conflict, =C-c v u= keep upper, =C-c v l= keep lower.
-  - All of them are in =smerge-basic-map=, which =smerge-mode-map= puts
-    under =C-c ^=; binding the same map under =C-c v= as well makes the
-    shorter prefix work without changing anything else.
-  - =C-c ^= keeps working, as the Emacs manual describes.
+- Emacs's VC layer handles Git only, and follows symlinks into version-controlled files without asking.
+- Logs:
+  + a file's log uses the short, one-line-per-commit style;
+  + a file's log follows it across renames;
+  + revision prompts complete branch names only.
+- Diffs:
+  + =vc= diffs carry a =--patch-with-stat= summary;
+  + changes are refined word by word as you move to a hunk;
+  + file headers are prettified and hunks keep their language's syntax highlighting.
+- =vc-annotate= colours lines on a scale by age; Ediff keeps its control panel in the same frame.
+- When a merge leaves conflict markers in a file, =smerge-mode= offers to keep one side or the other.
+  + Its commands live under =C-c v= here as well as the default =C-c ^=: =C-c v n= next conflict, =C-c v u= keep upper, =C-c v l= keep lower.
+  + All of them are in =smerge-basic-map=, which =smerge-mode-map= puts under =C-c ^=; binding the same map under =C-c v= makes the shorter prefix work without changing anything else.
+  + =C-c ^= keeps working, as the Emacs manual describes.
 
 #+begin_src emacs-lisp
 ;;; kittymacs-vc.el --- Magit and version control -*- lexical-binding: t; -*-
@@ -62,12 +65,11 @@ Ownership: *user configuration*.
 
 * Magit
 
-- Magit buffers are full buffers, so they open in their own frame when
-  [[file:45-frames.org][frames-only mode]] is on, and in the other window otherwise.
-- =display-buffer= is given three ways to place the buffer, and the last one
-  always succeeds.
-  - Magit selects whatever window it gets back, and a =nil= there is an
-    error rather than a fallback.
+- Magit buffers are full buffers, so they open in their own frame when [[id:f1d045c2-e2dc-4514-ab17-dd982ed6be00][frames-only mode]] is on in a graphical session, and in the other window otherwise.
+- =display-buffer= is given three ways to place the buffer (reuse a window, pop up a frame, use some window), and the last always succeeds.
+  + Magit selects whatever window it gets back, and a =nil= there is an error rather than a fallback.
+- Hunks are refined word by word; the log margin shows the date and time, not the author.
+- Commit summaries are kept to 50 characters.
 - The status buffer refreshes when you save a file.
 - Stashes, untracked files and unpushed commits start folded.
 
@@ -97,24 +99,21 @@ Ownership: *user configuration*.
 
 #+end_src
 
-** Opening the status buffer from anywhere
+* Opening the status buffer from anywhere :decision:
+:PROPERTIES:
+:ID: ac8ccc5b-3c55-4a5c-9bfe-558d0899c24b
+:END:
 
-- =magit-status= works out which repository you mean from
-  =default-directory=.
-  - A buffer visiting a file has the right one.
-  - The home page, a terminal, the scratch buffer and =*Messages*= do not:
-    they keep whatever directory they happened to be created in.
-- When that directory is not a repository, =magit-status= asks for one, or
-  offers to /create/ one.
-  - Declining leaves you where you started, which reads as the key having
-    done nothing at all.
-- So the question is asked in a better order:
-  - this buffer's repository first;
-  - then the repository of the project you are working in;
-  - only then Magit's own prompt.
-- From the home page both checks start from the page's own
-  =default-directory=; when neither finds a repository, =SPC v s= falls
-  back to Magit's own prompt.
+- =magit-status= works out which repository you mean from =default-directory=.
+  + A buffer visiting a file has the right one.
+  + The home page, a terminal, the scratch buffer and =*Messages*= do not: they keep whatever directory they happened to be created in.
+- When that directory is not a repository, =magit-status= asks for one, or offers to /create/ one.
+  + Declining leaves you where you started, which reads as the key having done nothing at all.
+- So =SPC v s= (=kittymacs-magit-status=) asks in a better order:
+  1. this buffer's repository;
+  2. the repository of the current project;
+  3. only then Magit's own prompt.
+- From the home page both checks start from the page's own =default-directory=; when neither finds a repository, Magit's prompt appears.
 
 #+begin_src emacs-lisp
 (defun kittymacs--repository-root (directory)
@@ -137,37 +136,31 @@ Falls back to `magit-status', which asks, when neither is a repository."
 
 #+end_src
 
-** The commit message buffer
+* The commit message buffer :concept:
+:PROPERTIES:
+:ID: 3704479c-008d-4fed-aafd-3350568459d3
+:END:
 
 - A commit message is prose you are about to write, so the buffer:
-  - wraps at eighty columns;
-  - checks spelling when [[file:30-platform.org][a checker is installed]];
-  - starts in Meow's Insert state rather than Normal.
-- All three hang on =git-commit-setup-hook=, and *when* they are added
-  matters.
-- Magit keeps the older name =git-commit-mode-hook= working by making it a
-  =defvaralias= of =git-commit-setup-hook=.
-  - Aliasing a variable that already has a value throws that value away,
-    and says so:
+  + wraps at eighty columns, comments and text alike;
+  + checks spelling when [[id:afa6b7fd-742a-4c15-86a6-32e3e8027b0e][a checker is installed]];
+  + starts in Meow's Insert state rather than Normal.
+    - Meow's states are minor modes, but only =meow--switch-state= also moves the cursor shape and the mode line with them.
+- All three hang on =git-commit-setup-hook=, and /when/ they are added matters.
+- Magit keeps the older name =git-commit-mode-hook= working by making it a =defvaralias= of =git-commit-setup-hook=.
+  + Aliasing a variable that already has a value throws that value away, and says so:
 
 : Warning (defvaralias): Overwriting value of ‘git-commit-mode-hook’ by
 : aliasing to ‘git-commit-setup-hook’
 
-- That is exactly what =use-package='s
-  =:hook (git-commit-mode . flyspell-mode)= caused:
-  - Magit is deferred, so the hook was added at startup, hours of wall-clock
-    time before =git-commit.el= loaded to alias it;
-  - the spell checker it asked for was silently discarded on the way.
+- That is exactly what =use-package='s =:hook (git-commit-mode . flyspell-mode)= caused:
+  + Magit is deferred, so the hook was added at startup, hours of wall-clock time before =git-commit.el= loaded to alias it;
+  + the spell checker it asked for was silently discarded on the way.
 - The warning then cost more than it looked:
-  - a warning buffer is displayed, and [[file:45-frames.org][under frames-only mode]] a
-    displayed buffer is an *operating-system window*;
-  - so the first =SPC v s= of a session opened a warning window over the
-    Magit window you asked for.
-- Magit itself is careful here: it gives the hook a =:get= function that
-  merges a value set before the library loaded with its own defaults, so
-  nothing Magit needs was lost.
-- Waiting for the library is still the rule: add to a package's hooks after
-  the file that declares them has loaded.
+  + a warning buffer is displayed, and [[id:f1d045c2-e2dc-4514-ab17-dd982ed6be00][under frames-only mode]] a displayed buffer is an /operating-system window/;
+  + so the first =SPC v s= of a session opened a warning window over the Magit window you asked for.
+- Magit itself is careful: it gives the hook a =:get= function that merges a value set before the library loaded with its own defaults, so nothing Magit needs was lost.
+- The rule stands anyway: add to a package's hooks only after the file that declares them has loaded.
 
 #+begin_src emacs-lisp
 (defun kittymacs--git-commit-setup ()
@@ -189,9 +182,9 @@ Falls back to `magit-status', which asks, when neither is a repository."
 
 * Changes in the gutter
 
-- =diff-hl= marks added, changed and deleted lines in the left fringe as you
-  edit, and refreshes after Magit operations.
-- It uses the margin instead when there is no fringe.
+- =diff-hl= marks added, changed and deleted lines in the left fringe as you edit, in programming and text buffers.
+  + It updates asynchronously, and refreshes after Magit operations.
+- It uses the margin instead when there is no fringe (a terminal).
 - =SPC t g= toggles it in a buffer.
 
 #+begin_src emacs-lisp
@@ -210,15 +203,23 @@ Falls back to `magit-status', which asks, when neither is a repository."
 
 #+end_src
 
-* Meow in Magit
+* Meow in Magit :meow:
+:PROPERTIES:
+:ID: 8c1af730-24e5-4926-88dd-d2f54a63c584
+:END:
 
-- Magit buffers start in Motion state: Magit's keys are the interface, so
-  Meow steps back and adds only =j=/=k= and the leader.
-- Commit message buffers are for typing; the section above starts them in
-  Insert state.
-- The localleader labels the most common Magit commands for anyone who does
-  not yet know them; most open Magit's own menu, but stage, unstage, discard
-  and refresh act directly.
+- Magit buffers start in Motion state: Magit's keys are the interface, so Meow steps back and adds only =j=/=k= and the leader.
+- Commit message buffers are for typing: [[*The commit message buffer]] starts them in Insert state.
+- =SPC m= labels the most common Magit commands for anyone who does not yet know them.
+  + Most open Magit's own menu; stage, unstage, discard and refresh act directly.
+
+| =SPC m= | Does    | =SPC m= | Does   | =SPC m= | Does         |
+|---------+---------+---------+--------+---------+--------------|
+| =s=     | stage   | =F=     | pull   | =z=     | stash        |
+| =u=     | unstage | =f=     | fetch  | =l=     | log          |
+| =c=     | commit  | =b=     | branch | =d=     | diff         |
+| =p=     | push    | =m=     | merge  | =x=     | discard      |
+| =g=     | refresh | =r=     | rebase | =?=     | all commands |
 
 #+begin_src emacs-lisp
 (with-eval-after-load 'meow
@@ -245,9 +246,11 @@ Falls back to `magit-status', which asks, when neither is a repository."
 ;;; kittymacs-vc.el ends here
 #+end_src
 
-* Try it
+* Check
 
-- =SPC v s= in any file of a Git project. =TAB= folds sections.
-- Move to a changed file: =s= stages it, =c c= opens the commit message,
-  =C-c C-c= commits.
+- =SPC v s= in any file of a Git project: the status buffer opens; =TAB= folds sections.
+- On a changed file: =s= stages it, =c c= opens the commit message in Insert state, =C-c C-c= commits.
 - =SPC m= in the status buffer lists what else you can do.
+- Edit a tracked file: the fringe marks the changed lines.
+- =*Warnings*= stays empty after the first =SPC v s= of a session.
+- =just test-packages=: the startup verifier replays a real startup and fails on any warning, such as the =defvaralias= one above.
