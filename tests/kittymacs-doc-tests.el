@@ -30,9 +30,8 @@
   (alist-get tag kittymacs-doc-tags nil nil #'equal))
 
 (defun kittymacs-doc-pages ()
-  "Return every page: README.org and the Org files in literate/."
-  (cons (expand-file-name "README.org" kittymacs-doc-root)
-        (directory-files (expand-file-name "literate" kittymacs-doc-root) t "\\.org\\'")))
+  "Return every page: the Org files in literate/."
+  (directory-files (expand-file-name "literate" kittymacs-doc-root) t "\\.org\\'"))
 
 (defun kittymacs-doc-chapter-p (file)
   "Non-nil when FILE is a chapter: literate/NN-name.org."
