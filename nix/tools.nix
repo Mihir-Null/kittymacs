@@ -12,8 +12,8 @@
     fd                        # navigation chapter (consult-fd)
     gnupg                     # startup chapter: GNU ELPA's signed index
     (hunspell.withDicts (d: [ d.en_US ]))  # platform chapter: spelling
-    python3                   # treemacs chapter: directory collapsing and the
-                              # extended (directory-colouring) git mode
+    python3                   # treemacs chapter: directory collapsing and the  extended (directory-colouring) git mode
+    zig # Ghostel chapter, requires zig for compilation
   ] ++ pkgs.lib.optionals pkgs.stdenv.hostPlatform.isDarwin [
     coreutils-prefixed        # Dired chapter: GNU ls as `gls'
     darwin.trash              # platform chapter: Trash with Finder's "Put Back"

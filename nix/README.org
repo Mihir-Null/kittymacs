@@ -7,13 +7,13 @@ flake provides is everything *around* the configuration: Emacs itself, every
 program the chapters look for, and the icon font, so a fresh Mac needs one
 =darwin-rebuild switch= and one =git clone=.
 
-| Output | What it is |
-|---+---|
-| =darwinModules.default= | nix-darwin module: =programs.kittymacs.enable= installs Emacs, the tools and the font system-wide |
+| Output                     | What it is                                                                                                             |
+|----------------------------+------------------------------------------------------------------------------------------------------------------------|
+| =darwinModules.default=      | nix-darwin module: =programs.kittymacs.enable= installs Emacs, the tools and the font system-wide                        |
 | =homeManagerModules.default= | home-manager module: clones a checkout, links it to =~/.config/emacs=; can install the tools and run the daemon per user |
-| =packages.<system>.default= | the Emacs the modules install (=pkgs.emacs=, 31.1 at the time of writing) |
-| =packages.<system>.tools= | one environment with every tool, for =nix profile install= |
-| =devShells.<system>.default= | Emacs plus the tools, for running the batch checks |
+| =packages.<system>.default=  | the Emacs the modules install (=pkgs.emacs=, 31.1 at the time of writing)                                                |
+| =packages.<system>.tools=    | one environment with every tool, for =nix profile install=                                                               |
+| =devShells.<system>.default= | Emacs plus the tools, for running the batch checks                                                                     |
 
 The tools are listed once, in [[file:tools.nix][tools.nix]], each with the chapter that discovers
 it: =git=, =ripgrep=, =fd=, =gnupg=, =hunspell= with an English dictionary,
