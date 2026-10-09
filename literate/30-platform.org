@@ -1,37 +1,26 @@
-#+TITLE: Platform: shells, paths, spelling, macOS and Android
-#+OPTIONS: toc:3 num:nil
-#+STARTUP: overview
-#+PROPERTY: header-args:emacs-lisp :eval never :comments no :padline no :mkdirp yes
-
-[[file:index.org][Reading guide]] · [[file:34-terminal.org][Terminal]] · [[file:35-shells.org][Shells]]
-
-Ownership: *user configuration and subsequent development*.
-
-- Emacs core supplies process creation and shell variables; this layer
-  discovers platform paths, picks the system shell, locates the spell checker
-  and applies the macOS policy.
-- It answers one question for every later chapter:
-  - /where does this machine keep things, and what is it allowed to assume?/
-- PowerShell remains the ordinary Windows shell; MSYS2 UCRT64 is a separate
-  choice offered by [[file:34-terminal.org][the terminal chapter]], not a global environment
-  replacement.
-- The macOS policy is distilled from Lambda-Emacs's =lem-setup-macos=.
-
-* kittymacs-platform
 :PROPERTIES:
-:header-args:emacs-lisp: :tangle ../lisp/kittymacs-platform.el :eval never :comments no :padline no :mkdirp yes
+:ID: afa6b7fd-742a-4c15-86a6-32e3e8027b0e
 :END:
 
-- Deployed file: [[file:../lisp/kittymacs-platform.el][lisp/kittymacs-platform.el]].
-- Edit the blocks here; generated Lisp is kept in Git for ordinary startup
-  and review.
+#+TITLE: Platform: paths, shells, spelling, macOS and Android
+#+FILETAGS: :core:
+#+STARTUP: overview
+#+PROPERTY: header-args:emacs-lisp :tangle ../lisp/kittymacs-platform.el :eval never :comments no :padline no :mkdirp yes
 
-** Load seq
+- Answers one question for every later chapter: /where does this machine keep things, and what is it allowed to assume?/
+  + Emacs core supplies process creation and shell variables; this module discovers paths, picks the system shell, finds the spell checker and applies the macOS and Android policy.
+  + It prefers discovery (=executable-find=, the platform's own home) over machine-specific paths.
+- Leans on [[id:40302e33-d2b2-4c0b-9bc3-1f9e121307e1][startup]]: =init.el= loads =private.el= right after this module, then calls =kittymacs-platform-apply=.
+- Must not declare a package: [[file:../tests/kittymacs-platform-tests.el][the platform tests]] load it with none, and run every operating system's branch on any machine by binding =system-type=.
+  + Nor does it force a font: inheriting the platform default makes first boot robust; [[id:0286f652-e861-4e61-9ca6-91e225c8939d][the appearance chapter]] chooses fonts.
+- PowerShell stays the ordinary Windows shell; MSYS2 UCRT64 is a separate choice offered by [[id:bd2638bc-735d-4849-bafe-3dab5e8e30b7][the terminal chapter]], not a global environment replacement.
 
-- Loaded before the forms that use its functions or variables, preserving
-  the existing startup dependency order.
+* Where your files live
 
-#+name: kittymacs-platform-01-1
+- The options below are in the =kittymacs-platform= group, so =M-x customize-group= finds them; =private.el= can override any of them.
+- Native Windows Emacs may define =HOME= as =AppData/Roaming=; =USERPROFILE= is a better default for your projects and documents.
+  + Other platforms keep their normal home.
+
 #+begin_src emacs-lisp
 ;;; kittymacs-platform.el --- Portable platform defaults -*- lexical-binding: t; -*-
 ;; Generated from literate/30-platform.org; edit the Org source, then tangle.
@@ -45,37 +34,10 @@ Ownership: *user configuration and subsequent development*.
 ;;; Code:
 
 (require 'seq)
-#+end_src
-
-** Load subr-x
-
-- Loaded early for the same reason as =seq=.
-
-#+name: kittymacs-platform-02-1
-#+begin_src emacs-lisp
 (require 'subr-x)
-#+end_src
-
-** Group customization options
-
-- This Custom group gives the settings below a discoverable home in Emacs's
-  built-in customization interface.
-
-#+name: kittymacs-platform-03-1
-#+begin_src emacs-lisp
 (defgroup kittymacs-platform nil
   "Where this machine keeps things: paths, the shell, spelling, macOS and Android."
   :group 'kittymacs)
-#+end_src
-
-** Distinguish Emacs home from personal documents
-
-- Native Windows Emacs can use AppData as its home; USERPROFILE is a better
-  default for user-owned projects and documents. Other platforms keep their
-  normal home resolution.
-
-#+name: kittymacs-platform-04-1
-#+begin_src emacs-lisp
 (defun kittymacs--user-home-directory ()
   "Return the user's ordinary home directory for configuration defaults.
 On native Windows, Emacs may define HOME as AppData/Roaming, so prefer
@@ -86,12 +48,9 @@ USERPROFILE for user-owned projects and documents."
      (expand-file-name "~"))))
 #+end_src
 
-** Choose the default project location
+- =kittymacs-project-directory= :: where to look for projects; =~/Projects/= by default, a portable default rather than a machine-specific path.
+  + Set it in =private.el=: the project module reads it as it loads.
 
-- A portable user default, not a machine-specific absolute path; private.el
-  can override it before the project module consumes it.
-
-#+name: kittymacs-platform-05-1
 #+begin_src emacs-lisp
 (defcustom kittymacs-project-directory
   (expand-file-name "Projects/" (kittymacs--user-home-directory))
@@ -99,12 +58,9 @@ USERPROFILE for user-owned projects and documents."
   :type 'directory)
 #+end_src
 
-** Choose the Org directory
+- =kittymacs-org-directory= :: a small, independent starter Org directory, =~/Documents/org/=; [[id:8ff7e58e-c155-4513-99ae-3b2c3a6ab729][Org]] uses it.
+  + Change it explicitly to keep notes elsewhere.
 
-- The starter uses a small, independent Org directory; change it explicitly
-  to keep notes elsewhere.
-
-#+name: kittymacs-platform-06-1
 #+begin_src emacs-lisp
 (defcustom kittymacs-org-directory
   (expand-file-name "Documents/org/" (kittymacs--user-home-directory))
@@ -112,18 +68,18 @@ USERPROFILE for user-owned projects and documents."
   :type 'directory)
 #+end_src
 
-** Locate MSYS2 on Windows
+* MSYS2 on Windows :windows:
+:PROPERTIES:
+:ID: 9b2cc3de-7231-43a0-8223-229329619a3c
+:END:
 
-- MSYS2 is the usual way to get Unix tools, a compiler and a spell checker on
-  Windows.
-- It is a *path*, not a policy:
-  - the spell checker below looks inside it;
-  - [[file:34-terminal.org][the terminal chapter]] offers its shell on =SPC o m=;
-  - the ordinary Windows shell is unchanged.
-- If MSYS2 is elsewhere, set =MSYS2_ROOT= in the environment or this option
-  in =private.el=.
+- MSYS2 is the usual way to get Unix tools, a compiler and a spell checker on Windows.
+- =kittymacs-msys2-root= is a /path/, not a policy:
+  + [[*Spell checking][the spell checker]] looks inside it;
+  + [[id:bd2638bc-735d-4849-bafe-3dab5e8e30b7][the terminal chapter]] offers its shell on =SPC o m=;
+  + the ordinary Windows shell is unchanged.
+- Default =C:/msys64/=; if MSYS2 is elsewhere, set =MSYS2_ROOT= in the environment or the option in =private.el=.
 
-#+name: kittymacs-platform-06-2
 #+begin_src emacs-lisp
 (defcustom kittymacs-msys2-root
   (file-name-as-directory (or (getenv "MSYS2_ROOT") "C:/msys64/"))
@@ -131,23 +87,22 @@ USERPROFILE for user-owned projects and documents."
   :type 'directory)
 #+end_src
 
-** Locate Termux on Android
+* Termux on Android :android:
+:PROPERTIES:
+:ID: ca1bff94-4ca3-40b4-8cda-6a290e7889a5
+:END:
 
-- The Android port is a self-contained application; its home directory is
-  its own data directory.
-  - Android 10 and later forbid it from executing anything stored there, so
-    Emacs runs subprocesses through an executable loader.
-- It cannot reach *another* application's data directory at all, yet =git=,
-  =ripgrep=, a spell checker and the language servers live in
-  [[https://termux.dev][Termux]], under a different user.
-- The two can share a user when installed from builds whose =sharedUserId=
-  and signature match; [[https://sourceforge.net/projects/android-ports-for-gnu-emacs/files/termux/][Jianwei Hu's Android ports]] publish such a pair.
-- So everything below *discovers* Termux rather than assuming it:
-  - =kittymacs-termux-program= returns nil when the directory is unreadable,
-    as in a plain, unpaired installation;
-  - every dependent decision degrades to the Android system's own tools.
+- The Android port is a self-contained application; its home directory is its own data directory.
+  + Android 10 and later forbid it from executing anything stored there, so Emacs runs subprocesses through an executable loader.
+- It cannot reach /another/ application's data directory at all, yet =git=, =ripgrep=, a spell checker and the language servers live in [[https://termux.dev][Termux]], under a different user.
+- The two can share a user when installed from builds whose =sharedUserId= and signature match; [[https://sourceforge.net/projects/android-ports-for-gnu-emacs/files/termux/][Jianwei Hu's Android ports]] publish such a pair.
+- So everything here /discovers/ Termux rather than assuming it:
+  + =kittymacs-termux-root= :: Termux's root, =TERMUX_ROOT= or =/data/data/com.termux/files/usr/=;
+  + =kittymacs-termux-program= :: a Termux program's path, or nil when the directory is unreadable, as in a plain, unpaired installation;
+  + =kittymacs-termux-bin-directory= :: Termux's =bin=, or nil;
+  + every dependent decision degrades to the Android system's own tools.
+- =kittymacs-android-p= is a function rather than a constant so the tests can exercise the Android branches by binding =system-type=.
 
-#+name: kittymacs-platform-06-3
 #+begin_src emacs-lisp
 (defun kittymacs-android-p ()
   "Return non-nil when this Emacs is the Android port.
@@ -174,41 +129,40 @@ denies access and every lookup below quietly returns nil."
     (and (file-accessible-directory-p bin) bin)))
 #+end_src
 
-** Discover available programs
+* Finding programs
 
-- Trying candidates in order lets the same configuration use a suitable
-  installed shell across machines.
+- =kittymacs--first-executable= tries candidates in order on =exec-path=, so the same configuration uses whichever suitable program a machine has installed.
 
-#+name: kittymacs-platform-07-1
 #+begin_src emacs-lisp
 (defun kittymacs--first-executable (&rest programs)
   "Return the first executable found in PROGRAMS."
   (seq-some #'executable-find programs))
 #+end_src
 
-** Apply platform policy after overrides
+* The policy applied after private.el :decision:
+:PROPERTIES:
+:ID: af9044c2-44a8-4795-9f1b-2c0d83d66d76
+:END:
 
-- =kittymacs-platform-apply= runs from =init.el= right after =private.el=, so
-  it sees your overrides. It does three things.
-- It picks the *shell* for =M-x shell= and for every command Emacs runs
-  through a shell:
-  - Windows: PowerShell, the newer =pwsh= when installed, with =cmd.exe= as
-    the last resort;
-  - Linux and macOS: the first of zsh, bash and sh on =exec-path=;
-  - Android: no =/bin=, so Emacs's compiled-in =/bin/sh= does not exist;
-    Termux's shells come first because they can see Termux's programs, and
-    =/system/bin/sh=, always present, is a real fallback, not a hopeful one.
-  - =shell-file-name= and =explicit-shell-file-name= are user options, set
-    with =setopt=; =shell-command-switch=, the flag that says "run this
-    command", is a plain variable.
-- It lets Windows borrow Git for Windows' Unix tools, last on =exec-path=:
-  Magit's hunk refinement, Ediff and diff-hl call =diff=, =diff3= and =patch=
-  by name, and Windows has none.
-  - As they go last, every native program still wins; =PATH= is left alone,
-    so subprocesses see no change.
-- It hands over to the macOS and Android sections below.
+- =kittymacs-platform-apply= runs from =init.el= right after =private.el=, so it sees your overrides.
+- It picks the /shell/ for =M-x shell= and for every command Emacs runs through a shell:
 
-#+name: kittymacs-platform-09-1
+| System       | Shell: the first one found                              |
+|--------------+---------------------------------------------------------|
+| Windows      | =pwsh=, =powershell=, then =cmd.exe= as the last resort |
+| Linux, macOS | =zsh=, =bash=, =sh= on =exec-path=                      |
+| Android      | Termux's =bash= or =sh=, then =/system/bin/sh=          |
+
+- Windows: PowerShell, the newer =pwsh= when installed.
+- Android has no =/bin=, so Emacs's compiled-in =/bin/sh= does not exist.
+  + Termux's shells come first because they can see Termux's programs.
+  + =/system/bin/sh=, always present, is a real fallback, not a hopeful one.
+- =shell-file-name= and =explicit-shell-file-name= are user options, set with =setopt=; =shell-command-switch=, the flag that says "run this command", is a plain variable.
+- On Windows it borrows Unix tools, last on =exec-path=: Magit's hunk refinement, Ediff and diff-hl call =diff=, =diff3= and =patch= by name, and Windows has none.
+  + They come from Git for Windows (=Git/usr/bin=, or beside =git= itself), else from MSYS2's =usr/bin=.
+  + As they go last, every native program still wins; =PATH= is left alone, so subprocesses see no change.
+- It hands over to [[*macOS]] and [[*Android]].
+
 #+begin_src emacs-lisp
 (defun kittymacs--platform-shell ()
   "Return (PROGRAM . SWITCH) for this platform's shell, or nil if none is found."
@@ -256,30 +210,30 @@ MSYS2 keeps them under `usr/bin'."
     (kittymacs--platform-apply-android)))
 #+end_src
 
-** macOS
+* macOS :macos:
+:PROPERTIES:
+:ID: 1b791960-ef80-43bb-bbf0-876018f0a2f5
+:END:
 
-- Emacs on macOS is the Cocoa ("NS") build: it already binds the everyday
-  Command keys (=⌘C=, =⌘V=, =⌘X=, =⌘A=, =⌘S=, =⌘Z=, =⌘W=, =⌘N=) and opens
-  files from Finder.
+- Emacs on macOS is the Cocoa ("NS") build: it already binds the everyday Command keys (=⌘C=, =⌘V=, =⌘X=, =⌘A=, =⌘S=, =⌘Z=, =⌘W=, =⌘N=) and opens files from Finder.
 - It leaves undecided:
-  - which physical keys are Meta and Super;
-  - whether deleting a file is permanent;
-  - what locale a Dock-launched Emacs has;
-  - whether the title bar is light or dark.
+  + which physical keys are Meta and Super;
+  + whether deleting a file is permanent;
+  + what locale a Dock-launched Emacs has;
+  + whether the title bar is light or dark.
 - This section decides, following Lambda-Emacs's =lem-setup-macos=.
-  - =private.el= can override the modifier keys (=kittymacs-macos-modifiers=)
-    and the locale (=LANG= is set only when unset); the rest is applied
-    unconditionally, after =private.el=.
-  - None of it runs on another operating system.
+  + =private.el= can override the modifier keys (=kittymacs-macos-modifiers=) and the locale (=LANG= is set only when unset); the rest is applied unconditionally, after =private.el=.
+  + None of it runs on another operating system.
 
-*** Modifier keys
+** Modifier keys :decision:
+:PROPERTIES:
+:ID: db2049ab-348e-42c9-a915-c2134d0e379f
+:END:
 
-- Option is Meta, Command is Super, and the right Option key is left to
-  macOS so accented characters still type.
-- Lambda also made the Fn key Hyper; not carried over, because it turns
-  =Fn=-arrow paging into Hyper chords.
+- Option is Meta, Command is Super, and the right Option key is left to macOS so accented characters still type.
+- Lambda also made the Fn key Hyper; not carried over, because it turns =Fn=-arrow paging into Hyper chords.
+- =kittymacs-macos-modifiers= pairs each NS modifier variable with =meta=, =super=, =hyper=, =control=, =alt=, or =none= to leave the key to macOS.
 
-#+name: kittymacs-platform-11-1
 #+begin_src emacs-lisp
 ;; Defined by the Cocoa build and by auth-source; declared so the module
 ;; byte-compiles cleanly on every platform.
@@ -297,17 +251,16 @@ to macOS.  Applied by `kittymacs-platform-apply' after `private.el'."
   :type '(alist :key-type symbol :value-type symbol))
 #+end_src
 
-*** Trash, quitting and the title bar
+** Trash, quitting and the title bar
 
-- Deleting a file moves it to the Trash.
-  - The =trash= command-line tool (=brew install trash=) keeps Finder's
-    "Put Back"; without it, files go to =~/.Trash= directly.
-- =⌘Q= closes the frame when others remain (frames are this
-  configuration's windows) and quits Emacs from the last one.
-- The title bar takes the theme's light or dark appearance, now and on every
-  theme change.
+- Deleting a file moves it to the Trash, by the best means available:
+  1. this Emacs's own =system-move-file-to-trash=, when it has one;
+  2. the =trash= command-line tool (=brew install trash=), which keeps Finder's "Put Back";
+  3. otherwise =~/.Trash= directly.
+- =⌘Q= closes the frame when others remain (frames are this configuration's windows) and quits Emacs from the last one.
+- The title bar takes the theme's light or dark appearance, now and on every theme change.
+  + =early-init.el= already made it transparent, before the first frame.
 
-#+name: kittymacs-platform-12-1
 #+begin_src emacs-lisp
 (defun kittymacs--macos-trash (path)
   "Move PATH to the macOS Trash with the `trash' command-line tool."
@@ -347,26 +300,24 @@ itself, `trash-command' for the `trash' tool, or `directory' for ~/.Trash."
           (set-frame-parameter frame 'ns-appearance appearance))))))
 #+end_src
 
-*** Apply the macOS policy
+** Applying the macOS policy
 
-- Called from =kittymacs-platform-apply=, after =private.el=, on macOS only.
-- Full screen is non-native, so a full-screen frame does not move to its own
-  Space and leave every new frame behind.
+- Runs from =kittymacs-platform-apply=, on macOS only.
+- Full screen is non-native, so a full-screen frame does not move to its own Space and leave every new frame behind.
 - Subprocesses get a UTF-8 locale when the Dock started Emacs without one.
-- Passwords in Keychain become visible to =auth-source=, which Magit, Forge
-  and Tramp consult.
-- The three key bindings fill gaps in the NS port's own: redo, a frame-aware
-  =⌘Q=, and full screen.
-- Only the Keychain waits for a library, and it waits outside the policy
-  function:
-  - =with-eval-after-load= registers its body permanently, once per call: in
-    a function that may run more than once (the tests call
-    =kittymacs-platform-apply= dozens of times) it would queue the same work
-    again on every call.
-  - Registered once when the module loads, it asks which platform it is on
-    when =auth-source= arrives.
+- Passwords in Keychain become visible to =auth-source=, which Magit, Forge and Tramp consult.
+- Three key bindings fill gaps in the NS port's own:
 
-#+name: kittymacs-platform-13-1
+| Key     | Does                     |
+|---------+--------------------------|
+| =⌘⇧Z=   | redo                     |
+| =⌘Q=    | close frame, or quit     |
+| =C-⌘F=  | toggle full screen       |
+
+- Only the Keychain waits for a library, and it waits outside the policy function:
+  + =with-eval-after-load= registers its body permanently, once per call: in a function that may run more than once (the tests call =kittymacs-platform-apply= dozens of times) it would queue the same work again on every call;
+  + registered once when the module loads, it asks which platform it is on when =auth-source= arrives.
+
 #+begin_src emacs-lisp
 (defun kittymacs--platform-apply-macos ()
   "Apply the macOS policy: modifiers, Trash, locale, Keychain, keys, title bar."
@@ -392,50 +343,26 @@ itself, `trash-command' for the `trash' tool, or `directory' for ~/.Trash."
     (kittymacs--macos-auth-sources)))
 #+end_src
 
-** Android
+* Android :android:
+:PROPERTIES:
+:ID: 6c4986fa-e9ba-4857-bc91-8f59a906d57e
+:END:
 
-- Emacs on Android is a real GUI Emacs, not a terminal in a shell app: frames
-  are graphical, fonts are fonts, and =display-graphic-p= is true.
-- Still, three things about the platform reach up into this configuration.
-- *Programs live in another application.* Covered above: Termux, discovered
-  and optional.
-  - The one subtlety is =LD_LIBRARY_PATH=: Termux's programs record where
-    their own shared libraries are, so an inherited library path interposes
-    Android's same-named system libraries ahead of Termux's, with failures
-    that look like nothing at all.
-  - The fix is to clear it, not set it.
-- *Volume keys are Emacs's escape hatch.* Without a physical keyboard there
-  is no =C-g=, so the Android port reserves the volume keys: two rapid
-  presses of volume down quit.
-  - With a keyboard attached that is mostly a nuisance, so
-    =kittymacs-android-volume-keys= can hand them back to the system.
-  - The default is Emacs's own behaviour: losing the only way to interrupt a
-    runaway command is a poor thing to discover by accident.
-- *Virtual keyboards edit the buffer directly.* The one real conflict with
-  Meow.
-  - A desktop input method composes text, then sends key events; an Android
-    one performs /text conversion/, editing the selected window itself.
-  - Emacs enables it wherever the buffer-local =text-conversion-style= is
-    non-nil: every =text-mode= and =prog-mode= derivative.
-  - Exactly right in Meow's Insert state; a disaster in Normal state, where
-    autocorrect and suggestions rewrite a buffer whose keys are commands.
-  - So the style is suspended on leaving Insert state and restored on
-    re-entry.
-  - Emacs rereads the variable only when a buffer becomes selected, a whole
-    state transition too late, so the change goes through
-    =set-text-conversion-style=.
-  - Its documentation warns that resetting an input method is not cheap:
-    hence a per-state action, not a per-command one, and
-    =kittymacs-android-modal-text-conversion= to switch it off entirely if a
-    particular keyboard misbehaves.
-- A physical keyboard reports one irregularity: Android swaps =Alt= and
-  =Meta=, so the =Alt= key produces Emacs's =Meta= modifier, which is what you
-  want anyway.
-  - =Super= is labelled =SYM=.
-  - =C-SPC= is intercepted before input methods can swallow it, so Meow's
-    leader and =set-mark-command= both survive.
+- Emacs on Android is a real GUI Emacs, not a terminal in a shell app: frames are graphical, fonts are fonts, and =display-graphic-p= is true.
+- Three things about the platform still reach up into this configuration:
+  1. programs live in another application: [[*Termux on Android]], discovered and optional;
+  2. the volume keys are Emacs's escape hatch;
+  3. virtual keyboards edit the buffer directly ([[*Virtual keyboards and Meow]]).
+- Without a physical keyboard there is no =C-g=, so the Android port reserves the volume keys: two rapid presses of volume down quit.
+  + With a keyboard attached that is mostly a nuisance, so =kittymacs-android-volume-keys= can hand them back to the system.
+  + The default is Emacs's own behaviour: losing the only way to interrupt a runaway command is a poor thing to discover by accident.
+- A physical keyboard reports one irregularity: Android swaps =Alt= and =Meta=, so the =Alt= key produces Emacs's =Meta= modifier, which is what you want anyway.
+  + =Super= is labelled =SYM=.
+  + =C-SPC= is intercepted before input methods can swallow it, so Meow's leader and =set-mark-command= both survive.
+- The two options:
+  + =kittymacs-android-volume-keys= :: nil (default) leaves the volume keys to Emacs; non-nil returns them to the system;
+  + =kittymacs-android-modal-text-conversion= :: t (default) makes the on-screen keyboard follow Meow's Insert state; nil leaves the input method alone.
 
-#+name: kittymacs-platform-16-1
 #+begin_src emacs-lisp
 ;; Defined by the Android build; declared so the module byte-compiles cleanly
 ;; on every platform, as the NS variables above are.
@@ -458,9 +385,20 @@ to nil to leave the input method alone."
   :type 'boolean)
 #+end_src
 
-*** Android: suspend text conversion outside Insert state
+** Virtual keyboards and Meow :concept:
+:PROPERTIES:
+:ID: 1c7f1e2c-156b-4aa6-ae7f-cf663018ab44
+:END:
 
-#+name: kittymacs-platform-16-2
+- The one real conflict with Meow.
+- A desktop input method composes text, then sends key events; an Android one performs /text conversion/, editing the selected window itself.
+- Emacs enables it wherever the buffer-local =text-conversion-style= is non-nil: every =text-mode= and =prog-mode= derivative.
+  + Exactly right in Meow's Insert state; a disaster in Normal state, where autocorrect and suggestions rewrite a buffer whose keys are commands.
+- So the style is suspended on leaving Insert state and restored on re-entry.
+  + Emacs rereads the variable only when a buffer becomes selected, a whole state transition too late, so the change goes through =set-text-conversion-style=.
+  + Its documentation warns that resetting an input method is not cheap: hence a per-state action, not a per-command one, and =kittymacs-android-modal-text-conversion= to switch it off entirely if a particular keyboard misbehaves.
+- [[id:a1607a41-b741-428a-9de3-c16e7c8d3ecc][The editing chapter]] explains Meow's states.
+
 #+begin_src emacs-lisp
 (defvar-local kittymacs--android-text-conversion nil
   "The `text-conversion-style' suspended when Meow left Insert state.")
@@ -482,9 +420,15 @@ to nil to leave the input method alone."
     (setq kittymacs--android-text-conversion nil)))
 #+end_src
 
-*** Android: apply the policy
+** Applying the Android policy
 
-#+name: kittymacs-platform-16-3
+- Runs from =kittymacs-platform-apply=, on Android only.
+- Termux's =bin=, when reachable, goes first on =PATH= and =exec-path=.
+- =LD_LIBRARY_PATH= is cleared, not set.
+  + Termux's programs record where their own shared libraries are; an inherited library path interposes Android's same-named system libraries ahead of Termux's, with failures that look like nothing at all.
+- =LANG= becomes =en_US.UTF-8= when unset.
+- The volume keys go where =kittymacs-android-volume-keys= says; Meow's Insert hooks suspend and resume text conversion.
+
 #+begin_src emacs-lisp
 (defun kittymacs--platform-apply-android ()
   "Apply the Android policy: Termux tools, locale, volume keys, keyboard."
@@ -503,16 +447,21 @@ to nil to leave the input method alone."
   (add-hook 'meow-insert-enter-hook #'kittymacs--android-resume-text-conversion))
 #+end_src
 
-** Show a file in the desktop file manager
+* Revealing a file in the file manager
 
-- One command for every platform: Finder on macOS (=open -R= selects the
-  file), Explorer on Windows, Dired on Android, the desktop's default handler
-  elsewhere.
-- It takes the buffer's file, the file at point in Dired, or the current
-  directory.
-- [[file:42-keys.org][The keys chapter]] binds it to =SPC f o=.
+- One command for every platform, =kittymacs-reveal-in-file-manager=:
 
-#+name: kittymacs-platform-14-1
+| System    | Opens                                                        |
+|-----------+--------------------------------------------------------------|
+| macOS     | Finder, with the file selected (=open -R=)                   |
+| Windows   | Explorer, with the file selected                             |
+| Android   | Dired, the file manager that is actually there               |
+| elsewhere | the desktop's default handler for the directory (=xdg-open=) |
+
+- Android has no =xdg-open=, and its document picker addresses files by content URI rather than by path, so there is nothing to hand a file manager.
+- It takes the buffer's file, the file at point in Dired, or the current directory.
+- [[id:53ad53ed-155f-47dc-973d-7be18de2893c][The keys chapter]] binds it to =SPC f o=.
+
 #+begin_src emacs-lisp
 (defun kittymacs-reveal-in-file-manager (&optional file)
   "Show FILE in the desktop file manager, selected where the manager allows.
@@ -543,33 +492,22 @@ current directory."
       (_ (call-process "xdg-open" nil 0 nil directory)))))
 #+end_src
 
-** Spell checking
+* Spell checking
 
-- Which spell checker exists is a property of the machine, so the search
-  happens here: =hunspell= or =aspell= on =PATH=, or MSYS2's =hunspell= on
-  Windows.
-  - Nothing is enabled when none is installed; a checker without a
-    dictionary reports once and is switched off rather than breaking every
-    buffer.
-  - =SPC t s= toggles it.
-- Ispell is configured in one guarded function, which sets the environment
-  Hunspell needs before pointing Ispell at it; the docstring says why the
-  order matters.
-- The hooks that turn Flyspell on are added unconditionally; each asks for a
-  checker only when a buffer opens.
-  - Deciding once, at load time, would be too early: the module loads before
-    =private.el=, so a =kittymacs-msys2-root= set there, or a checker that
-    =exec-path-from-shell= later finds on the login shell's =PATH=, would
-    never turn spelling on.
-  - The question costs two lookups on =exec-path= per buffer, nothing next to
-    what Flyspell itself does.
-- Only Emacs's own Flyspell is used here.
-  - This module is loaded by [[file:../tests/kittymacs-platform-tests.el][the platform tests]] with no packages at
-    all, so it must never declare one.
-  - The two front ends that make corrections pleasant (=C-;= and =SPC s p=)
-    are declared in [[file:60-completion.org][the completion chapter]] instead.
+- Which spell checker exists is a property of the machine, so the search happens here: =hunspell= or =aspell= on =exec-path=, or MSYS2's =hunspell= on Windows.
+  + Nothing is enabled when none is installed.
+  + A checker without a dictionary reports once and is switched off rather than breaking every buffer.
+  + =SPC t s= toggles it.
+- Ispell is configured in one guarded function, when Ispell loads, which sets the environment Hunspell needs before pointing Ispell at it.
+  + =setopt ispell-program-name= runs a setter that asks Hunspell to list its dictionaries, and Hunspell needs a default dictionary name from the environment even for that; Windows sets no =LANG=.
+  + So =DICTIONARY= (=en_US= unless already set) and, for MSYS2's Hunspell, =DICPATH= come first.
+  + Guarded because an error here aborts the load of Ispell itself: Emacs restores Ispell's autoload stubs, and every later call reloads the library, runs the checker and fails again.
+- The hooks that turn Flyspell on are added unconditionally; each asks for a checker only when a buffer opens.
+  + Deciding once, at load time, would be too early: the module loads before =private.el=, so a =kittymacs-msys2-root= set there, or a checker that =exec-path-from-shell= later finds on the login shell's =PATH=, would never turn spelling on.
+  + The question costs two lookups on =exec-path= per buffer, nothing next to what Flyspell itself does.
+  + Text modes get =flyspell-mode=; programming modes =flyspell-prog-mode=, which checks only comments and strings.
+- Only Emacs's own Flyspell is used here; the two front ends that make corrections pleasant (=C-;= and =SPC s p=) are declared in [[id:42b02bb4-ea68-4981-b427-35705bf162f4][the completion chapter]].
 
-#+name: kittymacs-platform-15-1
 #+begin_src emacs-lisp
 (defun kittymacs-spell-checker ()
   "Return the spell-checker program to use, or nil."
@@ -622,19 +560,27 @@ A checker that fails is reported once instead of breaking the buffer."
 
 (add-hook 'text-mode-hook #'kittymacs--flyspell-text)
 (add-hook 'prog-mode-hook #'kittymacs--flyspell-prog)
-
-#+end_src
-
-** Publish the module
-
-- The core require/provide protocol records that this file loaded; later
-  requires can reuse the feature without evaluating the module again.
-
-#+name: kittymacs-platform-10-1
-#+begin_src emacs-lisp
 ;; Do not force a font here. Inheriting the platform default makes first boot robust.
 ;; Fonts are chosen in the appearance chapter.
 
 (provide 'kittymacs-platform)
 ;;; kittymacs-platform.el ends here
+#+end_src
+
+* Check
+
+- =C-h v shell-file-name=: this machine's shell, as in [[*The policy applied after private.el]].
+- =SPC f o= in a file buffer: the file manager opens on it, selected where the manager allows.
+- =SPC t s= in a text buffer: misspellings are underlined when a checker is installed; without one, nothing happens and nothing breaks.
+- macOS: =⌘Q= in one of several frames closes only that frame; deleting a file in Dired puts it in the Trash; switching between a light and a dark theme changes the title bar.
+- Android: two quick presses of volume down quit; in Normal state the on-screen keyboard no longer rewrites the buffer.
+- [[file:../tests/kittymacs-platform-tests.el][The platform tests]] run every system's branch on any machine:
+  + the shell and the modifiers on macOS, the Keychain, the locale only when missing, the Trash in its three ways, a quiet title-bar sync without a display;
+  + Git's Unix tools last on =exec-path= on Windows, and nothing changed without them;
+  + Termux's shell first, the system shell without it, text conversion following Meow;
+  + the file manager for each desktop;
+  + Ispell told its dictionary before it is asked, a broken checker reported once, never aborting Ispell.
+
+#+begin_src sh :tangle no
+just test      # the builder, the platform tests and the Tree-sitter policy
 #+end_src

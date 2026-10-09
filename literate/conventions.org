@@ -1,0 +1,131 @@
+:PROPERTIES:
+:ID: 7edccfdc-3c38-489a-bc9e-4c002b432ab4
+:END:
+
+#+TITLE: Conventions: how a chapter is written, tagged and linked
+#+FILETAGS: :meta:
+#+STARTUP: overview
+
+- The rules every page follows. Under all of them: a chapter is the explanation /and/ the source of what it tangles; there is no wiki beside the configuration.
+- [[id:52a45bf9-9521-4e0d-9867-1c54721844a3][The reading guide]] is the map; this page is the grammar.
+- =just doc-test= enforces the mechanical half ([[*What the doc tests check]]); the rest is judgement.
+
+* The rules
+
+1. *A chapter explains the code it tangles.*
+   + No chapter retells another chapter's configuration; it links there.
+   + A block without a bullet above it saying why is unfinished.
+2. *Chapters are numbered; the number is the load order.*
+   + =literate/NN-name.org= is a chapter; the builder finds chapters by that pattern, so there is no list to register one in.
+   + The number follows =init.el='s =require= order, so reading in number order meets each module before the modules that lean on it.
+   + Pages without a number (=index.org=, this page) are prose only and tangle nothing.
+3. *One module per chapter.*
+   + A chapter writes one =lisp/kittymacs-NAME.el=, named after its subject.
+   + Two exceptions, each one subject: [[id:40302e33-d2b2-4c0b-9bc3-1f9e121307e1][startup]] writes =early-init.el= and =init.el=; [[id:d25a5063-1439-4ae0-8fbe-b0162d05a0e0][the Nix chapter]] writes =flake.nix= and =nix/=; each heading names its file.
+4. *Membership is tags, not location.*
+   + A page's kind is its =#+FILETAGS:=; a heading that belongs somewhere extra carries its own tags.
+   + Org-roam groups and filters by these tags alone; [[*Tags]] is the whole list.
+5. *Link every relation, with =id:= links.*
+   + Any heading another page points at gets an =:ID:=; so does every heading with its own tag, since Org-roam lists, and finds by tag, only headings with an ID.
+   + =id:= links survive renames and show as backlinks.
+6. *One home per fact.*
+   + If two pages would say the same thing, one says it and the other links there.
+   + Design decisions and their reasons live in [[file:../ARCHITECTURE.md][ARCHITECTURE.md]]; a chapter says what the code does and why, and links there for the history of a choice.
+7. *Never edit a generated file.*
+   + Edit the chapter, =just tangle=, and commit both; =just tangle-check= fails on drift.
+
+* Tags
+:PROPERTIES:
+:ID: 00087e96-eb61-4b11-bc6f-d2747a583108
+:END:
+
+- Three types:
+  + /kind/: exactly one per page, in =#+FILETAGS:=: which part of the editor the chapter belongs to;
+  + /system/: on the page when the whole page is about one operating system, on a heading when only that part is;
+  + /heading/: on headings only.
+- The list is closed: a new tag is a change to this table and to =kittymacs-doc-tags= in [[file:../tests/kittymacs-doc-tests.el][the doc tests]].
+
+| Tag         | Type    | Means                                                                   |
+|-------------+---------+-------------------------------------------------------------------------|
+| =meta=      | kind    | kittymacs itself: the README, the reading guide, these conventions      |
+| =core=      | kind    | startup, defaults, platform, maintenance: what every other chapter uses |
+| =keys=      | kind    | Meow, the leader and the =SPC= tree                                     |
+| =interface= | kind    | frames, appearance, the dashboard, completion, help                     |
+| =apps=      | kind    | the terminal, shells, Dired, Treemacs, version control, navigation      |
+| =notes=     | kind    | Org and Org-roam                                                        |
+| =code=      | kind    | programming and languages                                               |
+| =nix=       | kind    | the flake and its modules                                               |
+| =macos=     | system  | macOS                                                                   |
+| =windows=   | system  | native Windows                                                          |
+| =linux=     | system  | GNU/Linux                                                               |
+| =android=   | system  | the Android port of Emacs                                               |
+| =wsl=       | system  | Windows' Linux subsystem                                                 |
+| =concept=   | heading | an idea explained on the one chapter that uses it                       |
+| =decision=  | heading | a choice and its reasons, to revisit by name                            |
+| =meow=      | heading | a package's Meow integration: its starting state and its =SPC m= menu  |
+
+- Org allows no hyphens in tags.
+- Finding things by tag: [[*Navigate the chapters in Emacs]].
+
+* How a chapter is laid out
+:PROPERTIES:
+:ID: 3478e786-7c7c-4da8-ad23-4fda534d7d43
+:END:
+
+- Every chapter has the same shape, so you can skim by heading:
+  1. the header: =:ID:=, =#+TITLE:=, =#+FILETAGS:=, =#+STARTUP: overview=, and the =#+PROPERTY: header-args= line naming the file it writes;
+  2. a few bullets: what the chapter gives you, what it leans on (linked), what it must not know;
+  3. one heading per concern: the claim, its reasons as sub-bullets, then the code block that implements it;
+  4. a =:meow:= heading for a package with its own buffers: the state they start in, and the =SPC m= menu;
+  5. *Check*, last: keys to press or commands to run, and what you should see.
+- Bullets, not paragraphs: one idea per bullet, reasons as sub-bullets (=+=), a sequence as a numbered list.
+- Short sentences; no "we", no "simply".
+- A table when three or more things share the same columns (keys, options, files).
+- =verbatim= for keys, files, commands and symbols.
+
+* Links
+:PROPERTIES:
+:ID: 35862803-49be-4e51-be03-7172c326aea9
+:END:
+
+- To a page or a heading: =[[id:…][words]]=; =SPC n i= inserts one by title, and =M-x org-id-get-create= first gives a heading its ID.
+- To a file that is not a page (a generated module, a test, the =justfile=): a =file:= link relative to the page, such as =[[file:../justfile]]=.
+- Within a page, =[[*Heading]]= is fine while both ends stay on it.
+- The README is GitHub's front page, so it links with =file:= links GitHub can follow; every other page links with =id:=.
+
+* Code
+
+- How blocks become files: [[id:9ea539a0-f1a3-4d05-aa10-6f2d2ff3e335][the maintenance chapter]].
+- The file-level =#+PROPERTY: header-args:emacs-lisp= line carries =:tangle=, =:eval never=, =:comments no=, =:padline no= and =:mkdirp yes=; a chapter writing several files moves =:tangle= into each heading's property drawer.
+- =:padline no= everywhere: blocks join with no blank line between them, so a blank line belongs inside the block that wants it.
+  + Babel drops a block's trailing blank line, so a block that should follow a blank line says =:padline yes= instead.
+- A block meant only to be read, such as an example of a call, says =:tangle no=; so does every block under *Check*.
+- Each generated file has exactly one chapter writing it; the builder refuses a second.
+- The first block of a module carries its Elisp header (=;;; kittymacs-NAME.el --- …=, =Generated from literate/NN-name.org=); the last ends with =(provide 'kittymacs-NAME)=.
+
+* What the doc tests check
+:PROPERTIES:
+:ID: 22034c63-4c03-4c8a-aa13-3d888d264052
+:END:
+
+- =just doc-test= runs [[file:../tests/kittymacs-doc-tests.el][tests/kittymacs-doc-tests.el]] over =README.org= and every page in =literate/=:
+  + every page has an =:ID:=, a =#+TITLE:= and exactly one kind tag;
+  + every tag, on a page or a heading, is in [[*Tags]], and every tagged heading has an ID;
+  + IDs are unique across pages;
+  + every =id:=, =file:= and =[[*Heading]]= link resolves;
+  + [[id:52a45bf9-9521-4e0d-9867-1c54721844a3][the reading guide]] links every chapter;
+  + every chapter's last top-level heading is *Check*.
+
+* Navigate the chapters in Emacs
+:PROPERTIES:
+:ID: 216f169e-cc55-4ba9-af9b-169ad3b5cd6b
+:END:
+
+- The checkout is an Org-roam graph of its own: =.dir-locals.el= at the root sets =kittymacs-org-roam-project=.
+  + Its index is a SQLite database in the cache, outside the checkout; =var/=, =tests/=, =tools/=, =lisp/= and =.github/= are left out.
+  + Run =SPC n s= once, and again after pulling new or moved pages.
+- With the graph synced:
+  + =SPC n f= finds a page or heading; typing =#meow= or =#decision= narrows to that tag;
+  + =SPC n b= lists what links to this page;
+  + =SPC n i= inserts an =id:= link by title.
+- [[id:f48e8f01-88da-4e33-8398-c00ab346b8bb][The Org-roam chapter]] explains how a buffer's graph is chosen.

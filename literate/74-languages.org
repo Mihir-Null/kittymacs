@@ -1,34 +1,34 @@
-#+TITLE: Programming with explicit dependencies
-#+OPTIONS: toc:3 num:nil
+:PROPERTIES:
+:ID: 560fcdca-6cb8-49d9-bf27-eb78f32b9285
+:END:
+
+#+TITLE: Languages: Tree-sitter and Eglot
+#+FILETAGS: :code:
 #+STARTUP: overview
 #+PROPERTY: header-args:emacs-lisp :eval never :comments no :padline no :mkdirp yes
 
-[[file:index.org][Reading guide]] · [[file:72-programming.org][Programming]] · [[file:40-editing.org][Editing]]
+- Tree-sitter major modes where a pinned grammar actually loads, the classic modes everywhere else, and Eglot on demand under =SPC l=.
+- Tree-sitter, Eglot, Flymake and xref are Emacs facilities; grammars, compilers and language-server executables are separate dependencies, which this chapter never assumes.
+  + Installing a parser and starting a language server stay explicit actions; startup only configures and checks.
+- Leans on [[id:afa6b7fd-742a-4c15-86a6-32e3e8027b0e][the platform chapter]] for =kittymacs-msys2-root=; [[id:53ad53ed-155f-47dc-973d-7be18de2893c][the keys chapter]] binds =SPC l=; [[id:a1607a41-b741-428a-9de3-c16e7c8d3ecc][the editing chapter]] turns the parse tree into Meow things.
+- Read [[id:97c04bd3-1404-4b0a-8018-20d77bc671bc][the programming chapter]] first: it is what every programming buffer gets regardless of language.
 
-Ownership: *subsequent development*.
-
-- Tree-sitter integration, Eglot, Flymake and xref are Emacs facilities.
-- Grammars, compilers and language-server executables are separate
-  dependencies.
-- This layer pins each grammar recipe to an exact revision and switches a
-  mode to its Tree-sitter version only when the grammar actually loads.
-- Installing parsers and starting language servers remain explicit actions.
-
-* kittymacs-treesit
+* Tree-sitter grammars
 :PROPERTIES:
 :header-args:emacs-lisp: :tangle ../lisp/kittymacs-treesit.el :eval never :comments no :padline no :mkdirp yes
 :END:
 
-- Deployed file: [[file:../lisp/kittymacs-treesit.el][lisp/kittymacs-treesit.el]].
-- Edit the blocks here; generated Lisp is kept in Git for ordinary startup
-  and review.
+- Writes [[file:../lisp/kittymacs-treesit.el][lisp/kittymacs-treesit.el]].
+- Pins each grammar recipe to an exact revision, and switches a mode to its Tree-sitter version only when the grammar loads.
 
-** Load cl-lib
+** Where compiled grammars live
 
-- Loaded before the forms that use its functions or variables; this
-  preserves the existing startup dependency order.
+- The checkout stays source-only; compiled parser libraries belong in the disposable cache.
+- =kittymacs-treesit-grammar-directory= defaults to =tree-sitter/= under =kittymacs-cache-dir= (=var/cache/tree-sitter/=).
+- It is put first in =treesit-extra-load-path= before every availability check and every explicit install.
+  + So a change through Customize or =setopt= after startup applies from the next check, with no restart.
+- Set it in =private.el= to choose the location before startup.
 
-#+name: kittymacs-treesit-01-1
 #+begin_src emacs-lisp
 ;;; kittymacs-treesit.el --- Portable Tree-sitter policy -*- lexical-binding: t; -*-
 ;; Generated from literate/74-languages.org; edit the Org source, then tangle.
@@ -42,50 +42,11 @@ Ownership: *subsequent development*.
 ;;; Code:
 
 (require 'cl-lib)
-#+end_src
-
-** Load rx
-
-- Loaded for the same reason as cl-lib.
-
-#+name: kittymacs-treesit-02-1
-#+begin_src emacs-lisp
 (require 'rx)
-#+end_src
-
-** Load treesit
-
-- Loaded for the same reason as cl-lib.
-
-#+name: kittymacs-treesit-03-1
-#+begin_src emacs-lisp
 (require 'treesit)
-#+end_src
-
-** Group customization options
-
-- This Custom group gives the following settings a discoverable home in
-  Emacs's built-in customization interface.
-
-#+name: kittymacs-treesit-04-1
-#+begin_src emacs-lisp
 (defgroup kittymacs-treesit nil
   "Portable Tree-sitter policy for the starter configuration."
   :group 'kittymacs)
-#+end_src
-
-** Keep compiled grammars in the writable cache
-
-- The configuration checkout stays source-only; compiled parser libraries
-  belong under the disposable kittymacs cache.
-- The current directory is placed first before every grammar availability
-  check and explicit installation.
-  - Changing this option through Customize or =setopt= after startup takes
-    effect immediately.
-- Set it in =private.el= to choose the location before startup.
-
-#+name: kittymacs-treesit-cache-1
-#+begin_src emacs-lisp
 (defcustom kittymacs-treesit-grammar-directory
   (expand-file-name "tree-sitter/" kittymacs-cache-dir)
   "Writable directory for compiled Tree-sitter grammar libraries."
@@ -102,15 +63,15 @@ Ownership: *subsequent development*.
 (kittymacs-treesit--sync-grammar-directory)
 #+end_src
 
-** Select a native Windows compiler locally
+** Building the Nix grammar on Windows :windows:
+:PROPERTIES:
+:ID: 829db0d6-d4e5-4346-9114-1205a00cac3c
+:END:
 
-- On Windows, the Nix grammar recipe uses MSYS2's UCRT64 GCC by absolute
-  path when it is available.
-- This is a per-recipe compiler choice: it does not change =PATH= or
-  =exec-path= for Emacs or child processes.
-- Other platforms keep Emacs's normal compiler discovery.
+- On Windows the Nix recipe names MSYS2's UCRT64 GCC by absolute path (=ucrt64/bin/gcc.exe= under =kittymacs-msys2-root=), when that file is executable.
+- A per-recipe compiler choice: it does not change =PATH= or =exec-path= for Emacs or its child processes.
+- Other platforms, and Windows without that GCC, keep Emacs's normal compiler discovery.
 
-#+name: kittymacs-treesit-nix-source-1
 #+begin_src emacs-lisp
 (defun kittymacs-treesit--nix-source ()
   "Return the pinned Nix recipe, with a local Windows compiler when present."
@@ -125,18 +86,21 @@ Ownership: *subsequent development*.
        (list "src" compiler)))))
 #+end_src
 
-** Pin compatible grammar revisions
+** Pinned grammar revisions :decision:
+:PROPERTIES:
+:ID: 71972b31-dcaf-438f-a8e3-242fdc8809c3
+:END:
 
-- Exact source revisions keep the chosen generated parsers within the
-  intended Emacs 30 ABI range.
-- The recipes identify source; they do not download or compile anything
-  during startup.
-- The following blocks are consecutive fragments of this source section;
-  some share an open Lisp form.
-  - Edit them here and rebuild the whole chapter rather than evaluating a
-    fragment on its own.
+- A recipe that follows a repository's moving head can start emitting a parser ABI newer than an older supported Emacs can load.
+- So every recipe names an exact commit whose generated parser uses ABI 13 or 14, loadable by Emacs 30 and every newer release.
+- The recipes identify source only: nothing is downloaded or compiled during startup.
+- Pinned: =bash=, =cmake=, =css=, =elisp=, =go=, =html=, =javascript=, =json=, =make=, =markdown=, =nix=, =python=, =toml=, =tsx=, =typescript=, =typst=, =yaml=.
+  + JavaScript, TSX and TypeScript name the source directory inside the repository (=src=, =tsx/src=, =typescript/src=).
+  + The Nix entry comes from [[*Building the Nix grammar on Windows]].
+- Each entry has the shape of =treesit-language-source-alist=: =(LANGUAGE REPOSITORY REVISION &optional SOURCE-DIRECTORY CC CXX)=.
+- To move a pin: change the commit here, tangle, then rebuild.
+  + =just update-grammars= rebuilds every grammar at its pinned revision: it runs =kittymacs-treesit-install-language-grammar= over =kittymacs-treesit-language-source-alist= in batch.
 
-#+name: kittymacs-treesit-05-1
 #+begin_src emacs-lisp
 (defcustom kittymacs-treesit-language-source-alist
   `((bash "https://github.com/tree-sitter/tree-sitter-bash"
@@ -167,15 +131,6 @@ Ownership: *subsequent development*.
     (tsx "https://github.com/tree-sitter/tree-sitter-typescript"
          "75b3874edb2dc714fb1fd77a32013d0f8699989f" "tsx/src")
     (typescript "https://github.com/tree-sitter/tree-sitter-typescript"
-#+end_src
-
-*** Pin compatible grammar revisions: continued 2
-
-- Continues the same definition in its original scope, directly after the
-  preceding block in the deployed file.
-
-#+name: kittymacs-treesit-05-2
-#+begin_src emacs-lisp
                 "75b3874edb2dc714fb1fd77a32013d0f8699989f"
                 "typescript/src")
     (typst "https://github.com/Ziqi-Yang/tree-sitter-typst"
@@ -191,24 +146,31 @@ entry has the same shape accepted by `treesit-language-source-alist':
   :group 'kittymacs-treesit)
 #+end_src
 
-** Describe candidate mode replacements
+** A mode switches to Tree-sitter only when its grammar loads :decision:
+:PROPERTIES:
+:ID: 09fd36a6-44f3-45a7-bef3-e3bb2b156a31
+:END:
 
-- This table is a set of possibilities; the availability check below
-  decides which remaps can actually be installed.
-- The first column must name the mode Emacs really chooses for a file, or
-  the remap never fires.
-  - For shell scripts that is =sh-mode=: there is no =bash-mode=.
-    - =sh-mode= edits every Bourne-family and C-shell dialect;
-      =bash-ts-mode= only understands Bash.
-    - The remap is still safe: =bash-ts-mode= checks the script's shell
-      when it starts and hands anything that is not Bash or plain =sh=
-      straight back to =sh-mode=.
-  - For JSON the built-in mode is =js-json-mode=; =json-mode= is a separate
-    package this configuration does not install.
-- The YAML, TypeScript, Typst and Nix rows name third-party modes and only
-  matter when one of those packages is installed.
+- =kittymacs-treesit-mode-remaps= lists the possible switches; a remap is installed only when the Tree-sitter mode exists and Emacs can load its grammar.
+  + A recipe alone is not a usable parser, so Emacs itself is asked whether the language loads.
 
-#+name: kittymacs-treesit-06-1
+| Classic mode      | Tree-sitter mode     | Grammar      |
+|-------------------+----------------------+--------------|
+| =yaml-mode=       | =yaml-ts-mode=       | =yaml=       |
+| =sh-mode=         | =bash-ts-mode=       | =bash=       |
+| =typescript-mode= | =typescript-ts-mode= | =typescript= |
+| =js-json-mode=    | =json-ts-mode=       | =json=       |
+| =css-mode=        | =css-ts-mode=        | =css=        |
+| =python-mode=     | =python-ts-mode=     | =python=     |
+| =typst-mode=      | =typst-ts-mode=      | =typst=      |
+| =nix-mode=        | =nix-ts-mode=        | =nix=        |
+
+- The first column must be the mode Emacs really chooses for a file, or the remap never fires.
+  + Shell scripts open in =sh-mode=; there is no =bash-mode=.
+  + =sh-mode= edits every Bourne-family and C-shell dialect, =bash-ts-mode= only Bash; the remap is still safe, because =bash-ts-mode= checks the script's shell when it starts and hands anything that is not Bash or plain =sh= back to =sh-mode=.
+  + JSON's built-in mode is =js-json-mode=; =json-mode= is a separate package this configuration does not install.
+- The YAML, TypeScript, Typst and Nix rows name third-party modes and only matter when one of those packages is installed.
+
 #+begin_src emacs-lisp
 (defconst kittymacs-treesit-mode-remaps
   '((yaml-mode yaml-ts-mode yaml)
@@ -220,15 +182,6 @@ entry has the same shape accepted by `treesit-language-source-alist':
     (typst-mode typst-ts-mode typst)
     (nix-mode nix-ts-mode nix))
   "Classic mode, Tree-sitter mode, and grammar triples managed here.")
-#+end_src
-
-** Probe the actual parser library
-
-- A grammar recipe alone is not a usable parser, so Emacs is asked whether
-  it can load the language before a Tree-sitter major mode is selected.
-
-#+name: kittymacs-treesit-07-1
-#+begin_src emacs-lisp
 (defun kittymacs-treesit--language-available-p (language)
   "Return non-nil when LANGUAGE can be loaded by this Emacs build."
   (kittymacs-treesit--sync-grammar-directory)
@@ -238,30 +191,22 @@ entry has the same shape accepted by `treesit-language-source-alist':
          (error nil))))
 #+end_src
 
-** Replace moving recipes with pins
+** Emacs's installer uses the pins, at exact commits
 
-- The pinned recipes are written into Emacs's own
-  =treesit-language-source-alist=, replacing any entry for the same
-  language.
-  - So Emacs's installer uses them too.
+- The pinned recipes are written into Emacs's own =treesit-language-source-alist=, replacing any entry for the same language, so Emacs's installer uses them too.
+- Emacs 30 documents a recipe's revision as a tag or branch and clones it with =git clone --branch=, which cannot take a raw commit hash.
+- An =:around= adapter on the clone helper handles a 40-character hash itself:
+  1. =git init= the work directory and add the repository as =origin=;
+  2. fetch that one commit with =--depth 1=;
+  3. check out =FETCH_HEAD= detached.
+- Any other revision goes to Emacs's own clone unchanged.
 
-#+name: kittymacs-treesit-08-1
 #+begin_src emacs-lisp
 (defun kittymacs-treesit-apply-pinned-sources ()
   "Put the pinned recipes into `treesit-language-source-alist'."
   (dolist (source kittymacs-treesit-language-source-alist)
     (setf (alist-get (car source) treesit-language-source-alist)
           (cdr source))))
-#+end_src
-
-** Handle exact Git revisions
-
-- Some Emacs versions treat a revision like a branch during shallow clone.
-- The local adapter handles raw commit identifiers with a detached fetch;
-  other references keep the ordinary path.
-
-#+name: kittymacs-treesit-09-1
-#+begin_src emacs-lisp
 (defun kittymacs-treesit--git-clone-revision
     (original-function url revision workdir)
   "Clone URL at exact REVISION into WORKDIR for `treesit'.
@@ -289,12 +234,12 @@ ORIGINAL-FUNCTION unchanged."
     (funcall original-function url revision workdir)))
 #+end_src
 
-** Keep classic modes as a working fallback
+** Classic modes stay the fallback
 
-- A replacement is installed only when its target mode and grammar both work.
-- Refreshing removes stale choices if a parser becomes unavailable.
+- =kittymacs-treesit-refresh-mode-remaps= first removes every remap for the managed modes, then adds back only those whose mode and grammar both work now.
+  + So a parser that stops loading takes its stale remap with it; the classic mode keeps working.
+- Interactive, and returns the resulting =major-mode-remap-alist=.
 
-#+name: kittymacs-treesit-10-1
 #+begin_src emacs-lisp
 (defun kittymacs-treesit-refresh-mode-remaps ()
   "Refresh managed mode remaps for the grammars available right now.
@@ -316,13 +261,13 @@ only when its target mode exists and its grammar loads successfully."
   major-mode-remap-alist)
 #+end_src
 
-** Install one parser on request
+** Installing grammars is an explicit action
 
-- This interactive command checks the selected recipe and delegates
-  compilation to Emacs.
-- Git and a working compiler must already be available.
+- =M-x kittymacs-treesit-install-language-grammar= offers the pinned languages, installs one into the grammar directory, then refreshes the remaps.
+  + It refuses a language without a pinned recipe, and an Emacs built without Tree-sitter support.
+- =M-x kittymacs-treesit-install-all-grammars= installs every pinned grammar that does not load yet, then refreshes the remaps.
+- Both hand the build to Emacs's installer: Git and a working C compiler must already be on the machine.
 
-#+name: kittymacs-treesit-11-1
 #+begin_src emacs-lisp
 (defun kittymacs-treesit-install-language-grammar (language)
   "Install pinned grammar LANGUAGE, then refresh conditional remaps."
@@ -343,15 +288,6 @@ only when its target mode exists and its grammar loads successfully."
   (treesit-install-language-grammar
    language kittymacs-treesit-grammar-directory)
   (kittymacs-treesit-refresh-mode-remaps))
-#+end_src
-
-** Install the pinned set on request
-
-- This bulk command is an explicit maintenance action; normal startup only
-  configures recipes and checks availability.
-
-#+name: kittymacs-treesit-12-1
-#+begin_src emacs-lisp
 (defun kittymacs-treesit-install-all-grammars ()
   "Install every missing pinned grammar and refresh mode remaps."
   (interactive)
@@ -367,65 +303,42 @@ only when its target mode exists and its grammar loads successfully."
   (kittymacs-treesit-refresh-mode-remaps))
 #+end_src
 
-** Apply the pinned recipe policy now
+** What loading the module does
 
-- The pinned recipes are registered as the module loads, configuring source
-  locations without installing parsers.
+1. Registers the pinned recipes with Emacs: source locations only, no parsers installed.
+2. Computes the remaps from the parsers and modes this machine has now.
+3. Adds the exact-revision adapter, guarded, so reloading the module never stacks a second wrapper around the clone helper.
 
-#+name: kittymacs-treesit-13-1
 #+begin_src emacs-lisp
 (kittymacs-treesit-apply-pinned-sources)
-#+end_src
-
-** Select currently usable modes
-
-- At startup, remaps are recomputed from the parsers and major modes
-  available on this machine.
-
-#+name: kittymacs-treesit-14-1
-#+begin_src emacs-lisp
 (kittymacs-treesit-refresh-mode-remaps)
-#+end_src
-
-** Install the exact-revision adapter once
-
-- The advice is guarded, so reloading the module cannot stack duplicate
-  wrappers around the grammar clone helper.
-
-#+name: kittymacs-treesit-15-1
-#+begin_src emacs-lisp
 (unless (advice-member-p #'kittymacs-treesit--git-clone-revision
                          #'treesit--git-clone-repo)
   (advice-add #'treesit--git-clone-repo :around
               #'kittymacs-treesit--git-clone-revision))
-#+end_src
-
-** Publish the module
-
-- The core require/provide protocol records that this file loaded.
-- Later requires can reuse the feature without evaluating the module again.
-
-#+name: kittymacs-treesit-17-1
-#+begin_src emacs-lisp
 (provide 'kittymacs-treesit)
 ;;; kittymacs-treesit.el ends here
 #+end_src
 
-* kittymacs-languages
+* Language servers and language packages
 :PROPERTIES:
 :header-args:emacs-lisp: :tangle ../lisp/kittymacs-languages.el :eval never :comments no :padline no :mkdirp yes
 :END:
 
-- Deployed file: [[file:../lisp/kittymacs-languages.el][lisp/kittymacs-languages.el]].
-- Edit the blocks here; generated Lisp is kept in Git for ordinary startup
-  and review.
+- Writes [[file:../lisp/kittymacs-languages.el][lisp/kittymacs-languages.el]].
+- A small built-in Eglot command surface, without assuming which language servers or runtimes each machine has.
 
-** Group customization options
+** Two opt-ins, both empty by default :decision:
+:PROPERTIES:
+:ID: 807bd21b-7328-4a3d-82b1-e450bf6184e9
+:END:
 
-- This Custom group gives the following settings a discoverable home in
-  Emacs's built-in customization interface.
+- Machines differ in which runtimes and servers they have, so nothing language-specific happens until =private.el= asks for it, before this module loads.
+- The two options:
+  + =kittymacs-language-packages= :: a set of =nix=, =racket= and =guile=: the editing packages to install and configure; built-in modes and Eglot need no entry;
+  + =kittymacs-eglot-auto-start-modes= :: major modes in which opening a file runs =eglot-ensure=; add a mode only after installing its server on each machine.
+- With the empty defaults no extra package is installed and opening a file starts no server: =SPC l e= (=M-x eglot=) starts one.
 
-#+name: kittymacs-languages-01-1
 #+begin_src emacs-lisp
 ;;; kittymacs-languages.el --- Selective language tooling -*- lexical-binding: t; -*-
 ;; Generated from literate/74-languages.org; edit the Org source, then tangle.
@@ -440,16 +353,6 @@ only when its target mode exists and its grammar loads successfully."
 (defgroup kittymacs-languages nil
   "Selective language tooling for the starter configuration."
   :group 'kittymacs)
-#+end_src
-
-** Opt into language editing packages
-
-- The default is empty.
-- Nix, Racket and Guile package choices can be made locally, without
-  assuming their runtimes exist on every machine.
-
-#+name: kittymacs-languages-02-1
-#+begin_src emacs-lisp
 (defcustom kittymacs-language-packages nil
   "Optional language packages to install and configure.
 
@@ -457,16 +360,6 @@ Supported values are `nix', `racket', and `guile'.  Built-in modes and Eglot do
 not need to be listed here."
   :type '(set (const nix) (const racket) (const guile))
   :group 'kittymacs-languages)
-#+end_src
-
-** Keep automatic servers opt-in
-
-- An empty list means buffers do not start language servers merely by
-  opening a file.
-- Add modes only after installing their server executables.
-
-#+name: kittymacs-languages-03-1
-#+begin_src emacs-lisp
 (defcustom kittymacs-eglot-auto-start-modes nil
   "Major modes in which `eglot-ensure' should run automatically.
 
@@ -476,14 +369,12 @@ until the language server for a mode is deliberately installed on each machine."
   :group 'kittymacs-languages)
 #+end_src
 
-** Use the built-in LSP client
+** Eglot, the built-in client
 
-- Eglot supplies server communication; core xref and Flymake expose
-  navigation and diagnostics.
-- Servers start only when asked, with =SPC l e=, unless a mode is listed in
-  the option above.
+- Eglot talks to the server; Emacs's own xref and Flymake show its navigation and diagnostics.
+- =:commands= declares Eglot's commands as autoloads, so the =SPC l= keys load it on first use.
+- =eglot-autoshutdown= stops a server once its last buffer is killed.
 
-#+name: kittymacs-languages-04-1
 #+begin_src emacs-lisp
 (use-package eglot
   :ensure nil
@@ -495,23 +386,16 @@ until the language server for a mode is deliberately installed on each machine."
   (eglot-autoshutdown t))
 #+end_src
 
-**  eglot auto start hooks
+** Starting servers automatically, per mode
 
-- Mode hooks currently managed by =kittymacs-eglot-apply-auto-start-modes=.
+- =kittymacs-eglot-apply-auto-start-modes= puts =eglot-ensure= on the hook of each listed mode.
+- It remembers the hooks it touched, so applying a changed list removes obsolete hooks as well as adding new ones.
+  + Interactive: run it after changing the list in a live session.
+- Applied once at load: with the empty default it installs nothing.
 
-#+name: kittymacs-languages-05-1
 #+begin_src emacs-lisp
 (defvar kittymacs--eglot-auto-start-hooks nil
   "Mode hooks currently managed by `kittymacs-eglot-apply-auto-start-modes'.")
-#+end_src
-
-** Reconcile opt-in hooks
-
-- The module tracks the hooks it installs, so changing the opt-in list
-  removes obsolete hooks as well as adding new ones.
-
-#+name: kittymacs-languages-06-1
-#+begin_src emacs-lisp
 (defun kittymacs-eglot-apply-auto-start-modes ()
   "Apply `kittymacs-eglot-auto-start-modes' to their corresponding hooks."
   (interactive)
@@ -522,25 +406,17 @@ until the language server for a mode is deliberately installed on each machine."
     (let ((hook (intern (format "%s-hook" mode))))
       (add-hook hook #'eglot-ensure)
       (push hook kittymacs--eglot-auto-start-hooks))))
-#+end_src
-
-** Apply the current server opt-ins
-
-- Only the auto-start hooks explicitly named by user policy are installed.
-- The empty default starts no servers.
-
-#+name: kittymacs-languages-10-1
-#+begin_src emacs-lisp
 (kittymacs-eglot-apply-auto-start-modes)
 #+end_src
 
-** Opt into Nix editing
+** Nix, Racket and Guile packages
 
-- nix-mode is requested only when the user includes nix in
-  kittymacs-language-packages.
-- This does not install the Nix runtime or a language server.
+- Each package is requested only when its symbol is in =kittymacs-language-packages=:
+  + =nix= :: =nix-mode= for =.nix= files;
+  + =racket= :: =racket-mode= for =.rkt= files;
+  + =guile= :: Geiser and its Guile adapter.
+- None installs the runtime itself (Nix, Racket, Guile) or a language server; those are platform dependencies.
 
-#+name: kittymacs-languages-11-1
 #+begin_src emacs-lisp
 ;; Keep non-built-in language modes deliberate.  Set
 ;; `kittymacs-language-packages' in private.el before startup to enable these.
@@ -548,28 +424,10 @@ until the language server for a mode is deliberately installed on each machine."
   (use-package nix-mode
     :ensure t
     :mode "\\.nix\\'"))
-#+end_src
-
-** Opt into Racket editing
-
-- racket-mode is requested only when selected.
-- The Racket runtime remains a separate platform dependency.
-
-#+name: kittymacs-languages-12-1
-#+begin_src emacs-lisp
 (when (memq 'racket kittymacs-language-packages)
   (use-package racket-mode
     :ensure t
     :mode "\\.rkt\\'"))
-#+end_src
-
-** Opt into Guile interaction
-
-- Geiser and its Guile adapter are conditional editing packages,
-  independent of installing Guile itself.
-
-#+name: kittymacs-languages-13-1
-#+begin_src emacs-lisp
 (when (memq 'guile kittymacs-language-packages)
   (use-package geiser
     :ensure t
@@ -577,16 +435,27 @@ until the language server for a mode is deliberately installed on each machine."
   (use-package geiser-guile
     :ensure t
     :after geiser))
-#+end_src
-
-** Publish the module
-
-- The core require/provide protocol records that this file loaded.
-- Later requires can reuse the feature without evaluating the module again.
-
-#+name: kittymacs-languages-14-1
-#+begin_src emacs-lisp
 (provide 'kittymacs-languages)
 ;;; kittymacs-languages.el ends here
 #+end_src
 
+* Check
+
+- =M-x kittymacs-treesit-install-language-grammar RET python RET=, then open a =.py= file: the mode line shows =python-ts-mode=.
+  + Without the grammar the same file opens in =python-mode=.
+- =M-x kittymacs-treesit-refresh-mode-remaps=: the echo area shows the remaps this machine can use.
+- =SPC l e= in a buffer whose server is installed: Eglot connects, and its diagnostics appear in the fringe.
+- =just update-grammars= rebuilds every pinned grammar at its pinned revision, in batch, into the grammar directory.
+- =just test= includes the offline Tree-sitter policy tests, [[file:../tests/kittymacs-treesit-tests.el][tests/kittymacs-treesit-tests.el]], which check:
+  + the grammar directory defaults under the cache, and a directory chosen after load is searched before every probe and install;
+  + the Nix recipe is exactly pinned, and on Windows uses MSYS2's GCC without touching =PATH=;
+  + every remap has a recipe, and names the mode Emacs really chooses;
+  + a remap needs both the mode and the grammar;
+  + the installer explains when this Emacs cannot build grammars.
+- One test parses a real Nix file; it runs only when =NIX_GRAMMAR_TEST_DIR= names a directory holding the compiled Nix grammar, and is skipped otherwise.
+- =just test-packages= runs the verifier, which checks that =SPC l e= is =eglot=.
+
+#+begin_src sh :tangle no
+just test               # includes tests/kittymacs-treesit-tests.el, offline
+just update-grammars    # rebuild every grammar at its pinned revision
+#+end_src

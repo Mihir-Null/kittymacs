@@ -1,89 +1,91 @@
+:PROPERTIES:
+:ID: 40302e33-d2b2-4c0b-9bc3-1f9e121307e1
+:END:
+
 #+TITLE: Startup: early-init.el and init.el
-#+OPTIONS: toc:3 num:nil
+#+FILETAGS: :core:
 #+STARTUP: overview
 #+PROPERTY: header-args:emacs-lisp :eval never :comments no :padline no :mkdirp yes
 
-[[file:index.org][Reading guide]] · [[file:25-defaults.org][Defaults]] · [[file:80-maintenance.org][Maintenance]]
+- The only two files Emacs reads on its own, about a hundred lines together:
+  + =early-init.el= decides where files live and how packages are fetched;
+  + =init.el= loads the chapters in order.
+- Leans on nothing; every other chapter is loaded from here, starting with [[id:3fd783cd-deb8-48aa-bb44-0d9b16535365][the defaults]] and [[id:afa6b7fd-742a-4c15-86a6-32e3e8027b0e][the platform chapter]].
+- Read this chapter first, after [[id:52a45bf9-9521-4e0d-9867-1c54721844a3][the reading guide]]; [[*Machine-specific settings]] says where your own settings go.
 
-Ownership: *user configuration*.
+* What happens when Emacs starts :concept:
+:PROPERTIES:
+:ID: 648ce638-001c-4814-bcc5-e375641109a6
+:END:
 
-- These are the only two files Emacs reads on its own; nothing else is
-  special.
-- Together they are about a hundred lines:
-  - the first decides where files live and how packages are fetched;
-  - the second loads the chapters in order.
+1. Emacs reads =early-init.el= /before/ it creates a frame or activates packages: the moment to
+   + say where packages live;
+   + switch off toolbars, so they never flash;
+   + postpone garbage collection.
+2. Emacs reads =init.el=, which activates the installed packages, loads =use-package= and requires each generated module in dependency order:
+   + defaults and platform first, then the look, then editing and the integrations, then the applications;
+   + frames policy last, so nothing later can undo it.
+3. Packages install themselves as their chapters load ([[*Packages are declared where they are used]]).
+4. =after-init-hook= runs once =init.el= has finished ([[*Machine-specific settings]]).
 
-* What happens when Emacs starts
+* Packages are declared where they are used :decision:
+:PROPERTIES:
+:ID: 49e57ad2-871b-438e-9420-429781799704
+:END:
 
-1. Emacs reads =early-init.el= *before* it creates a frame or activates
-   packages. That is the moment to:
-   - say where packages live;
-   - switch off toolbars, so they never flash;
-   - postpone garbage collection.
-2. Emacs then reads =init.el=, which activates the installed packages, loads
-   =use-package=, and requires each generated module in dependency order:
-   - defaults and platform first, then the look, then editing and the
-     integrations, then the applications;
-   - frames policy last, so nothing later can undo it.
-3. Packages are declared where they are used, with =use-package … :ensure t=.
-   - A fresh clone installs them on first start; an existing =var/elpa= is
-     used as is.
-   - Global modes are switched on one way throughout:
-     - a built-in mode with =(mode 1)= right after its settings;
-     - a package's mode in the =:config= of its =use-package=, which runs
-       once the package has loaded;
-     - a package whose mode must be on from the start also says =:demand t=,
-       because =:bind= and =:hook= would otherwise postpone loading until a
-       key or hook is used;
-     - the one exception is Tabspaces, whose mode reads some options only as
-       it turns on: it is turned on after =init.el= finishes, so your
-       settings reach it (the navigation chapter explains).
-   - GNU ELPA's index is signed, and Emacs verifies it with =gpg=:
-     - Windows: install [[https://gpg4win.org/][Gpg4win]] so the check can run; the startup file puts
-       it first on =exec-path=, because Git for Windows' =gpg= would
-       otherwise come first and cannot use a Windows keyring directory.
-     - macOS: an Emacs started from the Dock has no shell =PATH=, so the
-       startup file puts the Nix profiles and Homebrew's directory on
-       =exec-path= when they exist; =brew install gnupg= or the
-       [[file:../nix/README.org][Nix module]] is enough.
-     - Without a native =gpg= the check is skipped rather than silently
-       losing the archive.
+- Each chapter declares its packages with =use-package … :ensure t=.
+  + A fresh clone installs them on first start; an existing =var/elpa= is used as is.
+- Global modes are switched on one way throughout:
+  + a built-in mode :: =(mode 1)= right after its settings;
+  + a package's mode :: in the =:config= of its =use-package=, which runs once the package has loaded;
+  + a mode that must be on from the start :: also =:demand t=, because =:bind= and =:hook= would otherwise postpone loading until a key or hook is used;
+  + Tabspaces :: the one exception: its mode reads some options only as it turns on, so it is turned on after =init.el= finishes and your settings reach it ([[id:e4d65984-892d-4046-b718-d4265ab74215][the navigation chapter]] explains).
 
-* early-init.el
+* GNU ELPA's signature check needs a native gpg :windows:macos:
+:PROPERTIES:
+:ID: acfae6fb-7d39-4d14-befc-8151be4bb5a6
+:END:
+
+- GNU ELPA signs its archive index; Emacs verifies it with the first =gpg= on =exec-path=.
+- Windows: install [[https://gpg4win.org/][Gpg4win]].
+  + =early-init.el= puts its =gpg= first on =exec-path=.
+  + Otherwise Git for Windows' MSYS =gpg= comes first; it cannot open a Windows keyring directory, so every signature fails and the archives silently vanish.
+- macOS: an Emacs started from the Dock has no shell =PATH=.
+  + =early-init.el= puts Homebrew's directories and the Nix profiles on =exec-path= when they exist (later entries win).
+  + =brew install gnupg= or [[id:d25a5063-1439-4ae0-8fbe-b0162d05a0e0][the Nix module]] is enough.
+  + [[id:d2e0bc37-0bd4-4b28-a8ee-04f94ac451f8][The shells chapter]] later imports the full login environment, for =git= and the language servers too.
+- Without a native =gpg= (always on Windows without Gpg4win) the check is skipped rather than silently losing the archives.
+
+* early-init.el: before the first frame
 :PROPERTIES:
 :header-args:emacs-lisp: :tangle ../early-init.el :eval never :comments no :padline no :mkdirp yes
 :END:
 
-- Everything Emacs writes goes under =var/=, which Git ignores: packages,
-  caches, native-compiled files, saved settings.
+- Everything Emacs writes goes under =var/=, which Git ignores: packages, caches, native-compiled files, saved settings.
+  + =kittymacs-cache-dir= (=var/cache/=) holds what can be deleted at any time; =kittymacs-etc-dir= (=var/etc/=) holds state worth keeping.
+  + Native compilation writes its =eln-cache/= into the cache and reports warnings silently.
 - This file sets options with =setq=; every later chapter uses =setopt=.
-  - =setopt= checks a value against the option's type; to know the type it
-    loads Customize and the library that defines the option.
-  - For the package options below that is =package.el= with its URL and
-    EIEIO libraries, which would cost some thirty milliseconds before the
-    first frame appears.
-  - =init.el= loads them a moment later anyway, once the frame is on screen.
-- Package activation is left to =init.el=, so it happens in one known place.
+  + =setopt= checks a value against the option's type; to know the type it loads Customize and the library that defines the option.
+  + For the package options that is =package.el= with its URL and EIEIO libraries: some thirty milliseconds before the first frame appears.
+  + =init.el= loads them a moment later anyway, once the frame is on screen.
+- Package activation is left to =init.el=, so it happens in one known place (=package-enable-at-startup= is nil).
+- The archives are GNU ELPA, NonGNU ELPA and MELPA; signatures: [[*GNU ELPA's signature check needs a native gpg]].
 - Three settings make startup quicker:
-  - no garbage collection until the end;
-  - no implied frame resizing;
-  - frames created without the toolbar and the menu bar, rather than with
-    ones that are then removed.
-- =SPC t m= brings the menu bar back.
+  + no garbage collection until the end (then a 64 MB threshold);
+  + no implied frame resizing;
+  + frames created without the toolbar and the menu bar, rather than with ones that are then removed.
+- =menu-bar-mode= is turned off too, to agree with the frame parameter; otherwise the first =SPC t m= would switch a hidden menu bar "off" and show nothing.
+  + =SPC t m= brings the menu bar back.
+- No startup screen, an empty =*scratch*=, no scroll bars, and =load-prefer-newer=.
 - Frames are sized by the pixel, not by whole lines and columns.
-  - A tiling window manager asks for an exact rectangle.  Rounded down to
-    the character grid, the frame falls a few pixels short of its tile, and
-    a manager that checks the result may keep asking again.
-  - It is set here, before the first frame exists, so that frame is sized
-    the same way as every later one.
-- Under WSLg, frames have no title bar or border of their own.
-  - WSLg's compositor draws a frame around every X11 window, and GTK draws one
-    around Wayland windows; on Windows the window manager already shows where
-    each window is, so that frame only takes space.
-  - =undecorated= asks for no frame.  Windows is where WSLg windows are moved
-    and resized, by a tiling window manager or by keyboard.
-  - WSLg is recognised by =/mnt/wslg=, which every WSL distribution sees.  The
-    daemon is started by systemd, whose environment may lack =WSL_DISTRO_NAME=.
+  + A tiling window manager asks for an exact rectangle; rounded down to the character grid, the frame falls a few pixels short of its tile, and a manager that checks the result may keep asking again.
+  + Set here, before the first frame exists, so that frame is sized the same way as every later one.
+- Under WSLg, frames have no title bar or border of their own (=undecorated=).
+  + WSLg's compositor draws a frame around every X11 window, and GTK one around Wayland windows; on Windows the window manager already shows where each window is, so that frame only takes space.
+  + Windows is where WSLg windows are moved and resized, by a tiling window manager or by keyboard.
+  + WSLg is recognised by =/mnt/wslg=, which every WSL distribution sees: the daemon is started by systemd, whose environment may lack =WSL_DISTRO_NAME=.
+- macOS: the title bar is made transparent before the first frame; [[id:afa6b7fd-742a-4c15-86a6-32e3e8027b0e][the platform chapter]] gives it the theme's appearance.
+- Windows: =w32-get-true-file-attributes= off and =inhibit-compacting-font-caches= on.
 
 #+begin_src emacs-lisp
 ;;; early-init.el --- Before the first frame -*- lexical-binding: t; -*-
@@ -172,24 +174,21 @@ Ownership: *user configuration*.
 ;;; early-init.el ends here
 #+end_src
 
-* init.el
+* init.el: the load order
 :PROPERTIES:
 :header-args:emacs-lisp: :tangle ../init.el :eval never :comments no :padline no :mkdirp yes
 :END:
 
-- The composition root: each =require= is one chapter of this guide.
+- The composition root: each =require= is one chapter.
 - The order matters only where a module uses another:
-  - defaults define the directories;
-  - the platform chapter defines the paths that =private.el= may override;
-  - the UI must exist before the dashboard measures text;
-  - Meow must be up before the keys chapter binds the leader;
-  - the terminal comes after the programming chapter, whose mode menu it
-    extends;
-  - frames policy goes last.
-- Two files of your own are read along the way:
-  - =private.el= early, right after the platform chapter;
-  - the Customize file at the end.
-- The last section of this chapter explains why they sit where they do.
+  + defaults define the directories;
+  + the platform chapter defines the paths that =private.el= may override, and =kittymacs-platform-apply= runs right after it;
+  + the UI must exist before the dashboard measures text;
+  + Meow must be up before the keys chapter binds the leader;
+  + the terminal comes after the programming chapter, whose mode menu it extends;
+  + frames policy goes last.
+- Two files of your own are read along the way: =private.el= right after the platform chapter, the Customize file at the end; [[*Machine-specific settings]] says why there.
+- If the package index is missing, the first start fetches it.
 
 #+begin_src emacs-lisp
 ;;; init.el --- kittymacs -*- lexical-binding: t; -*-
@@ -241,55 +240,51 @@ Ownership: *user configuration*.
 ;;; init.el ends here
 #+end_src
 
-* Machine-specific settings
+* Machine-specific settings :decision:
+:PROPERTIES:
+:ID: 6c9aefe0-32af-453b-a075-6ed429993d3a
+:END:
 
-- =private.el= next to the generated modules is loaded once, after the
-  platform variables exist and before anything reads them.
-- Git ignores it. Copy =private.example.el= to start one, or press =SPC C p=.
-- Loading it early is deliberate, with one consequence worth understanding:
-  - Many chapters read a =kittymacs-= option /while they load/; it must
-    already have your value, so =private.el= comes first.
-    - The languages chapter looks at =kittymacs-language-packages= to decide
-      which packages to install.
-    - The appearance chapter loads =kittymacs-theme=.
-  - But chapters loading afterwards also set options of the packages they
-    configure (=setopt= or =use-package ... :custom=), and a later setting
-    replaces an earlier one.
-  - If =private.el= said =(setopt ghostel-enable-osc52 t)= at top level, the
-    terminal chapter would set it back to =nil= a moment later and you would
-    never know why.
+- =lisp/private.el=, next to the generated modules, is loaded once: after the platform variables exist, before anything reads them.
+  + Git ignores it; copy =lisp/private.example.el= to start one, or press =SPC C p=.
+- Loading it early is deliberate, with one consequence:
+  + many chapters read a =kittymacs-= option /while they load/, so it must already have your value: the languages chapter reads =kittymacs-language-packages= to decide which packages to install, the appearance chapter loads =kittymacs-theme=;
+  + but chapters loading afterwards also set options of the packages they configure (=setopt=, =use-package … :custom=), and a later setting replaces an earlier one;
+  + a top-level =(setopt ghostel-enable-osc52 t)= in =private.el= would be set back to =nil= by the terminal chapter a moment later, and you would never know why.
+- So =private.el= holds two kinds of settings, written two ways:
+  + kittymacs options, read while the chapters load :: at top level, with =setopt=;
+  + options of packages that a chapter also sets :: in a function on =after-init-hook=, which Emacs runs once =init.el= has finished.
 
-So =private.el= has two kinds of settings, written two ways:
+#+begin_src emacs-lisp :tangle no
+(add-hook 'after-init-hook
+          (lambda ()
+            (setopt ghostel-enable-osc52 t)
+            (with-eval-after-load 'ghostel
+              (setopt ghostel-shell '("/bin/zsh" "--login"))))
+          90)
+#+end_src
 
-- *kittymacs options*, read while the chapters load, go at top level with
-  =setopt=.
-- *Options of packages that a chapter also sets* go in a function on
-  =after-init-hook=, which Emacs runs once =init.el= has finished:
+- The =90= is the hook's /depth/: functions run in order of depth, and the chapters add theirs at the default of 0, so yours runs after them.
+  + Tabspaces is the exception: it turns on at 95, after yours, so it reads your settings.
+- The =with-eval-after-load= inside is for options a chapter sets only when its package loads, in =:config= or its own =with-eval-after-load=.
+  + Emacs runs the forms waiting for a package in the order they were registered; registering yours inside the hook puts it after every chapter's, so it runs last there too.
+- Settings saved with =M-x customize= need none of this:
+  + the Customize file, =var/etc/custom.el=, is loaded on the last line of =init.el=, after every chapter, so its settings win over the chapters;
+  + Customize is the right place for package options;
+  + a =kittymacs-= option that a chapter reads while it loads still belongs in =private.el=: by the time the Customize file loads, that chapter has already decided.
 
-  #+begin_src emacs-lisp :tangle no
-  (add-hook 'after-init-hook
-            (lambda ()
-              (setopt ghostel-enable-osc52 t)
-              (with-eval-after-load 'ghostel
-                (setopt ghostel-shell '("/bin/zsh" "--login"))))
-            90)
-  #+end_src
+* Check
 
-  - The =90= is the hook's /depth/: functions run in order of depth, and the
-    chapters add theirs at the default of 0, so yours runs after them.
-    - Tabspaces is the exception: it turns on at 95, after yours, so it
-      reads your settings.
-  - The =with-eval-after-load= inside is for the options a chapter sets only
-    when its package loads, in =:config= or its own =with-eval-after-load=.
-    - Emacs runs the forms waiting for a package in the order they were
-      registered; registering yours inside the hook puts it after every
-      chapter's, so it runs last there too.
+- Start Emacs: the first frame appears with no toolbar or menu bar flashing; =SPC t m= shows the menu bar.
+- =M-x emacs-init-time=: how long the two files took.
+- =C-h v package-user-dir=: a directory under =var/elpa/= in the checkout.
+- =C-h v gc-cons-threshold= once started: =67108864=, not the huge startup value.
+- =C-h v package-check-signature=: =nil= means no native =gpg= was found ([[*GNU ELPA's signature check needs a native gpg]]).
+- =SPC C p= opens =private.el=, created from the example the first time; =SPC C u= opens the Customize file.
+- After editing this chapter, =just tangle= rewrites both files; =just tangle-check= proves they match.
+- =just install= starts the configuration once in batch, installing every package; =just test-packages= replays a real startup and fails on any warning.
 
-Settings saved with =M-x customize= need none of this:
-
-- The Customize file, =var/etc/custom.el=, is loaded on the last line of
-  =init.el=, after every chapter, so its settings win over the chapters.
-- Customize is the right place for package options.
-- A =kittymacs-= option that a chapter reads while it loads belongs in
-  =private.el=: by the time the Customize file loads, that chapter has
-  already made its decision.
+#+begin_src sh :tangle no
+just tangle-check     # early-init.el and init.el match this chapter
+just test-packages    # the startup verifier, among others
+#+end_src

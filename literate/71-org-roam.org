@@ -1,69 +1,73 @@
+:PROPERTIES:
+:ID: f48e8f01-88da-4e33-8398-c00ab346b8bb
+:END:
+
 #+TITLE: Org-roam: scoped linked notes
-#+OPTIONS: toc:3 num:nil
+#+FILETAGS: :notes:
 #+STARTUP: overview
 #+PROPERTY: header-args:emacs-lisp :tangle ../lisp/kittymacs-org-roam.el :eval never :comments no :padline no :mkdirp yes
 
-[[file:index.org][Reading guide]] · [[file:70-org.org][Org and agenda]] · [[file:42-keys.org][Leader keys]]
+- Linked notes under =SPC n=, one graph at a time: your personal notes and each project's documentation are separate graphs with separate indexes, so a search from a project file never turns up your diary.
+- Leans on [[id:afa6b7fd-742a-4c15-86a6-32e3e8027b0e][the platform chapter]] for the personal graph's folder, [[id:3fd783cd-deb8-48aa-bb44-0d9b16535365][the defaults chapter]] for the cache, [[id:e5942eb0-4389-447d-9317-d9178adcaaae][the leader]] for =SPC m= and [[id:f1d045c2-e2dc-4514-ab17-dd982ed6be00][the frames chapter]] for where notes open; [[id:53ad53ed-155f-47dc-973d-7be18de2893c][the keys chapter]] binds =SPC n=.
+- The inbox and agenda of [[id:8ff7e58e-c155-4513-99ae-3b2c3a6ab729][the Org chapter]] are unaffected: they keep their own files and templates.
+- kittymacs' own chapters are a project graph: [[id:7edccfdc-3c38-489a-bc9e-4c002b432ab4][the conventions]] show it in use.
+- Read [[*One graph at a time]] first; the rest follows from it.
 
-* One graph at a time
+* One graph at a time :concept:
+:PROPERTIES:
+:ID: bf28bf5d-a667-4ea9-afa5-9a80072be8b6
+:END:
 
-- The =SPC n= commands each work on /one graph/, the current buffer's:
-  - =SPC n f= finds a note;
-  - =SPC n i= inserts a link to one;
-  - =SPC n c= captures a new one;
-  - =SPC n b= shows which notes link to one;
-  - =SPC n s= brings the index up to date.
-- A graph is a folder of Org files plus their index, a SQLite database kept
-  by Org-roam, the package underneath.
-  - =org-roam-directory= names the folder, =org-roam-db-location= the
-    database file.
+- Every =SPC n= command works on the current buffer's graph:
+
+| Key       | Does                                                  |
+|-----------+-------------------------------------------------------|
+| =SPC n f= | find a note                                           |
+| =SPC n i= | insert a link to one                                  |
+| =SPC n c= | capture a new one                                     |
+| =SPC n b= | show which notes link to one                          |
+| =SPC n s= | bring the index up to date; =C-u SPC n s= rebuilds it |
+| =SPC n t= | find a note by choosing a tag first                   |
+| =SPC n T= | list every tag with its notes                         |
+
+- A graph is a folder of Org files plus its index, a SQLite database kept by Org-roam, the package underneath.
+  + =org-roam-directory= names the folder, =org-roam-db-location= the database file.
 - Upstream expects one global pair; this chapter lets a buffer have its own.
-  - So personal notes and a project's documentation stay separate graphs
-    with separate indexes: a search from a project file never turns up your
-    diary.
 - Two kinds of graph:
-  - the /personal graph/ is =kittymacs-org-roam-directory=, by default the
-    Org directory of [[file:30-platform.org][the platform chapter]];
-  - a /project graph/ is a repository whose =.dir-locals.el= says so
-    (below).
-- The inbox and agenda of [[file:70-org.org][the Org chapter]] are unaffected, keeping their own
-  files and templates.
+  + the /personal graph/ is =kittymacs-org-roam-directory=, by default the Org directory of [[id:afa6b7fd-742a-4c15-86a6-32e3e8027b0e][the platform chapter]];
+  + a /project graph/ is a repository whose =.dir-locals.el= says so ([[*Project graphs]]).
+
+* Indexing on demand, not at startup :decision:
+:PROPERTIES:
+:ID: 5110d6d4-9701-4a67-8913-698477cd0461
+:END:
+
 - Nothing here scans notes or opens a database at startup.
-  - Upstream's =org-roam-db-autosync-mode= stays off: switching it on
-    rebuilds the whole index on the spot.
-- The first =SPC n s= in a graph builds its index; after that, saving a note
-  updates its entry.
-  - =SPC n s= is needed again only after changes outside Emacs: edits,
-    renames and deletions.
-- The graph commands need an Emacs built with SQLite; without it they say
-  so, and ordinary Org editing works as before.
+  + Upstream's =org-roam-db-autosync-mode= stays off: switching it on rebuilds the whole index on the spot.
+- The first =SPC n s= in a graph builds its index; after that, saving a note updates its entry.
+  + =SPC n s= is needed again only after changes outside Emacs: edits, renames and deletions.
+- The graph commands need an Emacs built with SQLite; without it they say so, and ordinary Org editing works as before.
 
-* Paths and identity
+* Where a graph's index lives :decision:
+:PROPERTIES:
+:ID: a35554bc-3310-4f65-9226-0254223eadc7
+:END:
 
-- Every database lives outside its graph, in =org-roam/= under
-  =kittymacs-cache-dir=: project checkouts never contain generated files,
-  and read-only ones can still be indexed.
+- Every database lives outside its graph, in =org-roam/= under =kittymacs-cache-dir=.
+  + Project checkouts never contain generated files.
+  + Read-only graphs can still be indexed.
 - A database's file name is a hash of the graph's /real/ path:
-  - =file-truename= resolves symbolic links;
-  - on a file system that ignores letter case (the default on macOS and
-    Windows) the path is also lower-cased.
-- So two spellings of one folder, such as =~/notes= and a symbolic link to
-  it, share one database; two worktrees of one repository are different
-  folders with different databases.
-- An alias =file-truename= cannot see through, such as an NTFS junction on
-  Windows or a bind mount, looks like another folder and gets its own cache.
-  - That costs a second index, not correctness; if it matters, open the
-    graph through one path.
-- =kittymacs--org-roam-root= is that resolution. It runs once, when a
-  buffer's graph is decided (next section); its paths are then used as they
-  are, so no SQL query pays to resolve them again.
-- =kittymacs-org-roam-db-path= is public so you can compute a database path
-  yourself, for example to open it with the =sqlite3= program.
-- The last two forms give upstream's variables global values describing the
-  personal graph, before Org-roam loads.
-  - =defvar= does nothing to a variable that already has a value, so an
-    =org-roam-directory= set in =private.el= stays.
-  - Setting =kittymacs-org-roam-directory= is better: it also gets resolved.
+  + =file-truename= resolves symbolic links;
+  + on a file system that ignores letter case (the default on macOS and Windows) the path is also lower-cased.
+- So two spellings of one folder, such as =~/notes= and a symbolic link to it, share one database; two worktrees of one repository are different folders with different databases.
+- An alias =file-truename= cannot see through, such as an NTFS junction on Windows or a bind mount, looks like another folder and gets its own cache.
+  + That costs a second index, not correctness; if it matters, open the graph through one path.
+- =kittymacs--org-roam-root= is that resolution.
+  + It runs once, when a buffer's graph is decided ([[*Which graph a buffer uses]]); its paths are then used as they are, so no SQL query pays to resolve them again.
+- =kittymacs-org-roam-db-path= is public so you can compute a database path yourself, for example to open it with the =sqlite3= program.
+- The last two forms give upstream's variables global values describing the personal graph, before Org-roam loads.
+  + =defvar= does nothing to a variable that already has a value, so an =org-roam-directory= set in =private.el= stays.
+  + Setting =kittymacs-org-roam-directory= (with =setopt=, in =private.el=) is better: it also gets resolved.
 
 #+begin_src emacs-lisp
 ;;; kittymacs-org-roam.el --- Scoped linked notes -*- lexical-binding: t; -*-
@@ -109,92 +113,61 @@ that ignores case, so every spelling of one directory shares one file."
 
 #+end_src
 
-* Scope: which graph a buffer uses
+* Which graph a buffer uses
 
-- A buffer's /scope/ is a list of three values: the graph's root, its
-  database, and the regular expressions that keep files out of it (next
-  section).
-- =kittymacs--org-roam-scope= decides it for the =SPC n= commands, in this
-  order:
-  1. A graph already set in the buffer, remembered by the variable
-     =kittymacs--org-roam-graph=.
-  2. A graph named by the buffer's own variables: the project flag below, or
-     a buffer-local =org-roam-directory=.
-     - Its database is a buffer-local =org-roam-db-location= if any,
-       otherwise the cache path for that root.
+- A buffer's /scope/ is a list of three values: the graph's root, its database, and the regular expressions that keep files out of it ([[*Which files are notes]]).
+- =kittymacs--org-roam-scope= decides it for the =SPC n= commands, in this order:
+  1. A graph already set in the buffer, remembered by the variable =kittymacs--org-roam-graph=.
+  2. A graph named by the buffer's own variables: the project flag ([[*Project graphs]]), or a buffer-local =org-roam-directory=.
+     + Its database is a buffer-local =org-roam-db-location= if any, otherwise the cache path for that root.
   3. The personal graph.
-- Before returning it, the function checks what a command needs: SQLite, a
-  root that exists, and a database outside the root.
-  - A command failing a check stops with a message and changes nothing: it
-    never creates a graph folder or an empty database for a missing folder.
-  - The same check protects =C-u SPC n s=, which deletes the database before
-    rebuilding it.
+- Before returning it, the function checks what a command needs: SQLite, a root that exists, and a database outside the root.
+  + A command failing a check stops with a message and changes nothing: it never creates a graph folder or an empty database for a missing folder.
+  + The same check protects =C-u SPC n s=, which deletes the database before rebuilding it.
 
-** Project graphs
+** Project graphs :concept:
+:PROPERTIES:
+:ID: f70b8ad9-3c6c-4260-9b95-86b27ea8d985
+:END:
 
-- A repository becomes a graph of its own with a =.dir-locals.el= at its
-  root. EmptyNet ships exactly this one:
+- A repository becomes a graph of its own with a =.dir-locals.el= at its root. EmptyNet ships exactly this one:
 
 #+begin_src emacs-lisp :tangle no
 ((nil . ((kittymacs-org-roam-project . t)
          (kittymacs-org-roam-excluded-directories . ("secrets" "tools" "web" ".github")))))
 #+end_src
 
-- =kittymacs-org-roam-project= says "the folder holding this file is a graph
-  root".
-  - Emacs already knows that folder: applying directory locals, it records
-    them in =dir-local-variables-alist=, and =dir-locals-find-file= returns
-    the folder whose =.dir-locals.el= it read.
-  - The database is the cache path for that root; add
-    =org-roam-db-location= to the same file to choose another.
-- =kittymacs-org-roam-excluded-directories= replaces the default exclusions
-  for this graph only.
-- Both are declared safe for their types (a boolean, a list of strings):
-  Emacs applies them without asking, and nothing in the file is evaluated.
-  - An Emacs without kittymacs does not know them: the first time it opens a
-    file there it asks whether to apply them; =i= ignores them for good.
-    They do nothing in that Emacs either way.
+- kittymacs' own checkout has the same kind of file, leaving out =var/=, =tests/=, =tools/=, =lisp/= and =.github/= ([[id:7edccfdc-3c38-489a-bc9e-4c002b432ab4][the conventions]]).
+- =kittymacs-org-roam-project= says "the folder holding this file is a graph root".
+  + Emacs already knows that folder: applying directory locals, it records them in =dir-local-variables-alist=, and =dir-locals-find-file= returns the folder whose =.dir-locals.el= it read.
+  + The database is the cache path for that root; add =org-roam-db-location= to the same file to choose another.
+- =kittymacs-org-roam-excluded-directories= replaces the default exclusions for this graph only.
+- Both are declared safe for their types (a boolean, a list of strings): Emacs applies them without asking, and nothing in the file is evaluated.
+  + An Emacs without kittymacs does not know them: the first time it opens a file there it asks whether to apply them; =i= ignores them for good. They do nothing in that Emacs either way.
 - Emacs reads only the nearest =.dir-locals.el= above a file.
-  - A subfolder with its own hides the root's: its files leave the project
-    graph unless that file repeats the flag, which makes the subfolder a
-    graph of its own.
-- A project may instead set =org-roam-directory= and =org-roam-db-location=
-  directly in its directory locals, as upstream documents.
-  - That still works, through rule 2 above.
-  - Emacs asks before applying those two: upstream does not declare them
-    safe.
-  - Write the directory as its real absolute path: Org-roam reads the value
-    in files it opens by itself.
+  + A subfolder with its own hides the root's: its files leave the project graph unless that file repeats the flag, which makes the subfolder a graph of its own.
+- A project may instead set =org-roam-directory= and =org-roam-db-location= directly in its directory locals, as upstream documents.
+  + That still works, through rule 2 of [[*Which graph a buffer uses]].
+  + Emacs asks before applying those two: upstream does not declare them safe.
+  + Write the directory as its real absolute path: Org-roam reads the value in files it opens by itself.
 
 ** Setting and restoring a buffer's graph
 
 - =kittymacs--org-roam-set-scope= writes a scope into a buffer:
-  - it sets the three upstream variables buffer-locally, so Org-roam's own
-    functions agree with ours;
-  - in an Org buffer it adds the save hook of the indexing section.
-- Buffer-local variables do not last: every major mode starts by clearing
-  them, and so does reverting a file.
+  + it sets the three upstream variables buffer-locally, so Org-roam's own functions agree with this chapter's;
+  + in an Org buffer it adds the save hook of [[*Keeping the index current]].
+- Buffer-local variables do not last: every major mode starts by clearing them, and so does reverting a file.
 - =kittymacs--org-roam-restore= puts the graph back.
-  - It runs from =hack-local-variables-hook=, which Emacs runs after
-    applying a file's local and directory-local variables: when a file is
-    visited, whenever a major mode starts in it, and after a revert.
-  - So it always sees the project flag.
-- In an Org buffer it first decides the graph afresh: the buffer's own
-  variables, then the personal graph if the file lies inside it.
-- Otherwise, and in any buffer that is not Org, it restores the graph set
-  before, if any.
-  - So a note =SPC n f= opened from a graph stays in that graph, and the
-    backlinks panel keeps its graph.
-  - A note never given a graph belongs to none; its saves touch no database.
-- The same hook runs in the buffers Org-roam opens by itself to read notes
-  during a sync, because upstream calls =hack-local-variables= there.
-  - So a project's notes are read into its database even in a sync started
-    with Org-roam's own =M-x org-roam-db-sync=.
-- =kittymacs--org-roam-graph= is /permanent-local/: it survives the clearing,
-  as a restore needs.
-  - A file's own variables are asked first, so its value is still replaced
-    when they name a different graph: editing =.dir-locals.el= and reverting
-    a note moves the note to the new graph.
+  + It runs from =hack-local-variables-hook=, which Emacs runs after applying a file's local and directory-local variables: when a file is visited, whenever a major mode starts in it, and after a revert.
+  + So it always sees the project flag.
+- In an Org buffer it first decides the graph afresh: the buffer's own variables, then the personal graph if the file lies inside it.
+- Otherwise, and in any buffer that is not Org, it restores the graph set before, if any.
+  + So a note =SPC n f= opened from a graph stays in that graph, and the backlinks panel keeps its graph.
+  + A note never given a graph belongs to none; its saves touch no database.
+- The same hook runs in the buffers Org-roam opens by itself to read notes during a sync, because upstream calls =hack-local-variables= there.
+  + So a project's notes are read into its database even in a sync started with Org-roam's own =M-x org-roam-db-sync=.
+- =kittymacs--org-roam-graph= is /permanent-local/: it survives the clearing, as a restore needs.
+  + A file's own variables are asked first, so its value is still replaced when they name a different graph: editing =.dir-locals.el= and reverting a note moves the note to the new graph.
 
 #+begin_src emacs-lisp
 (defcustom kittymacs-org-roam-project nil
@@ -279,34 +252,19 @@ A project graph sets its own list in its .dir-locals.el."
 
 #+end_src
 
-* Membership: which files are notes
+* Which files are notes
 
-- Upstream's =org-roam-file-p= decides whether a file is a note: it must lie
-  under the root, have an extension from =org-roam-file-extensions=, and not
-  match =org-roam-file-exclude-regexp=.
-  - That last option, a regular expression or a list of them tested against
-    the path relative to the root, is this chapter's extension point.
-- =kittymacs--org-roam-exclusions= turns a list of folder names into one more
-  regular expression, added to upstream's own list (by default, Org's
-  attachment folder).
-  - The expression matches a folder name as a whole path component, at any
-    depth: with ="cache"= it excludes =cache/a.org= and =notes/cache/b.org=
-    but not =cached.org=.
-- Each scope carries its own list and sets it buffer-locally, so every graph
-  has its own exclusions; the personal graph's list comes from the global
-  value of =kittymacs-org-roam-excluded-directories=.
-- The default excludes Git's folder and cache folders, which is what a
-  personal notes folder usually contains.
-  - Change it for the personal graph with =setopt= in =private.el=; a
-    project sets its list in its =.dir-locals.el=.
-- Upstream finds a graph's files with =find=, =fd= or =rg= when one is
-  installed, much faster than walking the folders in Lisp, then filters them
-  through =org-roam-file-p=: the exclusions apply however the files were
-  found.
-- Those tools follow symbolic links: a link inside a graph that points
-  outside it brings its target into the graph.
-  - That is your choice: a link includes a file on purpose; leaving it out
-    keeps the file out.
+- Upstream's =org-roam-file-p= decides whether a file is a note: it must lie under the root, have an extension from =org-roam-file-extensions=, and not match =org-roam-file-exclude-regexp=.
+  + That last option, a regular expression or a list of them tested against the path relative to the root, is this chapter's extension point.
+- =kittymacs--org-roam-exclusions= turns a list of folder names into one more regular expression, added to upstream's own list (by default, Org's attachment folder).
+  + The expression matches a folder name as a whole path component, at any depth: with ="cache"= it excludes =cache/a.org= and =notes/cache/b.org= but not =cached.org=.
+  + =default-toplevel-value= reads the global value even while a command has bound it, so the list never grows by repeating this chapter's expression.
+- Each scope carries its own list and sets it buffer-locally, so every graph has its own exclusions; the personal graph's list comes from the global value of =kittymacs-org-roam-excluded-directories=.
+- The default excludes Git's folder and cache folders, which is what a personal notes folder usually contains.
+  + Change it for the personal graph with =setopt= in =private.el=; a project sets its list in its =.dir-locals.el=.
+- Upstream finds a graph's files with =find=, =fd= or =rg= when one is installed, much faster than walking the folders in Lisp, then filters them through =org-roam-file-p=: the exclusions apply however the files were found.
+- Those tools follow symbolic links: a link inside a graph that points outside it brings its target into the graph.
+  + That is your choice: a link includes a file on purpose; leaving it out keeps the file out.
 
 #+begin_src emacs-lisp
 (defun kittymacs--org-roam-exclusions (directories)
@@ -319,62 +277,38 @@ is relative to the graph root, which is what `org-roam-file-p' tests."
 
 #+end_src
 
-- =default-toplevel-value= reads the global value even while a command below
-  has bound it, so the list never grows by repeating our own expression.
-
-* Indexing: sync, saves and links
+* Keeping the index current
 
 - =kittymacs--org-roam-call= runs a piece of Org-roam with a scope in effect.
-- Setting the three upstream variables in the current buffer is not enough:
-  Org-roam does part of its work in buffers of its own, which see the
-  /global/ values.
-  - It opens a note that is not already open in a hidden buffer to read it.
-  - It fills temporary buffers for previews.
-- A =let= binding changes the global value only where the variable is not
-  buffer-local, so the function binds the variables twice with =cl-progv=
-  (which binds a list of variables to a list of values):
-  - once from a temporary buffer, where they are global;
-  - once in the buffer the command started in.
-- Upstream keeps one open database connection per root, in
-  =org-roam-db--connection=, looked up by the root alone.
-  - So every buffer of one graph must agree on its database: two databases
-    for one root in one session would quietly share whichever connection
-    opened first.
-  - The scope rules above ensure that: a root always gets the same cache
-    path unless its own directory locals name another.
-- =kittymacs--org-roam-save= runs after a note in a graph is saved and
-  updates its entry.
-  - Org-roam records the file name it is given; a sync records real paths,
-    because it lists files under the resolved root.
-  - So the function binds =buffer-file-name= to the real path while it runs:
-    a note opened through a symbolic link is recorded under the name a sync
-    would use, not a second time under the link's.
-- =kittymacs-org-roam-sync= brings the database up to date; a prefix
-  argument deletes it first.
-  - It then copies every node's ID and file into Org's own ID index,
-    =org-id-locations=.
-  - That index is separate from Org-roam's and knows nothing about graphs;
-    recording each graph's IDs there lets an =id:= link reach a note in
-    another graph (below).
+- Setting the three upstream variables in the current buffer is not enough: Org-roam does part of its work in buffers of its own, which see the /global/ values.
+  + It opens a note that is not already open in a hidden buffer to read it.
+  + It fills temporary buffers for previews.
+- A =let= binding changes the global value only where the variable is not buffer-local, so the function binds the variables twice with =cl-progv= (which binds a list of variables to a list of values):
+  1. once from a temporary buffer, where they are global;
+  2. once in the buffer the command started in.
+- Upstream keeps one open database connection per root, in =org-roam-db--connection=, looked up by the root alone.
+  + So every buffer of one graph must agree on its database: two databases for one root in one session would quietly share whichever connection opened first.
+  + The scope rules ensure that: a root always gets the same cache path unless its own directory locals name another.
+- =kittymacs--org-roam-save= runs after a note in a graph is saved and updates its entry.
+  + Org-roam records the file name it is given; a sync records real paths, because it lists files under the resolved root.
+  + So the function binds =buffer-file-name= to the real path while it runs: a note opened through a symbolic link is recorded under the name a sync would use, not a second time under the link's.
+- =kittymacs-org-roam-sync= (=SPC n s=) brings the database up to date; a prefix argument deletes it first.
+  + It then copies every node's ID and file into Org's own ID index, =org-id-locations=.
+  + That index is separate from Org-roam's and knows nothing about graphs; recording each graph's IDs there lets an =id:= link reach a note in another graph ([[*Links across graphs]]).
 
-** Links across graphs
+** Links across graphs :concept:
+:PROPERTIES:
+:ID: 0299807f-6a1e-4445-b1c6-1c629d83a677
+:END:
 
 - An =id:= link may point at a note in another graph.
-  - Org follows it with =org-id-find=; Org-roam puts its own lookup in front
-    of that function with advice, so Org first asks the current graph's
-    database.
-  - When the ID is not there, Org's own index answers, so every graph should
-    be synced once.
-  - Opening the note gives its buffer the destination's graph, by the rules
-    above.
-- Backlinks stay within a graph: the source graph's database records the
-  outgoing link, but not the destination note or the other links to it.
+  + Org follows it with =org-id-find=; Org-roam puts its own lookup in front of that function with advice, so Org first asks the current graph's database.
+  + When the ID is not there, Org's own index answers, so every graph should be synced once.
+  + Opening the note gives its buffer the destination's graph, by the rules of [[*Setting and restoring a buffer's graph]].
+- Backlinks stay within a graph: the source graph's database records the outgoing link, but not the destination note or the other links to it.
 - IDs must be unique across all your graphs.
-- When the current graph cannot be used (no SQLite, or the graph's root does
-  not exist), upstream's lookup would fail with an error or create an empty
-  database for a missing folder, breaking ordinary Org links.
-  - =kittymacs--org-roam-lookup-p= answers "not here" then, so Org's own
-    index answers alone.
+- When the current graph cannot be used (no SQLite, or the graph's root does not exist), upstream's lookup would fail with an error or create an empty database for a missing folder, breaking ordinary Org links.
+  + =kittymacs--org-roam-lookup-p= answers "not here" then, so Org's own index answers alone.
 
 #+begin_src emacs-lisp
 (defun kittymacs--org-roam-call (scope function)
@@ -411,37 +345,23 @@ With a prefix argument FORCE, delete the database and build it again."
 
 #+end_src
 
-* Capture
+* Capture into the graph you started from
 
-- =SPC n c= always captures; =SPC n f= and =SPC n i= capture when you type a
-  title that is not a note yet.
-  - Project graphs do not do the second: their find and insert offer only
-    existing notes, so a typo in a repository's documentation never becomes
-    a new file.
+- =SPC n c= always captures; =SPC n f= and =SPC n i= capture when you type a title that is not a note yet.
+  + Project graphs do not do the second: their find and insert offer only existing notes, so a typo in a repository's documentation never becomes a new file.
 - Before capturing, the command checks the root is writable and shows it.
-- Your =org-roam-capture-templates= decide which file in the graph receives
-  the note, as upstream documents.
-  - A template writing outside the graph is your choice, like a link.
-  - If the file's folder does not exist yet, Emacs asks before creating it
-    when the capture is saved.
+- Your =org-roam-capture-templates= decide which file in the graph receives the note, as upstream documents.
+  + A template writing outside the graph is your choice, like a link.
+  + If the file's folder does not exist yet, Emacs asks before creating it when the capture is saved.
 - A capture happens in two halves:
-  - the first runs inside the command: Org opens the target file, inserts
-    the template and shows a capture buffer, so the command's scope is still
-    in effect;
-  - the second, =C-c C-c=, runs whenever you finish, from whatever buffer is
-    current, long after the command has returned; Org saves the target file
-    then, and that save must update the graph the capture started in.
+  1. the first runs inside the command: Org opens the target file, inserts the template and shows a capture buffer, so the command's scope is still in effect;
+  2. the second, =C-c C-c=, runs whenever you finish, from whatever buffer is current, long after the command has returned; Org saves the target file then, and that save must update the graph the capture started in.
 - So the first half writes the scope into the buffers themselves:
-  - the command binds =kittymacs--org-roam-capture-scope= while it runs;
-  - Org turns on =org-capture-mode= in the capture buffer at the end of that
-    half;
-  - its hook =kittymacs--org-roam-capture-mode= sees the binding and sets
-    the scope in the capture buffer and in the file's buffer behind it, the
-    capture buffer's /base buffer/.
-- The save when you finish then updates that graph, whichever buffer you
-  were in.
-- Captures started any other way, such as the Org chapter's inbox capture,
-  find the variable unbound and are left alone.
+  + the command binds =kittymacs--org-roam-capture-scope= while it runs;
+  + Org turns on =org-capture-mode= in the capture buffer at the end of that half;
+  + its hook =kittymacs--org-roam-capture-mode= sees the binding and sets the scope in the capture buffer and in the file's buffer behind it, the capture buffer's /base buffer/.
+- The save when you finish then updates that graph, whichever buffer you were in.
+- Captures started any other way, such as the Org chapter's inbox capture, find the variable unbound and are left alone.
 
 #+begin_src emacs-lisp
 (defvar kittymacs--org-roam-capture-scope nil
@@ -470,59 +390,33 @@ save that finishes the capture updates that graph's database."
 
 #+end_src
 
-* The panel and the commands
+* Finding, linking and backlinks
 
-- The commands read a note with upstream's =org-roam-node-read=, inside the
-  scope, with the graph's root in the prompt.
-  - Completion may switch buffers while you choose, so each command
-    remembers where it started (the buffer, or for =SPC n i= the exact
-    position) and returns there before acting.
-- =SPC n f= opens the note in a buffer given the command's graph, then lets
-  =org-roam-node-open= show it, following the frame policy of
-  [[file:45-frames.org][the frames chapter]].
+- The commands read a note with upstream's =org-roam-node-read=, inside the scope, with the graph's root in the prompt.
+  + Completion may switch buffers while you choose, so each command remembers where it started (the buffer, or for =SPC n i= the exact position) and returns there before acting.
+- =SPC n f= opens the note in a buffer given the command's graph, then lets =org-roam-node-open= show it, following the frame policy of [[id:f1d045c2-e2dc-4514-ab17-dd982ed6be00][the frames chapter]].
 - =SPC n i= inserts an =id:= link at the remembered position.
-  - As with upstream's insert, selected text is kept: it starts the prompt,
-    and the link replacing it shows the same words. Selecting "the build
-    cache" and choosing a note links those words to it.
-  - Without a region the link shows the note's title.
-  - It also runs =org-roam-post-node-insert-hook=.
-- =SPC n b= shows the backlinks panel in a side window of the current frame,
-  one panel per graph.
-  - Upstream redraws the panel on every refresh, first switching its major
-    mode on again, which clears every buffer-local variable.
-  - The panel's graph survives in the permanent =kittymacs--org-roam-graph=;
-    =kittymacs--org-roam-restore= on =org-roam-mode-hook= puts the upstream
-    variables back before the sections query the database.
-  - Upstream's own permanent =org-roam-buffer-current-directory= and
-    =org-roam-buffer-current-node= say which note the panel is about.
+  + As with upstream's insert, selected text is kept: it starts the prompt, and the link replacing it shows the same words. Selecting "the build cache" and choosing a note links those words to it.
+  + Without a region the link shows the note's title.
+  + It also runs =org-roam-post-node-insert-hook=.
+- =SPC n b= shows the backlinks panel in a side window on the right of the current frame, a third of its width, one panel per graph.
+  + It is about the note at point in an Org buffer; elsewhere it asks for one.
+  + Upstream redraws the panel on every refresh, first switching its major mode on again, which clears every buffer-local variable.
+  + The panel's graph survives in the permanent =kittymacs--org-roam-graph=; =kittymacs--org-roam-restore= on =org-roam-mode-hook= puts the upstream variables back before the sections query the database.
+  + Upstream's own permanent =org-roam-buffer-current-directory= and =org-roam-buffer-current-node= say which note the panel is about.
 
 ** What this chapter asks of Org-roam
 
-- The =use-package= block below is the whole connection to Org-roam
-  beyond ordinary function calls: four hooks and one piece of advice.
-  - =hack-local-variables-hook= (Emacs) restores a buffer's graph after its
-    local variables are applied, in notes you open and in the buffers
-    Org-roam opens by itself.
-  - =org-roam-mode-hook= (Org-roam) restores the panel's graph each time
-    the panel is redrawn.
-  - =org-capture-mode-hook= (Org) hands a capture its graph.
-  - =kill-emacs-hook= closes every open database when Emacs exits, with
-    upstream's =org-roam-db--close-all=.
-    - Upstream adds this itself only with =org-roam-db-autosync-mode= on,
-      which this chapter leaves off.
-  - =org-roam-id-find= gets =kittymacs--org-roam-lookup-p= as
-    =:before-while= advice: ours runs first, upstream's only if ours
-    returns non-nil.
-    - Upstream adds its lookup to every =org-id-find= with no option to
-      skip it when the graph cannot be used; the advice adds that.
-- Org-roam's own commands, such as =M-x org-roam-node-find=, keep working in
-  any buffer with that buffer's graph, because the graph is stored in
-  upstream's own variables.
+- The =use-package= block below is the whole connection to Org-roam beyond ordinary function calls: four hooks and one piece of advice.
 
-** Meow in the panel
-
-- The panel is a special buffer, so it starts in Motion state.
-- =SPC m= in it offers refresh, sync and find.
+- =hack-local-variables-hook= (Emacs) :: =kittymacs--org-roam-restore= gives a buffer its graph back after its local variables apply, in notes you open and in the buffers Org-roam opens by itself.
+- =org-roam-mode-hook= (Org-roam) :: the same function restores the panel's graph each time the panel is redrawn.
+- =org-capture-mode-hook= (Org) :: =kittymacs--org-roam-capture-mode= hands a capture its graph.
+- =kill-emacs-hook= (Emacs) :: upstream's =org-roam-db--close-all= closes every open database when Emacs exits.
+  + Upstream adds this itself only with =org-roam-db-autosync-mode= on, which this chapter leaves off.
+- =org-roam-id-find= (Org-roam) :: gets =kittymacs--org-roam-lookup-p= as =:before-while= advice: this chapter's function runs first, upstream's only if it returns non-nil.
+  + Upstream adds its lookup to every =org-id-find= with no option to skip it when the graph cannot be used; the advice adds that.
+- Org-roam's own commands, such as =M-x org-roam-node-find=, keep working in any buffer with that buffer's graph, because the graph is stored in upstream's own variables.
 
 #+begin_src emacs-lisp
 (defun kittymacs--org-roam-read (scope &optional require-match initial filter)
@@ -628,29 +522,40 @@ The active region's text is the prompt's input and the link's description."
 
 #+end_src
 
+* Meow in the backlinks panel :meow:
+:PROPERTIES:
+:ID: 0a0de064-9ceb-4c01-9386-1fa85caafb4d
+:END:
+
+- The panel is a special buffer, so it starts in Motion state.
+- =SPC m= in it offers:
+  + =g= refresh the backlinks;
+  + =s= sync the graph;
+  + =f= find a note.
+- Notes themselves are Org buffers: Normal state and Org's =SPC m= ([[id:8ff7e58e-c155-4513-99ae-3b2c3a6ab729][the Org chapter]]).
+- The forms are the last of the block in [[*What this chapter asks of Org-roam]].
+
 * Tags
 
 - The index keeps every note's tags beside its title:
-  - a file note's are its =#+filetags=;
-  - a heading note's are what =org-get-tags= returns on it: its own tags
-    plus those inherited from its file and the headings above it.
+  + a file note's are its =#+filetags=;
+  + a heading note's are what =org-get-tags= returns on it: its own tags plus those inherited from its file and the headings above it.
 
-** Tags in the prompt
+** Tags in the prompt :decision:
+:PROPERTIES:
+:ID: 38f3095e-e5df-489e-92b5-370f8f97e9ea
+:END:
 
-- Since Org-roam 2.2.1 =org-roam-node-display-template= is the bare title,
-  so a tag typed at =SPC n f= matched nothing. The template below shows the
-  tags again:
-  - =${title:*}= pads the title to fill the line;
-  - =${tags:24}= is a 24-column field, each tag with a =#= in front
-    (upstream's =org-roam-node-template-prefixes=);
-  - tags that do not fit are made invisible, not cut off, so they still match.
+- Since Org-roam 2.2.1 =org-roam-node-display-template= is the bare title, so a tag typed at =SPC n f= matched nothing.
+- The template below shows the tags again:
+  + =${title:*}= pads the title to fill the line;
+  + =${tags:24}= is a 24-column field, each tag with a =#= in front (upstream's =org-roam-node-template-prefixes=);
+  + tags that do not fit are made invisible, not cut off, so they still match.
 - Orderless reads each word you type as a separate condition:
-  - =#decision=: the notes tagged =decision=;
-  - =#machine #nixos=: the notes carrying both;
-  - =#nixos !#machine=: the =nixos= notes without =machine= (a word that
-    starts with =!= must not match).
-- =SPC n i= filters the same way. The template changes only the prompt: the
-  link it inserts still says the note's title.
+  + =#decision=: the notes tagged =decision=;
+  + =#machine #nixos=: the notes carrying both;
+  + =#nixos !#machine=: the =nixos= notes without =machine= (a word that starts with =!= must not match).
+- =SPC n i= filters the same way; the template changes only the prompt, so the link it inserts still says the note's title.
 
 #+begin_src emacs-lisp
 (setopt org-roam-node-display-template
@@ -661,14 +566,11 @@ The active region's text is the prompt's input and the link's description."
 ** Find by tag, and the tag index
 
 - =SPC n t= asks for a tag, then offers only the notes carrying it.
-  - The tag list is every tag in the graph with its number of notes: the
-    quickest way to see what tags a graph has.
-- =SPC n T= writes an Org buffer with a heading per tag and, under it, a link
-  to every note carrying it.
-  - A file note is listed under its file tags.
-  - A heading note is listed only under the tags its file note lacks, so a
-    page tagged =machine= appears once under =machine=, not once per heading.
-  - The buffer is given the graph, so =RET= on a link opens the note.
+  + The tag list is every tag in the graph with its number of notes: the quickest way to see what tags a graph has.
+- =SPC n T= writes an Org buffer with a heading per tag and, under it, a link to every note carrying it.
+  + A file note is listed under its file tags.
+  + A heading note is listed only under the tags its file note lacks, so a page tagged =machine= appears once under =machine=, not once per heading.
+  + The buffer is given the graph, so =RET= on a link opens the note.
 - Both read the index: after editing notes outside Emacs, =SPC n s= first.
 
 #+begin_src emacs-lisp
@@ -760,15 +662,23 @@ its file tags, a heading note only under tags its file note lacks."
 ;;; kittymacs-org-roam.el ends here
 #+end_src
 
-* Try it
+* Check
 
-- =SPC n s= in any buffer outside a project graph builds the personal graph's
-  index; =SPC n f= then offers its notes, and typing a new title captures one.
-- Open a file in a repository with the project =.dir-locals.el= above and
-  press =SPC n f=: the prompt shows the repository's root, and only its
-  notes are offered.
-- In a note, =SPC n b= opens the backlinks panel; =SPC m g= in the panel
-  refreshes it.
+- =SPC n s= in any buffer outside a project graph builds the personal graph's index; =SPC n f= then offers its notes, and typing a new title captures one.
+- Open a file in a repository with a project =.dir-locals.el=, such as this checkout, and press =SPC n f=: the prompt shows the repository's root, and only its notes are offered.
+- In a note, =SPC n b= opens the backlinks panel; =SPC m g= in the panel refreshes it.
 - =C-u SPC n s= rebuilds a graph's index from nothing.
-- Type =#= and a tag at =SPC n f=: only the notes with that tag stay.
-  =SPC n t= lists the tags themselves, and =SPC n T= every tag with its notes.
+- Type =#= and a tag at =SPC n f=: only the notes with that tag stay; =SPC n t= lists the tags themselves, and =SPC n T= every tag with its notes.
+- =just test-packages= runs [[file:../tests/kittymacs-org-roam-tests.el][the Org-roam tests]] on real graphs in SQLite, and the startup verifier:
+  + startup is lazy: no root created, no database opened, autosync off;
+  + database paths follow the real, case-folded path, and an alias shares one connection;
+  + the project flag names its root, database and exclusions; project find and insert offer only existing notes;
+  + a missing root fails without being created; a read-only root browses but cannot capture;
+  + a capture finalizes in the graph it started from, and a later sync keeps one record;
+  + the backlinks panel keeps its graph across refreshes and obeys the frame policy;
+  + cross-graph =id:= links open without importing the note into the wrong graph;
+  + tags show in the prompt, =SPC n t= lists tags then their notes, and =SPC n T= lists a page once and its headings by their own tags.
+
+#+begin_src sh :tangle no
+just test-packages      # the Org-roam tests, with the leader tests and the verifier
+#+end_src

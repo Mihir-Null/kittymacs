@@ -1,27 +1,30 @@
-#+TITLE: Appearance: fonts, theme, mode line and icons
-#+OPTIONS: toc:3 num:nil
+:PROPERTIES:
+:ID: 0286f652-e861-4e61-9ca6-91e225c8939d
+:END:
+
+#+TITLE: Appearance
+#+FILETAGS: :interface:
 #+STARTUP: overview
 #+PROPERTY: header-args:emacs-lisp :tangle ../lisp/kittymacs-ui.el :eval never :comments no :padline no :mkdirp yes
 
-[[file:index.org][Reading guide]] · [[file:55-dashboard.org][Dashboard]] · [[file:45-frames.org][Frames]]
+- Fonts, theme, mode line, icons and highlights:
+  + Google Sans Code with Nerd Font icons when it is installed, the platform font otherwise;
+  + the Sonokai theme, tracked in this repository, with a light theme one toggle away (=SPC t t=);
+  + a compact mode line;
+  + icons in completion, Corfu and Dired that switch off automatically when the icon font is missing, so a fresh machine never shows boxes.
+- Loads before anything is drawn, so the first frame already has the right font and colours; leans only on [[id:3fd783cd-deb8-48aa-bb44-0d9b16535365][the defaults chapter]].
+- The font and theme choices are the user's; the highlighting defaults are distilled from Lambda-Emacs by Colin McLear (=lem-setup-theme=, =-fonts=, =-faces=).
 
-Ownership: *user configuration*.
+* What you can change
 
-- The font and theme choices are the user's; the highlighting defaults are
-  distilled from Lambda-Emacs by Colin McLear (=lem-setup-theme=, =-fonts=,
-  =-faces=).
-- This module loads before anything is drawn, so the first frame already has
-  the right font and colours.
-
-* What this gives you
-
-- Google Sans Code with Nerd Font icons when it is installed, the platform
-  font otherwise.
-- The Sonokai theme, tracked in this repository, with a light theme one
-  toggle away (=SPC t t=).
-- A compact mode line.
-- Icons in completion, Corfu and Dired that switch off automatically when the
-  icon font is missing, so a fresh machine never shows boxes.
+- Set these with =setopt= in =private.el=; the chapter reads them while it loads.
+  + =kittymacs-font-family= :: the editing font, =GoogleSansCode Nerd Font=; the platform default if it is absent.
+  + =kittymacs-font-size= :: the editing size in points, =14=.
+  + =kittymacs-nerd-font= :: the icon font, =Symbols Nerd Font Mono=.
+  + =kittymacs-icons= :: =auto= (a graphical frame and an installed icon font), =t= for a terminal set up with a Nerd Font, or =nil= for no icons.
+  + =kittymacs-theme= :: the default theme, =doom-sonokai=.
+  + =kittymacs-light-theme= :: the other theme =SPC t t= toggles to, =doom-one-light=.
+  + =kittymacs-line-numbers-in-programming= :: line numbers in programming buffers, =t=.
 
 #+begin_src emacs-lisp
 ;;; kittymacs-ui.el --- Fonts, theme, mode line and icons -*- lexical-binding: t; -*-
@@ -72,14 +75,12 @@ Use t for a terminal configured with a Nerd Font, or nil to disable icons."
 
 * Fonts
 
-- The editing font is resolved by family, including the shorter name Windows
-  registers for the same font.
-- Icons come from a single patched font that =nerd-icons= maps onto its own
-  code points.
-  - Mapping only those ranges keeps ordinary Unicode in the editing font.
-- Symbols fall back to a platform symbol font.
-- Fonts are applied to every new frame, which matters when Emacs runs as a
-  daemon.
+- The editing font is resolved by family, including the shorter name Windows registers for the same font (=GoogleSansCode NF=).
+- Icons come from a single patched font that =nerd-icons= maps onto its own code points.
+  + Mapping only those ranges keeps ordinary Unicode in the editing font.
+- Symbols fall back to a platform symbol font: Segoe UI Symbol, Symbola, Apple Symbols or Symbol, the first one installed.
+- Fonts are applied to every new frame, which matters when Emacs runs as a daemon.
+- A little extra line spacing; =C-x C-+= grows the text 8% a step, about one point at the default size.
 
 #+begin_src emacs-lisp
 (defun kittymacs-resolve-font-family ()
@@ -134,11 +135,11 @@ Use t for a terminal configured with a Nerd Font, or nil to disable icons."
 
 * Theme
 
-- Sonokai is a tracked port in =themes/=, so it does not depend on a package
-  update.
+- Sonokai is a tracked port in =lisp/themes/=, so it does not depend on a package update.
 - Loading a theme disables the previous one first, so themes never stack.
-- Anything that must be recomputed when colours change hangs on Emacs's own
-  =enable-theme-functions=.
+  + doom-themes' Org settings are reapplied after each load.
+- =SPC t t= toggles between =kittymacs-theme= and =kittymacs-light-theme=; =SPC t T= chooses any theme.
+- Anything that must be recomputed when colours change hangs on Emacs's own =enable-theme-functions=.
 
 #+begin_src emacs-lisp
 (setopt custom-safe-themes t)
@@ -171,11 +172,9 @@ Use t for a terminal configured with a Nerd Font, or nil to disable icons."
 
 * Mode line and tabs
 
-- =doom-modeline= is compact and shows the Meow state.
-- The built-in tab bar appears once a second workspace exists and borrows the
-  mode line's faces.
-- =SPC t H= hides the current buffer's mode line with =hide-mode-line-mode=,
-  handy for a screenshot or a presentation; pressing it again brings it back.
+- =doom-modeline= is compact and shows the Meow state; its icons follow =kittymacs-icons=.
+- The built-in tab bar appears once a second workspace exists and borrows the mode line's faces.
+- =SPC t H= hides the current buffer's mode line with =hide-mode-line-mode=, handy for a screenshot or a presentation; pressing it again brings it back.
 
 #+begin_src emacs-lisp
 (use-package doom-modeline
@@ -209,7 +208,7 @@ Use t for a terminal configured with a Nerd Font, or nil to disable icons."
 
 * Icons in completion, Corfu and Dired
 
-- Each is enabled only when the icon font is usable.
+- Each is enabled only when the icon font is usable (=kittymacs-icons-available-p=).
 
 #+begin_src emacs-lisp
 (use-package nerd-icons-completion
@@ -241,11 +240,17 @@ Use t for a terminal configured with a Nerd Font, or nil to disable icons."
 
 * Spacing and highlights
 
-- A little padding around the frame.
-- Inactive windows dim, so the active one is obvious.
-- The current line pulses when you change window or page.
-- =TODO=, =FIXME= and numbers stand out in code.
-- Recent edits flash briefly, so you see what a command changed.
+| Package or setting       | Effect                                                     |
+|--------------------------+------------------------------------------------------------|
+| =spacious-padding=       | a little padding around the frame                          |
+| =dimmer=                 | inactive windows dim, so the active one is obvious         |
+| =pulse= on scroll, recenter and window change | the current line pulses when you change window or page |
+| =hl-todo=, =highlight-numbers= | =TODO=, =FIXME= and numbers stand out in code        |
+| =goggles=                | recent edits flash briefly, so you see what a command changed |
+| =outline-minor-faces=    | Lisp outline headings get heading faces                    |
+
+- The cursor shows only in the selected window.
+- The dimmer is set up for which-key, Magit and posframes, and never dims the minibuffer or Vertico.
 
 #+begin_src emacs-lisp
 (use-package spacious-padding
@@ -311,10 +316,9 @@ Use t for a terminal configured with a Nerd Font, or nil to disable icons."
 * Distraction-free writing
 
 - =SPC t w= toggles =writeroom-mode=:
-  - the frame goes full screen;
-  - the text sits in a centred column eighty characters wide;
-  - the mode line and everything else around the text disappear until you
-    press it again.
+  + the frame goes full screen;
+  + the text sits in a centred column eighty characters wide;
+  + the mode line and everything else around the text disappear until you press it again.
 - It suits long prose more than code.
 
 #+begin_src emacs-lisp
@@ -341,12 +345,12 @@ Use t for a terminal configured with a Nerd Font, or nil to disable icons."
 ;;; kittymacs-ui.el ends here
 #+end_src
 
-* Try it
+* Check
 
-- =SPC t t= flips to the light theme and back.
-- =SPC t w= in an Org file hides everything but the text; =SPC t w= again
-  brings it back.
+- =SPC t t= flips to the light theme and back; colours never mix.
+- =SPC t w= in an Org file hides everything but the text; =SPC t w= again brings it back.
 - =SPC t H= hides only the mode line.
-- =C-x C-+= grows the text 8% a step, about one point at the default size;
-  =C-x C-0= resets.
+- =C-x C-+= grows the text one step; =C-x C-0= resets.
+- =SPC f f=: icons beside the candidates, or none at all on a machine without the icon font.
 - Set =kittymacs-icons= to =nil= in =private.el= to run without icon fonts.
+- =just test-packages=: the verifier toggles the theme both ways and checks that Sonokai comes back alone, and that =doom-modeline-mode= is on.

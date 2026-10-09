@@ -1,20 +1,17 @@
-# nix-darwin module: Emacs, the tools kittymacs discovers, and the icon font.
-#
-#   inputs.kittymacs.url = "github:Mihir-Null/kittymacs";
-#   inputs.kittymacs.inputs.nixpkgs.follows = "nixpkgs";
-#   ...
-#   imports = [ inputs.kittymacs.darwinModules.default ];
-#   programs.kittymacs.enable = true;
-#
-# The configuration itself is not put in the Nix store: it writes packages,
-# caches and private.el under its own directory, so clone it somewhere
-# writable (~/.config/emacs) or let the home-manager module clone it and
-# link it there.
-{ config, lib, pkgs, ... }:
+# Generated from literate/90-nix.org; edit the Org source, then tangle.
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 
 let
   cfg = config.programs.kittymacs;
-  tools = import ./tools.nix { inherit pkgs; emacs = cfg.package; };
+  tools = import ./tools.nix {
+    inherit pkgs;
+    emacs = cfg.package;
+  };
 in
 {
   options.programs.kittymacs = {

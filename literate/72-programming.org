@@ -1,27 +1,28 @@
-#+TITLE: Programming: delimiters, structure, linting and compiling
-#+OPTIONS: toc:3 num:nil
+:PROPERTIES:
+:ID: 97c04bd3-1404-4b0a-8018-20d77bc671bc
+:END:
+
+#+TITLE: Programming
+#+FILETAGS: :code:
 #+STARTUP: overview
 #+PROPERTY: header-args:emacs-lisp :tangle ../lisp/kittymacs-programming.el :eval never :comments no :padline no :mkdirp yes
 
-[[file:index.org][Reading guide]] · [[file:74-languages.org][Languages: Tree-sitter and Eglot]] · [[file:41-leader.org][Leader]]
+- What every programming buffer gets, whatever the language: rainbow delimiters, self-closing pairs, structural editing that never unbalances a paren, Flymake in the fringe, compiling, and one =SPC m= menu.
+- Language parsers and language servers are in [[id:560fcdca-6cb8-49d9-bf27-eb78f32b9285][the languages chapter]]; the menu is a localleader from [[id:e5942eb0-4389-447d-9317-d9178adcaaae][the leader chapter]].
+- Distilled from Lambda-Emacs by Colin McLear: =lem-setup-programming=, and compilation from =lem-setup-shell=.
+- Read [[id:a1607a41-b741-428a-9de3-c16e7c8d3ecc][the editing chapter]] first: programming buffers use its selection grammar.
 
-Ownership: *user configuration*.
+* Delimiters and structure
 
-- Distilled from Lambda-Emacs by Colin McLear (=lem-setup-programming=,
-  compilation from =lem-setup-shell=).
-- Language parsers and language servers are in [[file:74-languages.org][their own chapter]]; this one
-  is what every programming buffer gets regardless of language.
-
-* What this gives you
-
-- Matching delimiters in rainbow colours, pairs that close themselves, and
-  structural editing that never leaves a paren unbalanced.
-- Flymake shows problems in the fringe as you type.
-- =SPC m= in any programming buffer offers compile, recompile, the error list
-  and a formatter.
-  - In Emacs Lisp, evaluation, debugging and byte compilation take over some
-    of those keys (=c=, =r=, =e=, =d=, =D=, =i=); the error list and the
-    formatter stay.
+- =rainbow-delimiters= colours each nesting level.
+- =electric-pair-mode= inserts the closing bracket.
+- =show-paren-mode= highlights the match at once, and shows the opening line when it is off screen.
+- Puni is structural editing for every language, and for Org, Markdown, TeX and the =M-:= prompt:
+  + deleting never breaks a pair;
+  + =C-)= and =C-(= slurp the next or previous expression into the current one; =C-}= and =C-{= barf it out.
+- Embrace adds, changes and removes surrounding pairs (=SPC c s=); Org and Markdown get their own pairs (=*=, =_=, =`=, =$= in Markdown).
+- =iedit= edits every occurrence of a symbol at once (=SPC s c=).
+- =prettify-symbols-mode= is on everywhere and shows the real text when point is on a symbol; =rainbow-identifiers= is available as a command.
 
 #+begin_src emacs-lisp
 ;;; kittymacs-programming.el --- What every programming buffer gets -*- lexical-binding: t; -*-
@@ -35,17 +36,6 @@ Ownership: *user configuration*.
 (require 'kittymacs-leader)
 
 #+end_src
-
-* Delimiters and structure
-
-- =rainbow-delimiters= colours each nesting level.
-- =electric-pair-mode= inserts the closing bracket.
-- Puni is structural editing for every language:
-  - deleting never breaks a pair;
-  - =C-)= and =C-(= slurp the next or previous expression into the current
-    one.
-- Embrace adds, changes and removes surrounding pairs (=SPC c s=).
-- =iedit= edits every occurrence of a symbol at once (=SPC s c=).
 
 #+begin_src emacs-lisp
 (setopt prettify-symbols-unprettify-at-point t
@@ -89,12 +79,16 @@ Ownership: *user configuration*.
 
 #+end_src
 
-* Indentation guides and aggressive indentation
+* Indentation: guides everywhere, re-indenting only in Lisp :decision:
+:PROPERTIES:
+:ID: 2bbfeaaa-f982-4661-8e26-2c0aa1e92800
+:END:
 
-- Guides draw a thin line at each indentation level.
-- In Lisp buffers =aggressive-indent= re-indents as you type, which is how
-  Lisp is meant to feel.
-  - In other languages it fights with formatters, so it stays off.
+- Guides draw a thin =│= at each indentation level; the guide of the current level is highlighted.
+  + Graphical frames only: the package cannot derive its faces without a display.
+- In Lisp buffers =aggressive-indent= re-indents as you type, which is how Lisp is meant to feel.
+  + In other languages it fights with formatters, so it stays off.
+  + It does not re-indent inside comments, and does not run after =comment-dwim=.
 
 #+begin_src emacs-lisp
 (defun kittymacs--indent-guides ()
@@ -124,19 +118,18 @@ The package cannot derive its faces without a display."
 
 #+end_src
 
-* Linting: Flymake
+* Linting with Flymake
 
-- Flymake is built in and runs a checker for the current language when one
-  is available:
-  - Eglot provides one for any language server;
-  - =package-lint= checks Emacs Lisp packages;
-  - =flymake-collection= adds checkers for common tools.
-- Problems show in the left fringe and in the mode line; =SPC F= lists them.
+- Flymake is built in and runs a checker for the current language when one is available:
+  + Eglot provides one for any language server;
+  + =package-lint= checks Emacs Lisp packages;
+  + =flymake-collection= adds checkers for common tools.
+- Problems show in the left fringe and as counters in the mode line (zero counts hidden); =SPC F= lists them.
+- Checks run on save, not on a timer after each change; next and previous stop at the last error instead of wrapping.
 - Flymake's own commands carry no autoload cookie:
-  - until some buffer has switched =flymake-mode= on, =flymake-start= and its
-    neighbours are not defined and the =SPC F= keys would fail;
-  - =:commands= declares them as autoloads, so each key loads Flymake the
-    first time it is pressed.
+  + until some buffer has switched =flymake-mode= on, =flymake-start= and its neighbours are not defined and the =SPC F= keys would fail;
+  + =:commands= declares them as autoloads, so each key loads Flymake the first time it is pressed.
+- =savehist= keeps =package-archive-contents= once =package-lint= loads.
 
 #+begin_src emacs-lisp
 (use-package flymake
@@ -171,8 +164,8 @@ The package cannot derive its faces without a display."
 * Compiling
 
 - =compile= runs a command and links errors to source lines.
-- A new compilation kills the old one, buffers save first, and the output
-  scrolls to the first error.
+- A new compilation kills the old one, buffers save without asking, and the output scrolls to the first error.
+- The compilation buffer is truncated as output arrives, so a long build cannot grow it without bound.
 
 #+begin_src emacs-lisp
 (setopt compilation-always-kill t
@@ -185,14 +178,12 @@ The package cannot derive its faces without a display."
 
 * Emacs Lisp
 
-- Lisp buffers get:
-  - documentation in the echo area at once;
-  - =elisp-def= for jumping to definitions;
-  - snippets;
-  - trailing whitespace marked, so it never creeps into a commit.
-- =lambda= is drawn as =λ= by the global =prettify-symbols-mode= above,
-  which switches itself on in every mode that defines symbols to prettify.
-- Shell scripts named like zsh files open in =sh-mode=.
+- Documentation shows in the echo area at once (=eldoc-idle-delay= is 0).
+- Lisp buffers (Emacs Lisp, IELM, =*scratch*=) get:
+  + =elisp-def= for jumping to definitions;
+  + trailing whitespace marked, so it never creeps into a commit.
+- =lambda= is drawn as =λ= by the global =prettify-symbols-mode= in [[*Delimiters and structure]], which switches itself on in every mode that defines symbols to prettify.
+- Shell scripts named like zsh files (=.zsh=, =zshrc=, =zshenv=, =zprofile=, =zlogin=, =zlogout=) open in =sh-mode=.
 
 #+begin_src emacs-lisp
 (setopt eldoc-idle-delay 0)
@@ -212,13 +203,34 @@ The package cannot derive its faces without a display."
 
 #+end_src
 
-* Meow in programming buffers
+* Meow in programming buffers :meow:
+:PROPERTIES:
+:ID: 2642875a-5c0b-4b38-bab8-b4d15b2713a1
+:END:
 
-- Programming buffers are ordinary text buffers, so they start in Normal
-  state and the whole selection grammar applies.
-- The localleader gives every language the same first menu:
-  - Emacs Lisp adds its evaluation commands on top;
-  - a language chapter can add more for its own mode.
+- Programming buffers are ordinary text buffers: they start in Normal state and the whole selection grammar applies.
+- =SPC m= gives every language the same first menu, set on =prog-mode= and inherited by every programming mode.
+- Emacs Lisp adds its evaluation commands on top: they take over =c=, =r=, =e=, =d=, =D= and =i=; the rest of the menu stays.
+- A language chapter can add more for its own mode the same way.
+
+| Key | Every programming mode     | Emacs Lisp                                    |
+|-----+----------------------------+-----------------------------------------------|
+| =c= | =compile=                  | byte compile                                  |
+| =r= | =recompile=                | eval region                                   |
+| =e= | choose an error (Consult)  | eval last sexp                                |
+| =E= | error list                 |                                               |
+| =f= | format (=indent-region=)   |                                               |
+| =;= | comment                    |                                               |
+| =s= | surround (Embrace)         |                                               |
+| =i= | edit all occurrences       | IELM                                          |
+| =d= | definition                 | eval defun                                    |
+| =D= | references                 | find definition (=elisp-def=)                 |
+| =b= |                            | eval buffer                                   |
+| =x= |                            | eval expression                               |
+| =g= |                            | edebug defun                                  |
+| =l= |                            | package lint                                  |
+| =m= |                            | macroexpand                                   |
+| =?= |                            | Casual's Elisp menu                           |
 
 #+begin_src emacs-lisp
 (kittymacs-define-localleader 'prog-mode
@@ -251,9 +263,15 @@ The package cannot derive its faces without a display."
 ;;; kittymacs-programming.el ends here
 #+end_src
 
-* Try it
+* Check
 
-- In a Lisp buffer, put point after a form and press =SPC m e=.
-- Type =(= inside code: the =)= appears. Select an expression with =o=,
-  press =d=: it is gone, balanced.
+- In a Lisp buffer, put point after a form and press =SPC m e=: the echo area shows its value.
+- Type =(= inside code: the =)= appears.
+- Select an expression with =o= and press =d=: it is gone, and the parens around it stay balanced.
 - Break something on purpose: the fringe marks it; =SPC m E= lists it.
+- =SPC m= in a Python or shell buffer: =compile=, the error list and =format=, with no evaluation keys.
+- =just test-packages= runs the verifier, which starts the real configuration and fails if this module does not load or a startup warning appears.
+
+#+begin_src sh :tangle no
+just test-packages
+#+end_src

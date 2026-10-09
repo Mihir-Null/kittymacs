@@ -1,63 +1,163 @@
-#+TITLE: Maintenance and machine overrides
-#+OPTIONS: toc:3 num:nil
+:PROPERTIES:
+:ID: 9ea539a0-f1a3-4d05-aa10-6f2d2ff3e335
+:END:
+
+#+TITLE: Maintenance: the loop, the builder, and machine overrides
+#+FILETAGS: :core:
 #+STARTUP: overview
 #+PROPERTY: header-args:emacs-lisp :eval never :comments no :padline no :mkdirp yes
 
-[[file:index.org][Reading guide]] · [[file:10-startup.org][Startup]]
+- How to change kittymacs: edit a chapter, tangle, check, restart; the [[file:../justfile][justfile]] is the reference card once this page is read.
+- Writes two files, each from its own heading:
+  + [[*Machine-specific settings]] → =lisp/private.example.el=, the template for your =private.el=;
+  + [[*Building from inside Emacs]] → =lisp/kittymacs-literate.el=, the =SPC C= commands.
+- The build uses only the Org that ships with Emacs; startup never tangles, so a fresh clone runs without a build step.
 
-Ownership: *user configuration* for the example and *this literate refactor*
-for the authoring commands.
+* The loop :concept:
+:PROPERTIES:
+:ID: 12926a91-6016-43ae-9309-c28a293ce78e
+:END:
 
-- The build uses the Org shipped with Emacs.
-- Editing and generation are explicit; normal startup still loads plain Lisp.
-- Read [[file:index.org::*Change something][the workflow]] before changing these files.
+1. *Edit a chapter.* Prose and code block together; a block without a bullet saying why is unfinished.
+2. *Tangle*: =just tangle=, or =SPC C t= inside Emacs.
+   + Every =literate/NN-name.org= writes the files its =:tangle= headers name ([[*How a chapter becomes files]]).
+3. *Check*: =just check=, before every commit. In turn:
+   + =tangle-check= :: tangles into a temporary directory and fails if any committed generated file differs;
+   + =doc-test= :: every page follows [[id:7edccfdc-3c38-489a-bc9e-4c002b432ab4][the conventions]]: IDs, tags, links, a closing Check;
+   + =test= :: the suites that need no packages: the builder, every operating system's platform branch, the Tree-sitter policy.
+4. *Restart Emacs*, then commit the chapter and its generated file together.
+- One decision per commit, with its generated files.
+- For a quick experiment, evaluate a block with =C-c C-c= or a form with =SPC e e=: it changes the running Emacs without rebuilding anything.
 
-* private.example
+** The recipes
+
+| Recipe            | Needs              | Does                                                                         |
+|-------------------+--------------------+------------------------------------------------------------------------------|
+| =tangle=          | Emacs              | write every generated file from its chapter                                  |
+| =tangle-check=    | Emacs              | fail if a generated file differs from its chapter                            |
+| =doc-test=        | Emacs              | check IDs, tags and links on every page                                      |
+| =test=            | Emacs              | builder, platform and Tree-sitter tests                                      |
+| =check=           | Emacs              | the three above; the default recipe                                          |
+| =install=         | Emacs, network     | start the configuration once in batch, installing its packages into =var/elpa= |
+| =compile=         | installed packages | byte-compile every module, to catch load errors                               |
+| =test-packages=   | installed packages | leader and Org-roam tests, and the startup verifier                          |
+| =frames-test=     | a display          | the frame-policy tests, in a graphical Emacs                                 |
+| =lint=            | Nix tools          | =deadnix=, =statix= and =nixfmt= over the generated Nix                      |
+| =eval=            | Nix                | evaluate the flake and both example hosts; nothing is built                  |
+| =nix-check=       | Nix                | =lint= and =eval=                                                            |
+| =all=             | Nix, network       | everything CI runs on Linux, in order                                        |
+| =update=          | Nix, network       | =update-flake=, =update-packages=, =update-grammars=                         |
+
+- =nix develop= gives a shell with Emacs, =just= and the Nix linters ([[id:d25a5063-1439-4ae0-8fbe-b0162d05a0e0][the Nix chapter]]); outside it, any Emacs 30.1 or later runs the Emacs recipes.
+- On Windows, =just= runs recipes with the =sh= Git for Windows installs.
+- =test-packages= reads =KITTYMACS_TEST_PACKAGES=, defaulting to this checkout's =var/elpa=.
+
+** Updating
+
+- =just update= runs three recipes; each also works alone:
+  + =update-flake= :: =nix flake update=: moves nixpkgs, and so the Emacs and tools the Nix modules install. Commit =flake.lock=.
+  + =update-packages= :: a batch Emacs refreshes the archives and upgrades every package in =var/elpa=, without loading the configuration.
+  + =update-grammars= :: rebuilds every Tree-sitter grammar at the revision [[id:560fcdca-6cb8-49d9-bf27-eb78f32b9285][the languages chapter]] pins; needs =git= and a C compiler.
+- =var/= is not tracked, so only =flake.lock= (and a changed pin) reaches a commit.
+- Run =just test-packages= after =update-packages=: the verifier is what notices an upstream change.
+
+* How a chapter becomes files :concept:
+:PROPERTIES:
+:ID: d57943d1-4bdf-4776-a19c-d6120fbd87a5
+:END:
+
+- Org Babel's /tangle/ copies a chapter's source blocks into files; kittymacs uses only that.
+- Header arguments, set once per chapter by its =#+PROPERTY: header-args= line:
+  + =:tangle ../lisp/kittymacs-NAME.el= :: where the blocks go, relative to the chapter; chapters live in =literate/=, so every target starts with =../=;
+  + =:padline no= :: no blank line between blocks; Babel drops a block's trailing blank line, so a block that should follow one says =:padline yes=;
+  + =:comments no= :: no links back to the chapter in the output; the file header names its chapter instead;
+  + =:eval never= :: =C-c C-c= cannot run a block by accident;
+  + =:mkdirp yes= :: create the directory if needed.
+- A chapter writing several files sets =:tangle= in each heading's property drawer instead, as this one does; blocks under that heading go to that file.
+- A block's own arguments win over the page's: =:tangle no= marks an example to read, not to load.
+- Inside a block, a line starting with =*= or =#+= is written =,*= or =,#+=; Babel strips the comma.
+
+** The builder :decision:
+:PROPERTIES:
+:ID: d702f35a-3b2f-4cb5-9b4c-c176f0711db0
+:END:
+
+- [[file:../tools/tangle.el][tools/tangle.el]] runs in =emacs -Q --batch=: no personal startup, no packages, no file-local variables, and no block is ever evaluated.
+- It finds the chapters by name: every =literate/NN-name.org=; adding the file is enough, there is no list to register it in.
+- Before writing anything it checks every target:
+  + Emacs Lisp may go only to =early-init.el=, =init.el= or a file directly in =lisp/=, never =lisp/private.el=, which is yours;
+  + Nix may go only to =flake.nix= or =nix/=, at most one directory deep;
+  + a block's language must match its target's;
+  + no two chapters may write one file;
+  + a =lisp/kittymacs-*.el= or =nix/**.nix= that no chapter writes is an error: startup would go on loading a module whose source is gone, and the flake importing a file nothing explains.
+- It tangles into a temporary directory, checks that every Lisp file's parentheses balance, and only then copies the files that changed.
+  + =--check= copies nothing and fails on any difference: the guard against a hand edit to a generated file, or a forgotten tangle.
+- Chapters and outputs are UTF-8 with LF line endings on every platform; =.gitattributes= keeps Git from converting them.
+- After renaming or deleting a chapter, delete its old generated file too; the orphan check says which.
+
+** Add a chapter
+
+1. Create =literate/NN-name.org= with the header of a neighbouring chapter: a fresh =:ID:=, a kind tag, and =:tangle ../lisp/kittymacs-name.el=.
+   + The two digits are the load order ([[id:40302e33-d2b2-4c0b-9bc3-1f9e121307e1][startup]] has the list).
+2. Add =(require 'kittymacs-name)= to =init.el= in the startup chapter, where it belongs in that order.
+3. Give a package with its own buffers a =:meow:= heading: its starting state and a =kittymacs-define-localleader= form for =SPC m= ([[id:e5942eb0-4389-447d-9317-d9178adcaaae][the leader]]).
+4. Add a row to [[id:52a45bf9-9521-4e0d-9867-1c54721844a3][the reading guide]]'s table; =just doc-test= fails until you do.
+
+* What CI proves
+:PROPERTIES:
+:ID: b01690a2-51c1-471b-9c70-39cb2c3e1e64
+:END:
+
+- [[file:../.github/workflows/ci.yml][The CI workflow]] runs the recipes above on every push and pull request; it never deploys anything.
+  + =tangle= job :: =just check=: the chapters match the generated files, and the package-free tests pass.
+  + =startup= job :: a fresh clone runs =just install=, =just compile= and =just test-packages= on Emacs 30.1 and 31.1 on Linux, plus informational macOS and Windows runs.
+  + =nix= job :: =just nix-check= in =nix develop=, then the home-manager module's clone options read as a device would see them.
+- A weekly run repeats the fresh install without the package cache, so upstream breakage shows up even when nothing here changed.
+- =just frames-test= is the one suite CI cannot run: it needs a graphical session.
+- Dependabot proposes weekly updates to the workflow's actions.
+
+* Why the generated files are committed :decision:
+:PROPERTIES:
+:ID: 023e8794-b0b7-4bf3-8b37-b5ceb7c6f6c4
+:END:
+
+- Startup loads plain Lisp, never Org: a clone starts with no build step, and a broken chapter cannot stop Emacs from starting.
+- Nix sees only files Git tracks, so the generated =.nix= must be committed too.
+- The cost: every change shows twice in a diff.
+  + =.gitattributes= marks the generated files =linguist-generated=, so GitHub folds them and review happens on the chapter.
+  + Locally, =git diff -- '*.org'= is the diff you read.
+
+* Machine-specific settings
 :PROPERTIES:
 :header-args:emacs-lisp: :tangle ../lisp/private.example.el :eval never :comments no :padline no :mkdirp yes
 :END:
 
-- Deployed file: [[file:../lisp/private.example.el][lisp/private.example.el]].
-- Edit the blocks here; generated Lisp is kept in Git for ordinary startup
-  and review.
+- =lisp/private.el= holds what belongs to one account or machine: paths, fonts, opt-in language servers, your own keys.
+  + =SPC C p= creates it from =lisp/private.example.el=, written below, and opens it.
+  + Git ignores it, and no chapter may tangle to it, so rebuilding never replaces it.
+- =M-x customize= saves to =var/etc/custom.el=, also ignored; back both up yourself.
 
-** Keep account and machine choices local
+** When private.el is read, and why that needs two forms :concept:
+:PROPERTIES:
+:ID: cf00615b-7150-4504-9adf-199876070b0b
+:END:
 
-- The generated example contains only comments.
-- Copy it once to =private.el= (=SPC C p= does it) and uncomment the settings
-  you need.
-- The real =private.el= is ignored by Git and excluded from every tangle
-  output, so rebuilding never replaces it.
-- =init.el= loads =private.el= early, right after the defaults and platform
-  chapters, because most chapters read a =kittymacs-= option while they load.
-  - The languages chapter decides which packages to install from
-    =kittymacs-language-packages=; the appearance chapter loads
-    =kittymacs-theme=.
-  - Your value has to be in place by then.
-- Early has a price: later chapters also set options of the packages they
-  configure, and a later setting replaces an earlier one.
-  - The terminal chapter, for example, sets =ghostel-enable-osc52= to =nil=;
-    a top-level =(setopt ghostel-enable-osc52 t)= here would be undone a
-    moment later.
+- =init.el= loads =private.el= early, right after the defaults and platform chapters, because most chapters read a =kittymacs-= option while they load.
+  + The languages chapter picks packages to install from =kittymacs-language-packages=; the appearance chapter loads =kittymacs-theme=.
+- Early has a price: a later chapter that sets a package's option replaces your value.
+  + The terminal chapter sets =ghostel-enable-osc52= to =nil=; a top-level =setopt= of it in =private.el= would be undone a moment later.
 - So the example uses two forms:
-  - A =kittymacs-= option goes at top level with =setopt=.
-    - =setopt= works even for an option whose chapter has not loaded yet: it
-      stores the value, and the chapter's =defcustom= keeps an existing value.
-  - Any other package's option goes inside the =after-init-hook= function at
-    the end of the example.
-    - Emacs runs that hook once =init.el= has finished; the depth of 90 puts
-      it after the functions the chapters add.
-    - Tabspaces is the exception: it turns on at 95, after your function,
-      so it reads your settings.
-- If a chapter sets another package's option only when its package loads (in
-  =:config= or a =with-eval-after-load=), wrap your =setopt= in
-  =with-eval-after-load= inside the hook.
-  - Emacs runs the forms waiting for a package in registration order, and by
-    the time the hook runs every chapter has registered its own.
-- Settings saved with =M-x customize= go to =var/etc/custom.el=, which
-  =init.el= loads after every chapter, so they need neither form.
+  + a =kittymacs-= option :: at top level with =setopt=; it works before the option's chapter loads, because the chapter's =defcustom= keeps an existing value;
+  + any other package's option :: inside the =after-init-hook= function at the end, which Emacs runs once =init.el= has finished; depth 90 puts it after the chapters' own functions.
+- A chapter that sets an option only as its package loads (in =:config= or =with-eval-after-load=) needs your =setopt= wrapped in =with-eval-after-load= inside the hook: forms waiting for a package run in registration order, and by then every chapter has registered its own.
+- Tabspaces is the exception: it turns on at depth 95, after your function, so it reads your settings.
+- Customize needs neither form: =init.el= loads =custom.el= after every chapter.
+- [[file:../ARCHITECTURE.md][ARCHITECTURE.md]] ("Customize and =private.el= get the last word") has the reasoning; the startup verifier replays a real startup and checks that both kinds of override survive.
 
-#+name: private.example-01-1
+** The example
+
+- Only comments: uncomment what you need.
+
 #+begin_src emacs-lisp
 ;;; private.example.el --- Example local overrides -*- lexical-binding: t; -*-
 ;; Generated from literate/80-maintenance.org; edit the Org source, then tangle.
@@ -109,14 +209,10 @@ for the authoring commands.
 ;;         kittymacs-language-packages '(nix racket guile))
 #+end_src
 
-- The appearance options are ordinary =kittymacs-= options too.
-- The font options change only the family of the default face and keep the
-  platform's point size.
-  - If the family is not installed, the platform default stays rather than
-    startup failing.
-- The icon font is a separate option, used only for Nerd Font icons.
+- The appearance options are ordinary =kittymacs-= options.
+  + The font options change only the default face's family and keep the platform's point size; a family that is not installed leaves the platform default rather than failing startup.
+  + The icon font is a separate option, used only for Nerd Font icons.
 
-#+name: private.example-01-2
 #+begin_src emacs-lisp :padline yes
 ;; UI
 ;; (setopt kittymacs-theme 'doom-dark+
@@ -126,18 +222,11 @@ for the authoring commands.
 ;;         kittymacs-nerd-font "Symbols Nerd Font Mono")
 #+end_src
 
-- The last block is where package options go.
-  - Everything in it is an option or a mode that a chapter either sets or
-    would load lazily, so it waits for the chapters to finish.
-- =ghostel-enable-osc52= is set by the terminal chapter while it loads, so a
-  plain =setopt= in the hook is enough.
-- =ghostel-shell= is set by the same chapter on Windows only when ghostel
-  loads, so it is wrapped in =with-eval-after-load=.
-- =ghostel-compile-global-mode= is autoloaded, so turning it on here loads
-  ghostel's compile support at startup, and every =compile= from the first
-  one on runs in a terminal.
+- The last block is where other packages' options go; everything in it waits for the chapters to finish.
+  + =ghostel-enable-osc52= is set by the terminal chapter while it loads, so a plain =setopt= in the hook is enough.
+  + =ghostel-shell= is set by the same chapter on Windows only when ghostel loads, so it is wrapped in =with-eval-after-load=.
+  + =ghostel-compile-global-mode= is autoloaded, so turning it on loads ghostel's compile support at startup, and every =compile= from then on runs in a terminal.
 
-#+name: private.example-01-3
 #+begin_src emacs-lisp :padline yes
 ;; Package options that a chapter also sets.  Depth 90 runs this after the
 ;; chapters' own after-init functions.
@@ -156,21 +245,26 @@ for the authoring commands.
 ;;           90)
 #+end_src
 
-* kittymacs-literate
+* Building from inside Emacs
 :PROPERTIES:
 :header-args:emacs-lisp: :tangle ../lisp/kittymacs-literate.el :eval never :comments no :padline no :mkdirp yes
 :END:
 
-- Deployed file: [[file:../lisp/kittymacs-literate.el][lisp/kittymacs-literate.el]].
-- Edit the blocks here; generated Lisp is kept in Git for ordinary startup
-  and review.
+- The =SPC C= menu, which [[id:53ad53ed-155f-47dc-973d-7be18de2893c][the keys chapter]] binds; this module holds its commands.
 
-** Open the reading guide
+| Key       | Command                      | Does                                                   |
+|-----------+------------------------------+--------------------------------------------------------|
+| =SPC C c= | =kittymacs-literate-open=    | open [[id:52a45bf9-9521-4e0d-9867-1c54721844a3][the reading guide]]                               |
+| =SPC C f= | =kittymacs-find-config-file= | find a chapter by name                                 |
+| =SPC C s= | =kittymacs-search-config=    | search every chapter with ripgrep                      |
+| =SPC C p= | =kittymacs-open-private-file= | open =private.el=, creating it from the example first |
+| =SPC C t= | =kittymacs-literate-tangle=  | =just tangle=, in a clean Emacs                        |
+| =SPC C k= | =kittymacs-literate-check=   | =just tangle-check=, in a clean Emacs                  |
+| =SPC C u= | =kittymacs-open-custom-file= | open the Customize file                                |
+| =SPC C a= | =kittymacs-open-architecture= | open =ARCHITECTURE.md=, the design record             |
 
-- The path is relative to =user-emacs-directory=, the configuration's root,
-  so it works from any buffer or working directory.
+- Every path is relative to =user-emacs-directory=, so the commands work from any buffer.
 
-#+name: kittymacs-literate-01-1
 #+begin_src emacs-lisp
 ;;; kittymacs-literate.el --- Edit and build the literate source -*- lexical-binding: t; -*-
 ;; Generated from literate/80-maintenance.org; edit the Org source, then tangle.
@@ -184,19 +278,6 @@ for the authoring commands.
   "Open the literate configuration's reading guide."
   (interactive)
   (find-file (expand-file-name "literate/index.org" user-emacs-directory)))
-#+end_src
-
-** Open the configuration's own files
-
-- The rest of the =SPC C= menu that [[file:42-keys.org][the keys chapter]] builds:
-  - find a chapter by name;
-  - search every chapter with ripgrep;
-  - open =private.el=, the Customize file or the design record.
-- =SPC C p= copies =private.example.el= into place the first time, so there is
-  always something to edit.
-
-#+name: kittymacs-literate-01-2
-#+begin_src emacs-lisp
 (defun kittymacs-find-config-file ()
   "Open one of the literate chapters."
   (interactive)
@@ -228,15 +309,10 @@ for the authoring commands.
   (find-file (expand-file-name "ARCHITECTURE.md" user-emacs-directory)))
 #+end_src
 
-** Build in a clean Emacs subprocess
+- =SPC C t= and =SPC C k= run =tools/tangle.el= in a separate =emacs -Q= process, exactly as =just= does, and show its output in =*kittymacs literate build*=.
+  + Unsaved chapters are refused first, so a build never reads a stale file.
+  + A successful tangle still needs a restart: the running Emacs keeps the modules it loaded.
 
-- Unsaved Org buffers are rejected before reading files from disk.
-- A separate -Q process uses the bundled Org without loading personal
-  startup; its output is displayed for review.
-- Successful generation still requires a restart to apply configuration
-  changes.
-
-#+name: kittymacs-literate-02-1
 #+begin_src emacs-lisp
 (defun kittymacs-literate--build (write)
   "Run the isolated literate builder; WRITE selects generation over checking."
@@ -261,44 +337,25 @@ for the authoring commands.
       (message (if write
                    "Lisp regenerated. Restart Emacs to apply configuration changes."
                  "Literate sources and deployed Lisp agree.")))))
-#+end_src
-
-** Regenerate the deployed Lisp
-
-- This is the explicit write operation.
-- The builder stages and validates all declared outputs before copying
-  changed files into the configuration tree.
-
-#+name: kittymacs-literate-03-1
-#+begin_src emacs-lisp
 (defun kittymacs-literate-tangle ()
   "Regenerate deployed Lisp from saved literate sources."
   (interactive)
   (kittymacs-literate--build t))
-#+end_src
-
-** Detect source/output drift
-
-- This read-only mode compares staged output with deployed Lisp.
-- It catches edits to generated files and forgotten rebuilds without silently
-  choosing one version.
-
-#+name: kittymacs-literate-04-1
-#+begin_src emacs-lisp
 (defun kittymacs-literate-check ()
   "Check that deployed Lisp matches saved literate sources without writing it."
   (interactive)
   (kittymacs-literate--build nil))
-#+end_src
-
-** Publish the module
-
-- The core require/provide protocol records that this file loaded.
-- Later requires can reuse the feature without evaluating the module again.
-
-#+name: kittymacs-literate-05-1
-#+begin_src emacs-lisp
 (provide 'kittymacs-literate)
 ;;; kittymacs-literate.el ends here
 #+end_src
 
+* Check
+
+- =SPC C k=: =*kittymacs literate build*= ends with =LITERATE CHECK PASS=.
+- =SPC C p= on a fresh clone: =private.el= opens, a copy of the example.
+- From a shell:
+
+#+begin_src sh :tangle no
+just              # = just check: tangle-check, doc-test, test
+just tangle && git status        # nothing changes on a clean checkout
+#+end_src

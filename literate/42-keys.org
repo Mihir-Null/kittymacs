@@ -1,29 +1,30 @@
-#+TITLE: The leader tree: every SPC key in one place
-#+OPTIONS: toc:3 num:nil
+:PROPERTIES:
+:ID: 53ad53ed-155f-47dc-973d-7be18de2893c
+:END:
+
+#+TITLE: The SPC tree
+#+FILETAGS: :keys:
 #+STARTUP: overview
 #+PROPERTY: header-args:emacs-lisp :tangle ../lisp/kittymacs-keys.el :eval never :comments no :padline no :mkdirp yes
 
-[[file:index.org][Reading guide]] · [[file:41-leader.org][The leader mechanism]] · [[file:../lisp/keybindings.org][Cheat sheet]]
+- Every key directly under =SPC=, in one place, grouped and labelled so which-key shows "files" instead of "+prefix".
+- The vocabulary follows Spacemacs and Doom, which most Meow and Evil users already know:
+  + a letter for each area;
+  + the same letter twice for the most common action in that area.
+- Leans on [[id:e5942eb0-4389-447d-9317-d9178adcaaae][the leader]] for the mechanism; package chapters define their own =SPC m= menus there, never keys here.
+  + [[id:a1607a41-b741-428a-9de3-c16e7c8d3ecc][The editing chapter]] explains when =SPC= is live; [[file:../lisp/keybindings.org][the cheat sheet]] prints the tree on one page.
 
-Ownership: *user configuration*.
-
-- The vocabulary follows Spacemacs and Doom, which most Meow and Evil users
-  already know:
-  - a letter for each area;
-  - the same letter twice for the most common action in that area.
-- Group maps are defined here and labelled, so which-key shows "files"
-  instead of "+prefix".
-- Package chapters define their *localleaders*; this chapter owns everything
-  directly under =SPC=.
-
-* How to read and change this
+* How to read and change the tree
 
 - Each group is a keymap made with =defvar-keymap=.
-- A definition of the form =(cons "label" #'command)= is an ordinary Emacs
-  menu item: the label is what which-key prints.
-- To add a key, use =keymap-set= on the group map or on
-  =kittymacs-leader-map= itself, here or in =private.el=.
+- A definition of the form =(cons "label" #'command)= is an ordinary Emacs menu item: the label is what which-key prints.
+- To add a key, use =keymap-set= on the group map or on =kittymacs-leader-map= itself.
+  + Here, or in =private.el= inside its =after-init-hook= function: =private.el= loads before this chapter.
 - =SPC u= is a group reserved for your own keys.
+
+#+begin_src emacs-lisp :tangle no
+(keymap-set kittymacs-user-map "g" (cons "magit status" #'magit-status))
+#+end_src
 
 #+begin_src emacs-lisp
 ;;; kittymacs-keys.el --- The leader tree -*- lexical-binding: t; -*-
@@ -35,11 +36,10 @@ Ownership: *user configuration*.
 
 #+end_src
 
-* which-key
+* Seeing the next keys
 
 - which-key is built into Emacs 30.
-- It pops up the next keys at the top of the frame after a short pause;
-  =C-h= inside any prefix shows them at once.
+- It pops up the next keys at the top of the frame after a short pause (0.45 s); =C-h= inside any prefix shows them at once.
 
 #+begin_src emacs-lisp
 (setopt which-key-idle-delay 0.45
@@ -52,6 +52,14 @@ Ownership: *user configuration*.
 #+end_src
 
 * Buffers, files, search
+
+| Prefix  | Group   | Doubled key        | Also                                                                    |
+|---------+---------+--------------------+-------------------------------------------------------------------------|
+| =SPC b= | buffers | =b= switch         | =k= kill, =n= / =N= new (in a new frame), =i= imenu, =u= undo tree, =x= scratch |
+| =SPC f= | files   | =f= find           | =r= recent, =d= directory, =y= copy file name, =t= reveal in the file tree, =o= show in the file manager |
+| =SPC s= | search  | =s= lines          | =d= ripgrep, =.= symbol at point, =r= visual replace, =q= / =Q= Org query, =l= last completion |
+
+- =SPC b N= runs =kittymacs-new-buffer= from [[id:3fd783cd-deb8-48aa-bb44-0d9b16535365][the defaults chapter]] in a new frame, through a small wrapper defined here.
 
 #+begin_src emacs-lisp
 (defun kittymacs-new-buffer-frame ()
@@ -122,26 +130,25 @@ Ownership: *user configuration*.
 
 * Projects, version control, windows, workspaces
 
-- =SPC p= is =kittymacs-project-map=, whose /parent/ is Emacs's own
-  =project-prefix-map=:
-  - a key not found in a keymap is looked up in its parent, so the =C-x p=
-    commands work under =SPC p= as well;
-  - the map below adds to it or overrides a key.
-- The additions live here, not in Emacs's map, so =C-x p= stays exactly the
-  menu the Emacs manual describes.
+| Prefix  | Group           | Doubled key                | Also                                                         |
+|---------+-----------------+----------------------------+--------------------------------------------------------------|
+| =SPC p= | project         | =p= open in a workspace    | every =C-x p= key, =G= Magit status, =C= recompile            |
+| =SPC j= | jump            | =j= to character (Avy)     | =l= line, =w= word, =s= symbol                               |
+| =SPC v= | version control | (=s= status)               | =d= diff, =l= log, =b= blame, =c= commit, =?= all commands   |
+| =SPC w= | windows         | =w= jump to window         | =n= new frame, =k= close frame, =h= / =v= split, =u= / =U= undo / redo layout |
+| =SPC W= | workspaces      | (=TAB= switch)             | =s= switch or create, =o= open project, =d= close            |
+
+- =SPC p= is =kittymacs-project-map=, whose /parent/ is Emacs's own =project-prefix-map=:
+  + a key not found in a keymap is looked up in its parent, so the =C-x p= commands work under =SPC p= as well;
+  + the map below adds to it or overrides a key.
+- The additions live here, not in Emacs's map, so =C-x p= stays exactly the menu the Emacs manual describes.
 - Three keys are overridden:
-  - =SPC p p= opens the project in its own workspace; =C-x p p= still
-    switches project in the current one.
-  - =SPC p b= is Consult's project buffer list, with preview, instead of
-    =project-switch-to-buffer=.
-  - =SPC p G= is Magit's status for the project. The command =C-x p G= runs,
-    =project-or-external-find-regexp=, has no key under =SPC p=; use
-    =C-x p G= for it.
+  + =SPC p p= opens the project in its own workspace; =C-x p p= still switches project in the current one;
+  + =SPC p b= is Consult's project buffer list, with preview, instead of =project-switch-to-buffer=;
+  + =SPC p G= is Magit's status for the project; the command =C-x p G= runs, =project-or-external-find-regexp=, has no key under =SPC p=, so use =C-x p G= for it.
 - Windows are frames here: =SPC w n= makes a new OS window.
-  - =SPC w h= and =SPC w v= are bound to Emacs's own split commands, which
-    [[file:45-frames.org][the frames chapter]] turns into frame creation while frames-only mode is on,
-    so they make a new OS window too.
-  - With the mode off (=SPC t f=) they split the current frame.
+  + =SPC w h= and =SPC w v= are bound to Emacs's own split commands, which [[id:f1d045c2-e2dc-4514-ab17-dd982ed6be00][the frames chapter]] turns into frame creation while frames-only mode is on, so they make a new OS window too.
+  + With the mode off (=SPC t f=) they split the current frame.
 
 #+begin_src emacs-lisp
 (defvar-keymap kittymacs-project-map
@@ -221,12 +228,18 @@ Ownership: *user configuration*.
 
 * Code, evaluation, diagnostics, insertion
 
-- =SPC l= is the language-server menu; the servers are opt-in in
-  [[file:74-languages.org][the languages chapter]].
-- =SPC c p= completes at point from one particular source, for when Corfu's
-  automatic popup does not offer what you want.
-  - [[file:60-completion.org][The completion chapter]] installs Cape, which provides most of these
-    sources.
+| Prefix  | Group           | Doubled key          | Also                                                          |
+|---------+-----------------+----------------------+---------------------------------------------------------------|
+| =SPC c= | code            | =c= comment          | =d= duplicate, =s= surround, =f= indent region, =p= complete with |
+| =SPC e= | eval            | =e= last sexp        | =d= defun, =b= buffer, =r= region, =i= ielm                    |
+| =SPC l= | language server | (=e= start or manage) | =a= code actions, =R= rename, =f= format, =d= / =r= definition / references |
+| =SPC F= | diagnostics     | (=n= next)           | =p= previous, =d= / =D= list buffer / project, =P= package lint |
+| =SPC i= | insert          | (=s= snippet)        | =y= from kill ring, =c= character, =e= emoji, =d= date        |
+
+- =SPC l= is the language-server menu; the servers are opt-in in [[id:560fcdca-6cb8-49d9-bf27-eb78f32b9285][the languages chapter]].
+- =SPC c p= completes at point from one particular source, for when Corfu's automatic popup does not offer what you want.
+  + [[id:42b02bb4-ea68-4981-b427-35705bf162f4][The completion chapter]] installs Cape, which provides most of these sources.
+- =SPC i d= inserts today's date as =YYYY-MM-DD=.
 
 #+begin_src emacs-lisp
 (defvar-keymap kittymacs-cape-map
@@ -307,11 +320,19 @@ Ownership: *user configuration*.
 
 * Open, toggle, configure, quit
 
+| Prefix  | Group  | Doubled key          | Also                                                           |
+|---------+--------+----------------------+----------------------------------------------------------------|
+| =SPC n= | notes  | (=f= find node)      | =i= insert ID link, =c= capture, =b= backlinks, =s= sync graph  |
+| =SPC o= | open   | (=e= terminal)       | =p= project terminal, =t= file tree, =s= eshell, =a= agenda dashboard, =h= home |
+| =SPC t= | toggle | =t= light/dark theme | =n= line numbers, =w= writeroom, =s= spelling, =f= frames-only mode, =d= file tree |
+| =SPC C= | config | (=c= reading guide)  | =f= find chapter, =t= tangle, =k= check tangle, =p= =private.el=, =r= restart |
+| =SPC q= | quit   | =q= save and quit    | =Q= without saving, =r= restart, =f= close frame               |
+| =SPC u= | user   | (empty)              | yours                                                          |
+
 - The commands these groups call belong to the chapters they serve:
-  - the Org inbox to [[file:70-org.org][the Org chapter]];
-  - the linked-notes commands to [[file:71-org-roam.org][Org-roam]];
-  - the =SPC C= commands that open and rebuild this configuration to
-    [[file:80-maintenance.org][the maintenance chapter]].
+  + the Org inbox to [[id:8ff7e58e-c155-4513-99ae-3b2c3a6ab729][the Org chapter]];
+  + the linked-notes commands to [[id:f48e8f01-88da-4e33-8398-c00ab346b8bb][Org-roam]];
+  + the =SPC C= commands that open and rebuild this configuration to [[id:9ea539a0-f1a3-4d05-aa10-6f2d2ff3e335][the maintenance chapter]].
 
 #+begin_src emacs-lisp
 (defvar-keymap kittymacs-notes-map
@@ -391,11 +412,14 @@ Ownership: *user configuration*.
 
 * Help
 
+| Prefix  | Group | Doubled key | Also                                                                  |
+|---------+-------+-------------+-----------------------------------------------------------------------|
+| =SPC h= | help  | =h= home    | =?= cheat sheet, =k= key, =f= function, =v= variable, =l= leader, =t= Meow tutor |
+
 - The help group gathers:
-  - the describe commands, source lookup and the manuals;
-  - the three places a learner is sent: the home page, this configuration's
-    cheat sheet and Meow's tutorial.
-- Most entries are the Helpful versions that [[file:62-help.org][the help chapter]] installs.
+  + the describe commands, source lookup and the manuals;
+  + the three places a learner is sent: the home page, this configuration's cheat sheet and Meow's tutorial.
+- Most entries are the Helpful versions that [[id:8545f3ea-11d0-420b-a823-22a344e56f1e][the help chapter]] installs.
 
 #+begin_src emacs-lisp
 (defvar-keymap kittymacs-help-map
@@ -426,7 +450,24 @@ Ownership: *user configuration*.
 
 #+end_src
 
-* The tree
+* The top level, and the tree without Meow
+
+- A few single keys sit directly under =SPC=, beside the groups:
+
+| Key           | Runs                                    |
+|---------------+-----------------------------------------|
+| =SPC SPC=     | =M-x=                                   |
+| =SPC /=       | describe the leader                     |
+| =SPC ?=       | search commands (=apropos-command=)     |
+| =SPC ;=       | comment line                            |
+| =SPC d=       | Dired at this file's directory          |
+| =SPC x=       | scratch buffer                          |
+| =SPC k=       | kill ring                               |
+| =SPC [= / =]= | previous / next buffer                  |
+| =SPC {= / =}= | previous / next tab                     |
+| =SPC TAB=     | switch tab                              |
+
+- =C-c C-SPC= opens the same tree where =SPC= cannot: in Insert state and in buffers where Meow is off.
 
 #+begin_src emacs-lisp
 (keymap-set kittymacs-leader-map "SPC" (cons "M-x" #'execute-extended-command))
@@ -473,8 +514,7 @@ Ownership: *user configuration*.
 
 * What moved
 
-- The tree replaces Lambda's keybinding module and the keys that four other
-  modules used to add on their own.
+- The tree replaces Lambda's keybinding module and the keys that four other modules used to add on their own.
 - Sequences that changed:
 
 | Before | After | Why |
@@ -488,8 +528,17 @@ Ownership: *user configuration*.
 | =SPC l= completion history | =SPC s l= | =SPC l= is the language server |
 | =SPC m= mail | localleader | mail was never installed |
 | =SPC M= compile | =SPC p c= or =SPC m c= | project or mode menu |
-| =SPC n= notes | =SPC n= | same key, now [[file:71-org-roam.org][Org-roam]]'s linked notes |
+| =SPC n= notes | =SPC n= | same key, now [[id:f48e8f01-88da-4e33-8398-c00ab346b8bb][Org-roam]]'s linked notes |
 | =SPC S= spelling | dropped | =SPC t s= toggles spelling |
 | =SPC w h= / =SPC w v= new frame | =SPC w n= | =SPC w h= / =SPC w v= are the split commands, which make frames only while frames-only mode is on |
-| =SPC o e= EAT terminal | =SPC o e= | same key, [[file:34-terminal.org][ghostel]] instead of EAT |
-| =SPC t d= dired-sidebar | =SPC t d= | same key, [[file:65-treemacs.org][Treemacs]] instead |
+| =SPC o e= EAT terminal | =SPC o e= | same key, [[id:bd2638bc-735d-4849-bafe-3dab5e8e30b7][ghostel]] instead of EAT |
+| =SPC t d= dired-sidebar | =SPC t d= | same key, [[id:55f0b75c-d867-4474-a26e-019215b8e492][Treemacs]] instead |
+
+* Check
+
+- =SPC= in a Normal-state buffer, then wait: which-key lists the groups by label at the top of the frame.
+- =SPC f f= finds a file; =SPC b b= switches buffer: the doubled key is the common action.
+- =SPC p f= in a project: Emacs's own =project-find-file=, inherited from =C-x p=.
+- =SPC /= or =SPC h l=: Emacs's help view of the whole tree, plus this buffer's =SPC m= menu.
+- =i=, then =C-c C-SPC=: the same tree from Insert state.
+- =just test-packages=: the verifier fails if any key under =SPC= runs something that is not a command, and checks =SPC l e=, =SPC s l=, =SPC h ?= and =SPC h h=.

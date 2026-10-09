@@ -1,18 +1,22 @@
 name: CI
 
-# Three questions, answered on every push and pull request:
-#   1. Do the literate chapters still match the generated Lisp, and do the
-#      tests that need no packages pass?                             (tangle)
+# Three questions, answered on every push and pull request, each by the
+# justfile recipes a contributor runs locally:
+#   1. Do the chapters still match the generated files, do the pages follow
+#      the conventions, and do the tests that need no packages pass?
+#                                                     (tangle: just check)
 #   2. Does a fresh clone install its packages, byte-compile and start, on
 #      the oldest supported Emacs and the current one?  And on macOS, and
-#      on Windows, the machine this is written on?                (startup)
+#      on Windows, the machine this is written on?
+#                      (startup: just install, compile, test-packages)
 #   3. Does the Nix flake still evaluate, with its nix-darwin and
-#      nix-on-droid examples and the home-manager module's clone step? (nix)
+#      nix-on-droid examples and the home-manager module's clone step?
+#                                                  (nix: just nix-check)
 # The weekly run skips the package cache so upstream package breakage
 # shows up even when nothing here changed.
 #
 # tests/kittymacs-frames-tests.el is the one suite not run here: it needs a
-# graphical session, and README.md says how to run it by hand.
+# graphical session: `just frames-test` runs it by hand.
 
 on:
   push:
@@ -31,21 +35,22 @@ concurrency:
 
 jobs:
   tangle:
-    name: Chapters match generated Lisp
+    name: Chapters match generated files
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
       - uses: purcell/setup-emacs@34c6ded44899fd1bf74d2889558befd1750e61a7 # master as of 2026-09-24
         with:
           version: "31.1"
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: just
       - name: Tangle check
-        run: emacs -Q --batch -l tools/tangle.el -- --check
-      - name: Tangle tests
-        run: emacs -Q --batch -l tests/kittymacs-tangle-tests.el -f ert-run-tests-batch-and-exit
-      - name: Platform tests (every operating system's branch, no packages)
-        run: emacs -Q --batch -l tests/kittymacs-platform-tests.el -f ert-run-tests-batch-and-exit
-      - name: Tree-sitter policy tests (offline)
-        run: emacs -Q --batch -l tests/kittymacs-treesit-tests.el -f ert-run-tests-batch-and-exit
+        run: just tangle-check
+      - name: Pages follow the conventions (IDs, tags, links)
+        run: just doc-test
+      - name: Builder, platform (every operating system's branch) and Tree-sitter tests
+        run: just test
 
   startup:
     name: Fresh install and startup (${{ matrix.system }}, Emacs ${{ matrix.emacs }})
@@ -90,6 +95,9 @@ jobs:
         uses: jcs090218/setup-emacs@54b61ac9c1d7011a54d2b6d66dedbcddf20e2fb9 # master as of 2026-09-24
         with:
           version: ${{ matrix.emacs }}
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: just
       # A restored directory keeps every package it holds, so a package that
       # moves to another source (a Git checkout to an archive, say) is only
       # tested once the cache starts over: raise the number after "elpa-".
@@ -101,34 +109,17 @@ jobs:
           key: elpa-2-${{ runner.os }}-${{ matrix.emacs }}-${{ hashFiles('lisp/*.el', 'early-init.el', 'init.el') }}
           restore-keys: elpa-2-${{ runner.os }}-${{ matrix.emacs }}-
       - name: Install packages by starting the configuration
-        run: |
-          emacs -Q --batch \
-            --eval '(setq user-emacs-directory (file-name-as-directory (expand-file-name ".")))' \
-            --eval '(setq native-comp-jit-compilation nil package-native-compile nil)' \
-            -l early-init.el --eval '(package-refresh-contents)' -l init.el \
-            --eval '(require (quote org-roam))' \
-            --eval '(princ (format "%d packages active, leader bound: %S\n" (length package-activated-list) (keymapp (keymap-lookup meow-normal-state-keymap "SPC"))))'
+        run: just install
       # Errors fail the step; warnings are printed and do not, because most
       # of them name a function that a module calls from a package, or from
-      # another module, that it does not load while compiling.  The .elc
-      # files go to the temporary directory, so the steps below still load
-      # the tracked sources.  Installing is switched off: the step above
-      # already did it, and a package that a module declares with :if nil
-      # on this system should stay uninstalled.
+      # another module, that it does not load while compiling.  Installing
+      # is switched off: the step above already did it, and a package that
+      # a module declares with :if nil on this system should stay
+      # uninstalled.
       - name: Byte-compile the modules
-        run: |
-          emacs -Q --batch \
-            --eval '(setq user-emacs-directory (file-name-as-directory (expand-file-name ".")))' \
-            -l early-init.el -f package-activate-all -L lisp \
-            --eval '(setq use-package-ensure-function (quote ignore))' \
-            --eval '(setq byte-compile-dest-file-function (lambda (file) (expand-file-name (concat (file-name-nondirectory file) "c") temporary-file-directory)))' \
-            -f batch-byte-compile lisp/*.el
-      - name: Leader tests
-        run: emacs -Q --batch -l tests/kittymacs-leader-tests.el -f ert-run-tests-batch-and-exit
-      - name: Scoped Org-roam tests
-        run: emacs -Q --batch -l tests/kittymacs-org-roam-tests.el -f ert-run-tests-batch-and-exit
-      - name: Startup verifier
-        run: emacs -Q --batch -l tests/verify-config.el
+        run: just compile
+      - name: Leader and Org-roam tests, and the startup verifier
+        run: just test-packages
 
   nix:
     name: Flake evaluates, with its example hosts
@@ -138,18 +129,10 @@ jobs:
       - uses: cachix/install-nix-action@v31
         with:
           extra_nix_config: "experimental-features = nix-command flakes"
-      - name: Flake check
-        run: nix flake check --no-build --all-systems
-      - name: Evaluate the example nix-darwin host against this checkout
-        run: |
-          nix eval --no-write-lock-file --override-input kittymacs "path:$PWD" \
-            --json ./nix/example#darwinConfigurations.example.config.environment.systemPackages \
-            --apply 'ps: map (p: p.name) ps'
-      - name: Evaluate the example nix-on-droid device against this checkout
-        run: |
-          nix eval --no-write-lock-file --override-input kittymacs "path:$PWD" \
-            --json ./nix/example-nix-on-droid#nixOnDroidConfigurations.default.config.home-manager.config.home.packages \
-            --apply 'ps: map (p: p.name) ps'
+      # The dev shell pins the Emacs, just and the Nix linters, so CI and a
+      # laptop agree.
+      - name: Lint the generated Nix, evaluate the flake and both example hosts
+        run: nix develop --command just nix-check
       # git+file rather than path:, because a path: input has no revision
       # and the module would have nothing to pin.  The checkout is clean
       # here, so the flake's revision is the commit under test, and the

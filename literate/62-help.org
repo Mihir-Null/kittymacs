@@ -1,26 +1,23 @@
+:PROPERTIES:
+:ID: 8545f3ea-11d0-420b-a823-22a344e56f1e
+:END:
+
 #+TITLE: Help, Info and menus
-#+OPTIONS: toc:3 num:nil
+#+FILETAGS: :interface:
 #+STARTUP: overview
 #+PROPERTY: header-args:emacs-lisp :tangle ../lisp/kittymacs-help.el :eval never :comments no :padline no :mkdirp yes
 
-[[file:index.org][Reading guide]] · [[file:60-completion.org][Completion]] · [[file:41-leader.org][Leader]]
-
-Ownership: *user configuration*.
-
+- Emacs is self-documenting; this chapter makes that documentation nicer to read and easier to reach.
+  + =C-h k= then a key says what it does; =C-h f= and =C-h v= describe a function or variable.
+  + Helpful makes those pages richer, Info manuals get colour, and Casual gives the built-in tools menus.
+- Leans on [[id:e5942eb0-4389-447d-9317-d9178adcaaae][the leader]] for its =SPC m= menus; the leader's help menu, =SPC h=, is in [[id:53ad53ed-155f-47dc-973d-7be18de2893c][the keys chapter]]; [[id:42b02bb4-ea68-4981-b427-35705bf162f4][the completion chapter]] supplies =C-h B= and the manual search.
 - Distilled from Lambda-Emacs by Colin McLear (=lem-setup-help=).
-- Emacs is self-documenting; this chapter makes that documentation nicer to
-  read and easier to reach.
 
-* What this gives you
+* Help windows and help at point
 
-- =C-h k= then a key tells you what it does; =C-h f= and =C-h v= describe a
-  function or variable.
-- Helpful replaces those views with richer ones that include the source,
-  examples and references.
-- Info manuals get colour.
-- The leader's help menu, =SPC h= in [[file:42-keys.org][the keys chapter]], collects the commands
-  a learner needs most.
-- Popup menus (Transient, used by Magit) open at the top of the frame.
+- A help window takes focus when it opens.
+- Help at point appears in the echo area after 0.1 s of idle, for Flymake diagnostics.
+- Emacs does not ask for confirmation before visiting a file or buffer that does not exist yet.
 
 #+begin_src emacs-lisp
 ;;; kittymacs-help.el --- Help, Info and menus -*- lexical-binding: t; -*-
@@ -40,12 +37,12 @@ Ownership: *user configuration*.
 
 #+end_src
 
-* Helpful, examples and coloured Info
+* Richer help pages: Helpful
 
-- Helpful takes over the standard describe commands through =remap=, so the
-  usual =C-h= keys keep working and show more.
+- Helpful takes over the standard describe commands through =remap=, so the usual =C-h= keys keep working and show more: the source, examples and references.
 - =elisp-demos= injects worked examples into those pages.
 - =info-colors= makes manuals readable.
+- Two extra keys: =C-h C-l= finds a library's source, =C-h C-c= shows its commentary.
 
 #+begin_src emacs-lisp
 (use-package helpful
@@ -73,10 +70,10 @@ Ownership: *user configuration*.
 
 * Transient menus
 
-- Magit and a few other packages draw their menus with Transient.
-- Its state files go under the cache.
-- The menu opens in a side window at the top, so it never replaces the
-  buffer you are looking at.
+- Magit, Casual and a few other packages draw their menus with Transient.
+- Its levels, values and history files go under the cache.
+- The menu opens in a dedicated side window at the top, so it never replaces the buffer you are looking at; =other-window= skips it.
+- Key conflicts are reported, and the menu is always fixed-pitch so its columns line up.
 
 #+begin_src emacs-lisp
 (use-package transient
@@ -98,10 +95,9 @@ Ownership: *user configuration*.
 
 * See what you press: keycast
 
-- While the grammar is new, =SPC t k= shows each key you press and the
-  command it ran in the header line.
+- While the grammar is new, =SPC t k= shows each key you press and the command it ran in the header line.
 - =SPC t K= keeps a log buffer instead.
-- Typing and mouse movement are collapsed, so the display stays readable.
+- Typing collapses to "Typing..." and mouse movement is dropped, so the display stays readable.
 
 #+begin_src emacs-lisp
 (use-package keycast
@@ -117,16 +113,16 @@ Ownership: *user configuration*.
 
 * Menus for the built-ins: Casual
 
-- Casual gives Emacs's own tools a menu of everything they can do, drawn
-  with Transient:
-  - Dired, Info, calc, isearch, bookmarks, ibuffer, the agenda, compilation,
-    Eshell, the regexp builder.
-- Each menu is on =?= in that mode's =SPC m= menu, on =C-o= in the mode's own
-  map (Casual's convention), or on both:
-  - both: Dired, Info, ibuffer, compilation;
-  - =C-o= only: calc, isearch, bookmarks, the regexp builder;
-  - =SPC m ?= only: the agenda and Eshell, and the Help, Org and Emacs Lisp
-    modes.
+- Casual gives Emacs's own tools a Transient menu of everything they can do.
+- Each menu is on =?= in that mode's =SPC m= menu, on =C-o= in the mode's own map (Casual's convention), or on both:
+
+| Where          | Modes                                                      |
+|----------------+------------------------------------------------------------|
+| both           | Dired, Info, ibuffer, compilation                          |
+| =C-o= only     | calc, isearch, bookmarks, the regexp builder               |
+| =SPC m ?= only | the agenda, Eshell, and the Help, Org and Emacs Lisp modes |
+
+- The =SPC m ?= entries for ibuffer and compilation are here; Info's and Help's are in [[*Meow in help buffers]]; the rest live with their packages.
 - =SPC c m= opens the general editing menu from any buffer.
 
 #+begin_src emacs-lisp
@@ -151,12 +147,30 @@ Ownership: *user configuration*.
 
 #+end_src
 
-* Meow in help buffers
+* Meow in help buffers :meow:
+:PROPERTIES:
+:ID: e455cddf-3cd2-47b3-8e0a-68f5f34d67cd
+:END:
 
-- Help, Helpful and Info buffers open in Motion state: their own keys work,
-  plus =j=/=k= and the leader.
-- The localleaders below label the navigation keys those modes already have,
-  so =SPC m= in an Info buffer shows how to move around the manual.
+- Help, Helpful and Info buffers start in Motion state: their own keys work, plus =j=/=k= and the leader.
+- Their =SPC m= menus label the navigation keys those modes already have, so =SPC m= in an Info buffer shows how to move around the manual.
+
+| =SPC m= | Info          | Help        | Helpful            |
+|---------+---------------+-------------+--------------------|
+| =n=     | next node     |             |                    |
+| =p=     | previous node |             |                    |
+| =u=     | up            |             | update             |
+| =t=     | top           |             |                    |
+| =d=     | directory     |             |                    |
+| =g=     | go to node    |             |                    |
+| =i=     | index         | Info        |                    |
+| =s=     | search        | source      | source (reference) |
+| =m=     | menu          |             |                    |
+| =l=     | back          | back        |                    |
+| =r=     | forward       | forward     |                    |
+| =?=     | Casual menu   | Casual menu |                    |
+
+- Helpful's menu is defined once Helpful loads.
 
 #+begin_src emacs-lisp
 (kittymacs-define-localleader 'Info-mode
@@ -189,9 +203,12 @@ Ownership: *user configuration*.
 ;;; kittymacs-help.el ends here
 #+end_src
 
-* Try it
+* Check
 
-- =C-h k SPC f f=: Helpful describes =find-file= and names the key you
-  pressed.
+- =C-h k SPC f f=: Helpful describes =find-file= and names the key you pressed.
+- =C-h f mapcar=: the page includes a worked example from =elisp-demos=.
 - =C-h B= in any buffer: every key that works right now, searchable.
-- Open a manual with =C-h i=, then =SPC m= to see how to move.
+- =C-h i= opens the manuals, in colour; =SPC m= there shows how to move.
+- =SPC t k=, then type: the header line shows each key and its command.
+- In Dired, =C-o= or =SPC m ?=: Casual's menu opens in a window at the top.
+- =just test-packages=: the startup verifier replays a real startup with the installed packages and fails on any warning.

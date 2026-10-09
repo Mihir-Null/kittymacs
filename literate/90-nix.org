@@ -1,0 +1,753 @@
+:PROPERTIES:
+:ID: d25a5063-1439-4ae0-8fbe-b0162d05a0e0
+:END:
+
+#+TITLE: Nix: the flake, its modules and example hosts
+#+FILETAGS: :nix:
+#+STARTUP: overview
+#+PROPERTY: header-args:nix :eval never :comments no :padline no :mkdirp yes
+
+- The repository is a flake, but it does not put the configuration in the Nix store.
+  + The configuration installs its Emacs packages under =var/= and keeps =private.el= beside its modules; both must stay writable.
+- What the flake provides is everything /around/ the configuration: Emacs, every program the chapters look for, and the icon font.
+  + A fresh Mac needs one =darwin-rebuild switch= and one =git clone=; with the Home Manager module, not even the clone.
+- The Nix layer is a convenience: Homebrew, a package manager or a manual install work as well, and every chapter degrades quietly when a program is missing.
+- Each top heading writes one file; =just lint= and =just eval= check them ([[id:9ea539a0-f1a3-4d05-aa10-6f2d2ff3e335][the loop]]).
+
+* What the flake provides
+
+| Output                       | What it is                                                                                         |
+|------------------------------+----------------------------------------------------------------------------------------------------|
+| =darwinModules.default=      | nix-darwin: =programs.kittymacs.enable= installs Emacs, the tools and the font system-wide          |
+| =homeManagerModules.default= | Home Manager: clones a checkout, links it to =~/.config/emacs=; can install the tools and run a daemon |
+| =packages.<system>.default=  | the Emacs the modules install (=pkgs.emacs=)                                                       |
+| =packages.<system>.tools=    | one environment with every tool, for =nix profile install=                                         |
+| =devShells.<system>.default= | Emacs, the tools, =just= and the Nix linters, for the recipes                                      |
+
+- Each module is also exported as =kittymacs=, beside =default=, for a host that imports several flakes' modules by name.
+
+* The flake
+:PROPERTIES:
+:header-args:nix: :tangle ../flake.nix :eval never :comments no :padline no :mkdirp yes
+:END:
+
+- One input, nixpkgs-unstable, so a host's =follows= decides the Emacs version.
+- Three systems: Apple Silicon, ARM Linux (phones, through nix-on-droid) and x86_64 Linux.
+  + nixpkgs-unstable dropped =x86_64-darwin= in 26.11; an Intel Mac points this flake's =nixpkgs= input at the =nixpkgs-26.05-darwin= branch.
+- =forEachSystem= hands every per-system output the package set and [[*The tools][the tool list]], so that list is read in one place.
+- The Home Manager module is a function of the flake itself, so its clone can default to the revision the host locked ([[*Cloning the checkout on first activation]]).
+- The dev shell adds =just=, =nixfmt=, =deadnix= and =statix= to Emacs and the tools: everything =just all= needs.
+
+#+begin_src nix
+# Generated from literate/90-nix.org; edit the Org source, then tangle.
+{
+  description = "kittymacs: a Meow-first Emacs configuration, with the tools it looks for";
+
+  inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
+
+  outputs =
+    { self, nixpkgs }:
+    let
+      # nixpkgs-unstable dropped x86_64-darwin in 26.11; an Intel Mac can
+      # point this flake's nixpkgs input at the nixpkgs-26.05-darwin branch.
+      systems = [
+        "aarch64-darwin"
+        "aarch64-linux"
+        "x86_64-linux"
+      ];
+      # Each per-system output gets the package set and the tool list.
+      forEachSystem =
+        f:
+        nixpkgs.lib.genAttrs systems (
+          system:
+          let
+            pkgs = nixpkgs.legacyPackages.${system};
+          in
+          f pkgs (import ./nix/tools.nix { inherit pkgs; })
+        );
+    in
+    {
+      darwinModules.default = import ./nix/darwin-module.nix;
+      darwinModules.kittymacs = self.darwinModules.default;
+
+      # The module is given the flake itself, so the clone can default to
+      # this flake's revision.
+      homeManagerModules.default = import ./nix/home-module.nix { inherit self; };
+      homeManagerModules.kittymacs = self.homeManagerModules.default;
+
+      packages = forEachSystem (
+        pkgs: tools: {
+          tools = pkgs.buildEnv {
+            name = "kittymacs-tools";
+            paths = tools.programs ++ tools.fonts;
+          };
+          default = tools.emacs;
+        }
+      );
+
+      # Emacs and the tools, plus just and the Nix linters for the recipes.
+      devShells = forEachSystem (
+        pkgs: tools: {
+          default = pkgs.mkShell {
+            packages = [
+              tools.emacs
+            ]
+            ++ tools.programs
+            ++ [
+              pkgs.just
+              pkgs.nixfmt
+              pkgs.deadnix
+              pkgs.statix
+            ];
+            shellHook = ''
+              echo "kittymacs: just --list"
+            '';
+          };
+        }
+      );
+    };
+}
+#+end_src
+
+* The tools
+:PROPERTIES:
+:header-args:nix: :tangle ../nix/tools.nix :eval never :comments no :padline no :mkdirp yes
+:END:
+
+- Every program a chapter looks for at startup, listed once; both modules and the dev shell import this file.
+- Each entry's comment names the chapter that discovers it:
+
+| Program               | Chapter                                          | For                                    |
+|-----------------------+--------------------------------------------------+----------------------------------------|
+| =git=                 | [[id:f6ccd2da-4b3f-4392-b439-3966fc9d3db8][version control]] | Magit                                  |
+| =ripgrep=, =fd=       | [[id:e4d65984-892d-4046-b718-d4265ab74215][navigation]]      | project search and file finding        |
+| =gnupg=               | [[id:40302e33-d2b2-4c0b-9bc3-1f9e121307e1][startup]]         | GNU ELPA's signed index                |
+| =hunspell= + =en_US=  | [[id:afa6b7fd-742a-4c15-86a6-32e3e8027b0e][platform]]        | spell checking                         |
+| =python3=             | [[id:55f0b75c-d867-4474-a26e-019215b8e492][Treemacs]]        | directory collapsing, Git colouring    |
+| =zig=                 | [[id:bd2638bc-735d-4849-bafe-3dab5e8e30b7][terminal]]        | building ghostel's native module       |
+| =gls= (macOS)         | [[id:878a9e46-62be-4b9f-82f6-589560d2ebc1][Dired]]           | GNU =ls=, directories first            |
+| =trash= (macOS)       | [[id:afa6b7fd-742a-4c15-86a6-32e3e8027b0e][platform]]        | the Trash, with Finder's "Put Back"    |
+
+- Fonts: Symbols Nerd Font Mono for the icons.
+  + Google Sans Code, the preferred editing font, is not in nixpkgs; the platform font is used until it is installed by hand.
+- =emacs= is an argument, so each module installs the Emacs its =package= option names.
+
+#+begin_src nix
+# Generated from literate/90-nix.org; edit the Org source, then tangle.
+{
+  pkgs,
+  emacs ? pkgs.emacs,
+}:
+
+{
+  inherit emacs;
+
+  programs =
+    with pkgs;
+    [
+      git # version control chapter (Magit)
+      ripgrep # navigation chapter (consult-ripgrep, deadgrep)
+      fd # navigation chapter (consult-fd)
+      gnupg # startup chapter: GNU ELPA's signed index
+      (hunspell.withDicts (d: [ d.en_US ])) # platform chapter: spelling
+      python3 # Treemacs chapter: directory collapsing and the extended (colouring) git mode
+      zig # terminal chapter: builds ghostel's native module
+    ]
+    ++ pkgs.lib.optionals pkgs.stdenv.hostPlatform.isDarwin [
+      coreutils-prefixed # Dired chapter: GNU ls as `gls'
+      darwin.trash # platform chapter: Trash with Finder's "Put Back"
+    ];
+
+  # Symbols Nerd Font Mono renders the icons.
+  fonts = with pkgs; [
+    nerd-fonts.symbols-only
+  ];
+}
+#+end_src
+
+* nix-darwin :macos:
+:PROPERTIES:
+:ID: fff6b1f2-3651-474b-8ecf-dcad207ead9d
+:header-args:nix: :tangle ../nix/darwin-module.nix :eval never :comments no :padline no :mkdirp yes
+:END:
+
+- Add the flake as an input and import the module:
+
+#+begin_src nix :tangle no
+{
+  inputs.kittymacs.url = "github:Mihir-Null/kittymacs";
+  inputs.kittymacs.inputs.nixpkgs.follows = "nixpkgs";
+
+  outputs = { nix-darwin, kittymacs, ... }: {
+    darwinConfigurations.mac = nix-darwin.lib.darwinSystem {
+      modules = [
+        kittymacs.darwinModules.default
+        { programs.kittymacs.enable = true; }
+      ];
+    };
+  };
+}
+#+end_src
+
+- Then clone the configuration somewhere writable, or let [[*Home Manager][the Home Manager module]] clone it:
+
+#+begin_src sh :tangle no
+git clone https://github.com/Mihir-Null/kittymacs.git ~/.config/emacs
+#+end_src
+
+- Emacs reads =~/.config/emacs= only when =~/.emacs.d= does not exist, empty or not: move an old =~/.emacs.d= aside first.
+- Options under =programs.kittymacs=:
+  + =package= :: the Emacs to install; default =pkgs.emacs=, the Cocoa build; =pkgs.emacs-macport= is the Mitsuharu port. kittymacs needs 30.1 or later.
+  + =daemon= :: start the Emacs server at login through launchd, so =emacsclient= opens files as frames of one Emacs. Off by default: the configuration starts a server itself whenever it has a display. The Home Manager module has the same option; turn on one, not both.
+
+#+begin_src nix
+# Generated from literate/90-nix.org; edit the Org source, then tangle.
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
+
+let
+  cfg = config.programs.kittymacs;
+  tools = import ./tools.nix {
+    inherit pkgs;
+    emacs = cfg.package;
+  };
+in
+{
+  options.programs.kittymacs = {
+    enable = lib.mkEnableOption "kittymacs: Emacs with the tools its configuration looks for";
+
+    package = lib.mkOption {
+      type = lib.types.package;
+      default = pkgs.emacs;
+      defaultText = lib.literalExpression "pkgs.emacs";
+      description = ''
+        The Emacs to install, and to run when `daemon` is on.  kittymacs
+        needs 30.1 or later.  `pkgs.emacs` is nixpkgs' current release as
+        the Cocoa build; `pkgs.emacs-macport` is the Mitsuharu port.
+      '';
+    };
+
+    daemon = lib.mkOption {
+      type = lib.types.bool;
+      default = false;
+      description = ''
+        Start the Emacs server at login, so `emacsclient` opens files in
+        frames of one running Emacs.  This turns on nix-darwin's
+        `services.emacs` with `package`, a launchd agent.  Turn on this
+        option or the home-manager module's, not both.
+      '';
+    };
+  };
+
+  config = lib.mkIf cfg.enable {
+    environment.systemPackages = [ cfg.package ] ++ tools.programs;
+    fonts.packages = tools.fonts;
+
+    services.emacs = lib.mkIf cfg.daemon {
+      enable = true;
+      inherit (cfg) package;
+    };
+  };
+}
+#+end_src
+
+* Home Manager
+:PROPERTIES:
+:ID: 6979a2d3-2ce7-435f-b2cd-78386340f019
+:header-args:nix: :tangle ../nix/home-module.nix :eval never :comments no :padline no :mkdirp yes
+:END:
+
+- Looks after the checkout itself: clones it on the first switch, links it to =~/.config/emacs=, and keeps its hands off it after that.
+- Works with nix-darwin's Home Manager module, a standalone Home Manager on any Linux, and nix-on-droid.
+
+#+begin_src nix :tangle no
+home-manager.users.me = {
+  imports = [ kittymacs.homeManagerModules.default ];
+  programs.kittymacs = {
+    enable = true;
+    source = "/Users/me/src/kittymacs";  # where the writable clone lives
+    installPackages = false;             # nix-darwin already installed them
+  };
+};
+#+end_src
+
+- The outer function takes the flake (=self=), so =revision= can default to the commit the host's =flake.lock= records; =flake.nix= applies it.
+- =git= and =coreutils= are named by store path, because activation does not promise either is on =PATH=.
+
+#+begin_src nix
+# Generated from literate/90-nix.org; edit the Org source, then tangle.
+{ self }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
+
+let
+  cfg = config.programs.kittymacs;
+  tools = import ./tools.nix {
+    inherit pkgs;
+    emacs = cfg.package;
+  };
+  git = "${pkgs.git}/bin/git";
+  coreutils = "${pkgs.coreutils}/bin";
+in
+{
+  options.programs.kittymacs = {
+    enable = lib.mkEnableOption "kittymacs, linked into ~/.config/emacs";
+#+end_src
+
+** The checkout: source, repository, revision
+
+- =source= :: where the checkout lives; =~/.config/emacs= becomes a link to it.
+  + The link points outside the store on purpose: the checkout must stay writable.
+  + Null leaves cloning and placing to you; nothing is linked or cloned, and =repository= and =revision= do nothing. The other options still install Emacs, the tools and the font, and run the daemon.
+- =repository= :: the Git URL to clone from; point it at a fork to start from your own copy.
+- =revision= :: the commit to check out; defaults to the kittymacs revision the host's =flake.lock= pins, so the lock decides what a new machine starts from.
+  + The pin applies to the /first clone only/ ([[*Cloning the checkout on first activation]]).
+  + Null when the flake has no revision (a =path:= input, or a dirty Git tree); then nothing is cloned. Set it to null yourself to never clone.
+
+#+begin_src nix :padline yes
+    source = lib.mkOption {
+      type = lib.types.nullOr lib.types.str;
+      default = null;
+      example = "/Users/me/src/kittymacs";
+      description = ''
+        Absolute path of a writable clone of the repository.  When set,
+        ~/.config/emacs becomes a symbolic link to it, and activation clones
+        `repository` there if nothing is there yet.  Leave null to manage
+        the clone by hand.
+      '';
+    };
+
+    repository = lib.mkOption {
+      type = lib.types.str;
+      default = "https://github.com/Mihir-Null/kittymacs.git";
+      description = ''
+        Git URL that activation clones `source` from when it does not exist.
+        Point it at a fork to start from your own copy.
+      '';
+    };
+
+    revision = lib.mkOption {
+      type = lib.types.nullOr lib.types.str;
+      default = self.rev or null;
+      defaultText = lib.literalMD ''
+        the commit of the kittymacs flake this module comes from, as the
+        host's `flake.lock` records it; null when that flake has no
+        revision: a `path:` input, or a Git working tree with uncommitted
+        changes
+      '';
+      example = "0123456789abcdef0123456789abcdef01234567";
+      description = ''
+        Full commit hash to check out when `source` is cloned.  The clone is
+        shallow and detached at that commit.  The pin applies to the first
+        clone only.  After that the checkout is yours: you pull, commit and
+        switch branches in it, so an activation that finds it at another
+        commit prints a one-line notice and changes nothing.  With null,
+        nothing is cloned.
+      '';
+    };
+#+end_src
+
+** What gets installed, and the daemon
+
+- =installPackages= :: Emacs and the tools into the user profile. Turn it off when the nix-darwin module already installs them system-wide.
+- =installFonts= :: follows =installPackages=; turn it off alone for a terminal Emacs, which has no use for the icon font. The configuration notices the missing font and renders without icons.
+- =package= :: the Emacs to install and, with =daemon=, to run; default =pkgs.emacs=.
+- =daemon= :: run Emacs as a server for this user through Home Manager's =services.emacs=:
+  + a systemd user service on Linux, a launchd agent on macOS, and an "Emacs Client" desktop entry on Linux;
+  + where no systemd user session runs (nix-on-droid, WSL without systemd) the service is written but nothing starts it;
+  + on a Mac, use this option or the nix-darwin module's, not both.
+
+#+begin_src nix :padline yes
+    installPackages = lib.mkOption {
+      type = lib.types.bool;
+      default = true;
+      description = ''
+        Install Emacs and the tools into the user profile.  Turn off when
+        the nix-darwin module already installs them system-wide.
+      '';
+    };
+
+    installFonts = lib.mkOption {
+      type = lib.types.bool;
+      default = cfg.installPackages;
+      defaultText = lib.literalExpression "config.programs.kittymacs.installPackages";
+      description = ''
+        Install the Nerd Font that renders the icons, and turn on
+        fontconfig.  Turn off for a terminal-only Emacs, which has no use
+        for either; the configuration detects the missing font and renders
+        without icons.
+      '';
+    };
+
+    package = lib.mkOption {
+      type = lib.types.package;
+      default = pkgs.emacs;
+      defaultText = lib.literalExpression "pkgs.emacs";
+      description = ''
+        The Emacs to install, and to run when `daemon` is on.  kittymacs
+        needs 30.1 or later.
+      '';
+    };
+
+    daemon = lib.mkOption {
+      type = lib.types.bool;
+      default = false;
+      description = ''
+        Start the Emacs server at login, so `emacsclient` opens files in
+        frames of one running Emacs.  This turns on Home Manager's
+        `services.emacs` with `package`: a systemd user service on Linux and
+        a launchd agent on macOS, plus an "Emacs Client" desktop entry on
+        Linux.  Where no systemd user session runs (nix-on-droid, WSL
+        without systemd) the service is written but nothing starts it.  On a
+        Mac, turn on this option or the nix-darwin module's, not both.
+      '';
+    };
+#+end_src
+
+** Why the daemon names its init directory :decision:
+:PROPERTIES:
+:ID: 4a4acce6-c592-4c82-a885-d7824a07594f
+:END:
+
+- =initDirectory= :: the directory the daemon passes to Emacs as =--init-directory=; defaults to the link, =~/.config/emacs=, and to null when =source= is null.
+- Emacs reads =~/.config/emacs= only when =~/.emacs.d= does not exist, and an empty =~/.emacs.d= is enough to win.
+  + On a home that ran Emacs before this module, the daemon would serve a stock Emacs with no error anywhere.
+  + That Emacs then writes an =~/.emacs.d= of its own as it starts, which keeps it that way.
+- Naming the directory takes the decision away from the home directory.
+  + The default is the link rather than =source=, so =user-emacs-directory= reads as it does on a home with no =~/.emacs.d= at all.
+- Needs Emacs 29 or later; null passes nothing and leaves the choice to Emacs, as for an Emacs started by hand.
+
+#+begin_src nix :padline yes
+    initDirectory = lib.mkOption {
+      type = lib.types.nullOr lib.types.str;
+      default = if cfg.source == null then null else "${config.xdg.configHome}/emacs";
+      defaultText = lib.literalMD ''
+        `~/.config/emacs` under `xdg.configHome`, the link `source` creates;
+        null when `source` is null
+      '';
+      example = "/Users/me/src/kittymacs";
+      description = ''
+        Directory the `daemon` names to Emacs as `--init-directory`, so the
+        server reads this configuration whatever else the home directory
+        holds.  Emacs looks in `~/.config/emacs` only when `~/.emacs.d` does
+        not exist, and an empty `~/.emacs.d` is enough to win: a home that
+        ran Emacs before this module keeps the server on a stock Emacs with
+        no error anywhere, and the server itself writes an `~/.emacs.d` as
+        soon as it starts, so the state sustains itself.  Naming the
+        directory takes the decision away from the home directory.  The
+        default is the link rather than `source`, so `user-emacs-directory`
+        reads as it does on a home with no `~/.emacs.d` at all.  Needs Emacs
+        29 or later; null passes nothing and leaves the choice to Emacs, as
+        it is for an Emacs started by hand.
+      '';
+    };
+  };
+#+end_src
+
+** The link and the packages
+
+- =home.packages= gets Emacs and the tools, then the font, each behind its option; fontconfig is turned on, as a default, with the font.
+- =xdg.configFile."emacs"= is an out-of-store symlink: =~/.config/emacs= points at the checkout itself, not a copy.
+
+#+begin_src nix :padline yes
+  config = lib.mkIf cfg.enable {
+    home.packages =
+      (lib.optionals cfg.installPackages ([ cfg.package ] ++ tools.programs))
+      ++ (lib.optionals cfg.installFonts tools.fonts);
+    fonts.fontconfig.enable = lib.mkIf cfg.installFonts (lib.mkDefault true);
+
+    xdg.configFile."emacs" = lib.mkIf (cfg.source != null) {
+      source = config.lib.file.mkOutOfStoreSymlink cfg.source;
+    };
+#+end_src
+
+** Cloning the checkout on first activation :decision:
+:PROPERTIES:
+:ID: 41497b01-c9a9-4aa9-b658-7fda73fce4a8
+:END:
+
+- The checkout is ordinary user data, so activation clones it into the home directory rather than building it into the generation.
+- Three cases:
+  1. A symbolic link to nothing (probably a disk that is not mounted) stops activation instead of being cloned over.
+  2. Nothing there: fetch only the pinned commit, with =origin= set to =repository= so the checkout can pull later.
+     + The work happens in a temporary directory beside =source=, moved into place only once =HEAD= is that commit: a failed fetch leaves nothing half-made.
+     + A failure only warns: the network may not be up yet (Home Manager runs at boot on NixOS), and the rest of the home should not wait for it. The next activation tries again; until then =~/.config/emacs= points at nothing.
+     + The subshell runs with =errexit= and not as an =if= condition, where bash would ignore =set -e= and go on past a failed fetch.
+  3. A Git checkout at another commit: say so in one line, and touch nothing.
+- So bumping the input in =flake.lock= never rewrites your configuration: from the first clone on, the checkout is yours to pull, commit in and switch branches in.
+- The first clone is shallow and detached; =git fetch --unshallow origin= then =git switch main= turns it into an ordinary checkout.
+- =DRY_RUN= (=home-manager switch --dry-run=) prints what would be cloned and does nothing.
+
+#+begin_src nix :padline yes
+    home.activation.cloneKittymacs = lib.mkIf (cfg.source != null && cfg.revision != null) (
+      lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+        source=${lib.escapeShellArg cfg.source}
+        repository=${lib.escapeShellArg cfg.repository}
+        revision=${lib.escapeShellArg cfg.revision}
+        if [[ -L $source && ! -e $source ]]; then
+          errorEcho "kittymacs: $source is a symbolic link to nothing"
+          exit 1
+        elif [[ ! -e $source ]]; then
+          if [[ -v DRY_RUN ]]; then
+            echo "kittymacs: would clone $repository at $revision into $source"
+          else
+            parent=$(${coreutils}/dirname -- "$source")
+            ${coreutils}/mkdir -p -- "$parent"
+            set +e
+            (
+              set -e
+              temp=$(${coreutils}/mktemp -d "$parent/.kittymacs.XXXXXXXX")
+              trap '${coreutils}/rm -rf -- "$temp"' EXIT
+              ${git} -C "$temp" init --quiet
+              ${git} -C "$temp" remote add origin "$repository"
+              ${git} -C "$temp" fetch --quiet --depth 1 origin "$revision"
+              ${git} -C "$temp" checkout --quiet --detach FETCH_HEAD
+              head=$(${git} -C "$temp" rev-parse HEAD)
+              if [[ $head != "$revision" ]]; then
+                errorEcho "kittymacs: $revision fetched as $head; give a full commit hash"
+                exit 1
+              fi
+              ${coreutils}/mv -- "$temp" "$source"
+            )
+            cloneStatus=$?
+            set -e
+            if (( cloneStatus != 0 )); then
+              warnEcho "kittymacs: could not clone $repository at $revision into $source; activation goes on without it, and the next one tries again"
+            fi
+          fi
+        elif [[ -e $source/.git ]] \
+          && head=$(${git} -C "$source" rev-parse HEAD 2>/dev/null) \
+          && [[ $head != "$revision" ]]; then
+          noteEcho "kittymacs: $source is at $head, not the pinned $revision; left as it is"
+        fi
+      ''
+    );
+#+end_src
+
+** The daemon's service
+
+- =extraOptions= reaches the systemd unit's =ExecStart= and the launchd agent's =ProgramArguments= alike, and joins anything the home sets itself, so =initDirectory= costs a user nothing.
+
+#+begin_src nix :padline yes
+    services.emacs = lib.mkIf cfg.daemon {
+      enable = true;
+      inherit (cfg) package;
+      client.enable = true;
+      extraOptions = lib.optional (cfg.initDirectory != null) "--init-directory=${cfg.initDirectory}";
+    };
+  };
+}
+#+end_src
+
+* The example nix-darwin host :macos:
+:PROPERTIES:
+:ID: 6792811b-df4f-4c63-87de-6b55a2958d54
+:header-args:nix: :tangle ../nix/example/flake.nix :eval never :comments no :padline no :mkdirp yes
+:END:
+
+- A complete Mac with both modules: nix-darwin installs Emacs, the tools and the font system-wide; Home Manager clones and links the checkout, with =installPackages = false=.
+- Copy it as a starting point.
+- =just eval= evaluates it against this checkout (=--override-input kittymacs path:$PWD=); building it needs a Mac.
+
+#+begin_src nix
+# Generated from literate/90-nix.org (the kittymacs repository).
+# A complete nix-darwin host with kittymacs: copy it as a starting point.
+{
+  description = "Example nix-darwin host with kittymacs";
+
+  inputs = {
+    nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
+    nix-darwin.url = "github:nix-darwin/nix-darwin/master";
+    nix-darwin.inputs.nixpkgs.follows = "nixpkgs";
+    home-manager.url = "github:nix-community/home-manager";
+    home-manager.inputs.nixpkgs.follows = "nixpkgs";
+    kittymacs.url = "github:Mihir-Null/kittymacs";
+    kittymacs.inputs.nixpkgs.follows = "nixpkgs";
+  };
+
+  outputs =
+    {
+      nix-darwin,
+      home-manager,
+      kittymacs,
+      ...
+    }:
+    {
+      darwinConfigurations.example = nix-darwin.lib.darwinSystem {
+        system = "aarch64-darwin";
+        modules = [
+          kittymacs.darwinModules.default
+          home-manager.darwinModules.home-manager
+          {
+            # Emacs, ripgrep, fd, git, gnupg, hunspell, gls, trash, the icon font.
+            programs.kittymacs.enable = true;
+            programs.kittymacs.daemon = false;
+
+            # The checkout stays writable outside the store; home-manager clones
+            # it on the first switch, at the kittymacs revision flake.lock pins,
+            # and links it into place.  Packages are already installed
+            # system-wide.
+            users.users.me.home = "/Users/me";
+            home-manager.users.me = {
+              imports = [ kittymacs.homeManagerModules.default ];
+              programs.kittymacs = {
+                enable = true;
+                installPackages = false;
+                source = "/Users/me/src/kittymacs";
+              };
+              home.stateVersion = "24.11";
+            };
+
+            system.primaryUser = "me";
+            system.stateVersion = 6;
+            nixpkgs.hostPlatform = "aarch64-darwin";
+          }
+        ];
+      };
+    };
+}
+#+end_src
+
+* nix-on-droid :android:
+:PROPERTIES:
+:ID: a79575e0-a404-48ee-83b0-1edfbc4b6522
+:header-args:nix: :tangle ../nix/example-nix-on-droid/flake.nix :eval never :comments no :padline no :mkdirp yes
+:END:
+
+- nix-on-droid runs Nix on Android and consumes Home Manager modules, so [[*Home Manager][the module above]] is the whole integration: no Android-specific Nix exists here.
+- The example is a complete device; on the phone, =nix-on-droid switch --flake .#default --impure= applies it.
+  + =--impure= is nix-on-droid's own requirement: proot-static cannot be built on the device, so nix-on-droid reaches a pre-built one through =builtins.storePath=, which pure evaluation forbids.
+  + So =just eval= checks the package list the module produces, which stays pure, rather than the activation script; building needs an =aarch64-linux= machine.
+- Inside nix-on-droid, =system-type= is =gnu/linux=: an ordinary GNU/Linux Emacs that happens to be on a phone.
+  + None of the configuration's Android branches apply and nothing degrades; ghostel works.
+  + The cost: the PRoot is slow, and being graphical needs a display server, [[https://github.com/termux/termux-x11][Termux:X11]].
+- Emacs builds:
+  + =pkgs.emacs-pgtk= speaks Wayland and X11 both, so one build serves Termux:X11 either way;
+  + =pkgs.emacs-nox= with =installFonts = false= stays in the console, and the configuration turns its icons off by itself.
+- The frame policy hands window arrangement to a desktop window manager, which Termux:X11 lacks unless you install one: run a window manager, or turn the policy off in =private.el=:
+
+#+begin_src emacs-lisp :tangle no
+(setq kittymacs-frames-only nil)
+#+end_src
+
+#+begin_src nix
+# Generated from literate/90-nix.org (the kittymacs repository).
+# A complete nix-on-droid device with kittymacs: copy it as a starting point.
+# On the phone:
+#
+#   nix-on-droid switch --flake .#default --impure
+#
+# The --impure is nix-on-droid's own requirement, not this flake's.
+{
+  description = "Example nix-on-droid device with kittymacs";
+
+  inputs = {
+    nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
+    home-manager.url = "github:nix-community/home-manager";
+    home-manager.inputs.nixpkgs.follows = "nixpkgs";
+    # Pin this to a release branch (nix-on-droid/release-24.05, say) if you
+    # would rather not track a development branch on a telephone.
+    nix-on-droid = {
+      url = "github:nix-community/nix-on-droid/master";
+      inputs.nixpkgs.follows = "nixpkgs";
+      inputs.home-manager.follows = "home-manager";
+    };
+    kittymacs.url = "github:Mihir-Null/kittymacs";
+    kittymacs.inputs.nixpkgs.follows = "nixpkgs";
+  };
+
+  outputs =
+    {
+      nixpkgs,
+      nix-on-droid,
+      kittymacs,
+      ...
+    }:
+    {
+      # nix-on-droid runs on the device, so the package set is the device's.
+      nixOnDroidConfigurations.default = nix-on-droid.lib.nixOnDroidConfiguration {
+        pkgs = import nixpkgs { system = "aarch64-linux"; };
+        modules = [
+          ({ pkgs, ... }: {
+            # nix-on-droid's own home-manager sets the user name and home
+            # directory, so nothing here has to name /data/data/com.termux.nix.
+            home-manager.config = { config, ... }: {
+              imports = [ kittymacs.homeManagerModules.default ];
+
+              programs.kittymacs = {
+                enable = true;
+
+                # Installs Emacs and everything the configuration discovers at
+                # startup: git, ripgrep, fd, gnupg, hunspell with its
+                # dictionary, python3, and the Nerd Font for the icons.
+                installPackages = true;
+
+                # pgtk speaks Wayland and X11 both, so one build serves
+                # Termux:X11 either way.  For a console-only device use
+                # pkgs.emacs-nox with `installFonts = false' below: the
+                # configuration notices it has no graphical display and turns
+                # its icons off by itself.
+                package = pkgs.emacs-pgtk;
+                # installFonts = false;
+
+                # The checkout stays writable outside the store, because the
+                # configuration installs its own Emacs packages under var/ and
+                # keeps private.el beside its modules.  The first switch
+                # clones it here, at the kittymacs revision flake.lock pins.
+                source = "${config.home.homeDirectory}/src/kittymacs";
+              };
+
+              home.stateVersion = "24.05";
+            };
+
+            system.stateVersion = "24.05";
+          })
+        ];
+      };
+    };
+}
+#+end_src
+
+** It cannot feed the Android port of Emacs :decision:
+:PROPERTIES:
+:ID: a8de042c-88ca-46d5-8c26-d6a498ba15bd
+:END:
+
+- The appealing idea, the Android application with nix-on-droid supplying =git=, =ripgrep= and the language servers, does not work; any one of three things stops it:
+  1. =/nix= does not exist outside the PRoot. Every binary's ELF interpreter is baked in as =/nix/store/…/ld-linux-aarch64.so.1=, so the kernel cannot start it from outside.
+  2. The two applications are different users: nix-on-droid is =com.termux.nix=, and the Emacs builds that share a user ID share it with =com.termux=.
+  3. Android 10 and later forbid executing anything in another application's data directory.
+- Pair the Android port with Termux instead ([[id:afa6b7fd-742a-4c15-86a6-32e3e8027b0e][the platform chapter]]); the two paths are alternatives, not layers.
+
+* Without a module
+
+- The Emacs and the tools, into your profile:
+
+#+begin_src sh :tangle no
+nix profile install github:Mihir-Null/kittymacs#default github:Mihir-Null/kittymacs#tools
+#+end_src
+
+- On macOS, an Emacs.app started from the Dock inherits no shell =PATH=: [[id:40302e33-d2b2-4c0b-9bc3-1f9e121307e1][the startup chapter]] puts the Nix profiles and Homebrew on =exec-path= before anything runs, and [[id:d2e0bc37-0bd4-4b28-a8ee-04f94ac451f8][the shells chapter]] imports the login shell's environment.
+
+* Check
+
+- =just nix-check= lints the generated Nix and evaluates the flake on every system, then both example hosts against this checkout; nothing is built.
+- =nix develop= then =just --list=: the shell has every recipe's tools.
+- CI also reads the clone options as a device would see them. It overrides the input with =git+file=, not =path:=, because a =path:= input has no revision, and without one the module defines no clone step:
+
+#+begin_src sh :tangle no
+nix eval --no-write-lock-file --override-input kittymacs "git+file://$PWD?shallow=1" \
+  --json ./nix/example-nix-on-droid#nixOnDroidConfigurations.default.config.home-manager.config \
+  --apply 'c: { inherit (c.programs.kittymacs) repository revision daemon initDirectory;
+              clones = builtins.isString c.home.activation.cloneKittymacs.data; }'
+#+end_src
+
+- On a clean checkout, =revision= comes out as =git rev-parse HEAD=.
