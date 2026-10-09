@@ -1,19 +1,26 @@
 # Repository collaboration guidance
 
-`ARCHITECTURE.md` is the single source of truth for the design and the decisions behind it. Record a material decision there, in the same change that makes it, as the current design rather than as history; history lives in Git. There is no ADR folder, ticket catalogue or documentation validator.
+`ARCHITECTURE.md` is the single source of truth for the design and the decisions behind it. Record a material decision there, in the same change that makes it, as the current design rather than as history; history lives in Git. There is no ADR folder or ticket catalogue.
 
-Runtime configuration is authored in `literate/*.org` and tangled with `tools/tangle.el`; generated Lisp is tracked. Before committing, run from the repository root:
+Everything generated is authored in `literate/*.org` and tangled with `tools/tangle.el`: `early-init.el`, `init.el` and `lisp/*.el` from the Emacs chapters, `flake.nix` and `nix/` from `literate/90-nix.org`. Generated files are tracked; never edit one by hand. Chapters follow `literate/conventions.org` (IDs, tags, links, a closing Check).
+
+The `justfile` runs everything. Before committing, from the repository root:
 
 ```sh
-emacs -Q --batch -l tools/tangle.el -- --check
-emacs -Q --batch -l tests/kittymacs-tangle-tests.el -f ert-run-tests-batch-and-exit
-emacs -Q --batch -l tests/kittymacs-platform-tests.el -f ert-run-tests-batch-and-exit
-emacs -Q --batch -l tests/kittymacs-treesit-tests.el -f ert-run-tests-batch-and-exit
-KITTYMACS_TEST_PACKAGES=/path/to/var/elpa emacs -Q --batch -l tests/kittymacs-leader-tests.el -f ert-run-tests-batch-and-exit
-KITTYMACS_TEST_PACKAGES=/path/to/var/elpa emacs -Q --batch -l tests/kittymacs-org-roam-tests.el -f ert-run-tests-batch-and-exit
-KITTYMACS_TEST_PACKAGES=/path/to/var/elpa emacs -Q --batch -l tests/verify-config.el
+just check          # tangle-check, doc-test, and the tests that need no packages
 ```
 
-The first four need no packages. The last three need an installed package directory (`var/elpa` of a configuration that has started once); CI runs them after a fresh install, together with a byte-compilation of `lisp/*.el`. `tests/kittymacs-frames-tests.el` needs a graphical session and is run by hand, as README.md describes.
+With an installed package directory (`just install` makes one in `var/elpa`, or set `KITTYMACS_TEST_PACKAGES`):
 
-The Nix layer (`flake.nix`, `nix/`) is checked with `nix flake check --no-build` and by evaluating the examples in `nix/example` and `nix/example-nix-on-droid` with the `kittymacs` input overridden to the checkout; `nix/README.org` lists the exact commands.
+```sh
+just compile        # byte-compile every module
+just test-packages  # leader and Org-roam tests, and the startup verifier
+```
+
+With Nix (`nix develop` provides Emacs, just and the linters):
+
+```sh
+just nix-check      # deadnix, statix, nixfmt; flake check; both example hosts evaluate
+```
+
+`just frames-test` needs a graphical session and is run by hand. CI (`.github/workflows/ci.yml`) runs the other recipes; `literate/80-maintenance.org` explains each one.

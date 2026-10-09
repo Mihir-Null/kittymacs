@@ -112,3 +112,32 @@
     ;; The user's own files in lisp/ are not generated and not orphans.
     (kittymacs-tangle-test-write root "lisp/private.el" "(setq fixture-private t)\n")
     (should (equal (kittymacs-tangle-build root t) '("init.el")))))
+
+(ert-deftest kittymacs-tangle-writes-nix-to-the-flake-and-nix-directory ()
+  (kittymacs-tangle-test-fixture
+    (kittymacs-tangle-test-write root "literate/90-nix.org"
+      (concat "#+begin_src nix :tangle ../flake.nix\n{ }\n#+end_src\n"
+              "#+begin_src nix :tangle ../nix/tools.nix :mkdirp yes\n{ pkgs }: { }\n#+end_src\n"
+              "#+begin_src nix :tangle ../nix/example/flake.nix :mkdirp yes\n{ }\n#+end_src\n"))
+    (should (equal (kittymacs-tangle-build root t)
+                   '("flake.nix" "init.el" "nix/example/flake.nix" "nix/tools.nix")))
+    (should-not (kittymacs-tangle-build root))))
+
+(ert-deftest kittymacs-tangle-matches-language-to-output ()
+  (kittymacs-tangle-test-fixture
+    (dolist (block '("emacs-lisp :tangle ../flake.nix"
+                     "nix :tangle ../init.el"
+                     "nix :tangle ../lisp/kittymacs-x.nix"
+                     "nix :tangle ../nix/a/b/deep.nix"
+                     "nix :tangle ../default.nix"))
+      (kittymacs-tangle-test-write root "literate/90-nix.org"
+        (format "#+begin_src %s :mkdirp yes\n{ }\n#+end_src\n" block))
+      (should-error (kittymacs-tangle-build root t)))
+    (should-not (file-exists-p (expand-file-name "flake.nix" root)))))
+
+(ert-deftest kittymacs-tangle-rejects-orphaned-nix-files ()
+  (kittymacs-tangle-test-fixture
+    ;; A Nix file no chapter writes would still be imported by the flake.
+    (kittymacs-tangle-test-write root "nix/gone.nix" "{ }\n")
+    (should-error (kittymacs-tangle-build root t))
+    (should-not (file-exists-p (expand-file-name "init.el" root)))))

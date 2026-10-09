@@ -1,37 +1,28 @@
+:PROPERTIES:
+:ID: d2e0bc37-0bd4-4b28-a8ee-04f94ac451f8
+:END:
+
 #+TITLE: Shells: Eshell and remote files
-#+OPTIONS: toc:3 num:nil
+#+FILETAGS: :apps:
 #+STARTUP: overview
 #+PROPERTY: header-args:emacs-lisp :tangle ../lisp/kittymacs-shell.el :eval never :comments no :padline no :mkdirp yes
 
-[[file:index.org][Reading guide]] · [[file:34-terminal.org][Terminal]] · [[file:30-platform.org][Platform]] · [[file:41-leader.org][Leader]]
+- Eshell, a shell written in Lisp, and Tramp, which opens files on remote machines over SSH as if they were local.
+  + Distilled from Lambda-Emacs by Colin McLear (=lem-setup-shell=, =lem-setup-eshell=).
+- Eshell runs ordinary programs, but =cd=, =ls= and friends are Lisp.
+  + So Emacs commands run from the prompt (=ff file.txt= opens a file), with the same completion machinery as everywhere else.
+  + It cannot draw a full-screen program, so it hands those to [[id:bd2638bc-735d-4849-bafe-3dab5e8e30b7][the terminal]]: =htop=, =less= and =git log= open there and behave.
+- [[id:afa6b7fd-742a-4c15-86a6-32e3e8027b0e][The platform chapter]] chooses the system shell and [[id:bd2638bc-735d-4849-bafe-3dab5e8e30b7][the terminal chapter]] owns =SPC o e=; this chapter configures Eshell and remote files, with its =SPC m= menu from [[id:e5942eb0-4389-447d-9317-d9178adcaaae][the leader]].
 
-Ownership: *user configuration*.
+* Pagers, and killing a shell
 
-- Distilled from Lambda-Emacs by Colin McLear (=lem-setup-shell=,
-  =lem-setup-eshell=).
-- [[file:30-platform.org][The platform chapter]] chooses the system shell and [[file:34-terminal.org][the terminal chapter]] owns
-  =SPC o e=; this chapter configures Eshell and remote files.
-
-* What this gives you
-
-- *Eshell* is a shell written in Lisp: it runs ordinary programs, but =cd=,
-  =ls= and friends are Lisp.
-  - So Emacs commands run from the prompt (=ff file.txt= opens a file), with
-    the same completion machinery as everywhere else.
-  - It cannot draw a full-screen program, so it hands those to [[file:34-terminal.org][the terminal]]:
-    =htop=, =less= and =git log= open there and behave.
-- Tramp opens files on remote machines over SSH as if they were local.
-- Programs such as =git log= and =man= send long output through a /pager/
-  like =less=, which waits for keys and redraws the screen.
-  - In Eshell or =M-x shell= the output lands in an ordinary Emacs buffer you
-    can already scroll and search, so the pager only gets in the way.
-  - Emacs 30's =comint-pager= tells those shells, and only them, to set
-    =PAGER=cat= for the programs they start; Eshell honours the same option.
-  - A real terminal from [[file:34-terminal.org][the terminal chapter]] keeps your usual pager: there
-    =less= works as it does anywhere else.
+- Programs such as =git log= and =man= send long output through a /pager/ like =less=, which waits for keys and redraws the screen.
+  + In Eshell or =M-x shell= the output lands in an ordinary Emacs buffer you can already scroll and search, so the pager only gets in the way.
+  + Emacs 30's =comint-pager= tells those shells, and only them, to set =PAGER=cat= for the programs they start; Eshell honours the same option.
+  + A real terminal from [[id:bd2638bc-735d-4849-bafe-3dab5e8e30b7][the terminal chapter]] keeps your usual pager: there =less= works as it does anywhere else.
 - Killing a buffer whose process is still running normally asks first.
-  - For a shell that is noise: ending the process is why you kill it.
-  - So the function that asks is taken off =kill-buffer-query-functions=.
+  + For a shell that is noise: ending the process is why you kill it.
+  + So the function that asks is taken off =kill-buffer-query-functions=.
 
 #+begin_src emacs-lisp
 ;;; kittymacs-shell.el --- Eshell and Tramp -*- lexical-binding: t; -*-
@@ -53,27 +44,20 @@ Ownership: *user configuration*.
 
 #+end_src
 
-* The environment on Linux and macOS
+* The environment on Linux and macOS :decision:
+:PROPERTIES:
+:ID: eff5924c-3ac1-43a0-be28-6e442dc1e8e3
+:END:
 
-- A graphical Emacs started from a launcher does not run your shell's
-  profile, so =PATH= can be wrong.
-- =exec-path-from-shell= copies your shell's =PATH= and =MANPATH=, the
-  locale, and the two variables the =nix= commands read.
-  - On Linux it asks a plain non-interactive shell, which reads =~/.zshenv=
-    or =$BASH_ENV=.
-  - On macOS it asks a login shell: that is where the system's =path_helper=
-    and Homebrew's =shellenv= line in =~/.zprofile= run.
-    - The startup chapter already put Homebrew on =exec-path=, so this
-      import only refines it.
-- Two platforms keep the environment Emacs inherited; the =:if= line means
-  the package is not even installed there.
-  - Windows: the importer would ask PowerShell to evaluate POSIX shell syntax,
-    which it cannot, and Windows programs inherit a correct environment
-    anyway.
-  - Android, for the opposite reason: the import would succeed, and that is
-    the problem. =/system/bin/sh= evaluates the POSIX syntax happily and
-    reports a =PATH= that has never heard of Termux, replacing the entries
-    [[file:30-platform.org][the platform chapter]] has just added.
+- A graphical Emacs started from a launcher does not run your shell's profile, so =PATH= can be wrong.
+- =exec-path-from-shell= copies your shell's =PATH= and =MANPATH=, the locale (=LANG=), and the two variables the =nix= commands read (=NIX_PATH=, =NIX_PROFILES=).
+  + On Linux it asks a plain non-interactive shell, which reads =~/.zshenv= or =$BASH_ENV=.
+  + On macOS it asks a login shell: that is where the system's =path_helper= and Homebrew's =shellenv= line in =~/.zprofile= run.
+  + [[id:40302e33-d2b2-4c0b-9bc3-1f9e121307e1][The startup chapter]] already put Homebrew on =exec-path=, so on macOS this import only refines it.
+  + It runs only in a graphical Emacs or a daemon.
+- Two platforms keep the environment Emacs inherited; the =:if= line means the package is not even installed there.
+  + Windows: the importer would ask PowerShell to evaluate POSIX shell syntax, which it cannot, and Windows programs inherit a correct environment anyway.
+  + Android, for the opposite reason: the import would succeed, and that is the problem. =/system/bin/sh= evaluates the POSIX syntax happily and reports a =PATH= that has never heard of Termux, replacing the entries [[id:afa6b7fd-742a-4c15-86a6-32e3e8027b0e][the platform chapter]] has just added.
 
 #+begin_src emacs-lisp
 (use-package exec-path-from-shell
@@ -88,15 +72,15 @@ Ownership: *user configuration*.
 
 #+end_src
 
-* Eshell
+* Eshell's history, completion and prompt
 
-- History and the last-directory ring persist under =var/etc/eshell/=, or
-  wherever =kittymacs-eshell-dir= points if =private.el= sets it.
-- Completion ignores case and cycles.
-- Programs that need a terminal run in one: [[file:34-terminal.org][the terminal chapter]] turns on
-  =ghostel-eshell-visual-command-mode=.
-- The prompt shows the directory, the Git branch when there is one, and a =λ=
-  on its own line, so long paths do not squeeze your command.
+- History (10,000 entries, duplicates dropped) and the last-directory ring persist under =var/etc/eshell/=, or wherever =kittymacs-eshell-dir= points if =private.el= sets it.
+- Completion and globbing ignore case; a glob that matches nothing is an error.
+- Programs that need a terminal run in one:
+  + =eshell-visual-commands= gains =htop=, =top=, =less=, =more=, =vim=, =nano=, =ssh= and =tail=, and =git log=, =diff= and =show=;
+  + [[id:bd2638bc-735d-4849-bafe-3dab5e8e30b7][the terminal chapter]] turns on =ghostel-eshell-visual-command-mode=, so they open in ghostel.
+- The buffer keeps 20,000 lines, scrolls to the bottom on input and output, has no banner, and is killed when its process dies.
+- The prompt shows the directory, the Git branch when there is one, and a =λ= on its own line, so long paths do not squeeze your command.
 
 #+begin_src emacs-lisp
 (defcustom kittymacs-eshell-dir (expand-file-name "eshell/" kittymacs-etc-dir)
@@ -144,10 +128,27 @@ Ownership: *user configuration*.
 
 #+end_src
 
-- Aliases are Lisp-defined, so they are versioned with this file.
-  - =ff= opens a file, =d= a directory in Dired, =gs= Magit status, =up= a
-    parent directory.
-- =z= jumps to any directory you have visited, with completion.
+* Aliases, jumps and an Eshell per project
+
+- Aliases are defined in Lisp, so they are versioned with this file; Eshell never writes its own alias file.
+
+| Alias            | Runs                             |
+|------------------+----------------------------------|
+| =ff=, =e=        | =find-file=                      |
+| =d=              | =dired=                          |
+| =gs=             | =magit-status=                   |
+| =g=              | =git --no-pager=                 |
+| =gd=, =gl=       | coloured diff, last 20 commits   |
+| =l=, =la=, =ll=  | =ls=, =ls -la=, =ls -lah=        |
+| =fr=, =bb=, =pp= | recent files, buffers, projects  |
+| =up=             | a parent directory (=eshell-up=) |
+| =q=, =x=         | =exit=                           |
+
+- =z= jumps to any directory you have visited, with completion; =z REGEXP= goes to the most recent match.
+- =SPC o s= opens an Eshell named =*eshell: PROJECT*= at the project root, or in this directory outside a project.
+  + [[id:bd2638bc-735d-4849-bafe-3dab5e8e30b7][The terminal]] falls back to it for =SPC o p= where ghostel is off.
+- In every Eshell buffer =C-l= clears it, =imenu= lists the prompts, lines wrap visually and the current line is not highlighted.
+- Small packages add syntax highlighting, the =up= command, Eldoc help for commands (=esh-help=) and richer argument completion (=pcmpl-args=, =pcomplete-extension=).
 
 #+begin_src emacs-lisp
 (defvar kittymacs-eshell-aliases
@@ -242,13 +243,24 @@ With REGEXP, go to the most recent directory matching it."
 
 #+end_src
 
-* Meow in shells
+* Meow in shells :meow:
+:PROPERTIES:
+:ID: 992e0cae-874f-4e0c-b84d-ae85ae647c87
+:END:
 
-- Shells start in Insert state: the keys belong to the prompt, and =SPC=
-  types a space.
+- Eshell, =M-x shell= and =term= start in Insert state: the keys belong to the prompt, and =SPC= types a space.
 - =ESC= enters Normal state, for the selection grammar on the output.
-  - The leader is available there; in Eshell, =SPC m= offers its own menu.
+  + The leader is available there; in Eshell, =SPC m= offers its own menu.
 - =C-c C-SPC= reaches the leader without leaving Insert.
+
+| Key      | In Eshell's =SPC m=               |
+|----------+-----------------------------------|
+| =c=      | clear the buffer                  |
+| =h=      | history, with Consult             |
+| =d=      | another directory (=consult-dir=) |
+| =p=, =n= | previous, next prompt             |
+| =i=      | back to Insert                    |
+| =?=      | the Casual menu for Eshell        |
 
 #+begin_src emacs-lisp
 (with-eval-after-load 'meow
@@ -268,10 +280,11 @@ With REGEXP, go to the most recent directory matching it."
 ;;; kittymacs-shell.el ends here
 #+end_src
 
-* Try it
+* Check
 
 - =SPC o s= opens an Eshell for this project; =SPC o e= opens a real terminal.
-- =M-x eshell=, type =ff init.el=: the file opens. =z= then pick a directory.
+- =M-x eshell=, type =ff init.el=: the file opens. =z=, then pick a directory.
 - Type =htop= in Eshell: it opens in a terminal buffer and works.
-- =ESC= in Eshell, select some output with =x=, =y= copies it; =i= goes back
-  to typing.
+- =ESC= in Eshell, select some output with =x=, =y= copies it; =i= goes back to typing.
+- =M-x shell=, then =git log=: the output lands in the buffer, with no pager waiting for keys.
+- =just test-packages= replays a real startup: this module must load and every =SPC= key must run a command.

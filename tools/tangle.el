@@ -1,10 +1,13 @@
 ;;; tangle.el --- Build kittymacs from Org without loading the config -*- lexical-binding: t; -*-
 ;; Run from any directory: emacs -Q --batch -l /path/to/tools/tangle.el -- --check
-;; Replace --check with --write to regenerate the deployed Lisp files.
+;; Replace --check with --write to regenerate the deployed files.
+;; (`just tangle' and `just tangle-check' do exactly this.)
 ;;
 ;; The chapters are the files in literate/ whose names start with two digits
 ;; and a dash (10-startup.org); the outputs are whatever their :tangle headers
 ;; name.  There is no list to keep in step: adding a chapter file is enough.
+;; Two kinds of output exist: Emacs Lisp (the startup files and lisp/) and
+;; Nix (flake.nix and nix/).  See literate/80-maintenance.org.
 (require 'cl-lib)
 (require 'org)
 (require 'ob-tangle)
@@ -22,20 +25,27 @@
     (insert-file-contents file)
     (buffer-string)))
 
-(defun kittymacs-tangle--output-p (output)
-  "Return non-nil when OUTPUT, relative to the root, may be generated.
-Only early-init.el, init.el and files directly in lisp/ qualify, and never
-lisp/private.el, which belongs to the user."
+(defun kittymacs-tangle--output-language (output)
+  "Return the source language OUTPUT, relative to the root, must be written in.
+Return nil when OUTPUT may not be generated at all.  Emacs Lisp may go to
+early-init.el, init.el and files directly in lisp/, but never lisp/private.el,
+which belongs to the user.  Nix may go to flake.nix and to nix/, at most one
+directory deep (nix/tools.nix, nix/example/flake.nix)."
   (and (not (file-name-absolute-p output))
        (not (member ".." (split-string output "/")))
-       (or (member output '("early-init.el" "init.el"))
-           (and (string-match-p "\\`lisp/[[:alnum:]_.-]+\\.el\\'" output)
-                (not (equal output "lisp/private.el"))))))
+       (cond ((or (member output '("early-init.el" "init.el"))
+                  (and (string-match-p "\\`lisp/[[:alnum:]_.-]+\\.el\\'" output)
+                       (not (equal output "lisp/private.el"))))
+              "emacs-lisp")
+             ((or (equal output "flake.nix")
+                  (string-match-p "\\`nix/\\([[:alnum:]_.-]+/\\)?[[:alnum:]_.-]+\\.nix\\'" output))
+              "nix"))))
 
 (defun kittymacs-tangle--outputs (file)
   "Return the outputs chapter FILE tangles to, relative to the root.
-Every tangled block must be Emacs Lisp and name a target with `../' in
-front of an allowed output, since chapters live one level down in literate/."
+Every tangled block must name a target with `../' in front of an allowed
+output, since chapters live one level down in literate/, and be written in
+that output's language."
   (let (outputs)
     (with-current-buffer (find-file-noselect file)
       (org-babel-map-src-blocks nil
@@ -45,23 +55,29 @@ front of an allowed output, since chapters live one level down in literate/."
                             (string-prefix-p "../" target)
                             (substring target 3))))
           (unless (or (null target) (equal target "no"))
-            (unless (and (equal (car info) "emacs-lisp")
-                         output
-                         (kittymacs-tangle--output-p output))
+            (unless (and output
+                         (equal (car info) (kittymacs-tangle--output-language output)))
               (error "Tangle target outside the generated configuration in %s: %S"
                      (file-name-nondirectory file) target))
             (cl-pushnew output outputs :test #'equal)))))
     outputs))
 
 (defun kittymacs-tangle--orphans (root outputs)
-  "Return the lisp/kittymacs-*.el files under ROOT that no chapter generates.
-They are left over from a chapter that was deleted or retargeted, and
-startup would still load them."
-  (let ((lisp (expand-file-name "lisp" root)))
-    (when (file-directory-p lisp)
-      (seq-remove (lambda (file) (member file outputs))
-                  (mapcar (lambda (name) (concat "lisp/" name))
-                          (directory-files lisp nil "\\`kittymacs-.*\\.el\\'"))))))
+  "Return the generated-looking files under ROOT that no chapter generates.
+They are lisp/kittymacs-*.el and the .nix files under nix/, left over from
+a chapter that was deleted or retargeted: startup would still load the
+module, and the flake would still import the Nix file."
+  (let ((lisp (expand-file-name "lisp" root))
+        (nix (expand-file-name "nix" root)))
+    (seq-remove
+     (lambda (file) (member file outputs))
+     (append
+      (when (file-directory-p lisp)
+        (mapcar (lambda (name) (concat "lisp/" name))
+                (directory-files lisp nil "\\`kittymacs-.*\\.el\\'")))
+      (when (file-directory-p nix)
+        (mapcar (lambda (file) (file-relative-name file root))
+                (directory-files-recursively nix "\\.nix\\'")))))))
 
 (defun kittymacs-tangle-build (root &optional write)
   "Tangle ROOT in temporary storage; check outputs or WRITE changed files.
@@ -101,10 +117,13 @@ No personal startup, package installation, or source-block evaluation is run."
           ;; Validate every result before touching any deployed file.
           (dolist (output outputs)
             (let ((file (expand-file-name output stage)))
-              (with-temp-buffer
-                (insert-file-contents file)
-                (let ((emacs-lisp-mode-hook nil) (prog-mode-hook nil)) (emacs-lisp-mode))
-                (check-parens))
+              ;; Lisp must at least balance; Nix is checked by `just lint'
+              ;; and `just eval', which need Nix.
+              (when (string-suffix-p ".el" output)
+                (with-temp-buffer
+                  (insert-file-contents file)
+                  (let ((emacs-lisp-mode-hook nil) (prog-mode-hook nil)) (emacs-lisp-mode))
+                  (check-parens)))
               (let ((deployed (expand-file-name output root)))
                 (unless (and (file-exists-p deployed)
                              (equal (kittymacs-tangle--read file)

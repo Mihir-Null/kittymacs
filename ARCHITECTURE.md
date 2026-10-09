@@ -10,13 +10,14 @@ kittymacs is a user-friendly, batteries-included, opinionated and extensible Ema
 
 ```
 early-init.el, init.el   generated from literate/10-startup.org
-literate/*.org           the chapters (NN-name.org) and the reading guide; the source of truth
+literate/*.org           the chapters (NN-name.org), the reading guide and the conventions; the source of truth
 lisp/kittymacs-*.el      one generated module per chapter; keybindings.org (cheat sheet); themes/; private.el
-tests/                   kittymacs-tangle-tests, kittymacs-platform-tests, kittymacs-treesit-tests (no packages);
+tests/                   kittymacs-tangle-tests, kittymacs-doc-tests, kittymacs-platform-tests, kittymacs-treesit-tests (no packages);
                          kittymacs-leader-tests, kittymacs-org-roam-tests, verify-config (installed packages);
                          kittymacs-frames-tests (graphical session, by hand)
 tools/tangle.el          finds the chapters, validates their targets, tangles and copies the outputs
-flake.nix, nix/          nix-darwin and home-manager modules, tool list, dev shell, nix-darwin and nix-on-droid example hosts
+flake.nix, nix/          generated from literate/90-nix.org: nix-darwin and home-manager modules, tool list, dev shell, example hosts
+justfile                 the recipes: tangle, check, test, lint, eval, update
 var/                     packages, caches, custom.el; ignored
 ```
 
@@ -50,8 +51,11 @@ Design decisions, with the reason:
 ### Structure and startup
 
 - **No registry, no transactions.** `with-eval-after-load`, hooks and `derived-mode-p` are the lazy-readiness and specificity mechanisms Emacs already has. The prototype's descriptor validation, readiness states and reentrancy guards solved problems the native design does not have.
-- **Tangle with tracked outputs.** Startup never tangles, a clone works without a build step, and `tools/tangle.el` stays proportionate.
-- **The chapter list is derived from file names.** Every `literate/NN-name.org` is a chapter and its `:tangle` headers name its outputs, so adding a chapter needs no second place to register it. The builder keeps its safety rules: a target must be Emacs Lisp and must be `early-init.el`, `init.el` or a file in `lisp/` other than `private.el`; no two chapters may write one file; all targets are read before anything is written; and a `lisp/kittymacs-*.el` that no chapter produces is an error, because startup would go on loading a module whose source is gone.
+- **Tangle with tracked outputs.** Startup never tangles, a clone works without a build step, and `tools/tangle.el` stays proportionate. Nix sees only tracked files, so the generated `.nix` is tracked for the same reason.
+- **Everything generated comes from a chapter, the Nix layer included.** `flake.nix` and `nix/` are tangled from `literate/90-nix.org`, so the modules are explained where they are written, as the Lisp is. Their comments are only what a user copying an example needs; the reasons live in the chapter.
+- **The justfile is the one interface to the loop.** Every check a contributor runs, and every CI step, is a recipe, so CI and a laptop run the same commands. The Emacs recipes need only Emacs (Windows included, through Git for Windows' `sh`); the Nix recipes need Nix, and `nix develop` provides both with the linters.
+- **The chapters follow one page grammar, after EmptyNet.** Every page has an ID, a title and one kind tag from a closed vocabulary; chapters link by `id:`, end with a Check, and the checkout is an Org-roam project graph through `.dir-locals.el`. `literate/conventions.org` states the rules; `tests/kittymacs-doc-tests.el` enforces the mechanical half. The README links by `file:` instead, because GitHub cannot follow `id:` links.
+- **The chapter list is derived from file names.** Every `literate/NN-name.org` is a chapter and its `:tangle` headers name its outputs, so adding a chapter needs no second place to register it. The builder keeps its safety rules: an Emacs Lisp target must be `early-init.el`, `init.el` or a file in `lisp/` other than `private.el`, a Nix target `flake.nix` or a file in `nix/` at most one directory deep, and a block's language must match its target's; no two chapters may write one file; all targets are read before anything is written; and a `lisp/kittymacs-*.el` or `nix/**.nix` that no chapter produces is an error, because startup would go on loading a module, or the flake importing a file, whose source is gone.
 - **`early-init.el` uses `setq`.** Everywhere else options are set with `setopt`, but in `early-init.el` it would load Customize and, for the package options, `package.el` with url and EIEIO, tens of milliseconds before the first frame. The file also calls `(menu-bar-mode -1)` next to the frame parameter that hides the menu bar, so the mode agrees with what is on screen and the first `SPC t m` shows the bar.
 - **Options are set with `setopt`, so values must satisfy the option's type.** A value the `:type` rejects raises a warning on every start (Org 9.7 spells "open unfolded" as `nofold`, and wants `org-agenda-start-with-log-mode` to be a list). When a warning names an option, read its `:type`. Only values that differ from Emacs's defaults are set; restating a default hides which choices are ours.
 - **The `kittymacs` option group is defined in the defaults module**, the first that loads, and every chapter's group hangs from it.
@@ -140,19 +144,17 @@ Design decisions, with the reason:
 
 ## 5. Verification
 
-Batch, from the repository root. The first four need no packages; the last three need `KITTYMACS_TEST_PACKAGES` pointing at an existing `var/elpa`:
+From the repository root, through the `justfile`:
 
 ```sh
-emacs -Q --batch -l tools/tangle.el -- --check
-emacs -Q --batch -l tests/kittymacs-tangle-tests.el -f ert-run-tests-batch-and-exit
-emacs -Q --batch -l tests/kittymacs-platform-tests.el -f ert-run-tests-batch-and-exit
-emacs -Q --batch -l tests/kittymacs-treesit-tests.el -f ert-run-tests-batch-and-exit
-emacs -Q --batch -l tests/kittymacs-leader-tests.el -f ert-run-tests-batch-and-exit
-emacs -Q --batch -l tests/kittymacs-org-roam-tests.el -f ert-run-tests-batch-and-exit
-emacs -Q --batch -l tests/verify-config.el
+just check          # tangle-check, doc-test, and the tangle, platform and Tree-sitter tests: no packages
+just install        # start init.el in batch, installing the packages into var/elpa
+just compile        # byte-compile lisp/*.el
+just test-packages  # leader and Org-roam tests, and the verifier: KITTYMACS_TEST_PACKAGES, default var/elpa
+just nix-check      # deadnix, statix, nixfmt; nix flake check; both example hosts evaluate
 ```
 
-`.github/workflows/ci.yml` runs all of them on every push and pull request: the first four on Emacs 31.1; then, on Emacs 30.1 and 31.1 on Linux and informationally on macOS and Windows, a fresh clone that installs its packages by starting `init.el` in batch, a byte-compilation of `lisp/*.el`, and the last three. A Nix job runs `nix flake check`, evaluates the nix-darwin and nix-on-droid examples against the checkout, and checks the home-manager module's clone options; a weekly run skips the package cache, and the cache key carries a number that is raised when a package changes source, since a restored directory keeps whatever it holds.
+`.github/workflows/ci.yml` runs the same recipes on every push and pull request: `just check` on Emacs 31.1; then, on Emacs 30.1 and 31.1 on Linux and informationally on macOS and Windows, `just install`, `just compile` and `just test-packages` on a fresh clone. A Nix job runs `just nix-check` inside `nix develop` and checks the home-manager module's clone options; a weekly run skips the package cache, and the cache key carries a number that is raised when a package changes source, since a restored directory keeps whatever it holds.
 
 The verifier starts the real configuration in an isolated copy with installation forbidden, in the order of a real startup (`after-init-time` nil during init, then `after-init-hook` and `delayed-warnings-hook`), and prints `KITTYMACS-VERIFY` with its result. It asserts: no warning is displayed; `private.el` loads once and its overrides survive (top-level and `after-init-hook` ones, including one that `tabspaces-mode` reads as it turns on); `custom.el` loads from `var/etc` and wins over the chapters; every `lisp/kittymacs-*.el` module is loaded; every key in the `SPC` tree runs a command; `ghostel` and `consult-ghostel` are MELPA's packages, not Git checkouts, and loading ghostel and Consult turns on `consult-ghostel-mode`; `SPC` is `kittymacs-leader-map` in both Meow state maps; `SPC l e` is `eglot` and `SPC s l` is `vertico-repeat`; Org-roam neither syncs nor opens a database at startup, and its prompt shows tags; `SPC s Q` lists exactly a tagged heading, `SPC m g` runs its query again, and `SPC` on a super-agenda group header is the leader; the dashboard's two buttons open the guide and the cheat sheet; theme toggling never stacks themes; and every cheat-sheet `SPC` row resolves to its command.
 

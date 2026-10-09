@@ -1,0 +1,14 @@
+# Org Babel compares bytes; keep line endings LF on every platform.
+*.org text eol=lf
+*.el  text eol=lf
+*.nix text eol=lf
+*.yml text eol=lf
+justfile text eol=lf
+# These files are tangled from the chapters in literate/.  GitHub folds them
+# in diffs so review happens on the chapter; expand when you want the output.
+early-init.el linguist-generated=true
+init.el linguist-generated=true
+lisp/kittymacs-*.el linguist-generated=true
+lisp/private.example.el linguist-generated=true
+flake.nix linguist-generated=true
+nix/** linguist-generated=true
