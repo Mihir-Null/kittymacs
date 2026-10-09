@@ -1,3 +1,6 @@
+:PROPERTIES:
+:ID:       c5c8e943-3679-4b11-bd79-730d4b6d2dc0
+:END:
 #+TITLE: kittymacs: the reading guide
 #+OPTIONS: toc:3 num:nil
 #+STARTUP: overview
@@ -47,6 +50,7 @@
 | [[file:30-platform.org][Platform]]        | Shells per operating system, paths, spelling, modifier keys and the Trash on macOS |
 | [[file:34-terminal.org][Terminal]]        | ghostel: a real terminal, its integrations, and Meow inside it                     |
 | [[file:35-shells.org][Shells]]          | Eshell and Tramp                                                                   |
+| [[id:1ddbac19-6f6f-483a-81b8-8c4ee3c6444b][Bridge]]          | Design stage: a native front end on a Linux back end (WSL, Termux, nix-on-droid)   |
 | [[file:40-editing.org][Editing]]         | Meow's states and grammar                                                          |
 | [[file:41-leader.org][Leader]]          | Why =SPC= is a real keymap, and how modes get their own menu                         |
 | [[file:42-keys.org][Keys]]            | The whole =SPC= tree, group by group, the help menu, a migration table               |

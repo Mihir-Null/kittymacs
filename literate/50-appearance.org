@@ -1,3 +1,6 @@
+:PROPERTIES:
+:ID:       f0f93a2d-099c-4d45-9958-b89d6330cd2f
+:END:
 #+TITLE: Appearance: fonts, theme, mode line and icons
 #+OPTIONS: toc:3 num:nil
 #+STARTUP: overview

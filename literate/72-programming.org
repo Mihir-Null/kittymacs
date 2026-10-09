@@ -1,3 +1,6 @@
+:PROPERTIES:
+:ID:       92594510-ade3-4731-aa53-15fa6d376b24
+:END:
 #+TITLE: Programming: delimiters, structure, linting and compiling
 #+OPTIONS: toc:3 num:nil
 #+STARTUP: overview

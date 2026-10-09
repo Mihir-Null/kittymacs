@@ -1,3 +1,6 @@
+:PROPERTIES:
+:ID:       76a85532-7a60-441b-971d-97d4e932cbaa
+:END:
 #+TITLE: Org-roam: scoped linked notes
 #+OPTIONS: toc:3 num:nil
 #+STARTUP: overview

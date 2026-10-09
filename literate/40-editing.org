@@ -1,3 +1,6 @@
+:PROPERTIES:
+:ID:       a30f3c69-5cd8-487a-a88b-e8cdd032191d
+:END:
 #+TITLE: Selection-first editing with Meow
 #+OPTIONS: toc:3 num:nil
 #+STARTUP: overview

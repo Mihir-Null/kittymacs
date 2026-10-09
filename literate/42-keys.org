@@ -1,3 +1,6 @@
+:PROPERTIES:
+:ID:       4a7b9655-3b18-41f8-8b2c-689836711b6d
+:END:
 #+TITLE: The leader tree: every SPC key in one place
 #+OPTIONS: toc:3 num:nil
 #+STARTUP: overview

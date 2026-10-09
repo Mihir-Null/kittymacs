@@ -1,3 +1,6 @@
+:PROPERTIES:
+:ID:       32ba1cc2-980c-4d19-8e56-bc0be4fc8f95
+:END:
 #+TITLE: Programming with explicit dependencies
 #+OPTIONS: toc:3 num:nil
 #+STARTUP: overview

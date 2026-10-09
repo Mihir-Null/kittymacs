@@ -1,3 +1,6 @@
+:PROPERTIES:
+:ID:       15cc1b3d-5700-43c5-8ce7-06948ac45224
+:END:
 #+TITLE: kittymacs keys and commands
 #+OPTIONS: toc:2 num:nil
 #+STARTUP: showall

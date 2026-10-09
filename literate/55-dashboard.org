@@ -1,3 +1,6 @@
+:PROPERTIES:
+:ID:       aa334382-3e95-4547-8e74-4e00fe4321c1
+:END:
 #+TITLE: Dashboard: home and discovery
 #+OPTIONS: toc:3 num:nil
 #+STARTUP: overview

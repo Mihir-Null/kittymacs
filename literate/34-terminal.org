@@ -1,3 +1,6 @@
+:PROPERTIES:
+:ID:       ee94e2b8-1f25-427c-b413-722dcc059264
+:END:
 #+TITLE: The terminal: ghostel
 #+OPTIONS: toc:3 num:nil
 #+STARTUP: overview

@@ -1,3 +1,6 @@
+:PROPERTIES:
+:ID:       73c68797-964d-4048-bd94-11278eac2779
+:END:
 #+TITLE: Sane defaults: files, text, interface and windows
 #+OPTIONS: toc:3 num:nil
 #+STARTUP: overview

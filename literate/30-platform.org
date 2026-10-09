@@ -1,3 +1,6 @@
+:PROPERTIES:
+:ID:       38153b3e-8907-4731-a009-c115ebcd654e
+:END:
 #+TITLE: Platform: shells, paths, spelling, macOS and Android
 #+OPTIONS: toc:3 num:nil
 #+STARTUP: overview

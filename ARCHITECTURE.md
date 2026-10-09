@@ -18,6 +18,7 @@ tests/                   kittymacs-tangle-tests, kittymacs-platform-tests, kitty
 tools/tangle.el          finds the chapters, validates their targets, tangles and copies the outputs
 flake.nix, nix/          nix-darwin and home-manager modules, tool list, dev shell, nix-darwin and nix-on-droid example hosts
 var/                     packages, caches, custom.el; ignored
+.dir-locals.el           declares the pages an Org-roam project graph
 ```
 
 Startup is a flat list of `require`s in `init.el`, ordered by dependency: defaults → platform → `private.el` → UI → literate commands → dashboard → completion → help → Dired → Treemacs → VC → navigation → Meow → keys → shells → programming → Tree-sitter → languages → terminal → Org → Org-roam → frames → `custom.el`. There are no staged hooks; the little that must wait until `init.el` has finished (restoring `*scratch*`, turning Tabspaces on) adds itself to `after-init-hook`. The leader module is not in the list: the modules that define localleaders require it.
@@ -117,6 +118,7 @@ Design decisions, with the reason:
 - **A project graph is declared by the project.** A repository's `.dir-locals.el` sets `kittymacs-org-roam-project` (EmptyNet ships one), and the folder holding that file is the root. `kittymacs-org-roam-excluded-directories` is safe as a directory local, so a project names its own exclusions; they become `org-roam-file-exclude-regexp`, which upstream's listing already honours. The default exclusions are generic (Git's folder and cache folders).
 - **Tags are part of the prompt.** Upstream showed each note's tags in the prompt until 2.2.1 and the bare title since, so a tag typed at `SPC n f` matched nothing. `org-roam-node-display-template` is `${title:*} ${tags:24}`; tags past the column are invisible, not cut off, so they still match, and links that `SPC n i` makes keep the title because they come from `org-roam-node-formatted`. The graph suite's fixture binds the template to the bare title so that its stubbed prompts can answer with a title.
 - **The tag commands read the index.** `SPC n t` reads a tag, each with the number of notes carrying it, then offers only those notes; `SPC n T` writes every tag with links to its notes into an Org buffer that is given the graph, so the links resolve there. A file note is listed under its file tags and a heading note under the tags its file note lacks, so a page appears once per tag rather than once per heading.
+- **The chapters are a project graph, linked by ID.** The repository's `.dir-locals.el` declares it a graph (excluding `var/`, `tests/`, `tools/` and Git's folders), and every page in `literate/` and the cheat sheet carries a file-level `:ID:`. New links between pages are `id:` links, so they survive renames and show as backlinks; existing `file:` links are converted when their page is next edited. GitHub renders an `id:` link as plain text, which is the accepted cost. Links to Markdown files stay `file:` links.
 - **The only advice is `:before-while` on `org-roam-id-find`.** It lets Org's own ID index answer when the current graph cannot be used, because Emacs has no SQLite or the root does not exist.
 
 ### Nix

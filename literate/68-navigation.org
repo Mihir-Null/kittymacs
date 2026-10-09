@@ -1,3 +1,6 @@
+:PROPERTIES:
+:ID:       62aa65bf-4139-42f3-a109-65a67292287b
+:END:
 #+TITLE: Getting around: projects, recent files, search and workspaces
 #+OPTIONS: toc:3 num:nil
 #+STARTUP: overview

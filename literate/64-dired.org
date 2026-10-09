@@ -1,3 +1,6 @@
+:PROPERTIES:
+:ID:       51483cb3-85d1-480c-9c36-8eb13168bb4a
+:END:
 #+TITLE: Dired: the file manager
 #+OPTIONS: toc:3 num:nil
 #+STARTUP: overview

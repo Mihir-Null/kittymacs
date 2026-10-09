@@ -1,3 +1,6 @@
+:PROPERTIES:
+:ID:       e84bbb2e-2f1d-4b2b-97ca-1a86db017d1e
+:END:
 #+TITLE: Org: notes, tasks and the agenda
 #+OPTIONS: toc:3 num:nil
 #+STARTUP: overview

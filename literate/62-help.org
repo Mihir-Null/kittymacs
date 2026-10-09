@@ -1,3 +1,6 @@
+:PROPERTIES:
+:ID:       264e4b66-9ea6-4980-8b34-783f7683c15b
+:END:
 #+TITLE: Help, Info and menus
 #+OPTIONS: toc:3 num:nil
 #+STARTUP: overview

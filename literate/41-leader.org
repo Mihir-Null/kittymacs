@@ -1,3 +1,6 @@
+:PROPERTIES:
+:ID:       155b6a69-684c-48a3-9cd5-ddc7ce394841
+:END:
 #+TITLE: The kittymacs leader: real keys under SPC
 #+OPTIONS: toc:3 num:nil
 #+STARTUP: overview

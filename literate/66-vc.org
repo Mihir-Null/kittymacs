@@ -1,3 +1,6 @@
+:PROPERTIES:
+:ID:       c1a170e3-4fbe-446e-8528-8a9bbd99b4c2
+:END:
 #+TITLE: Version control: Magit and VC
 #+OPTIONS: toc:3 num:nil
 #+STARTUP: overview

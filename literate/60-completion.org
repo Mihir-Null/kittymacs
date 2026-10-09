@@ -1,3 +1,6 @@
+:PROPERTIES:
+:ID:       6321f242-c375-4e0f-b130-5ee349956163
+:END:
 #+TITLE: Completion: Vertico, Consult, Embark, Corfu
 #+OPTIONS: toc:3 num:nil
 #+STARTUP: overview

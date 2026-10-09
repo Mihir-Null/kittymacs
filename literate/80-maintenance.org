@@ -1,3 +1,6 @@
+:PROPERTIES:
+:ID:       457fd8f3-365a-43dd-9abd-718955e0cf8b
+:END:
 #+TITLE: Maintenance and machine overrides
 #+OPTIONS: toc:3 num:nil
 #+STARTUP: overview
