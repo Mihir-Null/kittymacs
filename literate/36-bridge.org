@@ -1,0 +1,399 @@
+:PROPERTIES:
+:ID:       1ddbac19-6f6f-483a-81b8-8c4ee3c6444b
+:END:
+#+TITLE: The bridge: a native front end on a Linux back end
+#+OPTIONS: toc:3 num:nil
+#+STARTUP: overview
+#+TODO: TODO(t) NEXT(n) WAITING(w@/!) | DONE(d) CANCELED(c@)
+#+PROPERTY: header-args:emacs-lisp :tangle no :eval never :comments no :padline no :mkdirp yes
+
+[[id:c5c8e943-3679-4b11-bd79-730d4b6d2dc0][Reading guide]] · [[id:38153b3e-8907-4731-a009-c115ebcd654e][Platform]] · [[id:ee94e2b8-1f25-427c-b413-722dcc059264][Terminal]] · [[id:66e5c304-a13a-4eb4-b309-6c9ef8bdaecc][Shells]] · [[file:../ARCHITECTURE.md][Architecture]]
+
+Ownership: *user configuration* (design stage).
+
+* Status of this chapter                                               :meta:
+
+- This chapter is a live design record: the planned architecture, the
+  concepts behind it and the open tasks, in one place.
+- Nothing tangles yet.
+  - Every block is =:tangle no= through the =#+PROPERTY= line above, so the
+    builder reads this file as a chapter with no outputs.
+  - The first tested piece flips that line to =../lisp/kittymacs-bridge.el=
+    and adds =(require 'kittymacs-bridge)= to [[id:a5b6a9b7-e506-4bcb-9b2f-86e57058e519][the startup chapter]], after
+    =kittymacs-shell=.
+- Decisions move to [[file:../ARCHITECTURE.md][ARCHITECTURE.md]] in the change that ships them.
+  - That file stays the only decision record (user decision 3); the
+    =:decision:= headings here are proposals until then.
+- Audit from inside Emacs:
+  - =S-TAB= shows the outline.
+  - =SPC s Q= with =todo:TODO,NEXT,WAITING= lists the open tasks.
+  - Tags group headings across sections: =:concept:=, =:decision:=,
+    =:impl:=, =:task:=, =:risk:=, plus one tag per layer (=:files:=,
+    =:procs:= and so on).
+
+* What this gives you                                               :concept:
+
+- Day-to-day editing stays in the Emacs built for the device: Windows'
+  native build, or the Android port.
+  - Its frames, input, fonts, clipboard and window manager integration are
+    the convenient part, and it keeps them.
+- The work Windows and Android do badly, or cannot do, runs in a Linux
+  environment instead:
+  - language servers, Git, compilers, =rg=, =nix=, LaTeX;
+  - Org operations that need Linux paths or Linux tools.
+- Back ends in scope:
+  - *WSL* on Windows (=mcqueenix=, NixOS);
+  - *Termux* on Android, sharing Emacs's user ID;
+  - *nix-on-droid* on Android, over SSH.
+
+* The split: where things run                                       :concept:
+
+** Why a daemon cannot serve native frames
+
+- =emacsclient= is a messenger; the *server* draws every frame.
+- A frame is drawn by the display code compiled into that Emacs binary.
+  - A Linux build draws X, Wayland (pgtk) or terminal frames.
+  - Only a Windows build draws Win32 frames.
+- So "a Linux daemon showing native Windows frames" would need a new display
+  back end in Emacs, not configuration.
+- What a Linux daemon *can* show on Windows:
+  - WSLg frames, the current =mcqueenix= setup (see the WSLg decisions in
+    [[file:../ARCHITECTURE.md][ARCHITECTURE.md]]);
+  - terminal frames through =wsl.exe emacsclient -t=.
+- The bridge therefore inverts the model, like VS Code's remote mode:
+  - *front*: the native Emacs owns Lisp, buffers and frames;
+  - *back*: Linux owns files, processes and, optionally, a worker Emacs.
+
+** What TRAMP moves, and what it does not
+
+- TRAMP is the core: a buffer visiting =/wsl:NixOS:/path= reads, writes and
+  starts its programs on the Linux side.
+  - =default-directory= decides where a process runs, so compile, Magit,
+    Eglot and Org Babel follow the buffer with no extra code.
+- TRAMP moves *I/O and subprocesses*; it does not move *Lisp*.
+  - Org's parser, the agenda, export and Org-roam's indexing still run in
+    the front end.
+- So the two slow things split cleanly:
+  - *slow processes* (LSP, Git, compilers): solved by layers 1–4;
+  - *slow Lisp over many files* (agenda, Org-roam over a large tree):
+    TRAMP makes this /slower/, one round trip per file operation; only
+    layer 5 helps.
+
+** Why the cost is process creation                              :procs:
+
+- Windows starts processes slowly, and Defender scans NTFS file access.
+  - Magit runs dozens of =git= calls per refresh, which is why it feels
+    slow on native Windows.
+- Plain TRAMP keeps one shell open for file operations: good.
+- Direct async processes start a fresh =wsl.exe= per process.
+  - =wsl.exe= has a noticeable start-up cost of its own (unmeasured; see
+    the benchmark task).
+- A long-lived server on the back end, multiplexing every operation over
+  one pipe, avoids both costs: that is what tramp-rpc does.
+
+* Back ends                                                         :concept:
+
+** WSL (=mcqueenix=)
+
+- Reached by running =wsl.exe -d DISTRO -u USER --exec PROGRAM=, over
+  stdio; no network, no SSH server.
+- Windows can also read WSL's files as =\\wsl.localhost\DISTRO\…=, but
+  through a slow file-sharing protocol: a fallback, not the path.
+- The distro already runs a kittymacs daemon when the home-manager module's
+  =daemon= option is on: the natural worker for layer 5.
+
+** Termux (Android, shared user ID)
+
+- Already handled by [[id:38153b3e-8907-4731-a009-c115ebcd654e][the platform chapter]]: =kittymacs-termux-program= and
+  =kittymacs-termux-bin-directory= discover Termux, and its programs are
+  local executables.
+- No transport and no TRAMP: the back end *is* the local process table.
+- The bridge only adds what the platform chapter does not: presets for
+  language servers and the capability commands of layer 5.
+
+** nix-on-droid (Android, separate application)
+
+- A second device, not a layer under the port (see the nix-on-droid
+  decision in [[file:../ARCHITECTURE.md][ARCHITECTURE.md]]): Nix store paths exist only inside its
+  PRoot, under another user ID.
+- So it is an SSH back end on =localhost=:
+  - its wiki runs =sshd= by hand on port 8022 with key authentication;
+  - a pull request (#203) adds supervised services and an OpenSSH module.
+- tramp-rpc publishes =aarch64-linux= servers, so this back end can use
+  the fast path.
+
+* Architecture: the layers                                          :concept:
+
+- Layers 1–4 are the core: presets and polish around TRAMP.
+- Layers 5–7 let the front end run what it cannot run natively.
+
+** 1. Profiles                                                     :profiles:
+
+- One entry per back end; the first whose predicate holds is active.
+- Three independent questions per back end:
+  - =:transport= — how to reach it;
+  - =:files= — how to read and write (=tramp=, =tramp-rpc=, =local=);
+  - =:exec= — which programs must run there.
+- An option, not a macro, so =setopt= and =private.el= work as everywhere
+  else in kittymacs.
+
+** 2. Transport                                                   :transport:
+
+- =wsl=: =wsl.exe -d DISTRO -u USER --exec …=.
+- =ssh=: host, port, user (nix-on-droid, homelab machines).
+- =local=: Android with Termux paired.
+- Gotcha: =wsl.exe='s own messages (=wsl -l=) are UTF-16; programs' output
+  passes through as bytes.
+
+** 3. Files                                                           :files:
+
+- A TRAMP method named =wsl=, written like TRAMP's container methods
+  (=docker=, =podman=, =toolbox=): a login program plus arguments, on top
+  of TRAMP's shell back end.
+- File names: =/wsl:mihir@NixOS:/home/mihir/emptynet/flake.nix=.
+- Fast path: tramp-rpc with a =wsl.exe= transport (task below).
+- Polish: a file name handler that turns =\\wsl.localhost\NixOS\…= into
+  =/wsl:NixOS:…=, so a file opened from Explorer lands on the fast path.
+
+** 4. Processes                                                       :procs:
+
+- Remote buffers: direct async processes for the =wsl= method; Eglot and
+  Magit then start =nil=, =basedpyright=, =git= in Linux.
+- Local buffers needing a Linux tool: shims (=rg.cmd= → =wsl.exe --exec rg=)
+  with Windows ↔ Linux path translation.
+  - Argument translation is where bugs live: shims are the exception, not
+    the plan.
+
+** 5. Capability delegation                                       :delegate:
+
+Three tiers, cheapest first.
+
+*** Tier 1: already built in
+
+- A remote =default-directory= sends work to Linux with no new code:
+  - Org Babel: =:dir /wsl:mihir@NixOS:~/= on a block or subtree;
+  - =compile=, =shell-command=, =async-shell-command=.
+- Most "Linux-only operations" need only the method and documented
+  presets.
+
+*** Tier 2: one-shot commands
+
+- =kittymacs-bridge-run=: a command line, run in the back end, output in a
+  compilation buffer, paths translated.
+- Uses: =nix build=, =latexmk=, =just= recipes.
+  - The personal overlay already runs EmptyNet's recipes in WSL; that is
+    the first caller to generalise.
+
+*** Tier 3: the worker Emacs
+
+- The back end's daemon evaluates forms and returns printed results.
+- First transport: =wsl.exe --exec emacsclient --eval FORM= per call.
+  - Later, if the per-call cost matters: a TCP server on =localhost=
+    (=server-use-tcp=; the server file holds address and key).
+- What it is for: Lisp that should run beside the files.
+  - Agenda and Org QL views over notes kept in WSL, rendered there.
+  - Tangling and export with Linux paths and tools.
+  - Long jobs that should outlive the front end.
+- How results travel: =prin1= prints a propertised string as
+  =#("text" 0 4 (face bold))= and =read= rebuilds it, so faces survive.
+- What does not travel: markers, overlays, buffers, closures.
+  - Read-only views are easy.
+  - Acting on an item (jump, change TODO state) needs a callback: the view
+    carries file and position, and the action is sent back as a form.
+- Two Lisp images: keep the protocol small (=-eval=, =-tangle=, =-export=,
+  =-agenda=).
+
+** 6. Reverse channel                                               :reverse:
+
+- Programs in the back end open files in the front end:
+  =EDITOR=emacsclient= with =EMACSCLIENT_TRAMP=/wsl:mihir@NixOS:=.
+- =git commit= in a WSL terminal then edits the message in native Emacs.
+- Needs the front end's server reachable from Linux (TCP; task below).
+
+** 7. Glue                                                             :glue:
+
+- Terminal: ghostel uses ConPTY on Windows, so a ghostel buffer whose
+  shell is =wsl.exe -d NixOS= is a WSL terminal with nothing new.
+- Clipboard, =browse-url= and "open externally" go to the front end's OS.
+- Meow: no new states; bridge buffers behave like any file buffer.
+- Keys: proposed in [[id:4a7b9655-3b18-41f8-8b2c-689836711b6d][the keys chapter]], the single owner of the tree
+  (task below).
+
+* Proposed decisions                                               :decision:
+
+** Packaging: mechanism upstream, policy here
+
+- Proposal:
+  - the =wsl= TRAMP method and the =\\wsl.localhost= handler: a small
+    standalone package, then proposed to TRAMP itself, beside the container
+    methods in =tramp-container.el=;
+  - the =wsl.exe= transport for tramp-rpc: a pull request upstream;
+  - presets, profiles, capability commands, keys: this chapter.
+- Why:
+  - "This configuration is only the policy" ([[id:c5c8e943-3679-4b11-bd79-730d4b6d2dc0][reading guide]], three layers).
+  - "Built-in commands over wrappers": once TRAMP ships the method, this
+    chapter enables it instead of defining it.
+  - The method is useful to every Windows Emacs user; inside kittymacs only
+    kittymacs users would find it.
+- Path: prototype in this chapter → extract the package → upstream.
+
+** Notes live in WSL
+
+- The user is willing to keep Org notes only in WSL, rather than synced to
+  both sides.
+- Consequence: agenda and Org-roam from the native front end read every
+  file over TRAMP, which is slow; tier 3 is the remedy.
+- Open until the benchmark says how slow (task below).
+
+* Implementation sketches                                              :impl:
+
+- Untested; =:tangle no= until each passes its task.
+
+** The =wsl= method                                                   :files:
+
+- Each key, in order:
+  - =tramp-login-program=: what TRAMP starts;
+  - =tramp-login-args=: its arguments; =%h= is the host (the distro), =%u=
+    the user, =%l= the remote shell with its login arguments;
+  - =tramp-remote-shell= and friends: the shell TRAMP drives, =/bin/sh=,
+    which NixOS still provides;
+  - =tramp-direct-async=: how a direct async process is started, so
+    =make-process= skips TRAMP's shell.
+
+#+begin_src emacs-lisp
+(defun kittymacs-bridge--enable-wsl-method ()
+  "Teach TRAMP the `wsl' method: /wsl:USER@DISTRO:/path."
+  (add-to-list 'tramp-methods
+               '("wsl"
+                 (tramp-login-program "wsl.exe")
+                 (tramp-login-args (("-d" "%h") ("-u" "%u") ("--exec" "%l")))
+                 (tramp-remote-shell "/bin/sh")
+                 (tramp-remote-shell-login ("-l"))
+                 (tramp-remote-shell-args ("-i" "-c"))
+                 (tramp-direct-async ("/bin/sh" "-c")))))
+#+end_src
+
+- Distro completion: =wsl.exe --list --quiet= answers in UTF-16.
+
+#+begin_src emacs-lisp
+(defun kittymacs-bridge--wsl-distros (&optional _file)
+  "Return the installed WSL distributions as TRAMP completion entries."
+  (let ((coding-system-for-read 'utf-16le))
+    (mapcar (lambda (name) (list nil (string-trim name)))
+            (process-lines "wsl.exe" "--list" "--quiet"))))
+
+(with-eval-after-load 'tramp
+  (kittymacs-bridge--enable-wsl-method)
+  (tramp-set-completion-function "wsl" '((kittymacs-bridge--wsl-distros ""))))
+#+end_src
+
+** Profiles                                                        :profiles:
+
+#+begin_src emacs-lisp
+(defcustom kittymacs-bridge-backends
+  '((mcqueenix :when (lambda () (eq system-type 'windows-nt))
+               :transport (wsl :distro "NixOS" :user "mihir")
+               :files tramp
+               :exec ("git" "rg" "nix" "nil")))
+  "Linux back ends, first matching `:when' wins."
+  :type '(alist :key-type symbol :value-type plist)
+  :group 'kittymacs)
+
+(defun kittymacs-bridge-active ()
+  "Return the active back end as (NAME . PLIST), or nil."
+  (seq-find (lambda (entry) (funcall (plist-get (cdr entry) :when)))
+            kittymacs-bridge-backends))
+#+end_src
+
+- Pure functions like this one are testable without WSL: a
+  =tests/kittymacs-bridge-tests.el= binds =system-type=, as the platform
+  tests do.
+
+** Worker evaluation                                               :delegate:
+
+#+begin_src emacs-lisp
+(defun kittymacs-bridge-eval (form)
+  "Evaluate FORM in the WSL back end's Emacs daemon and return the value."
+  (let ((distro (plist-get (plist-get (cdr (kittymacs-bridge-active)) :transport)
+                           :distro)))
+    (with-temp-buffer
+      (unless (zerop (call-process "wsl.exe" nil t nil "-d" distro "--exec"
+                                   "emacsclient" "--eval" (prin1-to-string form)))
+        (error "Back end evaluation failed: %s" (buffer-string)))
+      (car (read-from-string (buffer-string))))))
+#+end_src
+
+- Risk: the form crosses two quoting layers, Windows' command line and
+  =wsl.exe='s; strings with quotes or backslashes need a test.
+
+* Tasks                                                                :task:
+
+** NEXT Test the =wsl= method from a native Windows Emacs           :files:
+- =M-:= the two blocks above, then =C-x C-f /wsl:mihir@NixOS:~/=.
+- Watch for a hang at the prompt: native Windows Emacs talks to
+  subprocesses over pipes, and TRAMP's prompt detection sometimes fails
+  there (why TRAMP has =sshx=).
+- =tramp-verbose= 6 and =*debug tramp*= if it hangs.
+
+** TODO Measure the costs before optimising                    :procs:files:
+- =wsl.exe --exec true=, cold and warm.
+- Magit status on EmptyNet: native, =/wsl:=, WSLg.
+- Agenda over the WSL notes: native over =/wsl:=, and inside WSL.
+
+** TODO Turn on direct async processes for =wsl=                    :procs:
+- Connection-local profile on =(:application tramp :protocol "wsl")=.
+- Check Eglot with =nil= and =basedpyright= on a remote buffer.
+
+** TODO Distro completion and the =\\wsl.localhost= handler         :files:
+
+** TODO Prototype a =wsl.exe= transport for tramp-rpc          :files:procs:
+- Its protocol is length-prefixed MessagePack over stdio, so the transport
+  is the launch command, not the protocol.
+- It assumes SSH ControlMaster, which Windows' OpenSSH lacks: find where.
+- Deploy the server with Nix in EmptyNet rather than its downloader.
+
+** TODO Tier 2: =kittymacs-bridge-run=                           :delegate:
+- Generalise the personal overlay's EmptyNet recipe runner.
+
+** TODO Tier 3: worker evaluation over =emacsclient --eval=      :delegate:
+- Test quoting; then a read-only agenda view rendered in WSL.
+
+** TODO Reverse channel: =EDITOR= from WSL to native Emacs        :reverse:
+- Needs the front end's server on TCP, reachable from WSL.
+
+** TODO ghostel with =wsl.exe= as its shell                          :glue:
+
+** TODO nix-on-droid back end over SSH                          :transport:
+- Check whether the OpenSSH module (#203) is in the channel in use.
+
+** TODO Propose keys in the keys chapter                             :glue:
+
+** TODO Extract the method package; offer it to TRAMP              :decision:
+
+** WAITING Decide where the notes live                          :decision:
+- Waiting on the benchmark.
+
+* Risks and unknowns                                                   :risk:
+
+- Pipes, not PTYs, on native Windows: TRAMP's shell handshake may stall.
+- =wsl.exe= start-up cost multiplies with every direct async process.
+- Quoting through =wsl.exe= for anything passed as an argument.
+- WSL2 runs in a VM: Unix sockets do not cross to Windows (as far as known,
+  unverified), so servers talk over stdio or TCP.
+- Org-roam over TRAMP: its sync reads every file remotely.
+- Two Emacs images can drift: worker and front end should run the same
+  kittymacs revision.
+
+* Try it                                                               :impl:
+
+- Nothing to try yet; the first task above is the first thing to try.
+
+* References                                                            :ref:
+
+- TRAMP manual: [[https://www.gnu.org/software/emacs/manual/html_node/tramp/Inline-methods.html][inline methods]] (the container methods), [[https://www.gnu.org/software/emacs/manual/html_node/tramp/Extension-packages.html][adding methods]],
+  "Improving performance of asynchronous remote processes".
+- [[https://github.com/ArthurHeymans/emacs-tramp-rpc][tramp-rpc]]: Rust server, MessagePack-RPC over stdio, Magit prefetch.
+- [[https://deepwiki.com/manateelazycat/lsp-bridge/7-remote-development][lsp-bridge remote mode]]: the same split for language servers.
+- Emacs manual, "emacsclient Options": =EMACSCLIENT_TRAMP= and TCP servers.
+- [[https://ftp.riken.jp/GNU/emacs/android/README][Android port README]]: the Termux pairing.
+- nix-on-droid: [[https://github.com/nix-community/nix-on-droid/wiki/SSH-access][SSH access]], [[https://github.com/nix-community/nix-on-droid/pull/203][pull request 203]].
