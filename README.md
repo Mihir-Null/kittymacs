@@ -77,13 +77,14 @@ Restart Emacs and commit the chapter with its generated file. Startup never tang
 
 ## Verify
 
-From the repository root. The first four need no packages:
+From the repository root. The first five need no packages:
 
 ```sh
 emacs -Q --batch -l tools/tangle.el -- --check
 emacs -Q --batch -l tests/kittymacs-tangle-tests.el -f ert-run-tests-batch-and-exit
 emacs -Q --batch -l tests/kittymacs-platform-tests.el -f ert-run-tests-batch-and-exit
 emacs -Q --batch -l tests/kittymacs-treesit-tests.el -f ert-run-tests-batch-and-exit
+emacs -Q --batch -l tests/kittymacs-bridge-tests.el -f ert-run-tests-batch-and-exit
 ```
 
 The rest load the installed packages, so point `KITTYMACS_TEST_PACKAGES` at an existing package directory:

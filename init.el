@@ -31,8 +31,9 @@
 (require 'kittymacs-meow)
 (require 'kittymacs-keys)
 
-;; Applications: shells, programming, Org, and finally frame policy.
+;; Applications: shells, the Linux bridge, programming, Org, and finally frame policy.
 (require 'kittymacs-shell)
+(require 'kittymacs-bridge)
 (require 'kittymacs-programming)
 (require 'kittymacs-treesit)
 (require 'kittymacs-languages)

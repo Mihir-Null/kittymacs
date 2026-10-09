@@ -5,22 +5,28 @@
 #+OPTIONS: toc:3 num:nil
 #+STARTUP: overview
 #+TODO: TODO(t) NEXT(n) WAITING(w@/!) | DONE(d) CANCELED(c@)
-#+PROPERTY: header-args:emacs-lisp :tangle no :eval never :comments no :padline no :mkdirp yes
+#+PROPERTY: header-args:emacs-lisp :tangle ../lisp/kittymacs-bridge.el :eval never :comments no :padline no :mkdirp yes
 
 [[id:c5c8e943-3679-4b11-bd79-730d4b6d2dc0][Reading guide]] · [[id:38153b3e-8907-4731-a009-c115ebcd654e][Platform]] · [[id:ee94e2b8-1f25-427c-b413-722dcc059264][Terminal]] · [[id:66e5c304-a13a-4eb4-b309-6c9ef8bdaecc][Shells]] · [[file:../ARCHITECTURE.md][Architecture]]
 
-Ownership: *user configuration* (design stage).
+Ownership: *user configuration* (in development).
 
 * Status of this chapter                                               :meta:
 
-- This chapter is a live design record: the planned architecture, the
-  concepts behind it and the open tasks, in one place.
-- Nothing tangles yet.
-  - Every block is =:tangle no= through the =#+PROPERTY= line above, so the
-    builder reads this file as a chapter with no outputs.
-  - The first tested piece flips that line to =../lisp/kittymacs-bridge.el=
-    and adds =(require 'kittymacs-bridge)= to [[id:a5b6a9b7-e506-4bcb-9b2f-86e57058e519][the startup chapter]], after
-    =kittymacs-shell=.
+- This chapter is both the live design record and the module it generates:
+  the planned architecture, the concepts behind it, the open tasks and the
+  code, in one place.
+- What is built: the core of layers 1, 3 and 4 below.
+  - the =wsl= TRAMP method, with distribution completion;
+  - direct processes for =wsl= buffers;
+  - back-end profiles and two commands;
+  - Windows share paths (=\\wsl.localhost\…=) opened through the method.
+  - It tangles to =lisp/kittymacs-bridge.el=, which [[id:a5b6a9b7-e506-4bcb-9b2f-86e57058e519][the startup chapter]]
+    loads after =kittymacs-shell=.
+  - =tests/kittymacs-bridge-tests.el= exercises it on Linux against a
+    stand-in =wsl.exe= (see [[*Testing without Windows]]).
+- What is not: everything marked =TODO= under [[*Tasks]]; the design sections
+  describe the whole plan.
 - Decisions move to [[file:../ARCHITECTURE.md][ARCHITECTURE.md]] in the change that ships them.
   - That file stays the only decision record (user decision 3); the
     =:decision:= headings here are proposals until then.
@@ -45,6 +51,13 @@ Ownership: *user configuration* (design stage).
   - *WSL* on Windows (=mcqueenix=, NixOS);
   - *Termux* on Android, sharing Emacs's user ID;
   - *nix-on-droid* on Android, over SSH.
+- Today, on Windows with WSL installed:
+  - =C-x C-f /wsl:NixOS:~/= opens your WSL home; =TAB= after =/wsl:=
+    completes the distributions;
+  - a file opened from Explorer as =\\wsl.localhost\NixOS\…= arrives through
+    the same method;
+  - =M-x kittymacs-bridge-find-file= and =M-x kittymacs-bridge-dired= start
+    in the back end's home.
 
 * The split: where things run                                       :concept:
 
@@ -79,15 +92,18 @@ Ownership: *user configuration* (design stage).
     TRAMP makes this /slower/, one round trip per file operation; only
     layer 5 helps.
 
-** Why the cost is process creation                              :procs:
+** Why the cost is process creation                                   :procs:
 
 - Windows starts processes slowly, and Defender scans NTFS file access.
   - Magit runs dozens of =git= calls per refresh, which is why it feels
     slow on native Windows.
 - Plain TRAMP keeps one shell open for file operations: good.
-- Direct async processes start a fresh =wsl.exe= per process.
-  - =wsl.exe= has a noticeable start-up cost of its own (unmeasured; see
-    the benchmark task).
+- Without direct processes, TRAMP opens a whole new connection (a fresh
+  =wsl.exe=, then a shell handshake) for every asynchronous process.
+- Direct async processes still start one =wsl.exe= per process, but skip
+  the handshake.
+  - =wsl.exe= has a start-up cost of its own (unmeasured; see the benchmark
+    task).
 - A long-lived server on the back end, multiplexing every operation over
   one pipe, avoids both costs: that is what tramp-rpc does.
 
@@ -98,7 +114,10 @@ Ownership: *user configuration* (design stage).
 - Reached by running =wsl.exe -d DISTRO -u USER --exec PROGRAM=, over
   stdio; no network, no SSH server.
 - Windows can also read WSL's files as =\\wsl.localhost\DISTRO\…=, but
-  through a slow file-sharing protocol: a fallback, not the path.
+  through a slow file-sharing protocol; the bridge redirects those names to
+  the method.
+- Inside a WSL distribution, Windows interop puts =wsl.exe= on =PATH= too,
+  so a Linux Emacs there reaches its sibling distributions the same way.
 - The distro already runs a kittymacs daemon when the home-manager module's
   =daemon= option is on: the natural worker for layer 5.
 
@@ -129,10 +148,11 @@ Ownership: *user configuration* (design stage).
 
 ** 1. Profiles                                                     :profiles:
 
-- One entry per back end; the first whose predicate holds is active.
-- Three independent questions per back end:
-  - =:transport= — how to reach it;
-  - =:files= — how to read and write (=tramp=, =tramp-rpc=, =local=);
+- One entry per back end; the first whose =:when= holds is active.
+  - With none usable, WSL's default distribution, when =wsl.exe= exists.
+- Built: =:transport= and =:home=.
+- Planned:
+  - =:files= — how to read and write (=tramp=, =tramp-rpc=);
   - =:exec= — which programs must run there.
 - An option, not a macro, so =setopt= and =private.el= work as everywhere
   else in kittymacs.
@@ -142,8 +162,8 @@ Ownership: *user configuration* (design stage).
 - =wsl=: =wsl.exe -d DISTRO -u USER --exec …=.
 - =ssh=: host, port, user (nix-on-droid, homelab machines).
 - =local=: Android with Termux paired.
-- Gotcha: =wsl.exe='s own messages (=wsl -l=) are UTF-16; programs' output
-  passes through as bytes.
+- Gotcha: =wsl.exe='s own messages (=wsl -l=) are UTF-16, or UTF-8 when
+  =WSL_UTF8= is set; programs' output passes through as bytes.
 
 ** 3. Files                                                           :files:
 
@@ -151,16 +171,15 @@ Ownership: *user configuration* (design stage).
   (=docker=, =podman=, =toolbox=): a login program plus arguments, on top
   of TRAMP's shell back end.
 - File names: =/wsl:mihir@NixOS:/home/mihir/emptynet/flake.nix=.
-- Fast path: tramp-rpc with a =wsl.exe= transport (task below).
-- Polish: a file name handler that turns =\\wsl.localhost\NixOS\…= into
-  =/wsl:NixOS:…=, so a file opened from Explorer lands on the fast path.
+- Windows share paths are redirected to it.
+- Fast path, planned: tramp-rpc with a =wsl.exe= transport.
 
 ** 4. Processes                                                       :procs:
 
 - Remote buffers: direct async processes for the =wsl= method; Eglot and
   Magit then start =nil=, =basedpyright=, =git= in Linux.
-- Local buffers needing a Linux tool: shims (=rg.cmd= → =wsl.exe --exec rg=)
-  with Windows ↔ Linux path translation.
+- Planned: shims for local buffers that need a Linux tool
+  (=rg.cmd= → =wsl.exe --exec rg=), with Windows ↔ Linux path translation.
   - Argument translation is where bugs live: shims are the exception, not
     the plan.
 
@@ -224,9 +243,9 @@ Three tiers, cheapest first.
 ** Packaging: mechanism upstream, policy here
 
 - Proposal:
-  - the =wsl= TRAMP method and the =\\wsl.localhost= handler: a small
-    standalone package, then proposed to TRAMP itself, beside the container
-    methods in =tramp-container.el=;
+  - the =wsl= TRAMP method and the share-path redirect: a small standalone
+    package, then proposed to TRAMP itself, beside the container methods
+    in =tramp-container.el=;
   - the =wsl.exe= transport for tramp-rpc: a pull request upstream;
   - presets, profiles, capability commands, keys: this chapter.
 - Why:
@@ -237,6 +256,24 @@ Three tiers, cheapest first.
     kittymacs users would find it.
 - Path: prototype in this chapter → extract the package → upstream.
 
+** The module declares no packages
+
+- Shipped; recorded in [[file:../ARCHITECTURE.md][ARCHITECTURE.md]].
+- Everything here is Emacs's own: TRAMP, =files-x=, =seq=.
+- So its tests run with no packages, like the platform module's, and the
+  module may load on any machine without installing anything.
+
+** Automatic where there is nothing to configure
+
+- Shipped; recorded in [[file:../ARCHITECTURE.md][ARCHITECTURE.md]].
+- The =wsl= method and the share-path redirect turn on by themselves when
+  =wsl.exe= is on =exec-path=; on any other machine the module does
+  nothing.
+- With no back end configured, the active one is WSL's default
+  distribution.
+- Configured back ends win, so Android and other machines opt in through
+  =kittymacs-bridge-backends=.
+
 ** Notes live in WSL
 
 - The user is willing to keep Org notes only in WSL, rather than synced to
@@ -245,73 +282,349 @@ Three tiers, cheapest first.
   file over TRAMP, which is slow; tier 3 is the remedy.
 - Open until the benchmark says how slow (task below).
 
-* Implementation sketches                                              :impl:
+* The module                                                           :impl:
 
-- Untested; =:tangle no= until each passes its task.
-
-** The =wsl= method                                                   :files:
-
-- Each key, in order:
-  - =tramp-login-program=: what TRAMP starts;
-  - =tramp-login-args=: its arguments; =%h= is the host (the distro), =%u=
-    the user, =%l= the remote shell with its login arguments;
-  - =tramp-remote-shell= and friends: the shell TRAMP drives, =/bin/sh=,
-    which NixOS still provides;
-  - =tramp-direct-async=: how a direct async process is started, so
-    =make-process= skips TRAMP's shell.
+- Only Emacs's own libraries; TRAMP is configured once it loads.
+  - TRAMP is not loaded at startup: Emacs loads it the first time a remote
+    name such as =/wsl:…= is used, and the method is added as it loads, so
+    startup pays nothing.
 
 #+begin_src emacs-lisp
-(defun kittymacs-bridge--enable-wsl-method ()
-  "Teach TRAMP the `wsl' method: /wsl:USER@DISTRO:/path."
-  (add-to-list 'tramp-methods
-               '("wsl"
-                 (tramp-login-program "wsl.exe")
-                 (tramp-login-args (("-d" "%h") ("-u" "%u") ("--exec" "%l")))
-                 (tramp-remote-shell "/bin/sh")
-                 (tramp-remote-shell-login ("-l"))
-                 (tramp-remote-shell-args ("-i" "-c"))
-                 (tramp-direct-async ("/bin/sh" "-c")))))
-#+end_src
+;;; kittymacs-bridge.el --- A native front end on a Linux back end -*- lexical-binding: t; -*-
+;; Generated from literate/36-bridge.org; edit the Org source, then tangle.
 
-- Distro completion: =wsl.exe --list --quiet= answers in UTF-16.
+;;; Code:
 
-#+begin_src emacs-lisp
-(defun kittymacs-bridge--wsl-distros (&optional _file)
-  "Return the installed WSL distributions as TRAMP completion entries."
-  (let ((coding-system-for-read 'utf-16le))
-    (mapcar (lambda (name) (list nil (string-trim name)))
-            (process-lines "wsl.exe" "--list" "--quiet"))))
+(require 'seq)
+(require 'subr-x)
 
-(with-eval-after-load 'tramp
-  (kittymacs-bridge--enable-wsl-method)
-  (tramp-set-completion-function "wsl" '((kittymacs-bridge--wsl-distros ""))))
-#+end_src
+(defvar tramp-methods)
+(declare-function tramp-set-completion-function "tramp" (method function-list))
 
-** Profiles                                                        :profiles:
-
-#+begin_src emacs-lisp
-(defcustom kittymacs-bridge-backends
-  '((mcqueenix :when (lambda () (eq system-type 'windows-nt))
-               :transport (wsl :distro "NixOS" :user "mihir")
-               :files tramp
-               :exec ("git" "rg" "nix" "nil")))
-  "Linux back ends, first matching `:when' wins."
-  :type '(alist :key-type symbol :value-type plist)
+(defgroup kittymacs-bridge nil
+  "A native Emacs front end working on a Linux back end."
   :group 'kittymacs)
 
-(defun kittymacs-bridge-active ()
-  "Return the active back end as (NAME . PLIST), or nil."
-  (seq-find (lambda (entry) (funcall (plist-get (cdr entry) :when)))
-            kittymacs-bridge-backends))
 #+end_src
 
-- Pure functions like this one are testable without WSL: a
-  =tests/kittymacs-bridge-tests.el= binds =system-type=, as the platform
-  tests do.
+* Finding =wsl.exe= and the distributions                       :impl:transport:
 
-** Worker evaluation                                               :delegate:
+- The bridge needs =wsl.exe= on =exec-path=.
+  - Windows' own =System32= puts it there; so does WSL's interop inside a
+    distribution, and the test suite's stand-in.
+- =wsl.exe --list --quiet= names the installed distributions.
+  - It writes UTF-16 (little-endian, CRLF line ends) unless =WSL_UTF8=1=,
+    so the bytes are read raw and decoded by looking for zero bytes, which
+    UTF-8 text never contains.
+  - The default distribution is listed first (unverified on a real Windows
+    machine; see the live-trial task).
+- The list is cached: a call to =wsl.exe= is not free, and it changes only
+  when you install or remove a distribution.
+  - =C-u M-x kittymacs-bridge-wsl-distros= rereads it.
 
 #+begin_src emacs-lisp
+(defcustom kittymacs-bridge-wsl-program "wsl.exe"
+  "The program that runs commands in a WSL distribution."
+  :type 'string
+  :group 'kittymacs-bridge)
+
+(defun kittymacs-bridge-wsl-available-p ()
+  "Return the full name of `kittymacs-bridge-wsl-program', or nil."
+  (executable-find kittymacs-bridge-wsl-program))
+
+(defun kittymacs-bridge--decode-wsl-output (bytes)
+  "Decode BYTES that wsl.exe printed itself: UTF-16LE, or UTF-8 with WSL_UTF8."
+  (decode-coding-string bytes (if (string-search "\0" bytes) 'utf-16le 'utf-8)))
+
+(defun kittymacs-bridge--parse-wsl-list (text)
+  "Return the distribution names in TEXT, the output of wsl.exe --list --quiet."
+  (seq-remove #'string-empty-p
+              (mapcar #'string-trim
+                      (split-string (string-replace "\ufeff" "" text) "[\r\n]+"))))
+
+(defvar kittymacs-bridge--wsl-distros nil
+  "The installed WSL distributions, the default first, once read.")
+
+(defun kittymacs-bridge-wsl-distros (&optional refresh)
+  "Return the installed WSL distributions, the default first.
+The list is read once; REFRESH, or a prefix argument, reads it again."
+  (interactive "P")
+  (when (or refresh (null kittymacs-bridge--wsl-distros))
+    (setq kittymacs-bridge--wsl-distros
+          (when (kittymacs-bridge-wsl-available-p)
+            (with-temp-buffer
+              (set-buffer-multibyte nil)
+              (let ((coding-system-for-read 'binary)
+                    (default-directory temporary-file-directory))
+                (when (eql 0 (call-process kittymacs-bridge-wsl-program nil t nil
+                                           "--list" "--quiet"))
+                  (kittymacs-bridge--parse-wsl-list
+                   (kittymacs-bridge--decode-wsl-output (buffer-string)))))))))
+  (when (called-interactively-p 'interactive)
+    (message "WSL distributions: %s"
+             (if kittymacs-bridge--wsl-distros
+                 (string-join kittymacs-bridge--wsl-distros ", ")
+               "none")))
+  kittymacs-bridge--wsl-distros)
+
+#+end_src
+
+* The =wsl= method                                                :impl:files:
+
+- A TRAMP /method/ is a recipe for reaching a machine: what to run locally,
+  and which shell to drive at the other end.
+  - TRAMP's container methods (=docker=, =podman=, =toolbox=) are the model:
+    a login program and its arguments, on top of TRAMP's shell back end.
+- Each key, in order:
+  - =tramp-login-program=: what TRAMP starts, =wsl.exe=;
+  - =tramp-login-args=: its arguments; =%h= is the host (the distribution),
+    =%u= the user, =%l= the remote shell with its login arguments;
+    - TRAMP drops an argument pair whose placeholder is empty, so a name
+      without a user leaves out =-u=;
+  - =tramp-direct-async=: what follows the login arguments for a direct
+    process (next section);
+    - TRAMP drops the =--exec %l= pair there, since =%l= is empty, so
+      =--exec= must come back in this list: without it =wsl.exe= hands its
+      arguments to your login shell as one command line, and a =cd= in it
+      would not reach the command that follows (caught by the test suite);
+  - =tramp-remote-shell= and friends: the shell TRAMP drives, =/bin/sh=,
+    which NixOS still provides.
+- =setf= on =alist-get= replaces an earlier definition, so enabling twice is
+  harmless.
+- Completion: after =/wsl:= TRAMP asks the function named here for hosts,
+  and gets the distribution list.
+- On Windows TRAMP starts the login program through =cmdproxy.exe=, not
+  =/bin/sh=; that path is not exercised by the Linux tests (live-trial task).
+
+#+begin_src emacs-lisp
+(defun kittymacs-bridge--wsl-completion (&rest _)
+  "Offer the installed WSL distributions as host names after /wsl:."
+  (mapcar (lambda (distro) (list nil distro)) (kittymacs-bridge-wsl-distros)))
+
+(defun kittymacs-bridge-enable-wsl-method ()
+  "Teach TRAMP the `wsl' method, so /wsl:USER@DISTRO:/path visits a file in WSL."
+  (interactive)
+  (require 'tramp)
+  (setf (alist-get "wsl" tramp-methods nil nil #'equal)
+        `((tramp-login-program ,kittymacs-bridge-wsl-program)
+          (tramp-login-args (("-d" "%h") ("-u" "%u") ("--exec" "%l")))
+          (tramp-direct-async ("--exec" "/bin/sh" "-c"))
+          (tramp-remote-shell "/bin/sh")
+          (tramp-remote-shell-login ("-l"))
+          (tramp-remote-shell-args ("-i" "-c"))))
+  (tramp-set-completion-function "wsl" '((kittymacs-bridge--wsl-completion "")))
+  (kittymacs-bridge--apply-direct-async))
+
+#+end_src
+
+* Starting processes directly                                     :impl:procs:
+
+- By default TRAMP starts an asynchronous remote process by opening a whole
+  new connection and typing the command into its shell.
+- A /direct/ process skips that: TRAMP runs =wsl.exe -d DISTRO --exec
+  /bin/sh -c COMMAND= itself, one process per command.
+- TRAMP asks for it per connection, through a /connection-local/ variable,
+  =tramp-direct-async-process=: a value that applies only in buffers whose
+  =default-directory= matches some criteria, here every =wsl= connection.
+- What it costs: no password prompts in that process (WSL asks for none),
+  and no direct processes over multiple hops (=/wsl:…|sudo:…=); TRAMP falls
+  back by itself there.
+- Off with =(setopt kittymacs-bridge-wsl-direct-async nil)=; the =:set=
+  applies it to connections opened from then on.
+
+#+begin_src emacs-lisp
+(defun kittymacs-bridge--apply-direct-async ()
+  "Make `tramp-direct-async-process' follow the option on `wsl' connections."
+  (connection-local-set-profile-variables
+   'kittymacs-bridge-wsl
+   `((tramp-direct-async-process . ,(bound-and-true-p kittymacs-bridge-wsl-direct-async))))
+  (connection-local-set-profiles '(:application tramp :protocol "wsl")
+                                 'kittymacs-bridge-wsl))
+
+(defcustom kittymacs-bridge-wsl-direct-async t
+  "Non-nil to start processes in WSL buffers directly, without TRAMP's shell."
+  :type 'boolean
+  :group 'kittymacs-bridge
+  :initialize #'custom-initialize-default
+  :set (lambda (symbol value)
+         (set-default-toplevel-value symbol value)
+         (when (featurep 'tramp) (kittymacs-bridge--apply-direct-async))))
+
+(with-eval-after-load 'tramp
+  (when (kittymacs-bridge-wsl-available-p)
+    (kittymacs-bridge-enable-wsl-method)))
+
+#+end_src
+
+* Back ends                                                    :impl:profiles:
+
+- =kittymacs-bridge-backends= lists the back ends, best first; each is a
+  name and a property list:
+  - =:when=: a function of no arguments; the entry counts only when it
+    returns non-nil (always, when absent);
+  - =:transport=: =(wsl :distro D :user U)=, =(ssh :host H :port P :user U)=
+    or =(local)=;
+  - =:home=: where the commands start, =~/= by default.
+- With no usable entry, the active back end is WSL's default distribution,
+  when there is a =wsl.exe=.
+- Examples for =private.el=:
+
+#+begin_src emacs-lisp :tangle no
+(setopt kittymacs-bridge-backends
+        '((mcqueenix :when (lambda () (eq system-type 'windows-nt))
+                     :transport (wsl :distro "NixOS" :user "mihir"))
+          (droid :when (lambda () (eq system-type 'android))
+                 :transport (ssh :host "localhost" :port 8022 :user "nix-on-droid"))))
+#+end_src
+
+- =kittymacs-bridge-root= turns a back end into the prefix that reaches it:
+  =/wsl:mihir@NixOS:=, =/ssh:nix-on-droid@localhost#8022:=, or nothing for a
+  local one.
+
+#+begin_src emacs-lisp
+(defcustom kittymacs-bridge-backends nil
+  "Linux back ends, best first; the first usable one is active.
+Each entry is (NAME . PLIST) with the keys :when (a function of no
+arguments; the entry is usable when it returns non-nil, or when :when
+is absent), :transport ((wsl :distro DISTRO :user USER), (ssh :host
+HOST :port PORT :user USER) or (local)) and :home (a directory, \"~/\"
+when absent).  With no usable entry, WSL's default distribution is
+active when wsl.exe is available."
+  :type '(alist :key-type symbol :value-type plist)
+  :group 'kittymacs-bridge)
+
+(defun kittymacs-bridge--usable-p (plist)
+  "Non-nil when the back end described by PLIST may be used here."
+  (let ((test (plist-get plist :when)))
+    (or (null test) (funcall test))))
+
+(defun kittymacs-bridge-active ()
+  "Return the active back end as (NAME . PLIST), or nil when there is none."
+  (or (seq-find (lambda (entry) (kittymacs-bridge--usable-p (cdr entry)))
+                kittymacs-bridge-backends)
+      (when-let* (((kittymacs-bridge-wsl-available-p))
+                  (distro (car (kittymacs-bridge-wsl-distros))))
+        `(wsl :transport (wsl :distro ,distro)))))
+
+(defun kittymacs-bridge-root (&optional backend)
+  "Return the file name prefix that reaches BACKEND, the active one by default.
+It is empty for a local back end, and nil when there is no back end."
+  (when-let* ((backend (or backend (kittymacs-bridge-active))))
+    (let* ((transport (plist-get (cdr backend) :transport))
+           (args (cdr transport))
+           (user (plist-get args :user))
+           (at (if user (concat user "@") "")))
+      (pcase (car transport)
+        ('wsl (format "/wsl:%s%s:" at
+                      (or (plist-get args :distro)
+                          (car (kittymacs-bridge-wsl-distros))
+                          (user-error "No WSL distribution is installed"))))
+        ('ssh (format "/ssh:%s%s%s:" at (plist-get args :host)
+                      (if-let* ((port (plist-get args :port))) (format "#%s" port) "")))
+        ('local "")
+        (_ (user-error "Unknown transport in back end %s: %S" (car backend) transport))))))
+
+(defun kittymacs-bridge-home ()
+  "Return the active back end's home directory as a file name."
+  (if-let* ((backend (kittymacs-bridge-active)))
+      (concat (kittymacs-bridge-root backend) (or (plist-get (cdr backend) :home) "~/"))
+    (user-error "No Linux back end here; see `kittymacs-bridge-backends'")))
+
+(defun kittymacs-bridge-find-file ()
+  "Visit a file in the active back end, starting from its home directory."
+  (interactive)
+  (let ((default-directory (file-name-as-directory (kittymacs-bridge-home))))
+    (call-interactively #'find-file)))
+
+(defun kittymacs-bridge-dired ()
+  "Open the active back end's home directory in Dired."
+  (interactive)
+  (dired (kittymacs-bridge-home)))
+
+#+end_src
+
+* Windows share paths                                             :impl:files:
+
+- Windows names WSL's files =\\wsl.localhost\DISTRO\path=, or the older
+  =\\wsl$\DISTRO\path=.
+  - Explorer passes such names to "Open with"; Emacs reads them through
+    Windows' slow file-sharing protocol, and every program it starts runs
+    in Windows.
+- =kittymacs-bridge-unc-mode= rewrites them to =/wsl:DISTRO:/path= before
+  any file operation sees them, so the buffer becomes an ordinary =wsl=
+  buffer.
+- The mechanism is a /file name handler/: an entry in
+  =file-name-handler-alist= whose regular expression matches the name, and
+  a function that every file primitive (=expand-file-name=,
+  =insert-file-contents=, …) calls instead of doing the work itself.
+  - The handler translates every share name among the arguments and calls
+    the primitive again.
+  - It inhibits itself while it does, so a name it cannot translate (a share
+    with no distribution) falls through to Emacs instead of looping.
+- Both separators and any letter case match: Windows paths are
+  case-insensitive.
+- The mode turns on by itself on Windows when =wsl.exe= is available.
+
+#+begin_src emacs-lisp
+(defconst kittymacs-bridge--unc-prefix-regexp
+  (rx bos (= 2 (any "/\\")) (any "Ww") (any "Ss") (any "Ll") (any ".$"))
+  "Matches the start of every WSL share name; `file-name-handler-alist' uses it.")
+
+(defconst kittymacs-bridge--unc-regexp
+  (rx bos (= 2 (any "/\\")) (any "Ww") (any "Ss") (any "Ll")
+      (or "$" (seq "." (any "Ll") (any "Oo") (any "Cc") (any "Aa") (any "Ll")
+                   (any "Hh") (any "Oo") (any "Ss") (any "Tt")))
+      (any "/\\") (group (+ (not (any "/\\")))) (group (* anychar)) eos)
+  "Matches a WSL share name; the groups are the distribution and the path.")
+
+(defun kittymacs-bridge-unc-to-tramp (name)
+  "Return the /wsl: name for NAME, a \\\\wsl.localhost\\ or \\\\wsl$\\ name, else nil."
+  (when (string-match kittymacs-bridge--unc-regexp name)
+    (let ((distro (match-string 1 name))
+          (path (string-replace "\\" "/" (match-string 2 name))))
+      (concat "/wsl:" distro ":" (if (string-empty-p path) "/" path)))))
+
+(defun kittymacs-bridge--unc-handler (operation &rest args)
+  "Run file OPERATION with every WSL share name in ARGS as a /wsl: name."
+  (let ((inhibit-file-name-handlers
+         (cons #'kittymacs-bridge--unc-handler
+               (and (eq inhibit-file-name-operation operation)
+                    inhibit-file-name-handlers)))
+        (inhibit-file-name-operation operation))
+    (apply operation
+           (mapcar (lambda (arg)
+                     (or (and (stringp arg) (kittymacs-bridge-unc-to-tramp arg)) arg))
+                   args))))
+
+(define-minor-mode kittymacs-bridge-unc-mode
+  "Visit \\\\wsl.localhost\\ and \\\\wsl$\\ names through the `wsl' method."
+  :global t
+  :group 'kittymacs-bridge
+  (setq file-name-handler-alist
+        (rassq-delete-all #'kittymacs-bridge--unc-handler file-name-handler-alist))
+  (when kittymacs-bridge-unc-mode
+    (push (cons kittymacs-bridge--unc-prefix-regexp #'kittymacs-bridge--unc-handler)
+          file-name-handler-alist)))
+
+(when (and (eq system-type 'windows-nt) (kittymacs-bridge-wsl-available-p))
+  (kittymacs-bridge-unc-mode 1))
+
+#+end_src
+
+* Publish the module                                                   :impl:
+
+#+begin_src emacs-lisp
+(provide 'kittymacs-bridge)
+;;; kittymacs-bridge.el ends here
+#+end_src
+
+* Sketches not yet built                                          :impl:delegate:
+
+** Worker evaluation
+
+- Untested; not tangled.
+
+#+begin_src emacs-lisp :tangle no
 (defun kittymacs-bridge-eval (form)
   "Evaluate FORM in the WSL back end's Emacs daemon and return the value."
   (let ((distro (plist-get (plist-get (cdr (kittymacs-bridge-active)) :transport)
@@ -326,25 +639,57 @@ Three tiers, cheapest first.
 - Risk: the form crosses two quoting layers, Windows' command line and
   =wsl.exe='s; strings with quotes or backslashes need a test.
 
+* Testing without Windows                                              :impl:
+
+- =tests/bin/wsl.exe= is a shell script standing in for Windows' =wsl.exe=.
+  - It understands =-d=, =-u=, =--cd=, =--exec=, =--list --quiet= and
+    =--=, answers the list in UTF-16 with CRLF line ends, and refuses an
+    unknown distribution as the real one does.
+  - It runs every command on the machine itself, so the distribution is a
+    label: =WSL_DISTRO_NAME= tells a command which one it was asked for.
+  - =KITTYMACS_FAKE_WSL_DISTROS= sets the installed list (default
+    =NixOS Arch=); =KITTYMACS_FAKE_WSL_LOG= records every call.
+- =tests/kittymacs-bridge-tests.el= needs no packages:
+  - parsing, share-name translation and back-end choice run anywhere;
+  - the TRAMP tests put the stand-in on =exec-path= and run on Linux, over a
+    pseudo-terminal and over plain pipes (what native Windows Emacs has).
+- What it cannot show: =cmdproxy.exe= starting =wsl.exe=, Windows'
+  quoting, the real =wsl.exe='s speed. Those are the live-trial task.
+
+#+begin_src sh :tangle no
+emacs -Q --batch -l tests/kittymacs-bridge-tests.el -f ert-run-tests-batch-and-exit
+#+end_src
+
+* Meow in bridge buffers                                               :glue:
+
+- Nothing new: a =wsl= buffer is a file buffer, so it starts in Normal state
+  like any other, and Dired in Motion.
+
 * Tasks                                                                :task:
 
-** NEXT Test the =wsl= method from a native Windows Emacs           :files:
-- =M-:= the two blocks above, then =C-x C-f /wsl:mihir@NixOS:~/=.
-- Watch for a hang at the prompt: native Windows Emacs talks to
-  subprocesses over pipes, and TRAMP's prompt detection sometimes fails
-  there (why TRAMP has =sshx=).
-- =tramp-verbose= 6 and =*debug tramp*= if it hangs.
+** DONE Test the =wsl= method on Linux with a stand-in =wsl.exe=     :files:
+- Over a pseudo-terminal and over pipes; file operations, =process-file=,
+  direct processes, completion and share names.
+
+** NEXT Live trial on McQueen                               :files:procs:
+- Pull =feature/bridge=; in native Windows Emacs, =C-x C-f /wsl:= =TAB=.
+- Then =/wsl:mihir@NixOS:~/emptynet/flake.nix=: open, edit, save.
+- =M-x magit-status= there; =M-x eglot= on a Nix file.
+- From Explorer, "Open with" Emacs on a file under =\\wsl.localhost\NixOS\=.
+- Things to watch for:
+  - a hang at "Opening connection": =cmdproxy.exe= and pipes; retry with
+    =(setopt tramp-verbose 6)= and send =*debug tramp/wsl NixOS*=;
+  - whether =wsl.exe --list --quiet= lists the default distribution first;
+  - whether =\\wsl.localhost\…= reaches the handler unaltered.
 
 ** TODO Measure the costs before optimising                    :procs:files:
 - =wsl.exe --exec true=, cold and warm.
 - Magit status on EmptyNet: native, =/wsl:=, WSLg.
 - Agenda over the WSL notes: native over =/wsl:=, and inside WSL.
 
-** TODO Turn on direct async processes for =wsl=                    :procs:
-- Connection-local profile on =(:application tramp :protocol "wsl")=.
-- Check Eglot with =nil= and =basedpyright= on a remote buffer.
+** DONE Turn on direct async processes for =wsl=                    :procs:
 
-** TODO Distro completion and the =\\wsl.localhost= handler         :files:
+** DONE Distro completion and the =\\wsl.localhost= handler         :files:
 
 ** TODO Prototype a =wsl.exe= transport for tramp-rpc          :files:procs:
 - Its protocol is length-prefixed MessagePack over stdio, so the transport
@@ -375,8 +720,9 @@ Three tiers, cheapest first.
 
 * Risks and unknowns                                                   :risk:
 
-- Pipes, not PTYs, on native Windows: TRAMP's shell handshake may stall.
-- =wsl.exe= start-up cost multiplies with every direct async process.
+- Native Windows: TRAMP drives =cmdproxy.exe=, not =/bin/sh=, to start
+  =wsl.exe=; the pipe handshake itself is tested on Linux.
+- =wsl.exe= start-up cost multiplies with every direct process.
 - Quoting through =wsl.exe= for anything passed as an argument.
 - WSL2 runs in a VM: Unix sockets do not cross to Windows (as far as known,
   unverified), so servers talk over stdio or TCP.
@@ -386,7 +732,10 @@ Three tiers, cheapest first.
 
 * Try it                                                               :impl:
 
-- Nothing to try yet; the first task above is the first thing to try.
+- On Windows with WSL: =C-x C-f /wsl:= then =TAB= lists your distributions.
+- =M-x kittymacs-bridge-dired= opens the WSL home.
+- In a =wsl= buffer, =M-! uname -a= answers from Linux.
+- =M-x kittymacs-bridge-wsl-distros= shows what the bridge sees.
 
 * References                                                            :ref:
 

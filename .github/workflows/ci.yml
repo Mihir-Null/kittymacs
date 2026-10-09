@@ -46,6 +46,8 @@ jobs:
         run: emacs -Q --batch -l tests/kittymacs-platform-tests.el -f ert-run-tests-batch-and-exit
       - name: Tree-sitter policy tests (offline)
         run: emacs -Q --batch -l tests/kittymacs-treesit-tests.el -f ert-run-tests-batch-and-exit
+      - name: Bridge tests (the wsl method against a stand-in wsl.exe, no packages)
+        run: emacs -Q --batch -l tests/kittymacs-bridge-tests.el -f ert-run-tests-batch-and-exit
 
   startup:
     name: Fresh install and startup (${{ matrix.system }}, Emacs ${{ matrix.emacs }})

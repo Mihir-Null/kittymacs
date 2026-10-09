@@ -12,7 +12,8 @@ kittymacs is a user-friendly, batteries-included, opinionated and extensible Ema
 early-init.el, init.el   generated from literate/10-startup.org
 literate/*.org           the chapters (NN-name.org) and the reading guide; the source of truth
 lisp/kittymacs-*.el      one generated module per chapter; keybindings.org (cheat sheet); themes/; private.el
-tests/                   kittymacs-tangle-tests, kittymacs-platform-tests, kittymacs-treesit-tests (no packages);
+tests/                   kittymacs-tangle-tests, kittymacs-platform-tests, kittymacs-treesit-tests,
+                         kittymacs-bridge-tests (no packages; bin/wsl.exe is the bridge's stand-in);
                          kittymacs-leader-tests, kittymacs-org-roam-tests, verify-config (installed packages);
                          kittymacs-frames-tests (graphical session, by hand)
 tools/tangle.el          finds the chapters, validates their targets, tangles and copies the outputs
@@ -21,7 +22,7 @@ var/                     packages, caches, custom.el; ignored
 .dir-locals.el           declares the pages an Org-roam project graph
 ```
 
-Startup is a flat list of `require`s in `init.el`, ordered by dependency: defaults → platform → `private.el` → UI → literate commands → dashboard → completion → help → Dired → Treemacs → VC → navigation → Meow → keys → shells → programming → Tree-sitter → languages → terminal → Org → Org-roam → frames → `custom.el`. There are no staged hooks; the little that must wait until `init.el` has finished (restoring `*scratch*`, turning Tabspaces on) adds itself to `after-init-hook`. The leader module is not in the list: the modules that define localleaders require it.
+Startup is a flat list of `require`s in `init.el`, ordered by dependency: defaults → platform → `private.el` → UI → literate commands → dashboard → completion → help → Dired → Treemacs → VC → navigation → Meow → keys → shells → bridge → programming → Tree-sitter → languages → terminal → Org → Org-roam → frames → `custom.el`. There are no staged hooks; the little that must wait until `init.el` has finished (restoring `*scratch*`, turning Tabspaces on) adds itself to `after-init-hook`. The leader module is not in the list: the modules that define localleaders require it.
 
 ## 3. The Meow layer
 
@@ -94,6 +95,15 @@ Design decisions, with the reason:
 - **Android is a platform branch, not a port.** The Android build reports `system-type` as `android`. The shell prefers Termux's `bash`, then Termux's `sh`, then `/system/bin/sh`. Termux is discovered, never assumed, because Android lets one application read another's files only when they share a user ID; `LD_LIBRARY_PATH` is cleared rather than set. The volume keys stay the port's way to quit (`kittymacs-android-volume-keys` hands them back). Text conversion follows Meow's state through `set-text-conversion-style`, since input methods edit the buffer directly, which is right only in Insert. Dired lists with `ls-lisp`, and `kittymacs-frames-only` defaults to off, because an Android frame is an entry in the task switcher.
 - **The terminal does not follow to Android, and Eshell stands in.** ghostel is a native module, and the port is commonly built without dynamic module support (upstream's `aarch64-android` module is built for Termux's Emacs), so `kittymacs-terminal-ghostel` is off there, ghostel is not installed, and `SPC o e` opens Eshell.
 
+### The Linux bridge
+
+- **A native front end, a Linux back end, TRAMP between them.** A Linux daemon cannot draw Win32 or Android frames (the server draws every frame with the display code compiled into it), so the bridge inverts the daemon model: the native Emacs keeps Lisp, buffers and frames, and files and processes live in WSL, Termux or nix-on-droid. `literate/36-bridge.org` is both the design record of the layers still planned and the module.
+- **The bridge declares no packages.** It uses TRAMP, `files-x` and `seq` only, so `tests/kittymacs-bridge-tests.el` runs with no packages, like the platform suite.
+- **`wsl` is a TRAMP method shaped like the container methods.** `wsl.exe -d %h -u %u --exec %l` on TRAMP's shell back end, `/bin/sh` at the far end. Direct asynchronous processes are on through a connection-local profile on the `wsl` protocol (`kittymacs-bridge-wsl-direct-async`), since without them TRAMP opens a whole connection per process. TRAMP drops the `--exec %l` pair for a direct process, so `tramp-direct-async` carries its own `--exec`: without it `wsl.exe` hands the command to the login shell as one line and TRAMP's `cd` never reaches the command.
+- **Automatic where there is nothing to configure.** The method, distribution completion and the share-name redirect turn on when `wsl.exe` is on `exec-path` (Windows, or inside WSL through interop); elsewhere the module does nothing. `kittymacs-bridge-backends` names back ends explicitly, and with none usable the active one is WSL's default distribution.
+- **Windows share names become `/wsl:` names.** `kittymacs-bridge-unc-mode` puts a file name handler for `\\wsl.localhost\` and `\\wsl$\` names on `file-name-handler-alist`; it rewrites them before any primitive sees them, so a file opened from Explorer is an ordinary `wsl` buffer instead of a slow share whose programs run in Windows. It is on by default on Windows.
+- **Tested against a stand-in.** `tests/bin/wsl.exe` understands the options the bridge uses, answers `--list --quiet` in UTF-16 as the real one does, and runs commands on the machine itself; the suite runs the method over a pseudo-terminal and over plain pipes, which is what native Windows Emacs has.
+
 ### Terminal, tree and tools
 
 - **ghostel is the terminal.** It is a thin Emacs layer over `libghostty-vt`, so a program in it cannot tell it from a terminal window (Kitty keyboard and graphics protocols, OSC 8 and OSC 7, synchronised output, true colour, automatic shell integration). It uses ConPTY directly on Windows, so no POSIX helper is needed. It has its own chapter (`34-terminal.org`); the MSYS2 root and spell-checker discovery are platform questions and live in `30-platform.org`. The native module lives in `var/ghostel/`, not the package directory, so `package-upgrade` cannot delete a library this Emacs has mapped, and it is downloaded on the first `SPC o e`, never at startup.
@@ -142,19 +152,20 @@ Design decisions, with the reason:
 
 ## 5. Verification
 
-Batch, from the repository root. The first four need no packages; the last three need `KITTYMACS_TEST_PACKAGES` pointing at an existing `var/elpa`:
+Batch, from the repository root. The first five need no packages; the last three need `KITTYMACS_TEST_PACKAGES` pointing at an existing `var/elpa`:
 
 ```sh
 emacs -Q --batch -l tools/tangle.el -- --check
 emacs -Q --batch -l tests/kittymacs-tangle-tests.el -f ert-run-tests-batch-and-exit
 emacs -Q --batch -l tests/kittymacs-platform-tests.el -f ert-run-tests-batch-and-exit
 emacs -Q --batch -l tests/kittymacs-treesit-tests.el -f ert-run-tests-batch-and-exit
+emacs -Q --batch -l tests/kittymacs-bridge-tests.el -f ert-run-tests-batch-and-exit
 emacs -Q --batch -l tests/kittymacs-leader-tests.el -f ert-run-tests-batch-and-exit
 emacs -Q --batch -l tests/kittymacs-org-roam-tests.el -f ert-run-tests-batch-and-exit
 emacs -Q --batch -l tests/verify-config.el
 ```
 
-`.github/workflows/ci.yml` runs all of them on every push and pull request: the first four on Emacs 31.1; then, on Emacs 30.1 and 31.1 on Linux and informationally on macOS and Windows, a fresh clone that installs its packages by starting `init.el` in batch, a byte-compilation of `lisp/*.el`, and the last three. A Nix job runs `nix flake check`, evaluates the nix-darwin and nix-on-droid examples against the checkout, and checks the home-manager module's clone options; a weekly run skips the package cache, and the cache key carries a number that is raised when a package changes source, since a restored directory keeps whatever it holds.
+`.github/workflows/ci.yml` runs all of them on every push and pull request: the first five on Emacs 31.1; then, on Emacs 30.1 and 31.1 on Linux and informationally on macOS and Windows, a fresh clone that installs its packages by starting `init.el` in batch, a byte-compilation of `lisp/*.el`, and the last three. A Nix job runs `nix flake check`, evaluates the nix-darwin and nix-on-droid examples against the checkout, and checks the home-manager module's clone options; a weekly run skips the package cache, and the cache key carries a number that is raised when a package changes source, since a restored directory keeps whatever it holds.
 
 The verifier starts the real configuration in an isolated copy with installation forbidden, in the order of a real startup (`after-init-time` nil during init, then `after-init-hook` and `delayed-warnings-hook`), and prints `KITTYMACS-VERIFY` with its result. It asserts: no warning is displayed; `private.el` loads once and its overrides survive (top-level and `after-init-hook` ones, including one that `tabspaces-mode` reads as it turns on); `custom.el` loads from `var/etc` and wins over the chapters; every `lisp/kittymacs-*.el` module is loaded; every key in the `SPC` tree runs a command; `ghostel` and `consult-ghostel` are MELPA's packages, not Git checkouts, and loading ghostel and Consult turns on `consult-ghostel-mode`; `SPC` is `kittymacs-leader-map` in both Meow state maps; `SPC l e` is `eglot` and `SPC s l` is `vertico-repeat`; Org-roam neither syncs nor opens a database at startup, and its prompt shows tags; `SPC s Q` lists exactly a tagged heading, `SPC m g` runs its query again, and `SPC` on a super-agenda group header is the leader; the dashboard's two buttons open the guide and the cheat sheet; theme toggling never stacks themes; and every cheat-sheet `SPC` row resolves to its command.
 
@@ -163,6 +174,7 @@ Not covered by CI, for the user to check on the real host:
 - A graphical startup and the frame tests (`M-x ert RET ^kittymacs-frames- RET` after loading `tests/kittymacs-frames-tests.el`).
 - macOS on a real Mac: the modifier keys, the Trash, the title bar and the Dock-launched `PATH`. The platform tests cover the branches with `system-type` bound to `darwin`, the informational macOS job covers batch startup, and the nix-darwin example is evaluated but not built.
 - The home-manager activation itself: CI evaluates the clone script but never runs it.
+- The bridge on native Windows: TRAMP starts `wsl.exe` through `cmdproxy.exe` there, which the stand-in cannot exercise, along with Windows' argument quoting and the real `wsl.exe`'s speed and distribution order.
 - Android on a real device. The platform tests cover every branch with `system-type` bound to `android`, and no CI runner is an Android telephone. Unverified, in rough order of how likely they are to want adjusting: whether a paired Termux's `bash` starts cleanly through the executable loader; whether `set-text-conversion-style` on each Meow state transition is quick enough with a particular on-screen keyboard (`kittymacs-android-modal-text-conversion` exists for that); whether the port in use has dynamic module support; and how the default font size reads at phone density. `nix-on-droid switch` is evaluated but not applied to a device.
 
 ## 6. Open items

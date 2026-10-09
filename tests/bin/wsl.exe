@@ -1,0 +1,42 @@
+#!/usr/bin/env bash
+# A stand-in for Windows' wsl.exe, so the bridge's TRAMP method can be tested
+# on Linux.  It understands the options the bridge uses and runs the command
+# on this machine instead of in a distribution.
+#
+#   KITTYMACS_FAKE_WSL_DISTROS  installed distributions, the default first
+#                               (default "NixOS Arch")
+#   KITTYMACS_FAKE_WSL_LOG      when set, each invocation's arguments are
+#                               appended to this file, one line per call
+set -u
+distros=${KITTYMACS_FAKE_WSL_DISTROS:-"NixOS Arch"}
+[ -n "${KITTYMACS_FAKE_WSL_LOG:-}" ] && printf '%s\n' "$*" >> "$KITTYMACS_FAKE_WSL_LOG"
+distro= dir= list= mode=
+while [ $# -gt 0 ]; do
+  case $1 in
+    -d|--distribution) distro=$2; shift 2 ;;
+    -u|--user) shift 2 ;;            # every user is the current one here
+    --cd) dir=$2; shift 2 ;;
+    -l|--list) list=1; shift ;;
+    -q|--quiet|-v|--verbose) shift ;;
+    -e|--exec) mode=exec; shift; break ;;
+    --) mode=shell; shift; break ;;
+    *) mode=shell; break ;;
+  esac
+done
+if [ -n "$list" ]; then
+  # Like the real one: UTF-16LE, CRLF line ends.
+  for d in $distros; do printf '%s\r\n' "$d"; done | iconv -f UTF-8 -t UTF-16LE
+  exit 0
+fi
+distro=${distro:-${distros%% *}}
+case " $distros " in
+  *" $distro "*) ;;
+  *) echo "There is no distribution with the supplied name." >&2; exit 1 ;;
+esac
+export WSL_DISTRO_NAME=$distro
+[ -n "$dir" ] && cd "$dir"
+case $mode in
+  exec) exec "$@" ;;
+  shell) exec /bin/sh -c "$*" ;;
+  *) exec /bin/sh -l ;;
+esac
