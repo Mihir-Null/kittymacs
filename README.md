@@ -2,7 +2,7 @@
 
 <a href="https://git.io/typing-svg"><img src="https://readme-typing-svg.demolab.com?font=Patrick+Hand&size=48&duration=2000&pause=1000&color=40E0D0&center=true&vCenter=true&random=true&width=435&lines=kittymacs;%3A3macs" alt=":3 kittymacs" /></a>
 
-**A Meow-first Emacs configuration: select, extend, act, with a real `SPC` leader and a literate source you can read like a book.**
+**A Meow-first Emacs configuration: selection first modal editing paired with a real `SPC` leader and a literate source you can read like a wiki.**
 
 ![Emacs](https://img.shields.io/badge/gnuemacs-%237F5AB6.svg?style=for-the-badge&logo=gnuemacs&logoColor=white)
 ![Org Mode](https://img.shields.io/badge/orgmode-%2377AA99.svg?style=for-the-badge&logo=org&logoColor=white)
