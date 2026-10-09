@@ -47,7 +47,7 @@
 
 | Tag         | Type    | Means                                                                   |
 |-------------+---------+-------------------------------------------------------------------------|
-| =meta=      | kind    | kittymacs itself: the README, the reading guide, these conventions      |
+| =meta=      | kind    | kittymacs itself: the reading guide and these conventions               |
 | =core=      | kind    | startup, defaults, platform, maintenance: what every other chapter uses |
 | =keys=      | kind    | Meow, the leader and the =SPC= tree                                     |
 | =interface= | kind    | frames, appearance, the dashboard, completion, help                     |
@@ -91,7 +91,7 @@
 - To a page or a heading: =[[id:…][words]]=; =SPC n i= inserts one by title, and =M-x org-id-get-create= first gives a heading its ID.
 - To a file that is not a page (a generated module, a test, the =justfile=): a =file:= link relative to the page, such as =[[file:../justfile]]=.
 - Within a page, =[[*Heading]]= is fine while both ends stay on it.
-- The README is GitHub's front page, so it links with =file:= links GitHub can follow; every other page links with =id:=.
+- =README.md= is GitHub's front page, written in Markdown for newcomers; it is not a page of the graph, and links to chapters by path.
 
 * Code
 
@@ -108,7 +108,7 @@
 :ID: 22034c63-4c03-4c8a-aa13-3d888d264052
 :END:
 
-- =just doc-test= runs [[file:../tests/kittymacs-doc-tests.el][tests/kittymacs-doc-tests.el]] over =README.org= and every page in =literate/=:
+- =just doc-test= runs [[file:../tests/kittymacs-doc-tests.el][tests/kittymacs-doc-tests.el]] over every page in =literate/=:
   + every page has an =:ID:=, a =#+TITLE:= and exactly one kind tag;
   + every tag, on a page or a heading, is in [[*Tags]], and every tagged heading has an ID;
   + IDs are unique across pages;
