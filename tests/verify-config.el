@@ -172,9 +172,15 @@ Group maps are walked too.  Autoloaded commands count as commands."
                        "org-mem does not watch exactly the notes folder")
       (kittymacs-verify-check (and org-node-cache-mode org-mem-updater-mode)
                        "Startup did not turn on org-node's index")
-      (org-mem-await "Waiting for the startup index..." 60)
+      ;; `org-mem-await' returns once the parsing processes exit; their
+      ;; results are recorded a moment later, by the sentinel.
+      (let ((deadline (+ (float-time) 60)))
+        (while (and (not (org-mem-entry-by-id "verify-kept"))
+                    (< (float-time) deadline))
+          (accept-process-output nil 0.1)))
       (kittymacs-verify-check (org-mem-entry-by-id "verify-kept")
-                       "The startup index does not hold the notes folder's note")
+                       (format "The startup index does not hold the notes folder's note (watching %S, indexed %S)"
+                               org-mem-watch-dirs (org-mem-all-files)))
       (kittymacs-verify-check (not (org-mem-entry-by-id "verify-excluded"))
                        "The startup index holds a note from an excluded folder")
       (kittymacs-verify-check (and (eq org-node-affixation-fn #'kittymacs--org-node-affix)
