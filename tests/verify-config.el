@@ -3,12 +3,25 @@
 ;; Set KITTYMACS_TEST_PACKAGES to an existing var/elpa directory.
 ;; No packages are installed, refreshed or upgraded by this check.
 (require 'cl-lib)
+(require 'seq)
 (require 'package)
 (require 'warnings)
 (require 'package-vc)
 (defvar kittymacs-verify-source
   (file-name-directory (directory-file-name (file-name-directory load-file-name))))
-(defvar kittymacs-verify-root (make-temp-file "kittymacs-verify-" t))
+(defvar kittymacs-verify-root
+  ;; org-mem never reads a path with a folder starting with . or _, and
+  ;; GitHub's Linux runners keep temporary files in /home/runner/work/_temp/:
+  ;; the notes folder below must be readable.
+  (let ((temporary-file-directory
+         (or (seq-find (lambda (directory)
+                         (and (file-directory-p directory)
+                              (file-writable-p directory)
+                              (not (string-match-p "/[._]" (directory-file-name
+                                                            (file-truename directory))))))
+                       (list temporary-file-directory "/tmp/"))
+             temporary-file-directory)))
+    (make-temp-file "kittymacs-verify-" t)))
 (defvar kittymacs-verify-failures nil)
 (defun kittymacs-verify-check (predicate description)
   (unless predicate (push description kittymacs-verify-failures)))

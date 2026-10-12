@@ -21,14 +21,34 @@
       kittymacs-org-directory (expand-file-name "absent" kittymacs-cache-dir))
 (require 'kittymacs-org-node)
 (defconst kittymacs-node-test-startup
-  (list org-mem-watch-dirs org-node-cache-mode org-mem-updater-mode)
-  "The index's folders and modes as the chapter left them when it loaded.")
+  (list org-mem-watch-dirs org-node-cache-mode org-mem-updater-mode
+        (and (memq #'kittymacs--org-node-register hack-local-variables-hook) t))
+  "The index's folders and modes, and whether projects can register, as
+the chapter left them when it loaded.")
+;; ERT visits this file to report where a failed test is, and the checkout's
+;; .dir-locals.el would add the checkout to the graph; each fixture binds
+;; the hook instead.
+(remove-hook 'hack-local-variables-hook #'kittymacs--org-node-register)
+
+(defconst kittymacs-node-test-temp-root
+  (or (seq-find (lambda (directory)
+                  (and (file-directory-p directory)
+                       (file-writable-p directory)
+                       (not (kittymacs--org-node-unreadable-p (file-truename directory)))))
+                (list temporary-file-directory "/tmp/"
+                      (expand-file-name "../var/" (file-name-directory load-file-name))))
+      (error "No temporary folder org-mem can read"))
+  "Where fixtures live: a folder none of whose parents starts with . or _.
+org-mem never reads such a path, and GitHub's Linux runners keep their
+temporary files in /home/runner/work/_temp/.")
 
 (defmacro kittymacs-node-test (&rest body)
   "Run BODY with a fresh notes folder, project folder and remembered list."
   (declare (indent 0))
   `(let* ((base (file-name-as-directory
-                 (file-truename (make-temp-file "kittymacs-node-" t))))
+                 (file-truename (let ((temporary-file-directory kittymacs-node-test-temp-root))
+                                  (make-temp-file "kittymacs-node-" t)))))
+          (hack-local-variables-hook (list #'kittymacs--org-node-register))
           (personal (expand-file-name "notes/" base))
           (project (expand-file-name "src/proj/" base))
           (kittymacs-cache-dir (expand-file-name "cache/" base))
@@ -91,8 +111,7 @@
   "With no folder, startup creates nothing, and every SPC n command explains."
   (should (featurep 'kittymacs-org-node))
   (should-not (file-exists-p kittymacs-org-directory))
-  (should (equal kittymacs-node-test-startup '(nil nil nil)))
-  (should (memq #'kittymacs--org-node-register hack-local-variables-hook))
+  (should (equal kittymacs-node-test-startup '(nil nil nil t)))
   (with-temp-buffer
     (org-mode)
     (dolist (command '(kittymacs-org-node-find kittymacs-org-node-insert
