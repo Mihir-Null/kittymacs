@@ -231,7 +231,7 @@
 (require 'kittymacs-languages)
 (require 'kittymacs-terminal)
 (require 'kittymacs-org)
-(require 'kittymacs-org-roam)
+(require 'kittymacs-org-node)
 (require 'kittymacs-frames)
 
 ;; Settings saved by M-x customize come last, so they override the chapters.

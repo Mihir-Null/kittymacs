@@ -109,7 +109,7 @@
                                (and (memq (kittymacs-doc-tag-type tag) '(system heading)) t)))))))))
 
 (ert-deftest kittymacs-doc-tagged-headings-have-ids ()
-  "Org-roam lists, and finds by tag, only headings that have an ID."
+  "org-node lists, and finds by tag, only headings that have an ID."
   (dolist (file (kittymacs-doc-pages))
     (kittymacs-doc-with-page file
       (dolist (h (kittymacs-doc-headings))

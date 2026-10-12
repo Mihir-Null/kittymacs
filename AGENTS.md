@@ -14,7 +14,7 @@ With an installed package directory (`just install` makes one in `var/elpa`, or 
 
 ```sh
 just compile        # byte-compile every module
-just test-packages  # leader and Org-roam tests, and the startup verifier
+just test-packages  # leader and org-node tests, and the startup verifier
 ```
 
 With Nix (`nix develop` provides Emacs, just and the linters):

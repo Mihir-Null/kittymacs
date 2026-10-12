@@ -49,7 +49,7 @@ check: tangle-check doc-test test
 install:
     {{emacs}} --eval '(setq native-comp-jit-compilation nil package-native-compile nil)' \
       -l early-init.el --eval '(package-refresh-contents)' -l init.el \
-      --eval '(require (quote org-roam))' \
+      --eval '(require (quote org-node))' \
       --eval '(princ (format "%d packages active\n" (length package-activated-list)))'
 
 # Byte-compile every module, to catch errors a load would hit. The .elc
@@ -60,12 +60,12 @@ compile:
       --eval '(setq byte-compile-dest-file-function (lambda (file) (expand-file-name (concat (file-name-nondirectory file) "c") temporary-file-directory)))' \
       -f batch-byte-compile lisp/*.el
 
-# The tests that load installed packages: the SPC and SPC m machinery, real
-# Org-roam graphs in SQLite, and the startup verifier, which replays a real
-# startup and fails on any warning.
+# The tests that load installed packages: the SPC and SPC m machinery, an
+# org-node graph read from real folders, and the startup verifier, which
+# replays a real startup and fails on any warning.
 test-packages:
     KITTYMACS_TEST_PACKAGES={{quote(packages)}} emacs -Q --batch -l tests/kittymacs-leader-tests.el -f ert-run-tests-batch-and-exit
-    KITTYMACS_TEST_PACKAGES={{quote(packages)}} emacs -Q --batch -l tests/kittymacs-org-roam-tests.el -f ert-run-tests-batch-and-exit
+    KITTYMACS_TEST_PACKAGES={{quote(packages)}} emacs -Q --batch -l tests/kittymacs-org-node-tests.el -f ert-run-tests-batch-and-exit
     KITTYMACS_TEST_PACKAGES={{quote(packages)}} emacs -Q --batch -l tests/verify-config.el
 
 # Frame policy needs a graphical session: this opens one, runs the frame

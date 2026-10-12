@@ -219,14 +219,14 @@
   "e" (cons "emoji" #'emoji-insert)
   "d" (cons "date" #'kittymacs-insert-date))
 (defvar-keymap kittymacs-notes-map
-  :doc "Linked notes in the current graph."
-  "f" (cons "find node" #'kittymacs-org-roam-find)
-  "t" (cons "find node by tag" #'kittymacs-org-roam-find-by-tag)
-  "T" (cons "tag index" #'kittymacs-org-roam-tag-index)
-  "i" (cons "insert ID link" #'kittymacs-org-roam-insert)
-  "c" (cons "capture (show destination)" #'kittymacs-org-roam-capture)
-  "b" (cons "backlinks panel" #'kittymacs-org-roam-backlinks)
-  "s" (cons "sync graph" #'kittymacs-org-roam-sync))
+  :doc "Linked notes, in one graph."
+  "f" (cons "find node" #'kittymacs-org-node-find)
+  "t" (cons "find node by tag" #'kittymacs-org-node-find-by-tag)
+  "T" (cons "tag index" #'kittymacs-org-node-tag-index)
+  "i" (cons "insert ID link" #'kittymacs-org-node-insert)
+  "c" (cons "new note in a folder" #'kittymacs-org-node-new)
+  "b" (cons "backlinks panel" #'kittymacs-org-node-backlinks)
+  "s" (cons "rescan graph" #'kittymacs-org-node-rescan))
 
 (defvar-keymap kittymacs-open-map
   :doc "Open applications."
