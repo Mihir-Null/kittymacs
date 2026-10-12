@@ -181,6 +181,9 @@ built its candidates."
       ;; Changed exclusions replace the remembered ones.
       (kill-buffer (get-file-buffer page))
       (kittymacs-node-test-dir-locals project '((kittymacs-org-node-project . t)))
+      ;; Emacs re-reads a .dir-locals.el only when its modification time
+      ;; changes, and Windows can give the rewrite the same time stamp.
+      (setq dir-locals-directory-cache nil)
       (find-file-noselect page)
       (should (equal kittymacs--org-node-projects `((,project))))
       (should-not (member (expand-file-name "secrets/" project) org-mem-exclude))
