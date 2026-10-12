@@ -1,0 +1,617 @@
+:PROPERTIES:
+:ID: f48e8f01-88da-4e33-8398-c00ab346b8bb
+:END:
+
+#+TITLE: Org-node: one graph of linked notes
+#+FILETAGS: :notes:
+#+STARTUP: overview
+#+PROPERTY: header-args:emacs-lisp :tangle ../lisp/kittymacs-org-node.el :eval never :comments no :padline no :mkdirp yes
+
+- Linked notes under =SPC n=, in one graph: your own notes folder and the documentation of each project you add are searched, linked and backlinked together.
+- Leans on [[id:afa6b7fd-742a-4c15-86a6-32e3e8027b0e][the platform chapter]] for the notes folder, [[id:3fd783cd-deb8-48aa-bb44-0d9b16535365][the defaults chapter]] for the cache, [[id:e5942eb0-4389-447d-9317-d9178adcaaae][the leader]] for =SPC m= and [[id:f1d045c2-e2dc-4514-ab17-dd982ed6be00][the frames chapter]] for where notes open; [[id:53ad53ed-155f-47dc-973d-7be18de2893c][the keys chapter]] binds =SPC n=.
+- The inbox and agenda of [[id:8ff7e58e-c155-4513-99ae-3b2c3a6ab729][the Org chapter]] are unaffected: they keep their own files and templates.
+- kittymacs' own chapters can join the graph: [[id:7edccfdc-3c38-489a-bc9e-4c002b432ab4][the conventions]] show it in use.
+- Read [[*One graph, many folders]] first; the rest follows from it.
+
+* One graph, many folders :concept:
+:PROPERTIES:
+:ID: bf28bf5d-a667-4ea9-afa5-9a80072be8b6
+:END:
+
+- Every =SPC n= command works on the whole graph:
+
+| Key       | Does                                                      |
+|-----------+-----------------------------------------------------------|
+| =SPC n f= | find a note, or create one by typing a new title          |
+| =SPC n i= | insert a link to one                                      |
+| =SPC n c= | create a note in a folder you choose                      |
+| =SPC n b= | show or hide the notes that link to the one at point      |
+| =SPC n s= | read every file again and report what the index holds     |
+| =SPC n t= | find a note by choosing a tag first                       |
+| =SPC n T= | list every tag with its notes                             |
+
+- A /note/ is a file or heading with an =:ID:= property, so an =id:= link can point at it.
+- The graph is a set of folders, read by two packages:
+  + /org-mem/ keeps an index of every heading, link and tag of the Org files in those folders, in memory;
+  + /org-node/, built on it, provides the commands: find, insert, create, and the backlinks panel.
+- There is no database: the index is rebuilt by reading the files, which org-mem does in parallel in background Emacs processes.
+- The graph's folders are:
+  + your /notes folder/, =kittymacs-org-node-directory=, by default the Org directory of [[id:afa6b7fd-742a-4c15-86a6-32e3e8027b0e][the platform chapter]];
+  + every /project folder/: a repository whose =.dir-locals.el= says so ([[*Project folders]]).
+- A note in a project can link to one in your notes folder and the other way round; backlinks show both directions.
+
+* Indexing in the background :decision:
+:PROPERTIES:
+:ID: 5110d6d4-9701-4a67-8913-698477cd0461
+:END:
+
+- The index is built when the chapter loads, in background processes: Emacs stays usable while they read.
+- After that it stays current by itself:
+  + saving, renaming or deleting an Org file updates its entries a moment later (=org-mem-updater-mode=);
+  + when Emacs has been idle a while, the whole graph is read again, which catches edits made outside Emacs.
+- =SPC n s= reads it again on the spot, and prints how many files and notes it found.
+- A graph with no folder yet (a fresh install, before your notes folder exists) is not indexed: =SPC n= commands say how to give it one, and nothing is created for you.
+
+* Which folders are read
+:PROPERTIES:
+:ID: 772c7b11-7024-47b2-a892-c14f2457b2ef
+:END:
+
+- org-mem reads the folders in =org-mem-watch-dirs=, every level deep, and keeps the files ending in =.org= or =.org_archive=.
+- This chapter sets that list to the graph's folders that exist, and nothing else:
+  + =org-mem-do-look-everywhere= is off; upstream turns it on so that the folders of recent files and agenda files join the graph too, which would make the graph whatever you last opened;
+  + a folder that does not exist is left out, since org-mem stops on one.
+- Upstream also skips, everywhere:
+  + any folder or file whose name starts with =.= or =_= (=.git=, =_archive=);
+  + symbolic links to folders;
+  + the substrings in =org-mem-exclude=, such as =/node_modules/= and =/backup=.
+- =kittymacs-org-node-excluded-directories= names more folders to skip, /relative to a graph folder/: ="secrets"= leaves out =ROOT/secrets/= and everything under it, and ="docs/old"= one folder deeper.
+  + Its default value applies to your notes folder: set it with =setopt= in =private.el=. The chapter reads it with =default-value=, so a project's directory-local value never leaks into your notes folder.
+  + A project sets its own in its =.dir-locals.el= ([[*Project folders]]).
+  + Each one becomes an absolute path added to =org-mem-exclude=; the chapter remembers upstream's value of that option when it loads, so an =org-mem-exclude= you set in =private.el= is kept.
+- org-mem also copies every ID it reads into Org's own ID index, =org-id-locations=, so an =id:= link opens straight away, from any buffer.
+
+** Folders org-mem cannot read :decision:
+:PROPERTIES:
+:ID: cee1077e-c4e4-423c-9976-0fb18f7f9607
+:END:
+
+- The rule above applies to the /whole/ path: a folder named =~/.config/emacs/= or =~/_work/notes/= is skipped entirely, even when it is listed.
+- So kittymacs' own chapters join the graph only from a checkout whose real path has no such folder:
+  + a clone in =~/src/kittymacs=, which is where the home-manager module puts it and links =~/.config/emacs= to, works;
+  + a clone made directly in =~/.config/emacs= does not; opening a chapter there says so once.
+- The chapter does not work around it: the rule is in a private upstream function, and advising one breaks on upstream's next release.
+
+#+begin_src emacs-lisp
+;;; kittymacs-org-node.el --- One graph of linked notes -*- lexical-binding: t; -*-
+;; Generated from literate/71-org-node.org; edit the Org source, then tangle.
+
+;;; Code:
+
+(require 'cl-lib)
+(require 'org)
+(require 'org-id)
+(require 'kittymacs-leader)
+
+;; Defined by the defaults and platform chapters, which init.el loads first.
+(defvar kittymacs-cache-dir)
+(defvar kittymacs-org-directory)
+
+(use-package org-node
+  :ensure t
+  :demand t)
+
+(defgroup kittymacs-org-node nil
+  "Linked notes in one graph, across your notes folder and your projects."
+  :group 'kittymacs)
+
+(defcustom kittymacs-org-node-directory kittymacs-org-directory
+  "Your notes folder, the graph's first folder.
+The chapter reads it while it loads, so set it with `setopt' in private.el."
+  :type 'directory
+  :group 'kittymacs-org-node)
+
+(defcustom kittymacs-org-node-excluded-directories nil
+  "Folders, relative to a graph folder, whose files are never notes.
+The global value applies to `kittymacs-org-node-directory'; a project
+sets its own in its .dir-locals.el."
+  :type '(repeat string)
+  :safe #'list-of-strings-p
+  :group 'kittymacs-org-node)
+
+(defvar kittymacs--org-node-base-exclude (default-toplevel-value 'org-mem-exclude)
+  "`org-mem-exclude' before this chapter added the folders' exclusions.")
+
+(defun kittymacs--org-node-root (directory)
+  "Return DIRECTORY as an absolute directory name with links resolved."
+  (file-name-as-directory (file-truename (expand-file-name directory))))
+
+(defun kittymacs--org-node-unreadable-p (root)
+  "Whether org-mem skips every file under ROOT.
+It skips any path with a folder whose name starts with . or _."
+  (string-match-p "/[._]" (directory-file-name root)))
+
+#+end_src
+
+* Project folders :concept:
+:PROPERTIES:
+:ID: f70b8ad9-3c6c-4260-9b95-86b27ea8d985
+:END:
+
+- A repository joins the graph with a =.dir-locals.el= at its root. EmptyNet ships exactly this one:
+
+#+begin_src emacs-lisp :tangle no
+((nil . ((kittymacs-org-node-project . t)
+         (kittymacs-org-node-excluded-directories . ("secrets" "tools" "web")))))
+#+end_src
+
+- kittymacs' own checkout has the same kind of file, leaving out =var/=, =tests/=, =tools/= and =lisp/= ([[id:7edccfdc-3c38-489a-bc9e-4c002b432ab4][the conventions]]).
+- =kittymacs-org-node-project= says "the folder holding this file belongs to the graph".
+  + Emacs already knows that folder: applying directory locals, it records them in =dir-local-variables-alist=, and =dir-locals-find-file= returns the folder whose =.dir-locals.el= it read.
+- =kittymacs-org-node-excluded-directories= there lists the project's own exclusions ([[*Which folders are read]]); a project without one excludes nothing beyond upstream's rules.
+- Both are declared safe for their types (a boolean, a list of strings): Emacs applies them without asking, and nothing in the file is evaluated.
+  + An Emacs without kittymacs does not know them: the first time it opens a file there it asks whether to apply them; =i= ignores them for good. They do nothing in that Emacs either way.
+- Emacs reads only the nearest =.dir-locals.el= above a file.
+  + A subfolder with its own hides the root's: if that file repeats the flag, the subfolder joins the graph as a folder of its own, which changes nothing, since its files were already read.
+
+** Joining, and being remembered
+:PROPERTIES:
+:ID: acb3d34e-18f4-48d4-9d1d-8b1803fbb9dc
+:END:
+
+- =kittymacs--org-node-register= runs from =hack-local-variables-hook=, which Emacs runs after applying a file's local and directory-local variables: when a file is visited, whenever a major mode starts in it, and after a revert.
+  + Emacs applies directory locals to buffers without a file too, from their =default-directory=; those are ignored, so a Dired buffer or a scratch Org buffer opened in a project does not add it.
+- When the project flag is set, it compares the project's root and exclusions with what the graph already has:
+  + the same: nothing happens, which is the case on every visit but the first;
+  + new or changed: the graph takes them, the background index reads the folders again, and a message names the folder.
+- The graph's projects are written to =org-node-projects= under =kittymacs-cache-dir=, so the next session reads them at startup without your opening a file there first.
+  + The file holds a Lisp list of =(ROOT . EXCLUSIONS)= pairs, each root a real path; it is safe to delete, and opening a file in each project adds it back.
+- =M-x kittymacs-org-node-forget-project= takes a project out of the graph.
+  + Opening one of its files adds it back while its =.dir-locals.el= has the flag, so delete the flag too if you mean it.
+- A project moved or deleted is simply left out while its folder does not exist ([[*Which folders are read]]).
+
+#+begin_src emacs-lisp
+(defcustom kittymacs-org-node-project nil
+  "Non-nil in a directory's .dir-locals.el to add that directory to the graph."
+  :type 'boolean
+  :safe #'booleanp
+  :group 'kittymacs-org-node)
+
+(defcustom kittymacs-org-node-projects-file
+  (expand-file-name "org-node-projects" kittymacs-cache-dir)
+  "File in which the graph remembers its project folders between sessions."
+  :type 'file
+  :group 'kittymacs-org-node)
+
+(defvar kittymacs--org-node-projects nil
+  "The graph's project folders, as (ROOT . EXCLUSIONS) pairs.")
+
+(defvar kittymacs--org-node-unreadable-reported nil
+  "Project roots that org-mem cannot read and this session has reported.")
+
+(defun kittymacs--org-node-load-projects ()
+  "Read the graph's project folders from `kittymacs-org-node-projects-file'."
+  (setq kittymacs--org-node-projects
+        (when (file-readable-p kittymacs-org-node-projects-file)
+          (with-temp-buffer
+            (insert-file-contents kittymacs-org-node-projects-file)
+            (ignore-errors (read (current-buffer)))))))
+
+(defun kittymacs--org-node-save-projects ()
+  "Write the graph's project folders to `kittymacs-org-node-projects-file'."
+  (make-directory (file-name-directory kittymacs-org-node-projects-file) t)
+  (with-temp-file kittymacs-org-node-projects-file
+    (insert ";; Project folders of the notes graph; see literate/71-org-node.org.\n")
+    (let ((print-length nil) (print-level nil))
+      (pp kittymacs--org-node-projects (current-buffer)))))
+
+(defun kittymacs--org-node-folders ()
+  "Return the graph's folders that exist, as (ROOT . EXCLUSIONS) pairs."
+  (seq-filter (lambda (folder) (file-directory-p (car folder)))
+              (cons (cons (kittymacs--org-node-root kittymacs-org-node-directory)
+                          (default-value 'kittymacs-org-node-excluded-directories))
+                    kittymacs--org-node-projects)))
+
+(defun kittymacs--org-node-project-root ()
+  "Return the real directory whose .dir-locals.el set `kittymacs-org-node-project'.
+Only a buffer visiting a file counts."
+  (when (and buffer-file-name
+             (alist-get 'kittymacs-org-node-project dir-local-variables-alist))
+    (let ((found (dir-locals-find-file buffer-file-name)))
+      (kittymacs--org-node-root (if (consp found) (car found) found)))))
+
+(defun kittymacs--org-node-register ()
+  "Add the project that this buffer's .dir-locals.el declares to the graph."
+  (when-let* ((root (kittymacs--org-node-project-root)))
+    (let ((excluded (alist-get 'kittymacs-org-node-excluded-directories
+                               dir-local-variables-alist)))
+      (cond
+       ((kittymacs--org-node-unreadable-p root)
+        (unless (member root kittymacs--org-node-unreadable-reported)
+          (push root kittymacs--org-node-unreadable-reported)
+          (message "org-node cannot read %s: a folder in its path starts with . or _"
+                   (abbreviate-file-name root))))
+       ((not (equal (assoc root kittymacs--org-node-projects) (cons root excluded)))
+        (setf (alist-get root kittymacs--org-node-projects nil nil #'equal) excluded)
+        (kittymacs--org-node-save-projects)
+        (kittymacs--org-node-start)
+        (message "Notes graph includes %s; indexing it" (abbreviate-file-name root)))))))
+
+(defun kittymacs-org-node-forget-project (root)
+  "Take the project folder ROOT out of the notes graph."
+  (interactive
+   (list (completing-read "Forget project: "
+                          (or (mapcar #'car kittymacs--org-node-projects)
+                              (user-error "The graph has no project folders"))
+                          nil t)))
+  (setq kittymacs--org-node-projects (assoc-delete-all root kittymacs--org-node-projects))
+  (kittymacs--org-node-save-projects)
+  (kittymacs--org-node-start))
+
+#+end_src
+
+* Starting the index
+:PROPERTIES:
+:ID: 7ad80319-7dfb-4e5e-9c1c-b004cd653957
+:END:
+
+- =kittymacs--org-node-start= points org-mem at the graph's folders and their exclusions, then:
+  + with at least one folder, turns on the two modes that keep the index (or, when they are on already, starts a fresh read);
+  + with none, turns them off, so nothing tries to read a folder that is not there.
+- Two modes, because the work is split between the packages:
+  + =org-node-cache-mode= builds org-node's completion candidates each time org-mem finishes reading;
+  + =org-mem-updater-mode= keeps org-mem current: after saves, renames and deletions, and on an idle timer.
+  + Turned on together, they share one read rather than starting two.
+- It runs when the chapter loads, from the last form of this file, and again whenever the graph's projects change.
+- =kittymacs--org-node-ensure= opens every =SPC n= command:
+  + if the index is off, it tries to start it, because the notes folder may have appeared since startup;
+  + if there is still no folder, it stops the command with a message naming the folder to create.
+  + Without it, org-node's own commands would ask, one after the other, whether to turn each mode on.
+- =kittymacs-org-node-rescan= (=SPC n s=) is upstream's =org-mem-reset= run as a command: it forgets the cached file names, reads every file again and prints what it found.
+
+#+begin_src emacs-lisp
+(defun kittymacs--org-node-apply ()
+  "Point org-mem at the graph's folders and their exclusions; return the folders."
+  (let ((folders (kittymacs--org-node-folders)))
+    (setq org-mem-watch-dirs (mapcar #'car folders)
+          org-mem-exclude
+          (append kittymacs--org-node-base-exclude
+                  (cl-loop for (root . excluded) in folders
+                           append (mapcar (lambda (directory)
+                                            (file-name-as-directory
+                                             (expand-file-name directory root)))
+                                          excluded))))
+    folders))
+
+(defun kittymacs--org-node-start ()
+  "Index the graph's folders, or stop indexing when none exists.
+Return non-nil when the index is on."
+  (if (kittymacs--org-node-apply)
+      (progn
+        (if (and org-node-cache-mode org-mem-updater-mode)
+            (org-mem-reset)
+          (org-node-cache-mode)
+          (org-mem-updater-mode))
+        t)
+    (when org-mem-updater-mode (org-mem-updater-mode 0))
+    (when org-node-cache-mode (org-node-cache-mode 0))
+    nil))
+
+(defun kittymacs--org-node-ensure ()
+  "Make sure the graph is indexed, or explain why it cannot be."
+  (unless (or (and org-node-cache-mode org-mem-updater-mode)
+              (kittymacs--org-node-start))
+    (user-error "No notes folder yet: create %s, or open a project whose .dir-locals.el sets kittymacs-org-node-project"
+                (abbreviate-file-name kittymacs-org-node-directory))))
+
+(defun kittymacs-org-node-rescan ()
+  "Read every file of the graph again, then report what the index holds."
+  (interactive)
+  (kittymacs--org-node-ensure)
+  (call-interactively #'org-mem-reset))
+
+#+end_src
+
+* Finding, linking and creating notes
+
+- =SPC n f= is upstream's =org-node-find=: choose a note to visit it, or type a title no note has to create one.
+- =SPC n i= is upstream's =org-node-insert-link*=, which inserts an =id:= link at point.
+  + Selected text is kept: it starts the prompt, and the link replacing it shows the same words. Selecting "the build cache" and choosing a note links those words to it.
+  + Without a region the link shows the note's title.
+  + Typing a title no note has creates the note, then links to it.
+  + It works in Org buffers only, since only Org follows =id:= links.
+- A note created by either goes into your notes folder: =org-node-file-directory-ask= is set to it, so upstream does not guess a folder from the ones holding the most notes.
+  + The file is named after the title (=org-node-file-slug-fn=: "The build cache" becomes =the-build-cache.org=), and starts with an =:ID:=, a =#+title:= and a =:CREATED:= time stamp.
+- =SPC n c= creates a note in a folder you choose, by default the graph folder of the file you are in: a project's root in a project, otherwise your notes folder.
+  + It checks the folder is writable before creating anything.
+  + It binds =org-node-file-directory-ask= to the chosen folder while upstream's =org-node-create= runs, so upstream's naming and creation hooks apply unchanged.
+- Notes open in the current window, following the frame policy of [[id:f1d045c2-e2dc-4514-ab17-dd982ed6be00][the frames chapter]].
+
+#+begin_src emacs-lisp
+(setopt org-mem-do-look-everywhere nil
+        org-node-file-directory-ask (kittymacs--org-node-root kittymacs-org-node-directory))
+
+(defun kittymacs-org-node-find ()
+  "Visit a note of the graph, or create one in your notes folder."
+  (interactive)
+  (kittymacs--org-node-ensure)
+  (org-node-find))
+
+(defun kittymacs-org-node-insert ()
+  "Insert an ID link to a note of the graph at point.
+The active region's text is the prompt's input and the link's description."
+  (interactive "*")
+  (kittymacs--org-node-ensure)
+  (org-node-insert-link*))
+
+(defun kittymacs--org-node-folder (file)
+  "Return the graph folder holding FILE, the deepest if folders nest, or nil."
+  (let ((file (file-truename file)))
+    (car (sort (seq-filter (lambda (root) (file-in-directory-p file root))
+                           org-mem-watch-dirs)
+               (lambda (a b) (> (length a) (length b)))))))
+
+(defun kittymacs-org-node-new (title directory)
+  "Create a note called TITLE in DIRECTORY.
+Interactively, DIRECTORY defaults to the graph folder of this buffer's file."
+  (interactive
+   (progn
+     (kittymacs--org-node-ensure)
+     (let ((default (or (kittymacs--org-node-folder (or buffer-file-name default-directory))
+                        (kittymacs--org-node-root kittymacs-org-node-directory))))
+       (list (read-string "New note title: ")
+             (read-directory-name "In folder: " default default t)))))
+  (when (string-blank-p title)
+    (user-error "A note needs a title"))
+  (unless (file-writable-p directory)
+    (user-error "Cannot create a note in %s: it is read-only" directory))
+  (let ((org-node-file-directory-ask (file-name-as-directory directory)))
+    (org-node-create title (org-id-new))))
+
+#+end_src
+
+* Backlinks
+:PROPERTIES:
+:ID: 59345672-b9e1-4580-b877-8275e1f7f437
+:END:
+
+- =SPC n b= shows the backlinks panel in a side window on the right of the current frame, a third of its width, or hides it if it is showing.
+  + It is about the note at point: the nearest heading with an =:ID:=, or the file's own.
+  + Each backlink is shown with the text around the link; =RET= on one opens the note at that spot.
+  + Outside an Org buffer it shows or hides the panel as it was.
+- The panel is upstream's =org-node-context= buffer, and =org-node-context-toggle= shows it; this chapter adds only the checks that turn upstream's errors into messages, and the side window.
+- The panel does not follow point by itself: =SPC n b= twice, or =SPC m g= in the panel, shows it for the note you are in.
+  + =M-x org-node-context-follow-mode= makes it follow point.
+
+#+begin_src emacs-lisp
+(defun kittymacs-org-node-backlinks ()
+  "Show or hide the notes that link to the note at point, in a side panel."
+  (interactive)
+  (kittymacs--org-node-ensure)
+  (require 'org-node-context)
+  (cond
+   ((derived-mode-p 'org-mode)
+    (unless (org-entry-get-with-inheritance "ID")
+      (user-error "No note here: neither this heading nor its file has an ID")))
+   ((not (get-buffer org-node-context-main-buffer))
+    (user-error "SPC n b shows the backlinks of the note at point; open a note first")))
+  (org-node-context-toggle))
+
+(with-eval-after-load 'org-node-context
+  (add-to-list 'display-buffer-alist
+               `(,(concat "\\`" (regexp-quote org-node-context-main-buffer) "\\'")
+                 (display-buffer-in-side-window)
+                 (side . right)
+                 (window-width . 0.33))))
+
+#+end_src
+
+* Meow in the backlinks panel :meow:
+:PROPERTIES:
+:ID: 0a0de064-9ceb-4c01-9386-1fa85caafb4d
+:END:
+
+- The panel is a special buffer, so it starts in Motion state.
+- =SPC m= in it offers:
+  + =g= refresh the backlinks;
+  + =l= and =r= go back and forward through the notes the panel has shown;
+  + =s= read the graph again;
+  + =f= find a note.
+- Notes themselves are Org buffers: Normal state and Org's =SPC m= ([[id:8ff7e58e-c155-4513-99ae-3b2c3a6ab729][the Org chapter]]).
+
+#+begin_src emacs-lisp
+(with-eval-after-load 'meow
+  (add-to-list 'meow-mode-state-list '(org-node-context-mode . motion)))
+(kittymacs-define-localleader 'org-node-context-mode
+  "g" (cons "refresh backlinks" #'org-node-context-refresh-this-buffer)
+  "l" (cons "previous note" #'org-node-context-history-go-back)
+  "r" (cons "next note" #'org-node-context-history-go-forward)
+  "s" (cons "rescan graph" #'kittymacs-org-node-rescan)
+  "f" (cons "find node" #'kittymacs-org-node-find))
+
+#+end_src
+
+* Tags
+
+- The index keeps every note's tags beside its title: its own tags plus those it inherits from its file and the headings above it, as =org-get-tags= would return them.
+
+** Tags in the prompt :decision:
+:PROPERTIES:
+:ID: 38f3095e-e5df-489e-92b5-370f8f97e9ea
+:END:
+
+- Upstream's prompt shows each note's outline path, and its tags not at all.
+- =kittymacs--org-node-affix= shows each title followed by its tags, each with a =#= in front: =The loop  #concept #decision=.
+- =org-node-alter-candidates= makes those tags part of the text you match against, not just decoration beside it, so Orderless reads each word you type as a separate condition:
+  + =#decision=: the notes tagged =decision=;
+  + =#machine #nixos=: the notes carrying both;
+  + =#nixos !#machine=: the =nixos= notes without =machine= (a word that starts with =!= must not match).
+- =SPC n i= filters the same way; the link it inserts still says the note's title, because upstream takes the description from the note, not from what you chose.
+- Both options apply when org-node builds its candidates, so they are set before the index starts.
+
+#+begin_src emacs-lisp
+(defun kittymacs--org-node-affix (node title)
+  "Return TITLE followed by NODE's tags, each behind a #, for the prompt."
+  (list title ""
+        (if-let* ((tags (org-mem-entry-tags node)))
+            (propertize (concat "  " (mapconcat (lambda (tag) (concat "#" tag)) tags " "))
+                        'face 'org-tag)
+          "")))
+
+(setopt org-node-affixation-fn #'kittymacs--org-node-affix
+        org-node-alter-candidates t)
+
+#+end_src
+
+** Find by tag, and the tag index
+
+- =SPC n t= asks for a tag, then offers only the notes carrying it.
+  + The tag list is every tag in the graph with its number of notes: the quickest way to see what tags the graph has.
+  + It reads the note with upstream's =org-node-read-candidate=, whose answer is a key of org-node's table of candidates.
+- =SPC n T= writes an Org buffer with a heading per tag and, under it, a link to every note carrying it.
+  + A file note is listed under its file tags.
+  + A heading note is listed only under the tags its file note lacks, so a page tagged =machine= appears once under =machine=, not once per heading.
+  + Each link is followed by its file, from the graph folder's name down: =EmptyNet/wiki/mack.org=.
+- Both wait for a read that is still going, so they never list a half-read graph.
+
+#+begin_src emacs-lisp
+(defun kittymacs--org-node-tag-counts ()
+  "Return the graph's tags as (TAG . NOTES) pairs, sorted by tag."
+  (let ((counts (make-hash-table :test #'equal))
+        pairs)
+    (dolist (node (org-node-all-filtered-nodes))
+      (dolist (tag (org-mem-entry-tags node))
+        (cl-incf (gethash tag counts 0))))
+    (maphash (lambda (tag notes) (push (cons tag notes) pairs)) counts)
+    (sort pairs (lambda (a b) (string< (car a) (car b))))))
+
+(defun kittymacs--org-node-read-tag ()
+  "Read a tag of the graph; the list says how many notes carry each."
+  (let ((counts (or (kittymacs--org-node-tag-counts)
+                    (user-error "No tags in the graph; SPC n s reads it again"))))
+    (completing-read
+     "Tag: "
+     (lambda (string predicate action)
+       (if (eq action 'metadata)
+           `(metadata
+             (annotation-function
+              . ,(lambda (tag)
+                   (let ((notes (alist-get tag counts nil nil #'equal)))
+                     (format "  %d note%s" notes (if (= notes 1) "" "s"))))))
+         (complete-with-action action counts string predicate)))
+     nil t)))
+
+(defun kittymacs-org-node-find-by-tag ()
+  "Find a note of the graph by choosing one of the graph's tags first."
+  (interactive)
+  (kittymacs--org-node-ensure)
+  (org-node-cache-ensure t)
+  (let* ((tag (kittymacs--org-node-read-tag))
+         (input (org-node-read-candidate
+                 (format "Note tagged %s: " tag) nil
+                 (lambda (_candidate node) (member tag (org-mem-entry-tags node)))
+                 t)))
+    (org-node-goto (gethash input org-node--candidate<>entry))))
+
+(defun kittymacs--org-node-tagged-notes ()
+  "Return the graph's tags with the notes listed under each.
+The value is a list of (TAG . NOTES), sorted by tag; a note is a list
+\(ID TITLE FILE LEVEL), file notes first.  A file note is listed under
+its file tags, a heading note only under tags its file note lacks."
+  (let ((nodes (sort (org-node-all-filtered-nodes)
+                     (lambda (a b)
+                       (let ((file-a (org-mem-entry-file a)) (file-b (org-mem-entry-file b)))
+                         (if (equal file-a file-b)
+                             (< (org-mem-entry-pos a) (org-mem-entry-pos b))
+                           (string< file-a file-b))))))
+        (file-tags (make-hash-table :test #'equal))
+        groups)
+    (dolist (node nodes)
+      (when (zerop (org-mem-entry-level node))
+        (dolist (tag (org-mem-entry-tags node))
+          (puthash (cons (org-mem-entry-file node) tag) t file-tags))))
+    (dolist (node nodes)
+      (let ((file (org-mem-entry-file node))
+            (level (org-mem-entry-level node)))
+        (dolist (tag (org-mem-entry-tags node))
+          (unless (and (> level 0) (gethash (cons file tag) file-tags))
+            (push (list (org-mem-entry-id node) (org-mem-entry-title node) file level)
+                  (alist-get tag groups nil nil #'equal))))))
+    (sort (mapcar (lambda (group)
+                    ;; File notes first; `sort' is stable, so the rest keep
+                    ;; the order of their files and positions.
+                    (cons (car group)
+                          (sort (nreverse (cdr group))
+                                (lambda (a b) (and (zerop (nth 3 a)) (> (nth 3 b) 0))))))
+                  groups)
+          (lambda (a b) (string< (car a) (car b))))))
+
+(defun kittymacs--org-node-display-file (file)
+  "Return FILE relative to the parent of its graph folder, to show it."
+  (if-let* ((folder (kittymacs--org-node-folder file)))
+      (file-relative-name file (file-name-directory (directory-file-name folder)))
+    (abbreviate-file-name file)))
+
+(defun kittymacs-org-node-tag-index ()
+  "List the graph's tags in an Org buffer, each with links to its notes."
+  (interactive)
+  (kittymacs--org-node-ensure)
+  (org-node-cache-ensure t)
+  (let ((groups (or (kittymacs--org-node-tagged-notes)
+                    (user-error "No tags in the graph; SPC n s reads it again")))
+        (buffer (get-buffer-create "*org-node tags*")))
+    (with-current-buffer buffer
+      (let ((inhibit-read-only t))
+        (erase-buffer)
+        (org-mode)
+        (insert "#+title: Tags in the notes graph\n\n")
+        (pcase-dolist (`(,tag . ,notes) groups)
+          (insert (format "* %s (%d)\n" tag (length notes)))
+          (pcase-dolist (`(,id ,title ,file ,_) notes)
+            (insert "- " (org-link-make-string (concat "id:" id) title)
+                    " · " (kittymacs--org-node-display-file file) "\n")))
+        (set-buffer-modified-p nil)
+        (goto-char (point-min))))
+    (pop-to-buffer buffer)))
+
+#+end_src
+
+* What this chapter asks of org-node
+
+- Beyond ordinary function calls and options, the chapter adds one hook and one entry in =display-buffer-alist=:
+
+- =hack-local-variables-hook= (Emacs) :: =kittymacs--org-node-register= adds a project to the graph when one of its files is opened ([[*Joining, and being remembered]]).
+- =display-buffer-alist= (Emacs) :: the backlinks panel opens in a side window ([[*Backlinks]]).
+- It reads one upstream table directly, =org-node--candidate<>entry=, the way upstream's own =org-node-read= does, to turn the answer of =org-node-read-candidate= into a note ([[*Find by tag, and the tag index]]).
+- org-node's own commands, such as =M-x org-node-refile= or =M-x org-node-extract-subtree=, work on the same graph, since there is only one.
+- The last forms read the remembered projects and start the index.
+
+#+begin_src emacs-lisp
+(add-hook 'hack-local-variables-hook #'kittymacs--org-node-register)
+(kittymacs--org-node-load-projects)
+(kittymacs--org-node-start)
+
+(provide 'kittymacs-org-node)
+;;; kittymacs-org-node.el ends here
+#+end_src
+
+* Check
+
+- With your notes folder existing, =SPC n f= offers its notes; typing a new title creates one there.
+- Open a file in a repository with a project =.dir-locals.el=, such as EmptyNet: a message says the graph includes it, and =SPC n f= then offers its pages too.
+- In a note, =SPC n b= opens the backlinks panel on the right; =SPC m g= in the panel refreshes it.
+- =SPC n s= reads the graph again and prints how many files and notes it holds.
+- Type =#= and a tag at =SPC n f=: only the notes with that tag stay; =SPC n t= lists the tags themselves, and =SPC n T= every tag with its notes.
+- =just test-packages= runs [[file:../tests/kittymacs-org-node-tests.el][the org-node tests]] on real folders, and the startup verifier:
+  + with no folder, startup indexes nothing, creates nothing, and every =SPC n= command explains;
+  + the notes folder and its exclusions are read; a folder whose path starts with =.= or =_= is reported, not added;
+  + the project flag adds the project's root and exclusions, remembers them across sessions, and forgetting a project removes it;
+  + notes link and backlink across folders; =id:= links open through Org's ID index;
+  + new notes go to your notes folder, or to the folder =SPC n c= is given; a read-only folder is refused;
+  + selected text survives =SPC n i= as the link's description;
+  + the backlinks panel opens in a side window in Motion state;
+  + tags show in the prompt and narrow it, =SPC n t= lists tags then their notes, and =SPC n T= lists a page once and its headings by their own tags.
+
+#+begin_src sh :tangle no
+just test-packages      # the org-node tests, with the leader tests and the verifier
+#+end_src

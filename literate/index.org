@@ -47,7 +47,7 @@
 | [[id:f6ccd2da-4b3f-4392-b439-3966fc9d3db8][Version control]] | apps      | Magit and VC                                                                       |
 | [[id:e4d65984-892d-4046-b718-d4265ab74215][Navigation]]      | apps      | recent files, places, projects, search tools, workspaces                           |
 | [[id:8ff7e58e-c155-4513-99ae-3b2c3a6ab729][Org]]             | notes     | notes, tasks, the agenda, searches by tag and by query                             |
-| [[id:f48e8f01-88da-4e33-8398-c00ab346b8bb][Org-roam]]        | notes     | linked notes: personal and project graphs, capture, backlinks, tags                |
+| [[id:f48e8f01-88da-4e33-8398-c00ab346b8bb][org-node]]        | notes     | linked notes: one graph over your notes and your projects, backlinks, tags         |
 | [[id:97c04bd3-1404-4b0a-8018-20d77bc671bc][Programming]]     | code      | delimiters, structural editing, linting, compiling, Emacs Lisp                     |
 | [[id:560fcdca-6cb8-49d9-bf27-eb78f32b9285][Languages]]       | code      | Tree-sitter grammars and opt-in language servers                                   |
 | [[id:9ea539a0-f1a3-4d05-aa10-6f2d2ff3e335][Maintenance]]     | core      | the loop, the builder, CI, updating, =private.el=                                    |
@@ -91,5 +91,5 @@
 - localleader :: =SPC m=: the current major mode's own menu.
 - frame :: an Emacs OS window; kittymacs opens one where Emacs would split a window.
 - which-key :: the popup listing the keys that can follow the prefix you typed.
-- graph :: an Org-roam set of linked notes with its own index: your personal notes, or a project such as this checkout.
+- graph :: your linked notes, indexed together by org-node: your notes folder and every project folder you add, such as this checkout.
 - private.el :: your settings for this machine, read early and never committed.

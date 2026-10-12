@@ -24,9 +24,9 @@
    + Two exceptions, each one subject: [[id:40302e33-d2b2-4c0b-9bc3-1f9e121307e1][startup]] writes =early-init.el= and =init.el=; [[id:d25a5063-1439-4ae0-8fbe-b0162d05a0e0][the Nix chapter]] writes =flake.nix= and =nix/=; each heading names its file.
 4. *Membership is tags, not location.*
    + A page's kind is its =#+FILETAGS:=; a heading that belongs somewhere extra carries its own tags.
-   + Org-roam groups and filters by these tags alone; [[*Tags]] is the whole list.
+   + =SPC n f= and =SPC n t= filter by these tags alone; [[*Tags]] is the whole list.
 5. *Link every relation, with =id:= links.*
-   + Any heading another page points at gets an =:ID:=; so does every heading with its own tag, since Org-roam lists, and finds by tag, only headings with an ID.
+   + Any heading another page points at gets an =:ID:=; so does every heading with its own tag, since org-node lists, and finds by tag, only headings with an ID.
    + =id:= links survive renames and show as backlinks.
 6. *One home per fact.*
    + If two pages would say the same thing, one says it and the other links there.
@@ -52,7 +52,7 @@
 | =keys=      | kind    | Meow, the leader and the =SPC= tree                                     |
 | =interface= | kind    | frames, appearance, the dashboard, completion, help                     |
 | =apps=      | kind    | the terminal, shells, Dired, Treemacs, version control, navigation      |
-| =notes=     | kind    | Org and Org-roam                                                        |
+| =notes=     | kind    | Org and org-node                                                        |
 | =code=      | kind    | programming and languages                                               |
 | =nix=       | kind    | the flake and its modules                                               |
 | =macos=     | system  | macOS                                                                   |
@@ -121,11 +121,12 @@
 :ID: 216f169e-cc55-4ba9-af9b-169ad3b5cd6b
 :END:
 
-- The checkout is an Org-roam graph of its own: =.dir-locals.el= at the root sets =kittymacs-org-roam-project=.
-  + Its index is a SQLite database in the cache, outside the checkout; =var/=, =tests/=, =tools/=, =lisp/= and =.github/= are left out.
-  + Run =SPC n s= once, and again after pulling new or moved pages.
-- With the graph synced:
+- The checkout joins the notes graph: =.dir-locals.el= at the root sets =kittymacs-org-node-project=.
+  + Opening any page adds it, and the graph remembers it from then on; =var/=, =tests/=, =tools/= and =lisp/= are left out.
+  + org-node cannot read a checkout whose real path has a folder starting with =.=, such as a clone made directly in =~/.config/emacs=; clone into =~/src/kittymacs= and point Emacs there instead.
+  + The index follows saves by itself; =SPC n s= reads it again after a pull.
+- With the checkout in the graph:
   + =SPC n f= finds a page or heading; typing =#meow= or =#decision= narrows to that tag;
   + =SPC n b= lists what links to this page;
   + =SPC n i= inserts an =id:= link by title.
-- [[id:f48e8f01-88da-4e33-8398-c00ab346b8bb][The Org-roam chapter]] explains how a buffer's graph is chosen.
+- [[id:f48e8f01-88da-4e33-8398-c00ab346b8bb][The org-node chapter]] explains how a folder joins the graph.

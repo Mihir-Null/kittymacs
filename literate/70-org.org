@@ -9,7 +9,7 @@
 
 - One inbox under a portable Org directory, two capture templates, an agenda, and searches by tag and by query; Org looks clean and behaves predictably.
 - =SPC m= in an Org buffer lists the structure commands; =SPC o a= opens the agenda from anywhere.
-- Leans on [[id:afa6b7fd-742a-4c15-86a6-32e3e8027b0e][the platform chapter]] for the Org directory and [[id:e5942eb0-4389-447d-9317-d9178adcaaae][the leader]] for =SPC m=; linked notes are [[id:f48e8f01-88da-4e33-8398-c00ab346b8bb][the Org-roam chapter]]'s.
+- Leans on [[id:afa6b7fd-742a-4c15-86a6-32e3e8027b0e][the platform chapter]] for the Org directory and [[id:e5942eb0-4389-447d-9317-d9178adcaaae][the leader]] for =SPC m=; linked notes are [[id:f48e8f01-88da-4e33-8398-c00ab346b8bb][the org-node chapter]]'s.
 - The directory and capture templates are a minimal personal policy; the defaults are distilled from Lambda-Emacs by Colin McLear (=lem-setup-org-base=, =lem-setup-org-settings=), without his personal files and export workflows.
 
 * Where notes live

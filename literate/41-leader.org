@@ -195,5 +195,5 @@ Safe to call more than once."
   + the keypad is unbound unless =kittymacs-keypad-key= is set.
 
 #+begin_src sh :tangle no
-just test-packages      # the leader tests, with the Org-roam tests and the verifier
+just test-packages      # the leader tests, with the org-node tests and the verifier
 #+end_src

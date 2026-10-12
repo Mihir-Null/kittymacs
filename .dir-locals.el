@@ -1,8 +1,7 @@
 ;;; Directory Local Variables -*- no-byte-compile: t -*-
-;; The chapters are an Org-roam graph of their own: with kittymacs, SPC n
-;; commands in any page here use this checkout as their graph, with its own
-;; database in the cache, outside the repository.  Plain Emacs asks whether
-;; to apply these variables; they do nothing without kittymacs.  See
-;; literate/conventions.org.
-((nil . ((kittymacs-org-roam-project . t)
-         (kittymacs-org-roam-excluded-directories . ("var" "tests" "tools" "lisp" ".github")))))
+;; The chapters join the notes graph: with kittymacs, opening any page adds
+;; this checkout to the graph that SPC n searches, and the graph remembers
+;; it.  Plain Emacs asks whether to apply these variables; they do nothing
+;; without kittymacs.  See literate/conventions.org.
+((nil . ((kittymacs-org-node-project . t)
+         (kittymacs-org-node-excluded-directories . ("var" "tests" "tools" "lisp")))))

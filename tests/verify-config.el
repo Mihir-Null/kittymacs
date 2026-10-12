@@ -77,8 +77,16 @@ Group maps are walked too.  Autoloaded commands count as commands."
           ;; tabspaces-mode reads only as it turns on.
           "(add-hook 'after-init-hook (lambda () (setopt corfu-scroll-margin 3 tabspaces-use-filtered-buffers-as-default nil)) 90)\n"))
 (with-temp-buffer
-  (insert "(setq kittymacs-org-roam-directory (expand-file-name \"test-roam/\" user-emacs-directory) kittymacs-org-roam-excluded-directories '(\"test-excluded\"))\n")
+  (insert "(setq kittymacs-org-node-directory (expand-file-name \"test-notes/\" user-emacs-directory) kittymacs-org-node-excluded-directories '(\"test-excluded\"))\n")
   (append-to-file (point-min) (point-max) (expand-file-name "lisp/private.el" user-emacs-directory)))
+;; The notes folder exists, with one note to find and one in an excluded
+;; folder, so startup indexes it in the background.
+(dolist (note '(("test-notes/kept.org" . "verify-kept")
+                ("test-notes/test-excluded/hidden.org" . "verify-excluded")))
+  (let ((file (expand-file-name (car note) user-emacs-directory)))
+    (make-directory (file-name-directory file) t)
+    (with-temp-file file
+      (insert (format ":PROPERTIES:\n:ID: %s\n:END:\n#+title: %s\n" (cdr note) (cdr note))))))
 (when (getenv "KITTYMACS_TEST_PACKAGES")
   (advice-add 'package-initialize :before
               (lambda (&rest _)
@@ -141,19 +149,23 @@ Group maps are walked too.  Autoloaded commands count as commands."
               (kittymacs-verify-check (bound-and-true-p consult-ghostel-mode)
                                "Loading ghostel and Consult did not turn on consult-ghostel-mode"))
           (error (kittymacs-verify-check nil (format "Loading ghostel failed: %S" err)))))
-      (kittymacs-verify-check (equal kittymacs-org-roam-directory
-                              (expand-file-name "test-roam/" user-emacs-directory))
-                       "Personal graph private override was overwritten")
-      (kittymacs-verify-check (equal kittymacs-org-roam-excluded-directories '("test-excluded"))
-                       "Graph exclusion private override was overwritten")
-      (kittymacs-verify-check (equal org-roam-directory
-                              (file-name-as-directory (file-truename kittymacs-org-roam-directory)))
-                       "Upstream root does not reflect personal graph override")
-      (kittymacs-verify-check (not (file-exists-p kittymacs-org-roam-directory))
-                       "Startup created the graph root")
-      (kittymacs-verify-check (not org-roam-db-autosync-mode) "Org-roam must not rebuild at startup")
-      (kittymacs-verify-check (= (hash-table-count org-roam-db--connection) 0) "Startup opened a graph database")
-      (kittymacs-verify-check (string-match-p "\\${tags" org-roam-node-display-template)
+      (kittymacs-verify-check (equal kittymacs-org-node-directory
+                              (expand-file-name "test-notes/" user-emacs-directory))
+                       "Notes folder private override was overwritten")
+      (kittymacs-verify-check (equal kittymacs-org-node-excluded-directories '("test-excluded"))
+                       "Notes exclusion private override was overwritten")
+      (kittymacs-verify-check (equal org-mem-watch-dirs
+                              (list (file-name-as-directory (file-truename kittymacs-org-node-directory))))
+                       "org-mem does not watch exactly the notes folder")
+      (kittymacs-verify-check (and org-node-cache-mode org-mem-updater-mode)
+                       "Startup did not turn on org-node's index")
+      (org-mem-await "Waiting for the startup index..." 60)
+      (kittymacs-verify-check (org-mem-entry-by-id "verify-kept")
+                       "The startup index does not hold the notes folder's note")
+      (kittymacs-verify-check (not (org-mem-entry-by-id "verify-excluded"))
+                       "The startup index holds a note from an excluded folder")
+      (kittymacs-verify-check (and (eq org-node-affixation-fn #'kittymacs--org-node-affix)
+                                   org-node-alter-candidates)
                        "SPC n f does not show the notes' tags")
       ;; SPC s Q parses a plain query, lists its headings grouped by file,
       ;; refreshes through Org QL, and a group header keeps Meow's keys and
