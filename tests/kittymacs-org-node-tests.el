@@ -90,11 +90,30 @@ temporary files in /home/runner/work/_temp/.")
   (with-temp-file (expand-file-name ".dir-locals.el" directory)
     (prin1 `((nil . ,variables)) (current-buffer))))
 
+(defmacro kittymacs-node-test-scanned (&rest body)
+  "Run BODY, which starts a full read of the graph, and wait until it is recorded.
+`org-mem-await' returns once the parsing processes exit, but their results
+are recorded later, by the process sentinel; org-mem runs
+`org-mem-post-full-scan-functions' once they are, after org-node has
+built its candidates."
+  (declare (indent 0))
+  `(let* ((done nil)
+          (note (lambda (&rest _) (setq done t))))
+     (add-hook 'org-mem-post-full-scan-functions note 95)
+     (unwind-protect
+         (progn ,@body
+                (let ((deadline (+ (float-time) 60)))
+                  (while (and (not done) (< (float-time) deadline))
+                    (accept-process-output nil 0.05)))
+                (should done))
+       (remove-hook 'org-mem-post-full-scan-functions note))))
+
 (defun kittymacs-node-test-index ()
   "Start the index on the graph's folders and wait until it has read them."
-  (should (kittymacs--org-node-start))
-  (org-mem-await "Indexing the test graph..." 60)
-  (org-node-cache-ensure t))
+  (kittymacs-node-test-scanned
+    (should (kittymacs--org-node-start))
+    ;; Take over any read already under way, so the one awaited is this one.
+    (org-mem-reset t)))
 
 (defun kittymacs-node-test-ids ()
   "Return the IDs the index holds, sorted."
@@ -145,10 +164,10 @@ temporary files in /home/runner/work/_temp/.")
       (kittymacs-node-test-note project "secrets/s.org" "s" "Secret")
       (kittymacs-node-test-index)
       (should (equal (kittymacs-node-test-ids) '("p")))
-      (with-current-buffer (find-file-noselect page)
+      (kittymacs-node-test-scanned (find-file-noselect page))
+      (with-current-buffer (get-file-buffer page)
         (should (equal kittymacs--org-node-projects `((,project "secrets"))))
         (should (equal org-mem-watch-dirs (list personal project)))
-        (org-mem-await "Indexing the project..." 60)
         (should (equal (kittymacs-node-test-ids) '("a" "p")))
         ;; A second visit changes nothing.
         (let (starts)
