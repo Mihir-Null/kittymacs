@@ -88,7 +88,7 @@ in
       defaultText = lib.literalExpression "pkgs.emacs";
       description = ''
         The Emacs to install, and to run when `daemon` is on.  kittymacs
-        needs 30.1 or later.
+        needs 31.1 or later.
       '';
     };
 

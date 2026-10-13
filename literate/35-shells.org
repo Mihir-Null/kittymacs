@@ -18,7 +18,7 @@
 
 - Programs such as =git log= and =man= send long output through a /pager/ like =less=, which waits for keys and redraws the screen.
   + In Eshell or =M-x shell= the output lands in an ordinary Emacs buffer you can already scroll and search, so the pager only gets in the way.
-  + Emacs 30's =comint-pager= tells those shells, and only them, to set =PAGER=cat= for the programs they start; Eshell honours the same option.
+  + Emacs's =comint-pager= tells those shells, and only them, to set =PAGER=cat= for the programs they start; Eshell honours the same option.
   + A real terminal from [[id:bd2638bc-735d-4849-bafe-3dab5e8e30b7][the terminal chapter]] keeps your usual pager: there =less= works as it does anywhere else.
 - Killing a buffer whose process is still running normally asks first.
   + For a shell that is noise: ending the process is why you kill it.

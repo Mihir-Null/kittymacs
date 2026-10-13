@@ -100,21 +100,12 @@
 * Minibuffer settings
 
 - A few settings from the Vertico README:
-  + mark multi-selection prompts;
   + keep the cursor out of the prompt text;
   + allow a minibuffer command to start another (Embark relies on that).
 - File and buffer names, and completion in general, ignore case.
-- A /multi-selection/ prompt, from =completing-read-multiple=, accepts several answers separated by commas, but on Emacs 30 nothing on screen says so.
-  + The advice below prefixes such prompts with =[CRM]=.
-  + Emacs 31 shows its own indicator (the option =crm-prompt=), so the advice is added only on older versions; otherwise the prompt would carry two.
+- A /multi-selection/ prompt, from =completing-read-multiple=, accepts several answers separated by commas; Emacs marks it itself (the option =crm-prompt=), so nothing here adds a marker.
 
 #+begin_src emacs-lisp
-(defun kittymacs--crm-indicator (args)
-  "Prefix a `completing-read-multiple' prompt with [CRM]."
-  (cons (concat "[CRM] " (car args)) (cdr args)))
-(when (< emacs-major-version 31)
-  (advice-add #'completing-read-multiple :filter-args #'kittymacs--crm-indicator))
-
 (setopt resize-mini-windows t
         enable-recursive-minibuffers t
         minibuffer-prompt-properties '(read-only t cursor-intangible t face minibuffer-prompt)
@@ -384,7 +375,7 @@
 - Cape adds completion /sources/.
   + File names and language keywords are always on.
   + The rest are explicit commands on =SPC c p= ([[id:53ad53ed-155f-47dc-973d-7be18de2893c][the keys chapter]]), for when you want a particular kind of candidate.
-- Emacs 30's own text-mode source, the spell checker's dictionary, is off; =SPC c p w= asks for Cape's dictionary source, =cape-dict=, explicitly.
+- Emacs's own text-mode source, the spell checker's dictionary, is off; =SPC c p w= asks for Cape's dictionary source, =cape-dict=, explicitly.
   + With =corfu-auto= it would run Hunspell a few times per word.
   + On Windows there is no word list for it to read, so every attempt costs a process and logs an error.
 - Shell completion (=pcomplete=) is wrapped to stay silent.

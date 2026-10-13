@@ -197,7 +197,7 @@ git clone https://github.com/Mihir-Null/kittymacs.git ~/.config/emacs
 
 - Emacs reads =~/.config/emacs= only when =~/.emacs.d= does not exist, empty or not: move an old =~/.emacs.d= aside first.
 - Options under =programs.kittymacs=:
-  + =package= :: the Emacs to install; default =pkgs.emacs=, the Cocoa build; =pkgs.emacs-macport= is the Mitsuharu port. kittymacs needs 30.1 or later.
+  + =package= :: the Emacs to install; default =pkgs.emacs=, the Cocoa build; =pkgs.emacs-macport= is the Mitsuharu port. kittymacs needs 31.1 or later.
   + =daemon= :: start the Emacs server at login through launchd, so =emacsclient= opens files as frames of one Emacs. Off by default: the configuration starts a server itself whenever it has a display. The Home Manager module has the same option; turn on one, not both.
 
 #+begin_src nix
@@ -226,7 +226,7 @@ in
       defaultText = lib.literalExpression "pkgs.emacs";
       description = ''
         The Emacs to install, and to run when `daemon` is on.  kittymacs
-        needs 30.1 or later.  `pkgs.emacs` is nixpkgs' current release as
+        needs 31.1 or later.  `pkgs.emacs` is nixpkgs' current release as
         the Cocoa build; `pkgs.emacs-macport` is the Mitsuharu port.
       '';
     };
@@ -393,7 +393,7 @@ in
       defaultText = lib.literalExpression "pkgs.emacs";
       description = ''
         The Emacs to install, and to run when `daemon` is on.  kittymacs
-        needs 30.1 or later.
+        needs 31.1 or later.
       '';
     };
 

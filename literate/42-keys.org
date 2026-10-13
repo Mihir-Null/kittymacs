@@ -38,7 +38,7 @@
 
 * Seeing the next keys
 
-- which-key is built into Emacs 30.
+- which-key is built into Emacs.
 - It pops up the next keys at the top of the frame after a short pause (0.45 s); =C-h= inside any prefix shows them at once.
 
 #+begin_src emacs-lisp

@@ -301,7 +301,6 @@ the query, the files, the order or the grouping."
 - Emacs 31's =peg= makes every rule an OClosure, which needs lexical binding, so every plain query failed with =(cl-assertion-failed lexical-binding)=.
 - The advice below turns such a form into =(eval '(with-peg-rules ...) t)=: the same form, evaluated with lexical binding.
   + Lexical code expands as before, so the advice does nothing once Org QL fixes its call.
-  + It is not limited to Emacs 31: =peg= is also a GNU ELPA package, so the new =peg= can reach Emacs 30.
 
 #+begin_src emacs-lisp
 (defun kittymacs--peg-rules-lexically (expand &rest args)
