@@ -8,6 +8,7 @@
 
 ;;; Code:
 
+(require 'kittymacs-treesit)
 (defgroup kittymacs-languages nil
   "Selective language tooling for the starter configuration."
   :group 'kittymacs)
@@ -51,7 +52,12 @@ until the language server for a mode is deliberately installed on each machine."
 (when (memq 'nix kittymacs-language-packages)
   (use-package nix-mode
     :ensure t
-    :mode "\\.nix\\'"))
+    :mode "\\.nix\\'")
+  (use-package nix-ts-mode
+    :ensure t
+    :defer t
+    :init
+    (kittymacs-treesit-register-mode 'nix-mode 'nix-ts-mode 'nix)))
 (when (memq 'racket kittymacs-language-packages)
   (use-package racket-mode
     :ensure t

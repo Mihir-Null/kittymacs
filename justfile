@@ -1,7 +1,7 @@
 # kittymacs: the loop. Read "The loop" in literate/80-maintenance.org once;
 # then this file is the reference card.
 #
-# The Emacs recipes need only Emacs 30.1 or later and run on every platform
+# The Emacs recipes need only Emacs 31.1 or later and run on every platform
 # (on Windows, `just` uses the sh that Git for Windows installs). The Nix
 # recipes need Nix; `nix develop` gives a shell with Emacs, just and the
 # Nix linters together.
@@ -99,7 +99,7 @@ all: check nix-check install compile test-packages
 
 # Move the flake's nixpkgs, and so the Emacs and tools the Nix modules
 # install; then refresh the archives and upgrade every installed Emacs
-# package; then rebuild every Tree-sitter grammar at its pinned revision.
+# package; then rebuild the usual Tree-sitter grammars at their pinned commits.
 # Commit flake.lock afterwards; var/ is not tracked.
 update: update-flake update-packages update-grammars
 
@@ -110,8 +110,9 @@ update-packages:
     {{emacs}} -l early-init.el \
       --eval '(progn (package-initialize) (package-refresh-contents) (package-upgrade-all nil))'
 
-# The pins live in literate/74-languages.org; change one there, tangle, then
-# run this. Needs git and a C compiler.
+# Rebuild every grammar in kittymacs-treesit-languages, at the commit Emacs's
+# own mode pins, or kittymacs pins in literate/74-languages.org for a mode
+# from a package. Run it after an Emacs upgrade. Needs git and a C compiler.
 update-grammars:
     {{emacs}} -l early-init.el -L lisp -l kittymacs-platform -l kittymacs-treesit \
-      --eval '(dolist (source kittymacs-treesit-language-source-alist) (kittymacs-treesit-install-language-grammar (car source)))'
+      --eval '(princ (format "built %S\n" (kittymacs-treesit-install-grammars kittymacs-treesit-languages t)))'

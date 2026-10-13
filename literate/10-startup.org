@@ -189,6 +189,8 @@
   + frames policy goes last.
 - Two files of your own are read along the way: =private.el= right after the platform chapter, the Customize file at the end; [[*Machine-specific settings]] says why there.
 - If the package index is missing, the first start fetches it.
+- kittymacs needs Emacs 31.1 or later ([[id:0a7aaddc-ecdf-4349-9218-e4a1d058379f][the Tree-sitter chapter]] relies on what 31 added); an older Emacs stops at the first line with a message that says so.
+  + An error in =init.el= ends the file there; Emacs reports it and starts without the configuration, instead of failing in a dozen chapters for reasons that would not name the version.
 
 #+begin_src emacs-lisp
 ;;; init.el --- kittymacs -*- lexical-binding: t; -*-
@@ -196,6 +198,8 @@
 
 ;;; Code:
 
+(when (< emacs-major-version 31)
+  (error "kittymacs needs Emacs 31.1 or later; this is Emacs %s" emacs-version))
 (add-to-list 'load-path kittymacs-lisp-dir)
 (package-initialize)
 (unless package-archive-contents

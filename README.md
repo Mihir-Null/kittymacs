@@ -59,7 +59,7 @@ The whole configuration is a literate wiki (thank you, Donald Knuth). Every chap
 
 | Dependency | Needed for | Without it |
 |---|---|---|
-| **GNU Emacs 30.1+** (developed on 31.1) | everything | — |
+| **GNU Emacs 31.1+** | everything | — |
 | **Git** | installing packages, Magit | no Magit; package installs from Git fail |
 | **GnuPG** (`gpg`) | verifying GNU ELPA's signed index | the signature check is skipped |
 | [ripgrep](https://github.com/BurntSushi/ripgrep) | project search (`SPC s d`, `SPC s D`), and faster `xref` searches | those two searches fail; `xref` uses `grep` |
@@ -92,10 +92,10 @@ Then follow your platform's section, and read [First start](#first-start).
 
 ### Linux
 
-Install Emacs and the tools from your distribution. Check `emacs --version` first: some distributions still ship Emacs 29, which is too old.
+Install Emacs and the tools from your distribution. Check `emacs --version` first: many distributions still ship Emacs 30 or older, which is too old; there, use [Nix](#nix) or build Emacs 31 from source.
 
 ```sh
-# Debian / Ubuntu (Debian 13+, Ubuntu 25.04+ for Emacs 30)
+# Debian / Ubuntu (a release whose emacs package is 31)
 sudo apt install emacs git gnupg ripgrep fd-find hunspell hunspell-en-us python3
 
 # Fedora
@@ -191,7 +191,7 @@ The flake installs everything *around* the configuration (Emacs, the tools and t
 2. Press `SPC h t` for Meow's ten-minute tutorial, and `SPC h ?` for the cheat sheet.
 3. Optional, when you want them:
    - `SPC o e` opens a terminal; the first time, it offers to download ghostel's small native module.
-   - `M-x kittymacs-treesit-install-all-grammars` builds the pinned Tree-sitter grammars (needs Git and a C compiler).
+   - Opening a file whose Tree-sitter grammar is missing asks to build it; `M-x kittymacs-treesit-install-grammars` builds the usual ones in one go (both need Git and a C compiler).
    - `SPC n f` finds your linked notes; their index builds itself in the background at startup.
 
 Nothing is written outside the clone: packages, caches, history and `custom.el` all live in `var/`, which Git ignores.
@@ -267,7 +267,7 @@ Then, inside Emacs, `M-x package-upgrade-all` upgrades the installed packages; r
 - *No terminal:* `SPC o e` explains what is missing; `M-x ghostel-download-module` fetches the native module. The Android port opens Eshell instead.
 - *No icons, or boxes instead of icons:* install Symbols Nerd Font Mono and restart; set `kittymacs-icons` to `t` for a terminal Emacs that already uses a Nerd Font.
 - *No spell checking:* install `hunspell` or `aspell` with a dictionary; on Windows, MSYS2's `hunspell` in `C:\msys64`.
-- *No Tree-sitter highlighting:* run `M-x kittymacs-treesit-install-all-grammars` (needs Git and a C compiler); a mode switches to Tree-sitter only once its grammar loads.
+- *No Tree-sitter highlighting:* run `M-x kittymacs-treesit-install-grammars` (needs Git and a C compiler); until a grammar loads, its files open in the classic mode, and a grammar you declined is offered again in the next session.
 - *No language server:* `SPC l e` starts Eglot in the current buffer; add the mode to `kittymacs-eglot-auto-start-modes` to start it automatically. The server itself is yours to install.
 - *`SPC n` says there is no notes folder:* create `kittymacs-org-node-directory` (your Org directory by default), or open a project whose `.dir-locals.el` sets `kittymacs-org-node-project`. Notes under a folder whose name starts with `.` or `_` are never read, so a clone in `~/.config/emacs` cannot join the graph; `SPC n s` reports what the index holds.
 
@@ -312,7 +312,7 @@ The loop:
 | `just frames-test` | a display | the frame policy |
 | `just nix-check` | Nix | the generated Nix lints, and the flake and both example hosts evaluate |
 
-[The maintenance chapter](literate/80-maintenance.org) explains each recipe and the builder; [the conventions](literate/conventions.org) say how a chapter is written; [ARCHITECTURE.md](ARCHITECTURE.md) records the design and every decision behind it. `nix develop` gives a shell with Emacs, `just` and the Nix linters. [CI](.github/workflows/ci.yml) runs the recipes on every push, on Emacs 30.1 and 31.1, on Linux, macOS and Windows.
+[The maintenance chapter](literate/80-maintenance.org) explains each recipe and the builder; [the conventions](literate/conventions.org) say how a chapter is written; [ARCHITECTURE.md](ARCHITECTURE.md) records the design and every decision behind it. `nix develop` gives a shell with Emacs, `just` and the Nix linters. [CI](.github/workflows/ci.yml) runs the recipes on every push, on Emacs 31.1, on Linux, macOS and Windows.
 
 ## Credits and licence
 

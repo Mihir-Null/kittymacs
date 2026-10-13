@@ -23,7 +23,7 @@ in
       defaultText = lib.literalExpression "pkgs.emacs";
       description = ''
         The Emacs to install, and to run when `daemon` is on.  kittymacs
-        needs 30.1 or later.  `pkgs.emacs` is nixpkgs' current release as
+        needs 31.1 or later.  `pkgs.emacs` is nixpkgs' current release as
         the Cocoa build; `pkgs.emacs-macport` is the Mitsuharu port.
       '';
     };
