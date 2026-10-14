@@ -12,6 +12,18 @@
 (require 'use-package)
 (setopt use-package-enable-imenu-support t)
 
+(defun kittymacs-require-module (feature)
+  "Load the kittymacs module FEATURE; on an error, warn and carry on.
+Under `--debug-init' the error is not caught, so it shows a backtrace."
+  (condition-case-unless-debug err
+      (require feature)
+    (error
+     (display-warning 'kittymacs
+                      (format "%s did not finish loading: %s
+The chapters after it still load; `--debug-init' shows the backtrace."
+                              feature (error-message-string err))
+                      :error))))
+
 ;; Foundation: defaults, platform paths, machine overrides, the look.
 (require 'kittymacs-defaults)
 (require 'kittymacs-platform)
@@ -19,31 +31,31 @@
   (when (file-exists-p private)
     (load private nil t)))
 (kittymacs-platform-apply)
-(require 'kittymacs-ui)
-(require 'kittymacs-literate)
-(require 'kittymacs-dashboard)
+(kittymacs-require-module 'kittymacs-ui)
+(kittymacs-require-module 'kittymacs-literate)
+(kittymacs-require-module 'kittymacs-dashboard)
 
 ;; Editing: completion, help, files, git, navigation, then Meow and the leader.
-(require 'kittymacs-completion)
-(require 'kittymacs-help)
-(require 'kittymacs-dired)
-(require 'kittymacs-treemacs)
-(require 'kittymacs-vc)
-(require 'kittymacs-navigation)
-(require 'kittymacs-meow)
-(require 'kittymacs-keys)
+(kittymacs-require-module 'kittymacs-completion)
+(kittymacs-require-module 'kittymacs-help)
+(kittymacs-require-module 'kittymacs-dired)
+(kittymacs-require-module 'kittymacs-treemacs)
+(kittymacs-require-module 'kittymacs-vc)
+(kittymacs-require-module 'kittymacs-navigation)
+(kittymacs-require-module 'kittymacs-meow)
+(kittymacs-require-module 'kittymacs-keys)
 
 ;; Applications: shells, programming, Org, reading, agents, and finally frame policy.
-(require 'kittymacs-shell)
-(require 'kittymacs-programming)
-(require 'kittymacs-treesit)
-(require 'kittymacs-languages)
-(require 'kittymacs-terminal)
-(require 'kittymacs-org)
-(require 'kittymacs-org-node)
-(require 'kittymacs-reading)
-(require 'kittymacs-agents)
-(require 'kittymacs-frames)
+(kittymacs-require-module 'kittymacs-shell)
+(kittymacs-require-module 'kittymacs-programming)
+(kittymacs-require-module 'kittymacs-treesit)
+(kittymacs-require-module 'kittymacs-languages)
+(kittymacs-require-module 'kittymacs-terminal)
+(kittymacs-require-module 'kittymacs-org)
+(kittymacs-require-module 'kittymacs-org-node)
+(kittymacs-require-module 'kittymacs-reading)
+(kittymacs-require-module 'kittymacs-agents)
+(kittymacs-require-module 'kittymacs-frames)
 
 ;; Settings saved by M-x customize come last, so they override the chapters.
 (load custom-file 'noerror 'nomessage)
