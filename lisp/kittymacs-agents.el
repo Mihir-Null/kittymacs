@@ -49,15 +49,22 @@ The value of `agent-shell-attention-notify-function'."
        (ignore-errors
          (notifications-notify :app-name "agent-shell" :title title :body body))))))
 
-(use-package agent-shell-attention
-  :vc (:url "https://github.com/ultronozm/agent-shell-attention.el"
-       :rev "aaf599121445ead597a14da62bad580c8897ee6c")
-  :after agent-shell
-  :demand t
-  :custom
-  (agent-shell-attention-notify-function #'kittymacs-agent-notify)
-  :config
-  (agent-shell-attention-mode 1))
+(condition-case err
+    (use-package agent-shell-attention
+      :vc (:url "https://github.com/ultronozm/agent-shell-attention.el"
+           :rev "aaf599121445ead597a14da62bad580c8897ee6c")
+      :after agent-shell
+      :demand t
+      :custom
+      (agent-shell-attention-notify-function #'kittymacs-agent-notify)
+      :config
+      (agent-shell-attention-mode 1))
+  (error
+   (display-warning 'kittymacs
+                    (format "agent-shell-attention was not installed: %s
+Check that `git clone https://github.com/ultronozm/agent-shell-attention.el' works from a terminal, and which git Emacs runs: %s"
+                            (error-message-string err) (executable-find "git"))
+                    :warning)))
 (with-eval-after-load 'meow
   (dolist (entry '((agent-shell-mode . insert)
                    (agent-shell-diff-mode . motion)
