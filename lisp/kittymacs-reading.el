@@ -21,9 +21,19 @@
   (org-noter-default-notes-file-names nil)
   (org-noter-notes-search-path (list kittymacs-org-node-directory))
   (org-noter-always-create-frame 'reuse-if-free))
+(declare-function org-pdftools-open "org-pdftools" (link &optional arg))
+
+(defun kittymacs-reading-follow-pdf-link (link arg)
+  "Open the pdf: LINK, loading org-pdftools first; ARG as for `org-open-at-point'."
+  (require 'org-pdftools)
+  (org-pdftools-open link arg))
+
+(with-eval-after-load 'ol
+  (org-link-set-parameters "pdf" :follow #'kittymacs-reading-follow-pdf-link))
+
 (use-package org-pdftools
   :ensure t
-  :hook ((org-mode pdf-view-mode) . org-pdftools-setup-link))
+  :hook (pdf-view-mode . org-pdftools-setup-link))
 (use-package org-noter-pdftools
   :ensure t
   :after (org-noter pdf-tools)

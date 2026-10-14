@@ -132,16 +132,31 @@
 :ID: 1ba2ea67-a4f3-4864-ac7c-04e6b7d0ebc7
 :END:
 
-- =org-pdftools-setup-link= adds a =pdf:= link type to Org.
-  + It runs when the first Org buffer or PDF opens, not at startup: the package loads pdf-tools, which [[*pdf-tools: Emacs draws the PDF][the loader]] keeps for the first PDF.
+- =org-pdftools-setup-link= adds a =pdf:= link type to Org: how to open, store, complete and export one.
+- It runs when a PDF opens, never from Org:
+  + loading org-pdftools loads =pdf-annot=, which asks =epdfinfo= what it supports as it loads, and signals an error where there is no server;
+  + run from =org-mode-hook=, as its README does, that error would break every Org buffer on a machine without the server.
+- So Org learns the link type in two steps:
+  + at startup, only how to /follow/ a =pdf:= link: load org-pdftools, then open it;
+  + once a PDF has opened, the rest, storing a link included, from =pdf-view-mode-hook=.
 - =SPC m l= in a PDF stores a link to the page you are on, or to the selected text; =SPC m l= in Org (=org-insert-link=) inserts it.
 - Opening a =pdf:= link opens the PDF at that page, highlighting the text the link named.
 - A plain-text address, so a note, a task in the agenda, or an [[id:51ae9070-0971-48c1-9625-283891d48d73][agent transcript]] can point at the exact page under discussion.
 
 #+begin_src emacs-lisp
+(declare-function org-pdftools-open "org-pdftools" (link &optional arg))
+
+(defun kittymacs-reading-follow-pdf-link (link arg)
+  "Open the pdf: LINK, loading org-pdftools first; ARG as for `org-open-at-point'."
+  (require 'org-pdftools)
+  (org-pdftools-open link arg))
+
+(with-eval-after-load 'ol
+  (org-link-set-parameters "pdf" :follow #'kittymacs-reading-follow-pdf-link))
+
 (use-package org-pdftools
   :ensure t
-  :hook ((org-mode pdf-view-mode) . org-pdftools-setup-link))
+  :hook (pdf-view-mode . org-pdftools-setup-link))
 
 #+end_src
 
