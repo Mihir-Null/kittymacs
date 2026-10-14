@@ -1,0 +1,237 @@
+:PROPERTIES:
+:ID: 94d55283-5011-4f98-a7f0-8c6bcb51aab9
+:END:
+
+#+TITLE: Agents: Claude Code in a buffer
+#+FILETAGS: :apps:
+#+STARTUP: overview
+#+PROPERTY: header-args:emacs-lisp :tangle ../lisp/kittymacs-agents.el :eval never :comments no :padline no :mkdirp yes
+
+- A coding agent you talk to in an Emacs buffer: =SPC a a= opens Claude Code in the current project, and every change it wants to make waits for your answer.
+- Two packages:
+  + [[https://github.com/xenodium/agent-shell][agent-shell]], the buffer: a prompt, the agent's replies, its tool calls, and a diff for each edit it proposes;
+  + [[https://github.com/ultronozm/agent-shell-attention.el][agent-shell-attention]], the doorbell: a count in the mode line, and a desktop notification, when a shell is waiting for you.
+- What the agent itself is allowed to do lives outside Emacs, in =~/.claude/settings.json=, so the command line and this buffer share it ([[*What lives in Emacs, and what does not]]).
+- Leans on [[id:e5942eb0-4389-447d-9317-d9178adcaaae][the leader]] for =SPC m=, [[id:d2e0bc37-0bd4-4b28-a8ee-04f94ac451f8][the shells chapter]] for the login environment, and [[id:53ad53ed-155f-47dc-973d-7be18de2893c][the keys chapter]] for =SPC a=.
+- Read [[*How agent-shell talks to Claude]] first.
+
+#+begin_src emacs-lisp
+;;; kittymacs-agents.el --- Claude Code in a buffer -*- lexical-binding: t; -*-
+;; Generated from literate/77-agents.org; edit the Org source, then tangle.
+
+;;; Code:
+
+(require 'kittymacs-leader)
+
+(declare-function auth-source-pick-first-password "auth-source" (&rest spec))
+(declare-function notifications-notify "notifications" (&rest params))
+
+#+end_src
+
+* How agent-shell talks to Claude :concept:
+:PROPERTIES:
+:ID: 3645870f-b154-4dfd-9085-de3570e0c61e
+:END:
+
+- The /Agent Client Protocol/ (ACP) is JSON over a pipe between an editor and a coding agent, the way LSP is between an editor and a language server.
+  + The editor sends prompts and answers permission requests; the agent streams text, tool calls and proposed edits.
+  + One editor package then speaks to any agent with an adapter: Claude Code, Gemini CLI, Codex and others.
+- Three processes, three jobs:
+
+| Piece              | Is                                                         | Comes from                    |
+|--------------------+------------------------------------------------------------+-------------------------------|
+| agent-shell        | the Emacs buffer and the ACP client                        | MELPA, here                   |
+| =claude-agent-acp= | the adapter: ACP on one side, the Claude Agent SDK on the other | your package manager (EmptyNet) |
+| =claude=           | Claude Code itself, which the SDK runs                     | your package manager          |
+
+- agent-shell starts =claude-agent-acp= as a subprocess, one per shell buffer, in the project's root.
+- The adapter loads what the =claude= command line loads: =~/.claude/settings.json=, =CLAUDE.md= files, skills and hooks, user-wide and per project.
+
+* Claude Code, through your subscription :decision:
+:PROPERTIES:
+:ID: e021fb07-ea2e-4dcd-b312-cabe45da9869
+:END:
+
+- agent-shell's defaults already fit, so they are not restated here:
+  + =agent-shell-anthropic-authentication= is =(:login t)=: use the login =claude= stored, not an API key;
+  + =agent-shell-anthropic-claude-acp-command= is =("claude-agent-acp")=, found on =exec-path=.
+  + Log in once in a terminal (=claude=, then =/login=); on macOS the token lives in the Keychain.
+- Two settings differ from the defaults:
+  + =agent-shell-preferred-agent-config= is =claude-code=, so =SPC a a= starts Claude without asking which agent;
+  + the adapter inherits Emacs's environment.
+- Why inherit: agent-shell otherwise starts the adapter with an almost empty environment.
+  + A Dock-launched Emacs on macOS has only the =PATH= [[id:d2e0bc37-0bd4-4b28-a8ee-04f94ac451f8][the shells chapter]] imported, and the adapter, its MCP servers and every command Claude runs need that same =PATH=.
+  + On the Sandia Mac it also carries the proxy and certificate variables, without which nothing reaches the network.
+  + The environment is copied once, when agent-shell first loads (the first =SPC a=), after the shells chapter's import; a change to it needs a restart of Emacs.
+- Per-project state goes in =.agent-shell/= at the project root: transcripts (with the session ID, model and folder in their header) and screenshots; agent-shell adds it to =.gitignore= itself.
+
+#+begin_src emacs-lisp
+(use-package agent-shell
+  :ensure t
+  :commands (agent-shell agent-shell-toggle agent-shell-new-shell agent-shell-switch-buffer
+             agent-shell-resume-session agent-shell-send-dwim agent-shell-send-file
+             agent-shell-help-menu)
+  :custom
+  (agent-shell-preferred-agent-config 'claude-code)
+  :config
+  (setopt agent-shell-anthropic-claude-environment
+          (agent-shell-make-environment-variables :inherit-env t)))
+
+#+end_src
+
+- The environment is set in =:config=, not =:custom=: =agent-shell-make-environment-variables= is a function of the package, and only exists once it has loaded.
+
+* What lives in Emacs, and what does not :decision:
+:PROPERTIES:
+:ID: 5cf88d37-2e87-4451-989c-b957aa817990
+:END:
+
+- The agent's policy belongs to the agent, not to the editor: the same rules must hold whether Claude runs here or in a terminal.
+  + So permissions, the output style, commit attribution and the skills are written to =~/.claude= by the machine's configuration ([[https://github.com/Mihir-Null/EmptyNet][EmptyNet]]'s Claude page), never here.
+- This chapter holds only what is about Emacs: the buffer, the keys, the notifications, and which MCP servers a session starts with.
+  + MCP servers are here because agent-shell passes them to each session it starts; the =claude= command line reads its own list.
+- The two halves agree on names alone:
+
+| Name                         | Here                       | There                                      |
+|------------------------------+----------------------------+--------------------------------------------|
+| =claude-agent-acp=           | the command agent-shell runs | a package on =PATH=                        |
+| =context7-mcp=, =mcp-nixos=  | the commands below         | packages on =PATH=                         |
+| =context7=, =nixos=, =alphaxiv= | the servers' names      | their permission rules (=mcp__context7…=)  |
+
+* MCP servers: three, declared here
+:PROPERTIES:
+:ID: b9a2367d-e31a-4a30-a5e8-3ad200e4e40b
+:END:
+
+- An MCP server gives the agent tools it does not have: here, current library documentation, Nix package and option search, and a search engine for papers.
+- Declared, never ambient: a session starts with exactly this list.
+  + No project's =.mcp.json= adds to it unless you approve that server, and the claude.ai connectors are switched off in the settings file.
+
+| Name       | Runs                          | Gives                                                     |
+|------------+-------------------------------+-----------------------------------------------------------|
+| =context7= | =context7-mcp=, a local program | up-to-date documentation and examples for a library      |
+| =nixos=    | =mcp-nixos=, a local program    | nixpkgs packages, NixOS and Home Manager options, versions |
+| =alphaxiv= | =https://api.alphaxiv.org/mcp/v1= | arXiv search, paper contents, your alphaXiv library     |
+
+- The local servers are called by name, so they come from =PATH=: the machine's configuration installs them, pinned, and nothing is downloaded when a session starts.
+- alphaXiv is a web service:
+  + by default the adapter signs in with OAuth in the browser the first time;
+  + if =auth-source= has a key for =api.alphaxiv.org= (the Keychain on macOS, =~/.authinfo.gpg= elsewhere), it is sent as a bearer token instead.
+  + The header is a =lambda=, which agent-shell calls as each session starts, so a key added later is picked up by the next shell.
+- =agent-shell-mcp-servers= is global: every agent you start from here gets these servers.
+
+#+begin_src emacs-lisp
+(defun kittymacs-agent-alphaxiv-headers ()
+  "Return an Authorization header for alphaXiv's MCP server, or nil.
+The key is the password `auth-source' holds for host api.alphaxiv.org."
+  (require 'auth-source)
+  (when-let* ((key (auth-source-pick-first-password :host "api.alphaxiv.org")))
+    `(((name . "Authorization") (value . ,(concat "Bearer " key))))))
+
+(setopt agent-shell-mcp-servers
+        `(((name . "context7")
+           (command . "context7-mcp")
+           (args . ())
+           (env . ()))
+          ((name . "nixos")
+           (command . "mcp-nixos")
+           (args . ())
+           (env . ()))
+          ((name . "alphaxiv")
+           (type . "http")
+           (url . "https://api.alphaxiv.org/mcp/v1")
+           (headers . ,(lambda () (kittymacs-agent-alphaxiv-headers))))))
+
+#+end_src
+
+* Knowing when a shell waits for you
+:PROPERTIES:
+:ID: 56789f7f-90bb-4c3b-947c-16ecb6d72365
+:END:
+
+- An agent works for minutes, then stops to ask permission or to say it is done; that moment is easy to miss in another frame.
+- =agent-shell-attention-mode= adds =AS:n= to the mode line: the number of shells waiting for you.
+  + =SPC a j= jumps to the next one; =SPC a d= lists every shell and its state.
+- Its notification function, =kittymacs-agent-notify=, also tells the desktop:
+  + macOS: =osascript='s =display notification=, which needs nothing installed;
+  + Linux: =notifications-notify=, over D-Bus; where there is no D-Bus session (some WSL setups), it stays silent rather than signal an error.
+- Not on MELPA, so it is installed from its Git repository with =:vc=, pinned to a commit.
+  + =M-x package-vc-upgrade= moves it; change =:rev= here to move everyone.
+
+#+begin_src emacs-lisp
+(defun kittymacs-agent-notify (_buffer title body)
+  "Show a desktop notification with TITLE and BODY.
+The value of `agent-shell-attention-notify-function'."
+  (pcase system-type
+    ('darwin
+     (call-process "osascript" nil 0 nil "-e"
+                   (format "display notification %S with title %S" body title)))
+    (_
+     (when (require 'notifications nil t)
+       (ignore-errors
+         (notifications-notify :app-name "agent-shell" :title title :body body))))))
+
+(use-package agent-shell-attention
+  :vc (:url "https://github.com/ultronozm/agent-shell-attention.el"
+       :rev "aaf599121445ead597a14da62bad580c8897ee6c")
+  :after agent-shell
+  :demand t
+  :custom
+  (agent-shell-attention-notify-function #'kittymacs-agent-notify)
+  :config
+  (agent-shell-attention-mode 1))
+
+#+end_src
+
+* Meow in the agent's buffers :meow:
+:PROPERTIES:
+:ID: 51ae9070-0971-48c1-9625-283891d48d73
+:END:
+
+- The shell starts in Insert: it is a prompt, like [[id:d2e0bc37-0bd4-4b28-a8ee-04f94ac451f8][the shells]].
+  + =ESC= to Normal selects in the transcript with Meow's grammar; =SPC m= then lists the shell's commands.
+  + A permission prompt names its keys on its buttons: =y= allows once, =!= always, and the interrupt key rejects.
+- The diff of a proposed edit starts in Motion: its own keys are the interface (=y= accept, =C-c C-c= reject, =n= / =p= hunks, =q= close).
+- The viewport, agent-shell's optional two-buffer layout, starts in Motion to read and Insert to write.
+- The transcript of a shell is a Markdown file under =.agent-shell/=; =SPC m t= opens it, and its header names the session.
+
+| =SPC m= | Does                    | =SPC m= | Does                       |
+|---------+-------------------------+---------+----------------------------|
+| =i=     | interrupt the agent     | =f=     | send a file                |
+| =m=     | next permission mode    | =y=     | copy the last reply        |
+| =M=     | choose the model        | =t=     | open the transcript        |
+| =c=     | compose a long prompt   | =r=     | restart the shell          |
+| =?=     | every command (menu)    |         |                            |
+
+#+begin_src emacs-lisp
+(with-eval-after-load 'meow
+  (dolist (entry '((agent-shell-mode . insert)
+                   (agent-shell-diff-mode . motion)
+                   (agent-shell-viewport-view-mode . motion)
+                   (agent-shell-viewport-edit-mode . insert)))
+    (add-to-list 'meow-mode-state-list entry)))
+
+(kittymacs-define-localleader 'agent-shell-mode
+  "i" (cons "interrupt" #'agent-shell-interrupt)
+  "m" (cons "next permission mode" #'agent-shell-cycle-session-mode)
+  "M" (cons "choose model" #'agent-shell-set-session-model)
+  "c" (cons "compose prompt" #'agent-shell-prompt-compose)
+  "f" (cons "send file" #'agent-shell-send-file)
+  "y" (cons "copy last reply" #'agent-shell-copy-last-output)
+  "t" (cons "open transcript" #'agent-shell-open-transcript)
+  "r" (cons "restart" #'agent-shell-restart)
+  "?" (cons "menu" #'agent-shell-help-menu))
+
+(provide 'kittymacs-agents)
+;;; kittymacs-agents.el ends here
+#+end_src
+
+* Check
+
+- Once, in a terminal: =claude=, then =/login=.
+- =SPC a a= in a project: a shell opens in Insert state, and its header names Claude Code; no agent picker appears.
+- Ask it to read a file: the read happens; ask it to change one: a permission prompt appears, and the diff opens in Motion with =y= to accept.
+- Ask "which MCP tools do you have?": tools from =context7=, =nixos= and =alphaxiv=, and nothing from claude.ai.
+- Switch frames while it works: the mode line shows =AS:1= when it stops, and the desktop shows a notification.
+- =SPC a j= jumps back to it; =SPC m t= opens its transcript under =.agent-shell/=.
+- =just test-packages=: the verifier fails on any warning at startup, and checks that every =SPC= key runs a command.

@@ -323,6 +323,7 @@
 | Prefix  | Group  | Doubled key          | Also                                                           |
 |---------+--------+----------------------+----------------------------------------------------------------|
 | =SPC n= | notes  | (=f= find node)      | =i= insert ID link, =c= new note, =b= backlinks, =s= rescan     |
+| =SPC a= | agent  | =a= start or switch  | =n= new shell, =t= toggle, =s= send region or file, =j= the shell waiting for you |
 | =SPC o= | open   | (=e= terminal)       | =p= project terminal, =t= file tree, =s= eshell, =a= agenda dashboard, =h= home |
 | =SPC t= | toggle | =t= light/dark theme | =n= line numbers, =w= writeroom, =s= spelling, =f= frames-only mode, =d= file tree |
 | =SPC C= | config | (=c= reading guide)  | =f= find chapter, =t= tangle, =k= check tangle, =p= =private.el=, =r= restart |
@@ -332,6 +333,7 @@
 - The commands these groups call belong to the chapters they serve:
   + the Org inbox to [[id:8ff7e58e-c155-4513-99ae-3b2c3a6ab729][the Org chapter]];
   + the linked-notes commands to [[id:f48e8f01-88da-4e33-8398-c00ab346b8bb][org-node]];
+  + the agent commands to [[id:94d55283-5011-4f98-a7f0-8c6bcb51aab9][the agents chapter]];
   + the =SPC C= commands that open and rebuild this configuration to [[id:9ea539a0-f1a3-4d05-aa10-6f2d2ff3e335][the maintenance chapter]].
 
 #+begin_src emacs-lisp
@@ -344,6 +346,19 @@
   "c" (cons "new note in a folder" #'kittymacs-org-node-new)
   "b" (cons "backlinks panel" #'kittymacs-org-node-backlinks)
   "s" (cons "rescan graph" #'kittymacs-org-node-rescan))
+
+(defvar-keymap kittymacs-agent-map
+  :doc "Coding agents (agent-shell)."
+  "a" (cons "start or switch" #'agent-shell)
+  "n" (cons "new shell" #'agent-shell-new-shell)
+  "t" (cons "toggle" #'agent-shell-toggle)
+  "b" (cons "switch shell" #'agent-shell-switch-buffer)
+  "r" (cons "resume session" #'agent-shell-resume-session)
+  "s" (cons "send region or file" #'agent-shell-send-dwim)
+  "f" (cons "send a file" #'agent-shell-send-file)
+  "j" (cons "jump to waiting shell" #'agent-shell-attention-jump)
+  "d" (cons "all shells" #'agent-shell-attention-dashboard)
+  "?" (cons "menu" #'agent-shell-help-menu))
 
 (defvar-keymap kittymacs-open-map
   :doc "Open applications."
@@ -497,6 +512,7 @@
 (keymap-set kittymacs-leader-map "F" (cons "diagnostics" kittymacs-diagnostics-map))
 (keymap-set kittymacs-leader-map "i" (cons "insert" kittymacs-insert-map))
 (keymap-set kittymacs-leader-map "n" (cons "notes" kittymacs-notes-map))
+(keymap-set kittymacs-leader-map "a" (cons "agent" kittymacs-agent-map))
 (keymap-set kittymacs-leader-map "o" (cons "open" kittymacs-open-map))
 (keymap-set kittymacs-leader-map "t" (cons "toggle" kittymacs-toggle-map))
 (keymap-set kittymacs-leader-map "C" (cons "config" kittymacs-config-map))

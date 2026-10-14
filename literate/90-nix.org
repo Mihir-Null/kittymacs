@@ -125,12 +125,15 @@
 | =hunspell= + =en_US=  | [[id:afa6b7fd-742a-4c15-86a6-32e3e8027b0e][platform]]        | spell checking                         |
 | =python3=             | [[id:55f0b75c-d867-4474-a26e-019215b8e492][Treemacs]]        | directory collapsing, Git colouring    |
 | =zig=                 | [[id:bd2638bc-735d-4849-bafe-3dab5e8e30b7][terminal]]        | building ghostel's native module       |
+| =epdfinfo=            | [[id:78b654e1-a93e-4e31-b0d8-f266215b5b12][reading]]         | pdf-tools' PDF server, ready-built     |
 | =gls= (macOS)         | [[id:878a9e46-62be-4b9f-82f6-589560d2ebc1][Dired]]           | GNU =ls=, directories first            |
 | =trash= (macOS)       | [[id:afa6b7fd-742a-4c15-86a6-32e3e8027b0e][platform]]        | the Trash, with Finder's "Put Back"    |
 
 - Fonts: Symbols Nerd Font Mono for the icons.
   + Google Sans Code, the preferred editing font, is not in nixpkgs; the platform font is used until it is installed by hand.
 - =emacs= is an argument, so each module installs the Emacs its =package= option names.
+- =epdfinfo= is the one program nixpkgs does not ship on its own: its pdf-tools build puts the server beside the Lisp, so a small derivation links it into =bin/=.
+  + Only the server is taken; the Lisp still comes from MELPA, as every package does ([[id:15f489d8-1307-491d-9a1a-ecabbd2984e6][why]]).
 
 #+begin_src nix
 # Generated from literate/90-nix.org; edit the Org source, then tangle.
@@ -152,6 +155,11 @@
       (hunspell.withDicts (d: [ d.en_US ])) # platform chapter: spelling
       python3 # Treemacs chapter: directory collapsing and the extended (colouring) git mode
       zig # terminal chapter: builds ghostel's native module
+      # reading chapter: pdf-tools' server, linked out of nixpkgs' pdf-tools build
+      (runCommand "epdfinfo" { } ''
+        mkdir -p $out/bin
+        ln -s ${emacsPackages.pdf-tools}/share/emacs/site-lisp/elpa/pdf-tools-*/epdfinfo $out/bin/epdfinfo
+      '')
     ]
     ++ pkgs.lib.optionals pkgs.stdenv.hostPlatform.isDarwin [
       coreutils-prefixed # Dired chapter: GNU ls as `gls'

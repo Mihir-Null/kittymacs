@@ -33,7 +33,7 @@
 (require 'kittymacs-meow)
 (require 'kittymacs-keys)
 
-;; Applications: shells, programming, Org, and finally frame policy.
+;; Applications: shells, programming, Org, reading, agents, and finally frame policy.
 (require 'kittymacs-shell)
 (require 'kittymacs-programming)
 (require 'kittymacs-treesit)
@@ -41,6 +41,8 @@
 (require 'kittymacs-terminal)
 (require 'kittymacs-org)
 (require 'kittymacs-org-node)
+(require 'kittymacs-reading)
+(require 'kittymacs-agents)
 (require 'kittymacs-frames)
 
 ;; Settings saved by M-x customize come last, so they override the chapters.
