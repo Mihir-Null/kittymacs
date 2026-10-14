@@ -21,7 +21,7 @@ justfile                 the recipes: tangle, check, test, lint, eval, update
 var/                     packages, caches, custom.el; ignored
 ```
 
-Startup is a flat list of `require`s in `init.el`, ordered by dependency: defaults → platform → `private.el` → UI → literate commands → dashboard → completion → help → Dired → Treemacs → VC → navigation → Meow → keys → shells → programming → Tree-sitter → languages → terminal → Org → org-node → frames → `custom.el`. There are no staged hooks; the little that must wait until `init.el` has finished (restoring `*scratch*`, turning Tabspaces on) adds itself to `after-init-hook`. The leader module is not in the list: the modules that define localleaders require it.
+Startup is a flat list of `require`s in `init.el`, ordered by dependency; from the UI on, each goes through `kittymacs-require-module`, so an error while one chapter loads (typically a package that failed to install, whose variables then do not exist) is a warning naming it and the later chapters still load, while `--debug-init` still gets the backtrace. The order is: defaults → platform → `private.el` → UI → literate commands → dashboard → completion → help → Dired → Treemacs → VC → navigation → Meow → keys → shells → programming → Tree-sitter → languages → terminal → Org → org-node → frames → `custom.el`. There are no staged hooks; the little that must wait until `init.el` has finished (restoring `*scratch*`, turning Tabspaces on) adds itself to `after-init-hook`. The leader module is not in the list: the modules that define localleaders require it.
 
 ## 3. The Meow layer
 
