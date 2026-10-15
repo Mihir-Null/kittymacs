@@ -228,6 +228,19 @@
   "b" (cons "backlinks panel" #'kittymacs-org-node-backlinks)
   "s" (cons "rescan graph" #'kittymacs-org-node-rescan))
 
+(defvar-keymap kittymacs-agent-map
+  :doc "Coding agents (agent-shell)."
+  "a" (cons "start or switch" #'agent-shell)
+  "n" (cons "new shell" #'agent-shell-new-shell)
+  "t" (cons "toggle" #'agent-shell-toggle)
+  "b" (cons "switch shell" #'agent-shell-switch-buffer)
+  "r" (cons "resume session" #'agent-shell-resume-session)
+  "s" (cons "send region or file" #'agent-shell-send-dwim)
+  "f" (cons "send a file" #'agent-shell-send-file)
+  "j" (cons "jump to waiting shell" #'agent-shell-attention-jump)
+  "d" (cons "all shells" #'agent-shell-attention-dashboard)
+  "?" (cons "menu" #'agent-shell-help-menu))
+
 (defvar-keymap kittymacs-open-map
   :doc "Open applications."
   "e" (cons "terminal" #'kittymacs-terminal-open)
@@ -342,6 +355,7 @@
 (keymap-set kittymacs-leader-map "F" (cons "diagnostics" kittymacs-diagnostics-map))
 (keymap-set kittymacs-leader-map "i" (cons "insert" kittymacs-insert-map))
 (keymap-set kittymacs-leader-map "n" (cons "notes" kittymacs-notes-map))
+(keymap-set kittymacs-leader-map "a" (cons "agent" kittymacs-agent-map))
 (keymap-set kittymacs-leader-map "o" (cons "open" kittymacs-open-map))
 (keymap-set kittymacs-leader-map "t" (cons "toggle" kittymacs-toggle-map))
 (keymap-set kittymacs-leader-map "C" (cons "config" kittymacs-config-map))

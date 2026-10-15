@@ -17,6 +17,11 @@
       (hunspell.withDicts (d: [ d.en_US ])) # platform chapter: spelling
       python3 # Treemacs chapter: directory collapsing and the extended (colouring) git mode
       zig # terminal chapter: builds ghostel's native module
+      # reading chapter: pdf-tools' server, linked out of nixpkgs' pdf-tools build
+      (runCommand "epdfinfo" { } ''
+        mkdir -p $out/bin
+        ln -s ${emacsPackages.pdf-tools}/share/emacs/site-lisp/elpa/pdf-tools-*/epdfinfo $out/bin/epdfinfo
+      '')
     ]
     ++ pkgs.lib.optionals pkgs.stdenv.hostPlatform.isDarwin [
       coreutils-prefixed # Dired chapter: GNU ls as `gls'

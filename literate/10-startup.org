@@ -55,6 +55,9 @@
   + =brew install gnupg= or [[id:d25a5063-1439-4ae0-8fbe-b0162d05a0e0][the Nix module]] is enough.
   + [[id:d2e0bc37-0bd4-4b28-a8ee-04f94ac451f8][The shells chapter]] later imports the full login environment, for =git= and the language servers too.
 - Without a native =gpg= (always on Windows without Gpg4win) the check is skipped rather than silently losing the archives.
+- No mirror of the archives, even where the official hosts are hard to reach (*decided* 2026-10-15):
+  + A mirror copies a tarball once and keeps it under the same name, while GNU ELPA re-signs its tarballs when its key changes; a mirrored =spinner-1.7.4.tar= still carried a signature by the key that expired in 2024, so Emacs refused it, and =deadgrep=, which needs =spinner=, failed to install on every machine.
+  + Behind a proxy that inspects TLS, give Emacs the proxy and the certificate bundle instead (=https_proxy=, which =url.el= reads, and the trust store nixpkgs' GnuTLS reads from =NIX_SSL_CERT_FILE=); the machine's configuration sets both.
 
 * early-init.el: before the first frame
 :PROPERTIES:
@@ -245,7 +248,7 @@ The chapters after it still load; `--debug-init' shows the backtrace."
 (kittymacs-require-module 'kittymacs-meow)
 (kittymacs-require-module 'kittymacs-keys)
 
-;; Applications: shells, programming, Org, and finally frame policy.
+;; Applications: shells, programming, Org, reading, agents, and finally frame policy.
 (kittymacs-require-module 'kittymacs-shell)
 (kittymacs-require-module 'kittymacs-programming)
 (kittymacs-require-module 'kittymacs-treesit)
@@ -253,6 +256,8 @@ The chapters after it still load; `--debug-init' shows the backtrace."
 (kittymacs-require-module 'kittymacs-terminal)
 (kittymacs-require-module 'kittymacs-org)
 (kittymacs-require-module 'kittymacs-org-node)
+(kittymacs-require-module 'kittymacs-reading)
+(kittymacs-require-module 'kittymacs-agents)
 (kittymacs-require-module 'kittymacs-frames)
 
 ;; Settings saved by M-x customize come last, so they override the chapters.

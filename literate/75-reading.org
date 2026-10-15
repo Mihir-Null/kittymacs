@@ -1,0 +1,259 @@
+:PROPERTIES:
+:ID: 78b654e1-a93e-4e31-b0d8-f266215b5b12
+:END:
+
+#+TITLE: Reading: PDFs and the notes beside them
+#+FILETAGS: :notes:
+#+STARTUP: overview
+#+PROPERTY: header-args:emacs-lisp :tangle ../lisp/kittymacs-reading.el :eval never :comments no :padline no :mkdirp yes
+
+- Read a paper inside Emacs and keep its notes in an Org file beside it, both on screen at once.
+- Four packages, one job each:
+
+| Package     | Gives                                                            |
+|-------------+------------------------------------------------------------------|
+| pdf-tools   | a PDF viewer drawn by Emacs: search, outline, annotations        |
+| org-noter   | a reading session: the PDF and its notes file side by side, in step |
+| org-pdftools | =pdf:= links, so a note, a task or an agent transcript can point at a page |
+| org-noter-pdftools | the bridge: notes remember the exact annotation, and an annotation leads back to its note |
+
+- Leans on [[id:e5942eb0-4389-447d-9317-d9178adcaaae][the leader]] for =SPC m=, [[id:8ff7e58e-c155-4513-99ae-3b2c3a6ab729][the Org chapter]] for its mode menu, [[id:f48e8f01-88da-4e33-8398-c00ab346b8bb][org-node]] for the notes folder, and [[id:d25a5063-1439-4ae0-8fbe-b0162d05a0e0][the Nix chapter]] for the PDF server.
+- Read [[*How a reading session works]] first.
+
+#+begin_src emacs-lisp
+;;; kittymacs-reading.el --- PDFs and the notes beside them -*- lexical-binding: t; -*-
+;; Generated from literate/75-reading.org; edit the Org source, then tangle.
+
+;;; Code:
+
+(require 'kittymacs-leader)
+(require 'kittymacs-org-node)
+
+#+end_src
+
+* How a reading session works :concept:
+:PROPERTIES:
+:ID: aeae857b-9890-408b-9457-40fb8c9e8fa8
+:END:
+
+- Open a PDF (=SPC f f=): pdf-tools shows it in =pdf-view-mode=.
+- =SPC m n= starts an org-noter session on it:
+  + the first time, it asks where the notes go and offers =<paper>.org= next to the PDF first;
+  + the frame splits: the PDF on the left, the notes on the right.
+- In the session, the two halves follow each other:
+  + =SPC m i= adds a note for this page; =SPC m I= one for an exact spot (a click, or the selected text);
+  + paging the PDF moves the notes to the page's heading, and moving through the notes pages the PDF.
+- =SPC m k= ends the session; the notes file stays an ordinary Org file, with =:NOTER_PAGE:= properties on its headings.
+- Notes are yours, so they are permanent notes: a file next to a PDF in a project joins that project's [[id:f48e8f01-88da-4e33-8398-c00ab346b8bb][notes graph]] like any other Org file.
+
+* pdf-tools: Emacs draws the PDF
+:PROPERTIES:
+:ID: 97b0c04d-5959-4156-9db3-8136c2662a8a
+:END:
+
+- Emacs's own DocView converts each page to an image with an outside program: no text selection, no search, no annotations.
+- pdf-tools splits the work in two:
+  + =epdfinfo=, a small server written in C on top of the poppler PDF library, renders pages and answers queries;
+  + the Lisp side asks it for pages, text, links and annotations, and draws them.
+- =pdf-loader-install= registers =pdf-view-mode= for =.pdf= files and loads the rest on the first PDF you open, so startup pays nothing.
+  + =pdf-tools-install=, its older sibling, loads everything at once and offers to build the server.
+
+** Where the server comes from :decision:
+:PROPERTIES:
+:ID: 15f489d8-1307-491d-9a1a-ecabbd2984e6
+:END:
+
+- Building =epdfinfo= needs a C compiler, autotools, pkg-config and poppler's headers; on macOS that is a Homebrew afternoon.
+- With Nix, [[id:d25a5063-1439-4ae0-8fbe-b0162d05a0e0][the tool list]] puts a ready-built =epdfinfo= on =PATH=, taken from nixpkgs' own pdf-tools build.
+  + pdf-tools looks on =exec-path= before its own directory, so nothing here names the path.
+- Without Nix, the first PDF reports the missing server; =M-x pdf-tools-install= builds it into the package directory.
+- The Lisp comes from MELPA and the server from nixpkgs: both follow the same upstream, and the protocol between them changes rarely.
+  + If a PDF fails to open after a package upgrade with an =epdfinfo= error, =M-x pdf-tools-install= builds a matching server.
+
+#+begin_src emacs-lisp
+(use-package pdf-tools
+  :ensure t
+  :defer t
+  :init
+  (pdf-loader-install t)
+  :custom
+  (pdf-view-display-size 'fit-page)
+  (pdf-annot-activate-created-annotations t))
+
+#+end_src
+
+- Two settings:
+  + a page opens fitted to the window;
+  + a new annotation opens for editing at once, so the note gets written.
+- Pages keep their own colours; =SPC m t= (=pdf-view-themed-minor-mode=) paints one in the theme's, which is easier on the eyes with a dark theme.
+- =(pdf-loader-install t)=: the =t= means do not ask to build a missing server at startup.
+
+* org-noter: the notes beside the page
+:PROPERTIES:
+:ID: 6700f72d-a8e2-467d-9f26-83c349e2b19c
+:END:
+
+- The package is the maintained fork, =org-noter/org-noter=, which MELPA builds; it reads PDFs through pdf-tools by itself.
+  + [[*org-noter-pdftools: notes tied to annotations][org-noter-pdftools]] adds the link from a note to one annotation, and back.
+- Where notes live:
+  + =org-noter-default-notes-file-names= is empty, so a paper's notes are =<paper>.org=, never a shared =Notes.org=;
+  + org-noter looks for that name in the PDF's folder and every folder above it, then in =org-noter-notes-search-path=;
+  + the search path is your notes folder ([[id:f48e8f01-88da-4e33-8398-c00ab346b8bb][org-node]]'s), for papers kept outside any project.
+- So a paper in =papers/= of a project gets =papers/<paper>.org=, in the same folder, inside the project's graph.
+
+#+begin_src emacs-lisp
+(use-package org-noter
+  :ensure t
+  :commands (org-noter org-noter-insert-note org-noter-insert-precise-note org-noter-kill-session
+             org-noter-sync-current-note org-noter-sync-next-note org-noter-sync-prev-note)
+  :custom
+  (org-noter-default-notes-file-names nil)
+  (org-noter-notes-search-path (list kittymacs-org-node-directory))
+  (org-noter-always-create-frame 'reuse-if-free))
+
+#+end_src
+
+** One frame for a reading session :decision:
+:PROPERTIES:
+:ID: cf525289-04bd-4ee7-bf05-54078834eb36
+:END:
+
+- [[id:f1d045c2-e2dc-4514-ab17-dd982ed6be00][Frames-only mode]] gives every buffer you read or edit its own OS window; a reading session is the exception.
+  + Reading needs the page and its notes in view together, in step; two OS windows would drift apart and fight for the screen.
+- org-noter splits the session's frame itself, with =split-window-right=, which frames-only mode leaves alone: its remap changes keys, not the function.
+- =org-noter-always-create-frame= decides /which/ frame:
+  + its default, =t=, opens a new maximised frame, which a tiling window manager has to undo;
+  + ='reuse-if-free= splits the frame you started from, unless another session already owns it.
+- The notes go on the right (=horizontal-split=, the default), half the width.
+- Known issue upstream: an annotation added to the PDF from the notes side may not save on its own ([[https://github.com/fuxialexander/org-pdftools/issues/68][org-pdftools #68]]); =SPC m s= in the PDF saves it.
+
+* org-pdftools: links to a page
+:PROPERTIES:
+:ID: 1ba2ea67-a4f3-4864-ac7c-04e6b7d0ebc7
+:END:
+
+- =org-pdftools-setup-link= adds a =pdf:= link type to Org: how to open, store, complete and export one.
+- It runs when a PDF opens, never from Org:
+  + loading org-pdftools loads =pdf-annot=, which asks =epdfinfo= what it supports as it loads, and signals an error where there is no server;
+  + run from =org-mode-hook=, as its README does, that error would break every Org buffer on a machine without the server.
+- So Org learns the link type in two steps:
+  + at startup, only how to /follow/ a =pdf:= link: load org-pdftools, then open it;
+  + once a PDF has opened, the rest, storing a link included, from =pdf-view-mode-hook=.
+- =SPC m l= in a PDF stores a link to the page you are on, or to the selected text; =SPC m l= in Org (=org-insert-link=) inserts it.
+- Opening a =pdf:= link opens the PDF at that page, highlighting the text the link named.
+- A plain-text address, so a note, a task in the agenda, or an [[id:51ae9070-0971-48c1-9625-283891d48d73][agent transcript]] can point at the exact page under discussion.
+
+#+begin_src emacs-lisp
+(declare-function org-pdftools-open "org-pdftools" (link &optional arg))
+
+(defun kittymacs-reading-follow-pdf-link (link arg)
+  "Open the pdf: LINK, loading org-pdftools first; ARG as for `org-open-at-point'."
+  (require 'org-pdftools)
+  (org-pdftools-open link arg))
+
+(with-eval-after-load 'ol
+  (org-link-set-parameters "pdf" :follow #'kittymacs-reading-follow-pdf-link))
+
+(use-package org-pdftools
+  :ensure t
+  :hook (pdf-view-mode . org-pdftools-setup-link))
+
+#+end_src
+
+* org-noter-pdftools: notes tied to annotations
+:PROPERTIES:
+:ID: b87db108-3eea-4375-89c8-54b9d212dd09
+:END:
+
+- Plain org-noter remembers a note's place as a page and a position on it.
+- With org-noter-pdftools loaded, a note remembers it as a =pdf:= link instead, naming the annotation (a highlight, say) it was made from:
+  + =SPC m I= on selected text highlights it in the PDF and files the note under a link to that highlight;
+  + clicking the highlight later jumps to its note: the =pdf-annot-activate-handler-functions= line below.
+- It gives each note heading an Org ID, so it can find the note again from the annotation.
+  + An ID makes a heading a node of [[id:f48e8f01-88da-4e33-8398-c00ab346b8bb][the notes graph]]: a paper's notes show up in =SPC n f= heading by heading.
+- It loads once both org-noter and pdf-tools have, and registers itself on org-noter's hooks as it loads; nothing else is set.
+  + Not before: it loads =pdf-annot=, which asks =epdfinfo= what it supports, and so fails on a machine without the server instead of only the PDF failing to open.
+  + Its README also redefines two org-noter commands; the maintained fork already has both, so that part is left out.
+
+#+begin_src emacs-lisp
+(use-package org-noter-pdftools
+  :ensure t
+  :after (org-noter pdf-tools)
+  :demand t
+  :config
+  (with-eval-after-load 'pdf-annot
+    (add-hook 'pdf-annot-activate-handler-functions #'org-noter-pdftools-jump-to-note)))
+
+#+end_src
+
+* Meow in PDFs and notes :meow:
+:PROPERTIES:
+:ID: c5b90c34-6023-4954-b26b-6dbabf29de84
+:END:
+
+- A PDF is a picture of a page, not text Meow can select, so =pdf-view-mode= starts in Motion:
+  + =j= / =k= scroll, =n= / =p= turn the page, and the rest of pdf-tools' keys work;
+  + =SPC= is the leader, as everywhere.
+- The notes buffer is an Org buffer in Normal state; its reading keys are a =N= group in Org's own =SPC m=, added to [[id:8ff7e58e-c155-4513-99ae-3b2c3a6ab729][the Org chapter]]'s map.
+  + Added, not defined: =kittymacs-define-localleader= would replace Org's whole menu.
+
+| =SPC m= in a PDF | Does                         | =SPC m= in a PDF | Does                     |
+|------------------+------------------------------+------------------+--------------------------|
+| =n=              | start or resume org-noter    | =o=              | outline                  |
+| =i=              | note for this page           | =g=              | go to page               |
+| =I=              | note at a spot               | =/=              | search (occur)           |
+| =k=              | end the session              | =w= / =W=        | fit width / fit page     |
+| =h=              | highlight the selection      | =t=              | theme colours on or off  |
+| =a=              | text annotation              | =l=              | store a =pdf:= link      |
+| =A=              | list annotations             | =s=              | save annotations         |
+
+#+begin_src emacs-lisp
+(with-eval-after-load 'meow
+  (add-to-list 'meow-mode-state-list '(pdf-view-mode . motion)))
+
+(kittymacs-define-localleader 'pdf-view-mode
+  "n" (cons "org-noter session" #'org-noter)
+  "i" (cons "note for this page" #'org-noter-insert-note)
+  "I" (cons "note at a spot" #'org-noter-insert-precise-note)
+  "k" (cons "end session" #'org-noter-kill-session)
+  "h" (cons "highlight selection" #'pdf-annot-add-highlight-markup-annotation)
+  "a" (cons "text annotation" #'pdf-annot-add-text-annotation)
+  "A" (cons "list annotations" #'pdf-annot-list-annotations)
+  "o" (cons "outline" #'pdf-outline)
+  "g" (cons "go to page" #'pdf-view-goto-page)
+  "/" (cons "search" #'pdf-occur)
+  "w" (cons "fit width" #'pdf-view-fit-width-to-window)
+  "W" (cons "fit page" #'pdf-view-fit-page-to-window)
+  "t" (cons "theme colours" #'pdf-view-themed-minor-mode)
+  "l" (cons "store pdf: link" #'org-store-link)
+  "s" (cons "save annotations" #'save-buffer))
+
+(defvar-keymap kittymacs-reading-org-map
+  :doc "Reading-session keys in Org buffers."
+  "n" (cons "start or resume" #'org-noter)
+  "i" (cons "note for this page" #'org-noter-insert-note)
+  "s" (cons "sync to this note" #'org-noter-sync-current-note)
+  "]" (cons "next note" #'org-noter-sync-next-note)
+  "[" (cons "previous note" #'org-noter-sync-prev-note)
+  "k" (cons "end session" #'org-noter-kill-session))
+
+;; `kittymacs-define-localleader' replaces a mode's whole map, and Org's
+;; belongs to the Org chapter, so add a group to the map it built.
+(with-eval-after-load 'kittymacs-org
+  (when-let* ((map (alist-get 'org-mode kittymacs-localleader-alist)))
+    (keymap-set map "N" (cons "noter (reading)" kittymacs-reading-org-map))
+    (kittymacs-refresh-localleaders)))
+
+(provide 'kittymacs-reading)
+;;; kittymacs-reading.el ends here
+#+end_src
+
+* Check
+
+- =SPC f f= a PDF: it opens fitted to the window, in Motion state; =j=, =k=, =n=, =p= move.
+- =M-: (executable-find "epdfinfo")=: a path into the Nix store on a Nix machine.
+- =SPC m n= on a PDF in a project's =papers/= folder: org-noter offers =papers/<paper>.org= first, and the frame splits, PDF left, notes right; no new frame opens.
+- =SPC m i= adds a heading for this page; =n= in the PDF moves the notes along.
+- In the notes, =SPC m N= lists the reading keys.
+- =SPC m l= in the PDF, then =SPC m l= in any Org file: a =pdf:= link; =RET= on it opens the page.
+- =just test-packages=: the verifier fails on any warning at startup, and checks that every =SPC= key runs a command.

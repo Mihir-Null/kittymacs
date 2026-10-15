@@ -125,12 +125,15 @@
 | =hunspell= + =en_US=  | [[id:afa6b7fd-742a-4c15-86a6-32e3e8027b0e][platform]]        | spell checking                         |
 | =python3=             | [[id:55f0b75c-d867-4474-a26e-019215b8e492][Treemacs]]        | directory collapsing, Git colouring    |
 | =zig=                 | [[id:bd2638bc-735d-4849-bafe-3dab5e8e30b7][terminal]]        | building ghostel's native module       |
+| =epdfinfo=            | [[id:78b654e1-a93e-4e31-b0d8-f266215b5b12][reading]]         | pdf-tools' PDF server, ready-built     |
 | =gls= (macOS)         | [[id:878a9e46-62be-4b9f-82f6-589560d2ebc1][Dired]]           | GNU =ls=, directories first            |
 | =trash= (macOS)       | [[id:afa6b7fd-742a-4c15-86a6-32e3e8027b0e][platform]]        | the Trash, with Finder's "Put Back"    |
 
 - Fonts: Symbols Nerd Font Mono for the icons.
   + Google Sans Code, the preferred editing font, is not in nixpkgs; the platform font is used until it is installed by hand.
 - =emacs= is an argument, so each module installs the Emacs its =package= option names.
+- =epdfinfo= is the one program nixpkgs does not ship on its own: its pdf-tools build puts the server beside the Lisp, so a small derivation links it into =bin/=.
+  + Only the server is taken; the Lisp still comes from MELPA, as every package does ([[id:15f489d8-1307-491d-9a1a-ecabbd2984e6][why]]).
 
 #+begin_src nix
 # Generated from literate/90-nix.org; edit the Org source, then tangle.
@@ -152,6 +155,11 @@
       (hunspell.withDicts (d: [ d.en_US ])) # platform chapter: spelling
       python3 # Treemacs chapter: directory collapsing and the extended (colouring) git mode
       zig # terminal chapter: builds ghostel's native module
+      # reading chapter: pdf-tools' server, linked out of nixpkgs' pdf-tools build
+      (runCommand "epdfinfo" { } ''
+        mkdir -p $out/bin
+        ln -s ${emacsPackages.pdf-tools}/share/emacs/site-lisp/elpa/pdf-tools-*/epdfinfo $out/bin/epdfinfo
+      '')
     ]
     ++ pkgs.lib.optionals pkgs.stdenv.hostPlatform.isDarwin [
       coreutils-prefixed # Dired chapter: GNU ls as `gls'
@@ -475,28 +483,44 @@ in
 :END:
 
 - The checkout is ordinary user data, so activation clones it into the home directory rather than building it into the generation.
-- Three cases:
+- Four cases, told apart by what is at =source=:
   1. A symbolic link to nothing (probably a disk that is not mounted) stops activation instead of being cloned over.
-  2. Nothing there: fetch only the pinned commit, with =origin= set to =repository= so the checkout can pull later.
+  2. Nothing there, or a directory holding nothing but =var/=: fetch only the pinned commit, with =origin= set to =repository= so the checkout can pull later.
      + The work happens in a temporary directory beside =source=, moved into place only once =HEAD= is that commit: a failed fetch leaves nothing half-made.
+     + =mktemp= makes that directory private (mode 700); the checkout is given the usual mode before it moves into place.
+     + A =var/= already there is Emacs's own: packages, caches and saved settings. It is carried into the new checkout, so starting over keeps them.
      + A failure only warns: the network may not be up yet (Home Manager runs at boot on NixOS), and the rest of the home should not wait for it. The next activation tries again; until then =~/.config/emacs= points at nothing.
      + The subshell runs with =errexit= and not as an =if= condition, where bash would ignore =set -e= and go on past a failed fetch.
-  3. A Git checkout at another commit: say so in one line, and touch nothing.
+  3. A directory that is no checkout and holds other things: warn, naming them, and touch nothing. Move them away and activate again.
+  4. A Git checkout at another commit: say so in one line, and touch nothing.
 - So bumping the input in =flake.lock= never rewrites your configuration: from the first clone on, the checkout is yours to pull, commit in and switch branches in.
 - The first clone is shallow and detached; =git fetch --unshallow origin= then =git switch main= turns it into an ordinary checkout.
+- To start over, remove =source= itself (=rm -rf ~/src/kittymacs=) and activate again.
+  + Not the link: =rm -rf ~/.config/emacs/=, with its trailing slash, follows the link and empties the checkout instead, and the link stays.
+  + Case 2 is what makes that mistake recoverable: what is left behind is a directory with only =var/= in it, which the next activation clones into.
 - =DRY_RUN= (=home-manager switch --dry-run=) prints what would be cloned and does nothing.
 
 #+begin_src nix :padline yes
-    home.activation.cloneKittymacs = lib.mkIf (cfg.source != null && cfg.revision != null) (
-      lib.hm.dag.entryAfter [ "writeBoundary" ] ''
-        source=${lib.escapeShellArg cfg.source}
-        repository=${lib.escapeShellArg cfg.repository}
-        revision=${lib.escapeShellArg cfg.revision}
-        if [[ -L $source && ! -e $source ]]; then
-          errorEcho "kittymacs: $source is a symbolic link to nothing"
-          exit 1
-        elif [[ ! -e $source ]]; then
-          if [[ -v DRY_RUN ]]; then
+    home.activation = {
+      cloneKittymacs = lib.mkIf (cfg.source != null && cfg.revision != null) (
+        lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+          source=${lib.escapeShellArg cfg.source}
+          repository=${lib.escapeShellArg cfg.repository}
+          revision=${lib.escapeShellArg cfg.revision}
+          if [[ -L $source && ! -e $source ]]; then
+            errorEcho "kittymacs: $source is a symbolic link to nothing"
+            exit 1
+          elif [[ -e $source/.git ]]; then
+            if head=$(${git} -C "$source" rev-parse HEAD 2>/dev/null) && [[ $head != "$revision" ]]; then
+              noteEcho "kittymacs: $source is at $head, not the pinned $revision; left as it is"
+            fi
+          elif [[ -d $source ]] \
+            && stray=$(${coreutils}/ls -A -- "$source" | ${coreutils}/tr '\n' ' ') \
+            && [[ -n ''${stray// /} && $stray != "var " ]]; then
+            warnEcho "kittymacs: $source is not a checkout; it holds: $stray; move it away and activate again"
+          elif [[ -e $source && ! -d $source ]]; then
+            warnEcho "kittymacs: $source is not a directory; move it away and activate again"
+          elif [[ -v DRY_RUN ]]; then
             echo "kittymacs: would clone $repository at $revision into $source"
           else
             parent=$(${coreutils}/dirname -- "$source")
@@ -506,6 +530,7 @@ in
               set -e
               temp=$(${coreutils}/mktemp -d "$parent/.kittymacs.XXXXXXXX")
               trap '${coreutils}/rm -rf -- "$temp"' EXIT
+              ${coreutils}/chmod u=rwx,go=rx -- "$temp"
               ${git} -C "$temp" init --quiet
               ${git} -C "$temp" remote add origin "$repository"
               ${git} -C "$temp" fetch --quiet --depth 1 origin "$revision"
@@ -515,6 +540,16 @@ in
                 errorEcho "kittymacs: $revision fetched as $head; give a full commit hash"
                 exit 1
               fi
+              if [[ -d $source ]]; then
+                # Only var/ can be here (checked above): keep it, then swap the
+                # directories.  From here on nothing is deleted on failure.
+                trap - EXIT
+                if [[ -e $source/var ]]; then
+                  ${coreutils}/mv -- "$source/var" "$temp/var"
+                fi
+                ${coreutils}/rmdir -- "$source"
+                noteEcho "kittymacs: cloned into $source, keeping the var/ that was there"
+              fi
               ${coreutils}/mv -- "$temp" "$source"
             )
             cloneStatus=$?
@@ -523,18 +558,31 @@ in
               warnEcho "kittymacs: could not clone $repository at $revision into $source; activation goes on without it, and the next one tries again"
             fi
           fi
-        elif [[ -e $source/.git ]] \
-          && head=$(${git} -C "$source" rev-parse HEAD 2>/dev/null) \
-          && [[ $head != "$revision" ]]; then
-          noteEcho "kittymacs: $source is at $head, not the pinned $revision; left as it is"
-        fi
-      ''
-    );
+        ''
+      );
+
+      kittymacsDaemon = lib.mkIf (cfg.daemon && pkgs.stdenv.isLinux) (
+        lib.hm.dag.entryAfter [ "reloadSystemd" ] ''
+          systemctl=${config.systemd.user.systemctlPath}
+          if [[ ! -v DRY_RUN ]] \
+            && running=$("$systemctl" --user show emacs.service --property=ExecStart --value 2>/dev/null) \
+            && [[ -n $running && $running != *"${cfg.package}"* ]] \
+            && "$systemctl" --user is-active --quiet emacs.service; then
+            noteEcho "kittymacs: the Emacs daemon still runs the previous Emacs, not ${cfg.package}; systemctl --user restart emacs when nothing is unsaved"
+          fi
+        ''
+      );
+    };
 #+end_src
 
 ** The daemon's service
 
 - =extraOptions= reaches the systemd unit's =ExecStart= and the launchd agent's =ProgramArguments= alike, and joins anything the home sets itself, so =initDirectory= costs a user nothing.
+- A switch never restarts the daemon: Home Manager marks the unit =X-RestartIfChanged=false=, so an upgrade cannot take a session full of unsaved buffers with it.
+  + The other side of that: after a switch that changes =package=, =emacsclient= keeps talking to the /old/ Emacs until you restart the service, and if the old one is too old for this configuration, every frame it opens is a stock Emacs with an init error.
+  + So on Linux, once systemd has reloaded, activation compares the running unit's =ExecStart= with =package= and says in one line when they differ: =systemctl --user restart emacs=, when nothing is unsaved.
+  + Where no user systemd runs (boot-time activation, nix-on-droid) =systemctl= answers nothing and the check stays quiet.
+  + Its code, =kittymacsDaemon=, sits in [[id:41497b01-c9a9-4aa9-b658-7fda73fce4a8][the clone's]] =home.activation= set: =statix= rejects a third =home.…= key in one set.
 
 #+begin_src nix :padline yes
     services.emacs = lib.mkIf cfg.daemon {

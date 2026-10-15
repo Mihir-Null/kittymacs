@@ -74,6 +74,7 @@ Press =SPC=, then:
 | =F=   | diagnostics                       |
 | =i=   | insert                            |
 | =o=   | open                              |
+| =a=   | agent (Claude Code)               |
 | =t=   | toggle                            |
 | =C=   | this configuration                |
 | =h=   | help                              |
@@ -211,6 +212,10 @@ New editing surfaces are OS windows (frames); your window manager arranges them.
 | Treemacs     | =f= / =d= / =r=    | new file / new directory / rename    |
 | Eshell       | =h=            | search history                       |
 | Info         | =i= / =s=        | index / search                       |
+| PDF          | =n= / =i= / =I=    | reading session / note / note at a spot |
+| PDF          | =h= / =o= / =g=    | highlight / outline / go to page     |
+| Org          | =N=            | reading-session keys (org-noter)     |
+| Agent shell  | =i= / =m= / =t=    | interrupt / permission mode / transcript |
 | any of these | =?=            | a menu of everything the mode can do |
 #+TBLFM: $2=SPC m= then
 
@@ -246,3 +251,18 @@ In that list, =g= runs the query again and =v= changes it or its grouping.
 | SPC n c | New note in a folder you choose | kittymacs-org-node-new |
 | SPC n b | Backlinks side panel | kittymacs-org-node-backlinks |
 | SPC n s | Read the graph again | kittymacs-org-node-rescan |
+
+* Agents (Claude Code)
+
+| Key | Action | Command |
+|-----+--------+---------|
+| SPC a a | Start Claude in this project, or switch to its shell | agent-shell |
+| SPC a n | Another shell | agent-shell-new-shell |
+| SPC a t | Show or hide the shell | agent-shell-toggle |
+| SPC a b | Switch between shells | agent-shell-switch-buffer |
+| SPC a r | Resume an earlier session | agent-shell-resume-session |
+| SPC a s | Send the region, or this file | agent-shell-send-dwim |
+| SPC a j | Jump to the shell waiting for you | agent-shell-attention-jump |
+| SPC a d | Every shell and its state | agent-shell-attention-dashboard |
+
+Every edit the agent proposes waits for =y= (once), =!= (always) or a rejection. =AS:n= in the mode line counts the shells waiting for you.

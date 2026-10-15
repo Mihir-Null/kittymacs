@@ -137,6 +137,15 @@ it in `private.el', before this module is loaded, to override."
 ;;; kittymacs-frames.el ends here
 #+end_src
 
+* A reading session keeps its notes beside the page :decision:
+:PROPERTIES:
+:ID: 7b6c938a-1b1b-43ef-a665-4cc37c370759
+:END:
+
+- The one deliberate exception to frames for full buffers: an org-noter session splits its frame, the PDF on one side and its notes on the other.
+  + Reading needs both in view, moving in step; two OS windows would drift apart.
+- [[id:cf525289-04bd-4ee7-bf05-54078834eb36][The reading chapter]] holds the setting and the reasons; nothing here changes.
+
 * Everyday commands and recovery
 
 | Keys                                         | What happens                                            |
