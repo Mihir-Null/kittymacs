@@ -149,38 +149,53 @@ in
         if [[ -L $source && ! -e $source ]]; then
           errorEcho "kittymacs: $source is a symbolic link to nothing"
           exit 1
-        elif [[ ! -e $source ]]; then
-          if [[ -v DRY_RUN ]]; then
-            echo "kittymacs: would clone $repository at $revision into $source"
-          else
-            parent=$(${coreutils}/dirname -- "$source")
-            ${coreutils}/mkdir -p -- "$parent"
-            set +e
-            (
-              set -e
-              temp=$(${coreutils}/mktemp -d "$parent/.kittymacs.XXXXXXXX")
-              trap '${coreutils}/rm -rf -- "$temp"' EXIT
-              ${git} -C "$temp" init --quiet
-              ${git} -C "$temp" remote add origin "$repository"
-              ${git} -C "$temp" fetch --quiet --depth 1 origin "$revision"
-              ${git} -C "$temp" checkout --quiet --detach FETCH_HEAD
-              head=$(${git} -C "$temp" rev-parse HEAD)
-              if [[ $head != "$revision" ]]; then
-                errorEcho "kittymacs: $revision fetched as $head; give a full commit hash"
-                exit 1
-              fi
-              ${coreutils}/mv -- "$temp" "$source"
-            )
-            cloneStatus=$?
-            set -e
-            if (( cloneStatus != 0 )); then
-              warnEcho "kittymacs: could not clone $repository at $revision into $source; activation goes on without it, and the next one tries again"
-            fi
+        elif [[ -e $source/.git ]]; then
+          if head=$(${git} -C "$source" rev-parse HEAD 2>/dev/null) && [[ $head != "$revision" ]]; then
+            noteEcho "kittymacs: $source is at $head, not the pinned $revision; left as it is"
           fi
-        elif [[ -e $source/.git ]] \
-          && head=$(${git} -C "$source" rev-parse HEAD 2>/dev/null) \
-          && [[ $head != "$revision" ]]; then
-          noteEcho "kittymacs: $source is at $head, not the pinned $revision; left as it is"
+        elif [[ -d $source ]] \
+          && stray=$(${coreutils}/ls -A -- "$source" | ${coreutils}/tr '\n' ' ') \
+          && [[ -n ''${stray// /} && $stray != "var " ]]; then
+          warnEcho "kittymacs: $source is not a checkout; it holds: $stray; move it away and activate again"
+        elif [[ -e $source && ! -d $source ]]; then
+          warnEcho "kittymacs: $source is not a directory; move it away and activate again"
+        elif [[ -v DRY_RUN ]]; then
+          echo "kittymacs: would clone $repository at $revision into $source"
+        else
+          parent=$(${coreutils}/dirname -- "$source")
+          ${coreutils}/mkdir -p -- "$parent"
+          set +e
+          (
+            set -e
+            temp=$(${coreutils}/mktemp -d "$parent/.kittymacs.XXXXXXXX")
+            trap '${coreutils}/rm -rf -- "$temp"' EXIT
+            ${coreutils}/chmod u=rwx,go=rx -- "$temp"
+            ${git} -C "$temp" init --quiet
+            ${git} -C "$temp" remote add origin "$repository"
+            ${git} -C "$temp" fetch --quiet --depth 1 origin "$revision"
+            ${git} -C "$temp" checkout --quiet --detach FETCH_HEAD
+            head=$(${git} -C "$temp" rev-parse HEAD)
+            if [[ $head != "$revision" ]]; then
+              errorEcho "kittymacs: $revision fetched as $head; give a full commit hash"
+              exit 1
+            fi
+            if [[ -d $source ]]; then
+              # Only var/ can be here (checked above): keep it, then swap the
+              # directories.  From here on nothing is deleted on failure.
+              trap - EXIT
+              if [[ -e $source/var ]]; then
+                ${coreutils}/mv -- "$source/var" "$temp/var"
+              fi
+              ${coreutils}/rmdir -- "$source"
+              noteEcho "kittymacs: cloned into $source, keeping the var/ that was there"
+            fi
+            ${coreutils}/mv -- "$temp" "$source"
+          )
+          cloneStatus=$?
+          set -e
+          if (( cloneStatus != 0 )); then
+            warnEcho "kittymacs: could not clone $repository at $revision into $source; activation goes on without it, and the next one tries again"
+          fi
         fi
       ''
     );
@@ -191,5 +206,17 @@ in
       client.enable = true;
       extraOptions = lib.optional (cfg.initDirectory != null) "--init-directory=${cfg.initDirectory}";
     };
+
+    home.activation.kittymacsDaemon = lib.mkIf (cfg.daemon && pkgs.stdenv.isLinux) (
+      lib.hm.dag.entryAfter [ "reloadSystemd" ] ''
+        systemctl=${config.systemd.user.systemctlPath}
+        if [[ ! -v DRY_RUN ]] \
+          && running=$("$systemctl" --user show emacs.service --property=ExecStart --value 2>/dev/null) \
+          && [[ -n $running && $running != *"${cfg.package}"* ]] \
+          && "$systemctl" --user is-active --quiet emacs.service; then
+          noteEcho "kittymacs: the Emacs daemon still runs the previous Emacs, not ${cfg.package}; systemctl --user restart emacs when nothing is unsaved"
+        fi
+      ''
+    );
   };
 }
