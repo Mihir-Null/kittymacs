@@ -74,7 +74,7 @@ Press =SPC=, then:
 | =F=   | diagnostics                       |
 | =i=   | insert                            |
 | =o=   | open                              |
-| =a=   | agent (Claude Code)               |
+| =a=   | agent (Claude Code), suggestions  |
 | =t=   | toggle                            |
 | =C=   | this configuration                |
 | =h=   | help                              |
@@ -266,3 +266,14 @@ In that list, =g= runs the query again and =v= changes it or its grouping.
 | SPC a d | Every shell and its state | agent-shell-attention-dashboard |
 
 Every edit the agent proposes waits for =y= (once), =!= (always) or a rejection. =AS:n= in the mode line counts the shells waiting for you.
+
+* Suggestions (Copilot)
+
+Off until you turn them on; GitHub Copilot and =M-x copilot-login= once.
+
+| Key | Action | Command |
+|-----+--------+---------|
+| SPC t a | Suggestions on or off in this buffer | kittymacs-suggestions-toggle |
+| SPC a c | A suggestion at point, now | kittymacs-suggestions-complete |
+
+While grey text follows the cursor: =TAB= takes it, =C-TAB= one word, =M-n= / =M-p= another suggestion. While a next edit is shown: =TAB= jumps to it, =TAB= again applies it, =C-g= dismisses it.

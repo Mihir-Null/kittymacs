@@ -229,7 +229,7 @@
   "s" (cons "rescan graph" #'kittymacs-org-node-rescan))
 
 (defvar-keymap kittymacs-agent-map
-  :doc "Coding agents (agent-shell)."
+  :doc "Coding agents (agent-shell), and a suggestion at point."
   "a" (cons "start or switch" #'agent-shell)
   "n" (cons "new shell" #'agent-shell-new-shell)
   "t" (cons "toggle" #'agent-shell-toggle)
@@ -239,6 +239,7 @@
   "f" (cons "send a file" #'agent-shell-send-file)
   "j" (cons "jump to waiting shell" #'agent-shell-attention-jump)
   "d" (cons "all shells" #'agent-shell-attention-dashboard)
+  "c" (cons "suggestion here (Copilot)" #'kittymacs-suggestions-complete)
   "?" (cons "menu" #'agent-shell-help-menu))
 
 (defvar-keymap kittymacs-open-map
@@ -273,6 +274,7 @@
   "R" (cons "rainbow identifiers" #'rainbow-identifiers-mode)
   "f" (cons "frames-only mode" #'frames-only-mode)
   "d" (cons "file tree sidebar" #'treemacs)
+  "a" (cons "suggestions (Copilot)" #'kittymacs-suggestions-toggle)
   "o" (cons "outline sidebar" #'imenu-list-smart-toggle)
   "g" (cons "git gutter" #'diff-hl-mode)
   "D" (cons "dim other windows" #'dimmer-mode)
