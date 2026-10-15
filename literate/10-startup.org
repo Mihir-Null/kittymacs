@@ -70,10 +70,6 @@
   + =init.el= loads them a moment later anyway, once the frame is on screen.
 - Package activation is left to =init.el=, so it happens in one known place (=package-enable-at-startup= is nil).
 - The archives are GNU ELPA, NonGNU ELPA and MELPA; signatures: [[*GNU ELPA's signature check needs a native gpg]].
-- *Temporary, on this branch only: all three come from a GitHub mirror.* Revert before merging to =main=.
-  + On the Sandia Mac, Zscaler cuts TLS connections to =elpa.gnu.org= and =elpa.nongnu.org=, and MELPA downloads arrived truncated; GitHub gets through.
-  + [[https://github.com/d12frosted/elpa-mirror][d12frosted/elpa-mirror]] republishes the three archives a few times a day, byte for byte; GNU's own =.sig= files come with them, so the GNU ELPA signature check still holds against GNU's key. MELPA signs nothing, mirrored or not.
-  + Here, rather than in =private.el=, because =just install= and =just update= load this file but not =private.el=.
 - Three settings make startup quicker:
   + no garbage collection until the end (then a 64 MB threshold);
   + no implied frame resizing;
@@ -115,12 +111,9 @@
 (setq package-user-dir (expand-file-name "elpa/" kittymacs-var-dir)
       package-gnupghome-dir (expand-file-name "gnupg/" package-user-dir)
       package-enable-at-startup nil
-      ;; TEMPORARY (dev/agent-shell-claude): a GitHub mirror of the three
-      ;; archives, for the Sandia Mac; revert to elpa.gnu.org,
-      ;; elpa.nongnu.org and melpa.org before merging.
-      package-archives '(("gnu" . "https://raw.githubusercontent.com/d12frosted/elpa-mirror/master/gnu/")
-                         ("nongnu" . "https://raw.githubusercontent.com/d12frosted/elpa-mirror/master/nongnu/")
-                         ("melpa" . "https://raw.githubusercontent.com/d12frosted/elpa-mirror/master/melpa/")))
+      package-archives '(("gnu" . "https://elpa.gnu.org/packages/")
+                         ("nongnu" . "https://elpa.nongnu.org/nongnu/")
+                         ("melpa" . "https://melpa.org/packages/")))
 ;; An Emacs.app started from the Dock inherits no shell PATH, so the gpg,
 ;; git and language servers that Nix or Homebrew installed are invisible
 ;; until the shells chapter imports the login environment.  Put those
