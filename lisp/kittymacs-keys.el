@@ -82,7 +82,12 @@
   "G" (cons "Magit status" #'magit-project-status)
   "t" (cons "projects directory" #'kittymacs-projects-directory)
   "R" (cons "remember projects under" #'project-remember-projects-under)
-  "C" (cons "recompile" #'recompile))
+  "C" (cons "recompile" #'recompile)
+  "E" (cons "direnv" (define-keymap
+                       "a" (cons "allow .envrc" #'envrc-allow)
+                       "d" (cons "deny .envrc" #'envrc-deny)
+                       "r" (cons "reload" #'envrc-reload)
+                       "l" (cons "log" #'envrc-show-log))))
 
 (defvar-keymap kittymacs-jump-map
   :doc "Jump with on-screen hints."

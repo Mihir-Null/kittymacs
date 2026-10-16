@@ -52,6 +52,12 @@
 ;; buffer.  Files matching kittymacs-suggestions-excluded-files never get them.
 ;; (setopt kittymacs-suggestions t)
 
+;; Notebooks
+;; Jupyter kernels through emacs-jupyter (SPC m n j).  Off by default: it
+;; needs emacs-zmq's native module, which the Nix tools provide and which
+;; emacs-zmq otherwise downloads or builds, asking first.
+;; (setopt kittymacs-notebooks-jupyter t)
+
 ;; UI
 ;; (setopt kittymacs-theme 'doom-dark+
 ;;         kittymacs-light-theme 'doom-one-light

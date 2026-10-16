@@ -130,13 +130,13 @@
 
 * Projects, version control, windows, workspaces
 
-| Prefix  | Group           | Doubled key                | Also                                                         |
-|---------+-----------------+----------------------------+--------------------------------------------------------------|
-| =SPC p= | project         | =p= open in a workspace    | every =C-x p= key, =G= Magit status, =C= recompile            |
-| =SPC j= | jump            | =j= to character (Avy)     | =l= line, =w= word, =s= symbol                               |
-| =SPC v= | version control | (=s= status)               | =d= diff, =l= log, =b= blame, =c= commit, =?= all commands   |
-| =SPC w= | windows         | =w= jump to window         | =n= new frame, =k= close frame, =h= / =v= split, =u= / =U= undo / redo layout |
-| =SPC W= | workspaces      | (=TAB= switch)             | =s= switch or create, =o= open project, =d= close            |
+| Prefix  | Group           | Doubled key             | Also                                                                          |
+|---------+-----------------+-------------------------+-------------------------------------------------------------------------------|
+| =SPC p= | project         | =p= open in a workspace | every =C-x p= key, =G= Magit status, =C= recompile, =E= direnv                |
+| =SPC j= | jump            | =j= to character (Avy)  | =l= line, =w= word, =s= symbol                                                |
+| =SPC v= | version control | (=s= status)            | =d= diff, =l= log, =b= blame, =c= commit, =?= all commands                    |
+| =SPC w= | windows         | =w= jump to window      | =n= new frame, =k= close frame, =h= / =v= split, =u= / =U= undo / redo layout |
+| =SPC W= | workspaces      | (=TAB= switch)          | =s= switch or create, =o= open project, =d= close                             |
 
 - =SPC p= is =kittymacs-project-map=, whose /parent/ is Emacs's own =project-prefix-map=:
   + a key not found in a keymap is looked up in its parent, so the =C-x p= commands work under =SPC p= as well;
@@ -146,6 +146,8 @@
   + =SPC p p= opens the project in its own workspace; =C-x p p= still switches project in the current one;
   + =SPC p b= is Consult's project buffer list, with preview, instead of =project-switch-to-buffer=;
   + =SPC p G= is Magit's status for the project; the command =C-x p G= runs, =project-or-external-find-regexp=, has no key under =SPC p=, so use =C-x p G= for it.
+- =SPC p E= is the project's direnv environment, from [[id:a121fda8-198e-498c-8867-eb1ecba8236d][the shells chapter]]: =a= allow its =.envrc=, =d= deny it, =r= reload it, =l= the last run's log.
+  + Capital =E= because =SPC p e= is =project-eshell=, inherited from =C-x p=.
 - Windows are frames here: =SPC w n= makes a new OS window.
   + =SPC w h= and =SPC w v= are bound to Emacs's own split commands, which [[id:f1d045c2-e2dc-4514-ab17-dd982ed6be00][the frames chapter]] turns into frame creation while frames-only mode is on, so they make a new OS window too.
   + With the mode off (=SPC t f=) they split the current frame.
@@ -160,7 +162,12 @@
   "G" (cons "Magit status" #'magit-project-status)
   "t" (cons "projects directory" #'kittymacs-projects-directory)
   "R" (cons "remember projects under" #'project-remember-projects-under)
-  "C" (cons "recompile" #'recompile))
+  "C" (cons "recompile" #'recompile)
+  "E" (cons "direnv" (define-keymap
+                       "a" (cons "allow .envrc" #'envrc-allow)
+                       "d" (cons "deny .envrc" #'envrc-deny)
+                       "r" (cons "reload" #'envrc-reload)
+                       "l" (cons "log" #'envrc-show-log))))
 
 (defvar-keymap kittymacs-jump-map
   :doc "Jump with on-screen hints."

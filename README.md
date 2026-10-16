@@ -53,6 +53,7 @@ The whole configuration is a literate wiki (thank you, Donald Knuth). Every chap
 - **A real terminal:** [ghostel](https://github.com/dakra/ghostel) (libghostty), with Meow inside it; Eshell and Tramp alongside.
 - **Notes:** Org with an agenda, Org QL queries by tag and TODO state, and org-node linked notes in one graph across your notes folder and your projects.
 - **Reading papers:** pdf-tools renders PDFs inside Emacs; org-noter keeps a notes file beside each one, in step with the page; `pdf:` links point at a page or a highlight.
+- **Notebooks:** Jupyter notebooks edited as [Jupytext](https://jupytext.readthedocs.io) scripts: `# %%` cells you run with `C-c C-c`, an optional Jupyter kernel, LaTeX in Markdown cells drawn in place, and each project's own environment through direnv.
 - **A coding agent:** Claude Code in an Emacs buffer through [agent-shell](https://github.com/xenodium/agent-shell), under `SPC a`; every edit it proposes waits for your answer.
 - **Suggestions as you type:** GitHub Copilot's grey ghost text and next-edit suggestions through [copilot.el](https://github.com/copilot-emacs/copilot.el), off until you turn them on (`SPC t a`, or `kittymacs-suggestions`).
 - **Programming:** Eglot language servers (opt-in per mode), Flymake, structural editing, pinned Tree-sitter grammars that load only when they work.
@@ -70,6 +71,10 @@ The whole configuration is a literate wiki (thank you, Donald Knuth). Every chap
 | `hunspell` or `aspell`, plus a dictionary | spell checking | spell checking stays off |
 | `python3` | Treemacs' directory collapsing and Git colours | Treemacs uses its simpler modes |
 | `epdfinfo` (pdf-tools' server; the Nix module installs it) | reading PDFs | PDFs open as images in DocView; `M-x pdf-tools-install` builds it |
+| `direnv` (the Nix module installs it) | each project's own environment (`.envrc`) | every buffer has Emacs's global environment |
+| `jupytext` (the Nix module installs it) | opening `.ipynb` files as scripts | `.ipynb` files fail to open; edit the paired `.py` |
+| `math-preview` (the Nix module installs it) | drawing LaTeX (`SPC m n m`) | the command says how to install it with `npm` |
+| emacs-zmq's native module (the Nix module provides it) | Jupyter kernels, once `kittymacs-notebooks-jupyter` is on | emacs-zmq downloads or builds one, asking first |
 | `claude-agent-acp`, and a `claude` login | `SPC a`, the coding agent | the agent cannot start |
 | `context7-mcp`, `mcp-nixos` | the agent's documentation and Nix tools | those tools are missing from its sessions |
 | `copilot-language-server` (the Nix modules' `programs.kittymacs.suggestions.enable`; unfree), a GitHub Copilot plan and `M-x copilot-login` | suggestions (`SPC t a`) | suggestions stay off and say what is missing; `M-x copilot-install-server` installs the server with `npm` |

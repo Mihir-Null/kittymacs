@@ -1,0 +1,371 @@
+:PROPERTIES:
+:ID: 0bb7490f-71af-4c3d-9e64-741df8ae25c6
+:END:
+
+#+TITLE: Notebooks: Jupytext scripts, cells, kernels and math
+#+FILETAGS: :code:
+#+STARTUP: overview
+#+PROPERTY: header-args:emacs-lisp :tangle ../lisp/kittymacs-notebooks.el :eval never :comments no :padline no :mkdirp yes
+
+- A Jupyter notebook edited as what it really is underneath, a Python script: cells you move between and run, a real kernel, and the LaTeX of the Markdown cells drawn as equations.
+- Three packages, one job each:
+
+| Package       | Gives                                                                   | Needs                         |
+|---------------+-------------------------------------------------------------------------+-------------------------------|
+| code-cells    | =# %%= cells: move, run, mark, reorder; opens =.ipynb= files as scripts | =jupytext=, for =.ipynb= only |
+| emacs-jupyter | a Jupyter kernel and its REPL, with plots and rich output; *opt-in*     | ZeroMQ's native module        |
+| math-preview  | LaTeX in comments and strings drawn as SVG, in place                    | the =math-preview= program    |
+
+- Leans on [[id:a121fda8-198e-498c-8867-eb1ecba8236d][envrc in the shells chapter]] for each project's environment, [[id:e5942eb0-4389-447d-9317-d9178adcaaae][the leader]] for =SPC m=, [[id:560fcdca-6cb8-49d9-bf27-eb78f32b9285][the languages chapter]] for the Python mode itself, and [[id:d25a5063-1439-4ae0-8fbe-b0162d05a0e0][the Nix chapter]] for the programs.
+- Read [[*One notebook, two files]] first.
+
+#+begin_src emacs-lisp
+;;; kittymacs-notebooks.el --- Jupytext scripts, cells, kernels and math -*- lexical-binding: t; -*-
+;; Generated from literate/76-notebooks.org; edit the Org source, then tangle.
+
+;;; Code:
+
+(require 'kittymacs-leader)
+
+(declare-function jupyter-available-kernelspecs "jupyter-kernelspec" (&optional refresh))
+(declare-function jupyter-run-repl "jupyter-repl"
+                  (kernel-name &optional repl-name associate-buffer client-class display))
+(declare-function jupyter-connect-repl "jupyter-repl"
+                  (file &optional repl-name associate-buffer client-class display))
+(declare-function math-preview-region "math-preview" (beg end))
+(defvar math-preview-command)
+(defvar code-cells-boundary-regexp)
+
+#+end_src
+
+* One notebook, two files :concept:
+:PROPERTIES:
+:ID: 9ff89781-072b-47e9-bebe-d5d30c2335ee
+:END:
+
+- An =.ipynb= file is JSON: every cell's source as a list of strings, its outputs (images included, in base64), and metadata.
+  + Good for JupyterLab, bad for an editor and for Git: a one-line change can be a diff of hundreds of lines of output.
+- [[https://jupytext.readthedocs.io][Jupytext]] writes the same notebook as a plain script in the /percent format/:
+
+#+begin_src python :tangle no
+# %% [markdown]
+# # Damped oscillator
+# The equation of motion is $\ddot x + 2\gamma \dot x + \omega_0^2 x = 0$.
+
+# %%
+import numpy as np
+t = np.linspace(0, 10, 500)
+#+end_src
+
+  + a =# %%= line starts a code cell; =# %% [markdown]= starts a Markdown cell, whose lines are comments;
+  + the script runs as an ordinary Python file, and diffs line by line.
+- /Pairing/ keeps the two in step: with a =jupytext.toml= at the project's root saying =formats = "ipynb,py:percent"=, Jupytext's JupyterLab extension saves both files whenever either is saved there.
+  + You edit the =.py= in Emacs; colleagues open the =.ipynb= in JupyterLab, which reads the newer =.py= for the cells and keeps its own outputs.
+  + Commit both, or only the =.py= and let the =.ipynb= be rebuilt: =jupytext --sync notebook.py=.
+- So in Emacs a notebook is a Python buffer with cell markers, and the rest of this chapter is the three things a notebook has that a script does not: cells, a kernel, and rendered math.
+
+* Cells: code-cells
+:PROPERTIES:
+:ID: 9265fad6-29c1-44e4-92ac-565f26540f6f
+:END:
+
+- [[https://github.com/astoff/code-cells.el][code-cells]] is a minor mode that understands =# %%= lines: it moves between cells, runs one, marks one, moves one up or down, and folds them with =outline-minor-mode=.
+  + It is small and works on any buffer; the alternatives (EIN, a notebook UI drawn in Emacs) edit the JSON, which is exactly what Jupytext lets you stop doing.
+- It turns on only where a buffer has cells: =code-cells-mode-maybe= looks for a =# %%= line in the first 5000 characters.
+  + Hooked on =python-base-mode-hook=, which both =python-mode= and =python-ts-mode= run, so it follows whichever mode [[id:560fcdca-6cb8-49d9-bf27-eb78f32b9285][Tree-sitter]] chose.
+  + An ordinary Python file never gets it.
+- Running a cell sends its text to whichever backend the buffer has, the first match in =code-cells-eval-region-commands=:
+  1. a Jupyter kernel attached to this buffer ([[*A kernel: emacs-jupyter]]);
+  2. otherwise Emacs's own Python shell, =run-python= (=SPC m n R=), which needs nothing installed.
+- Three keys, as code-cells' README suggests, in buffers with cells:
+  + =M-n= / =M-p= to the next and previous cell;
+  + =C-c C-c= runs this cell; with a kernel attached, emacs-jupyter's own =C-c C-c= (a line or the region) is remapped to it, so it means the cell everywhere.
+- Everything else is on =SPC m n= ([[*Meow and the notebook menu]]); code-cells' own =C-c %= prefix has the rest, and repeats: =C-c % n n n= walks three cells.
+  + The package autoloads its commands; =:commands= repeats the ones only that menu names, so the byte compiler knows them too.
+
+#+begin_src emacs-lisp
+(use-package code-cells
+  :ensure t
+  :hook (python-base-mode . code-cells-mode-maybe)
+  :commands (code-cells-eval-and-step code-cells-eval-above code-cells-eval-whole-buffer
+             code-cells-mark-cell code-cells-write-ipynb)
+  :bind (:map code-cells-mode-map
+              ("M-n" . code-cells-forward-cell)
+              ("M-p" . code-cells-backward-cell)
+              ("C-c C-c" . code-cells-eval)
+              ("<remap> <jupyter-eval-line-or-region>" . code-cells-eval)))
+
+#+end_src
+
+** Opening an =.ipynb= :decision:
+:PROPERTIES:
+:ID: 257559f6-463c-4a79-97ad-12d25390999b
+:END:
+
+- code-cells also maps =.ipynb= to a converter: opening one runs =jupytext= on it and shows the script, and saving converts back.
+  + Handy to read a colleague's notebook; *saving it drops every output*, because the script it was made from has none.
+  + So read =.ipynb= files this way, and edit the paired =.py=.
+- The converter runs as the file's /major mode/, before any minor mode, envrc's included, so it sees Emacs's global =PATH=, not the project's.
+  + That is why =jupytext= is in [[id:d25a5063-1439-4ae0-8fbe-b0162d05a0e0][the tool list]] and not only in each project's shell.
+  + Without it, opening an =.ipynb= says =Can't find jupytext=; =pip install jupytext= or the project's own shell fixes that.
+- =SPC m n w= writes the buffer to an =.ipynb= of your choosing, for a notebook that has no pair yet.
+
+* A kernel: emacs-jupyter
+:PROPERTIES:
+:ID: 20c273cd-8932-4cc2-83c1-1cc4fcfb0fb3
+:END:
+
+- [[https://github.com/emacs-jupyter/jupyter][emacs-jupyter]] is a Jupyter client written in Lisp: it starts a kernel, or connects to a running one, and shows a REPL whose output can be text, LaTeX, HTML or a plot.
+- =SPC m n j= starts a kernel for this buffer and attaches the buffer to it:
+  + it lists the kernels the project's =jupyter= knows (=jupyter kernelspec list=), and starts the one you pick;
+  + the REPL opens beside the script; =SPC m n e= and =C-c C-c= now run cells there, and their output appears in the REPL.
+- The kernel runs in the project's environment, because emacs-jupyter starts both =jupyter= and the kernel from the buffer you are in, and [[id:a121fda8-198e-498c-8867-eb1ecba8236d][envrc]] has given that buffer the project's =PATH=.
+  + emacs-jupyter caches the list of kernels by host and by =VIRTUAL_ENV=; a Nix shell sets no =VIRTUAL_ENV=, so the cache cannot tell two projects apart.
+  + So =SPC m n j= reads the list again every time, which takes a second, rather than offer a kernel from the last project.
+- =SPC m n J= attaches to a kernel that is already running, JupyterLab's for instance:
+  + JupyterLab writes each kernel's /connection file/ under =jupyter --runtime-dir=; the kernel's console line in JupyterLab (=%connect_info=) names it;
+  + pick that file, and Emacs and JupyterLab share one kernel, its variables included.
+
+** Off until you turn it on :decision:
+:PROPERTIES:
+:ID: 405121d7-ee0f-41e9-a8d9-ab55c3fb575e
+:END:
+
+- emacs-jupyter talks to kernels over [[https://zeromq.org][ZeroMQ]], through emacs-zmq, a /dynamic module/: a C library that Emacs loads into itself.
+- Getting that module is the hard part, and emacs-zmq does it the moment it is loaded, even while the package is being byte-compiled:
+  1. it looks for =emacs-zmq.so= (=.dylib=, =.dll=) beside =zmq.el=;
+  2. failing that, it offers to download a prebuilt one from its GitHub releases;
+  3. failing that, it offers to build one with =make=, which needs a C compiler and ZeroMQ's headers.
+- The downloads do not cover kittymacs's machines well:
+  + its last release, v1.0.2, has modules for x86_64 Linux, x86_64 Windows and =arm64-apple-darwin=;
+  + an Apple Silicon Emacs calls its platform =aarch64-apple-darwin=, which the downloader does not match to =arm64=, so a Mac goes straight to building;
+  + the Linux module is built for a conventional distribution, and on NixOS it cannot find the C++ runtime it was linked against.
+- So installing it unasked would put a question, or a compiler, in the middle of a first start, and in CI's =just install= there is no one to answer.
+- =kittymacs-notebooks-jupyter= is therefore off, like [[id:99006880-bab0-4757-bc07-1ceff2abd921][suggestions]]: with it off, emacs-jupyter is not even installed, and =SPC m n j= says how to turn it on.
+  + Set it in =private.el= before startup; the next start installs the package.
+  + code-cells and =run-python= work without it: a cell runs in Emacs's Python shell instead.
+- Rejected: emacs-jupyter without ZeroMQ (=jupyter-use-zmq= nil). It then starts a hidden =jupyter notebook= server and talks to kernels through it, which needs the classic =notebook= package and starts that server with no token and no password.
+
+#+begin_src emacs-lisp
+(defgroup kittymacs-notebooks nil
+  "Notebooks as Jupytext scripts."
+  :group 'kittymacs)
+
+(defcustom kittymacs-notebooks-jupyter nil
+  "Whether to install emacs-jupyter, for Jupyter kernels.
+It needs emacs-zmq's native module.  With Nix the module comes ready-built
+from the tool list; without, emacs-zmq downloads or builds one the first
+time it loads.  Set this in private.el; it takes effect at the next start."
+  :type 'boolean)
+
+#+end_src
+
+** The ZeroMQ module from Nix :decision:
+:PROPERTIES:
+:ID: 040a7e96-594a-4485-8c51-9cf7926b2275
+:END:
+
+- nixpkgs builds emacs-zmq's module properly, against its own ZeroMQ, for every platform it supports; [[id:d25a5063-1439-4ae0-8fbe-b0162d05a0e0][the tool list]] takes it from there, the way it takes =epdfinfo= from nixpkgs' pdf-tools ([[id:15f489d8-1307-491d-9a1a-ecabbd2984e6][the same choice]]).
+- What reaches =PATH= is a one-line script, =kittymacs-zmq-module=, that prints the module's path in the store.
+  + A program in =bin/= is the one thing every way of installing the tools links (nix-darwin, Home Manager, the dev shell); a library in =lib/= is not reliably linked anywhere Emacs looks.
+- The module has to end up /beside zmq.el/, not merely loaded into this Emacs:
+  + emacs-jupyter does its ZeroMQ work in a second Emacs, a batch subprocess started with =-Q= that loads =zmq.el= and calls its loader again;
+  + Emacs's native compiler also compiles packages in subprocesses, and compiling emacs-jupyter runs that loader too;
+  + none of them has this configuration, so they look exactly where the loader looks: in zmq's package directory.
+- So, just before emacs-zmq's loader runs, a symbolic link to the Nix module is put in zmq's package directory, and the loader finds it in every process.
+  + Advice on =zmq-load= that runs first, added before emacs-jupyter is installed, so the byte-compilation that installing does finds it too; advice can be added to a function that is not defined yet.
+  + A link already pointing there is left alone; one pointing at an older store path, after a Nix update, is replaced.
+  + A real file there, a module downloaded or built without Nix, is never touched.
+  + A package upgrade makes a new directory without the link, and the next load makes it again.
+- Without Nix, or on native Windows, there is no script, nothing is linked, and emacs-zmq's own download or build runs: Windows and x86_64 Linux download; a Mac needs =brew install zeromq= first, then answers =y= to the build.
+
+#+begin_src emacs-lisp
+(defun kittymacs-notebooks--zmq-module ()
+  "Return the store path of the ZeroMQ module the Nix tools provide, or nil."
+  (when-let* ((helper (executable-find "kittymacs-zmq-module"))
+              (module (car (ignore-errors (process-lines helper)))))
+    (and (file-exists-p module) module)))
+
+(defun kittymacs-notebooks--link-zmq-module (&rest _)
+  "Link the Nix-built ZeroMQ module beside zmq.el, before `zmq-load' looks.
+Every Emacs that loads zmq.el looks there, including emacs-jupyter's
+subprocesses, which do not read this configuration."
+  (unless (featurep 'zmq-core)
+    (when-let* ((module (kittymacs-notebooks--zmq-module))
+                (library (locate-library "zmq.el"))
+                (link (expand-file-name (file-name-nondirectory module)
+                                        (file-name-directory library))))
+      (unless (or (equal (file-symlink-p link) module)
+                  (and (file-exists-p link) (not (file-symlink-p link))))
+        (condition-case err
+            (make-symbolic-link module link t)
+          (file-error
+           (message "Could not link the ZeroMQ module beside zmq.el: %s"
+                    (error-message-string err))))))))
+
+#+end_src
+
+** Installing emacs-jupyter
+
+- Both declarations sit inside =(when kittymacs-notebooks-jupyter ...)=, as the terminal does with ghostel: =:ensure= installs a package even when its =:if= is nil.
+- Nothing loads at startup: the first =SPC m n j= or =J= loads emacs-jupyter, and with it zmq and the module.
+- The REPL starts in Insert state, like the other shells ([[*Meow and the notebook menu]]).
+
+#+begin_src emacs-lisp
+(when kittymacs-notebooks-jupyter
+  (advice-add 'zmq-load :before #'kittymacs-notebooks--link-zmq-module)
+  (use-package jupyter
+    :ensure t
+    :defer t
+    :commands (jupyter-run-repl jupyter-connect-repl jupyter-refresh-kernelspecs)))
+
+(defun kittymacs-notebooks--require-jupyter ()
+  "Load emacs-jupyter, or explain how to turn it on."
+  (unless kittymacs-notebooks-jupyter
+    (user-error "Jupyter kernels are off: (setopt kittymacs-notebooks-jupyter t) in private.el, then restart"))
+  (require 'jupyter))
+
+(defun kittymacs-notebooks-run-kernel ()
+  "Start a Jupyter kernel in this project's environment and attach this buffer.
+Reads the list of kernels again first: emacs-jupyter's cache cannot tell
+two Nix shells apart."
+  (interactive)
+  (kittymacs-notebooks--require-jupyter)
+  (jupyter-available-kernelspecs t)
+  (call-interactively #'jupyter-run-repl))
+
+(defun kittymacs-notebooks-connect-kernel ()
+  "Attach this buffer to a running kernel, chosen by its connection file."
+  (interactive)
+  (kittymacs-notebooks--require-jupyter)
+  (call-interactively #'jupyter-connect-repl))
+
+#+end_src
+
+* Math: math-preview
+:PROPERTIES:
+:ID: 95bea937-aa58-4554-ac81-e83374a5fbbc
+:END:
+
+- [[https://gitlab.com/matsievskiysv/math-preview][math-preview]] sends each =$…$=, =$$…$$=, =\(…\)= and =\[…\]= to a small Node program that runs MathJax, and draws the SVG it returns over the source.
+  + The source stays in the buffer: the picture is an overlay, and editing the text under it removes it.
+  + It works in any mode, and MathJax is what JupyterLab uses, so an equation looks as it does there.
+- Its own =math-preview-all= renders every match in the buffer, code included: a string such as ="costs $5, or $8 with tax"= would be drawn as an equation.
+- =SPC m n m= is =kittymacs-notebooks-preview-math= instead: only the Markdown cells, which is where a notebook's equations live.
+  + A Markdown cell runs from a =# %% [markdown]= line to the next cell marker; code cells are left alone.
+  + With the region active, only the Markdown cells inside it.
+- How a Markdown cell is written decides what renders:
+  + as =#= comments, Jupytext's default, an inline =$…$= on one line renders; a =$$= block over several lines does not, because the =#= that starts each line ends up inside the TeX, where it is an error;
+  + as one triple-quoted string, every equation renders, display blocks included: =cell_markers = '"""'= in =jupytext.toml= makes Jupytext write Markdown cells that way, and the script still runs.
+- =SPC m n M= clears every picture.
+- The program comes from [[id:d25a5063-1439-4ae0-8fbe-b0162d05a0e0][the tool list]]; without Nix, =npm install -g git+https://gitlab.com/matsievskiysv/math-preview=.
+
+#+begin_src emacs-lisp
+(use-package math-preview
+  :ensure t
+  :commands (math-preview-region math-preview-all math-preview-at-point
+             math-preview-clear-all math-preview-clear-region math-preview-clear-at-point))
+
+(defun kittymacs-notebooks--markdown-cells (beg end)
+  "Return the Markdown cells that overlap BEG..END, as (START . END) pairs.
+A cell starts after its `# %% [markdown]' line and ends at the next cell
+marker; each pair is clipped to BEG..END."
+  (require 'code-cells)
+  (save-excursion
+    (goto-char (point-min))
+    (let (cells)
+      (while (re-search-forward code-cells-boundary-regexp nil t)
+        (when (looking-at-p ".*\[markdown\]")
+          (let ((start (line-beginning-position 2))
+                (stop (save-excursion
+                        (forward-line 1)
+                        (if (re-search-forward code-cells-boundary-regexp nil t)
+                            (line-beginning-position)
+                          (point-max)))))
+            (when (and (< start end) (> stop beg))
+              (push (cons (max start beg) (min stop end)) cells)))))
+      (nreverse cells))))
+
+(defun kittymacs-notebooks-preview-math (beg end)
+  "Draw the LaTeX in the Markdown cells between BEG and END.
+Interactively, the region when it is active, otherwise the whole buffer.
+Code cells are left alone, so a `$' in a string of code stays text."
+  (interactive (if (use-region-p)
+                   (list (region-beginning) (region-end))
+                 (list (point-min) (point-max))))
+  (require 'math-preview)
+  (unless (executable-find math-preview-command)
+    (user-error "math-preview needs its program on PATH: the Nix tools, or npm install -g git+https://gitlab.com/matsievskiysv/math-preview"))
+  (let ((cells (kittymacs-notebooks--markdown-cells beg end)))
+    (unless cells
+      (user-error "No Markdown cells (# %%%% [markdown]) here"))
+    (pcase-dolist (`(,start . ,stop) cells)
+      (math-preview-region start stop))))
+
+#+end_src
+
+* Meow and the notebook menu :meow:
+:PROPERTIES:
+:ID: d8ff2079-fe3f-4a43-a8c5-b9d288df39dc
+:END:
+
+- A notebook is a Python buffer, so it starts in Normal state like any code.
+- The Jupyter REPL starts in Insert, like Eshell: its keys belong to the prompt.
+- =SPC m= in Python keeps [[id:97c04bd3-1404-4b0a-8018-20d77bc671bc][every programming buffer's]] menu (=c= compile, =e= errors, =d= definition…) and adds one group, =n= for notebook:
+
+| =SPC m n= | Does                      | =SPC m n= | Does                         |
+|-----------+---------------------------+-----------+------------------------------|
+| =n= / =p= | next / previous cell      | =j=       | start a kernel (opt-in)      |
+| =e=       | run this cell             | =J=       | attach to a running kernel   |
+| =s=       | run this cell, go to next | =R=       | Emacs's Python shell instead |
+| =a=       | run every cell above      | =m=       | draw the math                |
+| =b=       | run the whole buffer      | =M=       | clear the math               |
+| =@=       | mark this cell            | =w=       | write an =.ipynb=            |
+
+- A group rather than top-level keys: =e= and =s= already mean errors and surround in every programming buffer.
+- The group is defined for =python-base-mode=, the parent of both Python modes; the menus compose along a mode's parents ([[id:e5942eb0-4389-447d-9317-d9178adcaaae][the leader]]).
+
+#+begin_src emacs-lisp
+(with-eval-after-load 'meow
+  (add-to-list 'meow-mode-state-list '(jupyter-repl-mode . insert)))
+
+(defvar-keymap kittymacs-notebooks-map
+  :doc "Notebook keys in Python buffers."
+  "n" (cons "next cell" #'code-cells-forward-cell)
+  "p" (cons "previous cell" #'code-cells-backward-cell)
+  "e" (cons "run cell" #'code-cells-eval)
+  "s" (cons "run cell, go to next" #'code-cells-eval-and-step)
+  "a" (cons "run cells above" #'code-cells-eval-above)
+  "b" (cons "run buffer" #'code-cells-eval-whole-buffer)
+  "@" (cons "mark cell" #'code-cells-mark-cell)
+  "j" (cons "start kernel" #'kittymacs-notebooks-run-kernel)
+  "J" (cons "attach to kernel" #'kittymacs-notebooks-connect-kernel)
+  "R" (cons "Python shell" #'run-python)
+  "m" (cons "draw math" #'kittymacs-notebooks-preview-math)
+  "M" (cons "clear math" #'math-preview-clear-all)
+  "w" (cons "write .ipynb" #'code-cells-write-ipynb))
+
+(kittymacs-define-localleader 'python-base-mode
+  "n" (cons "notebook" kittymacs-notebooks-map))
+
+(provide 'kittymacs-notebooks)
+;;; kittymacs-notebooks.el ends here
+#+end_src
+
+* Check
+
+- Once per project, the loop end to end:
+  1. a =flake.nix= whose dev shell has =python3.withPackages (ps: [ ps.jupyterlab ps.jupytext ps.numpy ])=;
+  2. a =.envrc= containing =use flake=, then =direnv allow= in a shell or =SPC p E a= in Emacs;
+  3. a =jupytext.toml= containing =formats = "ipynb,py:percent"= (and =cell_markers = '"""'= for display math).
+- Open a percent script: the mode line has =envrc= in the success colour, and =M-n= / =M-p= walk the cells.
+- =SPC m n R=, then =SPC m n e= on a code cell: it runs in the Python shell; =SPC m n s= runs it and moves on.
+- With =(setopt kittymacs-notebooks-jupyter t)= in =private.el= and a restart:
+  + =M-: (kittymacs-notebooks--zmq-module)= names a file in the Nix store on a Nix machine;
+  + =SPC m n j= lists the project's kernels; pick =python3=, and the REPL opens in Insert state;
+  + =C-c C-c= in a cell: its output appears in the REPL; a Matplotlib plot appears as an image;
+  + =ls -l= zmq's package directory (=M-: (file-name-directory (locate-library "zmq"))=): =emacs-zmq.so= is a link into the store.
+- With it off: =SPC m n j= says how to turn it on, and =M-: (featurep 'jupyter)= is nil.
+- =SPC m n m= in a script whose Markdown cell says =$\omega_0$=: the equation is drawn; a =$= in a code cell's string stays text; =SPC m n M= clears it.
+- Open the paired =.ipynb=: it shows as a script with cells. Close it without saving, to keep its outputs.
+- =just test-packages=: the startup verifier checks that emacs-jupyter is neither on nor loaded by default.

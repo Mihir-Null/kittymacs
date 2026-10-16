@@ -117,23 +117,30 @@
 - Every program a chapter looks for at startup, listed once; both modules and the dev shell import this file.
 - Each entry's comment names the chapter that discovers it:
 
-| Program               | Chapter                                          | For                                    |
-|-----------------------+--------------------------------------------------+----------------------------------------|
-| =git=                 | [[id:f6ccd2da-4b3f-4392-b439-3966fc9d3db8][version control]] | Magit                                  |
-| =ripgrep=, =fd=       | [[id:e4d65984-892d-4046-b718-d4265ab74215][navigation]]      | project search and file finding        |
-| =gnupg=               | [[id:40302e33-d2b2-4c0b-9bc3-1f9e121307e1][startup]]         | GNU ELPA's signed index                |
-| =hunspell= + =en_US=  | [[id:afa6b7fd-742a-4c15-86a6-32e3e8027b0e][platform]]        | spell checking                         |
-| =python3=             | [[id:55f0b75c-d867-4474-a26e-019215b8e492][Treemacs]]        | directory collapsing, Git colouring    |
-| =zig=                 | [[id:bd2638bc-735d-4849-bafe-3dab5e8e30b7][terminal]]        | building ghostel's native module       |
-| =epdfinfo=            | [[id:78b654e1-a93e-4e31-b0d8-f266215b5b12][reading]]         | pdf-tools' PDF server, ready-built     |
-| =gls= (macOS)         | [[id:878a9e46-62be-4b9f-82f6-589560d2ebc1][Dired]]           | GNU =ls=, directories first            |
-| =trash= (macOS)       | [[id:afa6b7fd-742a-4c15-86a6-32e3e8027b0e][platform]]        | the Trash, with Finder's "Put Back"    |
+| Program                | Chapter         | For                                   |
+|------------------------+-----------------+---------------------------------------|
+| =git=                  | [[id:f6ccd2da-4b3f-4392-b439-3966fc9d3db8][version control]] | Magit                                 |
+| =ripgrep=, =fd=        | [[id:e4d65984-892d-4046-b718-d4265ab74215][navigation]]      | project search and file finding       |
+| =gnupg=                | [[id:40302e33-d2b2-4c0b-9bc3-1f9e121307e1][startup]]         | GNU ELPA's signed index               |
+| =hunspell= + =en_US=   | [[id:afa6b7fd-742a-4c15-86a6-32e3e8027b0e][platform]]        | spell checking                        |
+| =python3=              | [[id:55f0b75c-d867-4474-a26e-019215b8e492][Treemacs]]        | directory collapsing, Git colouring   |
+| =zig=                  | [[id:bd2638bc-735d-4849-bafe-3dab5e8e30b7][terminal]]        | building ghostel's native module      |
+| =epdfinfo=             | [[id:78b654e1-a93e-4e31-b0d8-f266215b5b12][reading]]         | pdf-tools' PDF server, ready-built    |
+| =direnv=               | [[id:d2e0bc37-0bd4-4b28-a8ee-04f94ac451f8][shells]]          | envrc: each project's own environment |
+| =jupytext=             | [[id:0bb7490f-71af-4c3d-9e64-741df8ae25c6][notebooks]]       | opening =.ipynb= files as scripts     |
+| =math-preview=         | [[id:0bb7490f-71af-4c3d-9e64-741df8ae25c6][notebooks]]       | LaTeX drawn as SVG, with MathJax      |
+| =kittymacs-zmq-module= | [[id:0bb7490f-71af-4c3d-9e64-741df8ae25c6][notebooks]]       | where emacs-zmq's native module is    |
+| =gls= (macOS)          | [[id:878a9e46-62be-4b9f-82f6-589560d2ebc1][Dired]]           | GNU =ls=, directories first           |
+| =trash= (macOS)        | [[id:afa6b7fd-742a-4c15-86a6-32e3e8027b0e][platform]]        | the Trash, with Finder's "Put Back"   |
 
 - Fonts: Symbols Nerd Font Mono for the icons.
   + Google Sans Code, the preferred editing font, is not in nixpkgs; the platform font is used until it is installed by hand.
 - =emacs= is an argument, so each module installs the Emacs its =package= option names.
 - =epdfinfo= is the one program nixpkgs does not ship on its own: its pdf-tools build puts the server beside the Lisp, so a small derivation links it into =bin/=.
   + Only the server is taken; the Lisp still comes from MELPA, as every package does ([[id:15f489d8-1307-491d-9a1a-ecabbd2984e6][why]]).
+- =kittymacs-zmq-module= is a one-line script that prints the path of emacs-zmq's native module, which nixpkgs builds for its own zmq package; the notebooks chapter links the module beside =zmq.el= ([[id:040a7e96-594a-4485-8c51-9cf7926b2275][why]]).
+  + Built with =emacsPackagesFor emacs=, so the module is compiled for the Emacs this file was given, not nixpkgs' default one.
+  + =jupytext= is the Python package's command alone: =python3Packages.jupytext= is a library, so it is wrapped with =toPythonApplication=, which keeps its Python out of the profile beside =python3=.
 - =copilot-language-server=, for [[id:0b43a1e9-2e16-4d5b-985d-342c4897634f][the suggestions chapter]], is not in this list: nixpkgs marks it unfree, and an unfree package here would make every user of the flake allow one.
   + Each module installs it behind its own =suggestions.enable= option instead, off by default ([[id:9e0c1f52-7a43-4d0e-b1a8-63c2f5d48e17][the opt-in]]).
 
@@ -161,6 +168,16 @@
       (runCommand "epdfinfo" { } ''
         mkdir -p $out/bin
         ln -s ${emacsPackages.pdf-tools}/share/emacs/site-lisp/elpa/pdf-tools-*/epdfinfo $out/bin/epdfinfo
+      '')
+      direnv # shells chapter: envrc, each project's own environment
+      (python3Packages.toPythonApplication python3Packages.jupytext) # notebooks chapter: .ipynb files
+      math-preview # notebooks chapter: LaTeX drawn with MathJax
+      # notebooks chapter: prints the path of emacs-zmq's native module, built by nixpkgs
+      (runCommand "kittymacs-zmq-module" { } ''
+        module=$(echo ${(emacsPackagesFor emacs).zmq}/share/emacs/site-lisp/elpa/zmq-*/emacs-zmq.*)
+        mkdir -p $out/bin
+        printf '#!%s\necho %s\n' ${runtimeShell} "$module" > $out/bin/kittymacs-zmq-module
+        chmod +x $out/bin/kittymacs-zmq-module
       '')
     ]
     ++ pkgs.lib.optionals pkgs.stdenv.hostPlatform.isDarwin [

@@ -51,6 +51,7 @@
 | [[id:97c04bd3-1404-4b0a-8018-20d77bc671bc][Programming]]     | code      | delimiters, structural editing, linting, compiling, Emacs Lisp                     |
 | [[id:560fcdca-6cb8-49d9-bf27-eb78f32b9285][Languages]]       | code      | Tree-sitter grammars and opt-in language servers                                   |
 | [[id:78b654e1-a93e-4e31-b0d8-f266215b5b12][Reading]]         | notes     | PDFs in Emacs, and org-noter's notes beside them                                    |
+| [[id:0bb7490f-71af-4c3d-9e64-741df8ae25c6][Notebooks]]       | code      | Jupytext scripts: cells, a Jupyter kernel, LaTeX drawn in Markdown cells            |
 | [[id:94d55283-5011-4f98-a7f0-8c6bcb51aab9][Agents]]          | apps      | Claude Code in a buffer, through agent-shell, and its MCP servers                  |
 | [[id:0b43a1e9-2e16-4d5b-985d-342c4897634f][Suggestions]]     | code      | Copilot's ghost text and next-edit suggestions, off until you turn them on        |
 | [[id:9ea539a0-f1a3-4d05-aa10-6f2d2ff3e335][Maintenance]]     | core      | the loop, the builder, CI, updating, =private.el=                                    |
