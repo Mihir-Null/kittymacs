@@ -52,6 +52,7 @@
   + Otherwise Git for Windows' MSYS =gpg= comes first; it cannot open a Windows keyring directory, so every signature fails and the archives silently vanish.
 - macOS: an Emacs started from the Dock has no shell =PATH=.
   + =early-init.el= puts Homebrew's directories and the Nix profiles on =exec-path= when they exist (later entries win).
+  + It remembers them in =kittymacs-launcher-path=, so [[id:d2e0bc37-0bd4-4b28-a8ee-04f94ac451f8][the shells chapter]] can put back any its import of the login shell's =PATH= drops.
   + =brew install gnupg= or [[id:d25a5063-1439-4ae0-8fbe-b0162d05a0e0][the Nix module]] is enough.
   + [[id:d2e0bc37-0bd4-4b28-a8ee-04f94ac451f8][The shells chapter]] later imports the full login environment, for =git= and the language servers too.
 - Without a native =gpg= (always on Windows without Gpg4win) the check is skipped rather than silently losing the archives.
@@ -121,8 +122,11 @@
 ;; git and language servers that Nix or Homebrew installed are invisible
 ;; until the shells chapter imports the login environment.  Put those
 ;; directories on `exec-path' now (later entries win) so the archive check
-;; below can find gpg.  The title bar is made transparent here, before the
-;; first frame; the platform chapter gives it the theme's appearance.
+;; below can find gpg, and remember them for the shells chapter.  The title
+;; bar is made transparent here, before the first frame; the platform
+;; chapter gives it the theme's appearance.
+(defvar kittymacs-launcher-path nil
+  "Directories `early-init.el' put on `exec-path' for an Emacs from the Dock.")
 (when (eq system-type 'darwin)
   (dolist (directory (list "/usr/local/bin"
                            "/opt/homebrew/bin"
@@ -130,8 +134,10 @@
                            (expand-file-name "~/.nix-profile/bin")
                            (concat "/etc/profiles/per-user/" (user-login-name) "/bin")
                            "/run/current-system/sw/bin"))
-    (when (and (file-directory-p directory) (not (member directory exec-path)))
-      (push directory exec-path)))
+    (when (file-directory-p directory)
+      (push directory kittymacs-launcher-path)
+      (unless (member directory exec-path)
+        (push directory exec-path))))
   (push '(ns-transparent-titlebar . t) default-frame-alist))
 
 ;; GNU ELPA signs its archive index and Emacs verifies it with the first

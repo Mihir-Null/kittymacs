@@ -225,6 +225,19 @@ Group maps are walked too.  Autoloaded commands count as commands."
       (kittymacs-verify-check (and meow-global-mode doom-modeline-mode) "Editor modes missing")
       (kittymacs-verify-check (null kittymacs-eglot-auto-start-modes) "LSP auto-start changed")
       (kittymacs-verify-check (null kittymacs-language-packages) "Language package opt-ins changed")
+      ;; Importing the login shell's PATH replaces `exec-path' whole; the
+      ;; directories early-init.el found come back, once, on both lists.
+      (let* ((dropped (make-temp-file "kittymacs-verify-bin-" t))
+             (kept (car exec-path))
+             (kittymacs-launcher-path (list dropped kept))
+             (exec-path exec-path)
+             (process-environment (copy-sequence process-environment)))
+        (kittymacs--restore-launcher-path)
+        (kittymacs-verify-check (and (member dropped exec-path)
+                                     (member dropped (split-string (getenv "PATH") path-separator)))
+                         "A directory early-init.el found was not restored after the PATH import")
+        (kittymacs-verify-check (= 1 (seq-count (lambda (d) (equal d kept)) exec-path))
+                         "Restoring early-init.el's directories duplicated one already on exec-path"))
       ;; Suggestions send buffers to GitHub: off by default, and copilot.el
       ;; loads only when a buffer turns them on.
       (kittymacs-verify-check (null kittymacs-suggestions) "Suggestions are on by default")

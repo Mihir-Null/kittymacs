@@ -92,15 +92,16 @@ A buffer whose file name matches one is never sent to GitHub."
   + it is maintained, and releases often;
   + it uses GitHub's official server, through the standard =textDocument/inlineCompletion= request;
   + the alternatives are gone (Supermaven closed in 2025) or quiet (codeium.el); minuet-ai.el speaks to any model, but its next edits are experimental and Claude needs an API key, not a subscription.
-- The Lisp comes from MELPA. The server is a program, so it comes from the machine's configuration, [[https://github.com/Mihir-Null/EmptyNet][EmptyNet]], as =copilot-language-server= on =PATH=.
-  + It is not in [[id:d25a5063-1439-4ae0-8fbe-b0162d05a0e0][this flake's tool list]]: nixpkgs marks it unfree, and listing it would make every user of the flake allow unfree packages.
+- The Lisp comes from MELPA. The server is a program, =copilot-language-server=, which copilot.el looks for on =PATH=.
+  + With Nix, either of this flake's modules installs it when =programs.kittymacs.suggestions.enable= is on ([[id:9e0c1f52-7a43-4d0e-b1a8-63c2f5d48e17][the option]]).
+  + It is off there by default and not in the shared tool list: nixpkgs marks it unfree, and a host that turns it on allows that one package.
   + Without Nix, =M-x copilot-install-server= installs it with =npm= into =var/cache/copilot/=; copilot.el looks on =PATH= first and there second.
 - copilot.el loads the first time a buffer turns suggestions on, never at startup.
   + The modes, =copilot-complete= and the install commands are autoloaded by the package; =:commands= adds the account commands, which are not.
 - Two of its options differ from the defaults:
   + =copilot-install-dir= is under =var/=, with everything else Emacs writes;
   + its indentation warning is off: for a mode it has no table entry for, it uses =tab-width=, and says so in a =*Warnings*= window.
-- The server version is left alone: =copilot-lsp-server-version= is nil, so whatever EmptyNet pins is used without a warning. Next edits need 1.434.0 or newer.
+- The server version is left alone: =copilot-lsp-server-version= is nil, so whatever the host's Nix pins is used without a warning. Next edits need 1.434.0 or newer.
 - The server starts with Emacs's environment, so a proxy and its certificates reach it as they reach the agent; a TLS-inspecting proxy also needs =NODE_EXTRA_CA_CERTS= in that environment.
 - copilot.el also has a chat and an agent mode. They are not bound to any key: the agent is [[id:94d55283-5011-4f98-a7f0-8c6bcb51aab9][Claude Code]], and two chats would be one too many.
 

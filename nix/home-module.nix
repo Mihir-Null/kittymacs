@@ -106,6 +106,16 @@ in
       '';
     };
 
+    suggestions = {
+      enable = lib.mkEnableOption ''
+        Copilot's language server, for the suggestions chapter's ghost text
+        and next edits.  nixpkgs marks it unfree: allow it, for example with
+        `nixpkgs.config.allowUnfreePredicate`.  Installing the server turns
+        nothing on in Emacs; `SPC t a` or `kittymacs-suggestions` does
+      '';
+      package = lib.mkPackageOption pkgs "copilot-language-server" { };
+    };
+
     initDirectory = lib.mkOption {
       type = lib.types.nullOr lib.types.str;
       default = if cfg.source == null then null else "${config.xdg.configHome}/emacs";
@@ -133,7 +143,9 @@ in
 
   config = lib.mkIf cfg.enable {
     home.packages =
-      (lib.optionals cfg.installPackages ([ cfg.package ] ++ tools.programs))
+      (lib.optionals cfg.installPackages (
+        [ cfg.package ] ++ tools.programs ++ lib.optional cfg.suggestions.enable cfg.suggestions.package
+      ))
       ++ (lib.optionals cfg.installFonts tools.fonts);
     fonts.fontconfig.enable = lib.mkIf cfg.installFonts (lib.mkDefault true);
 
