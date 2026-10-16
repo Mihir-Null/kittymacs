@@ -28,8 +28,11 @@
 ;; git and language servers that Nix or Homebrew installed are invisible
 ;; until the shells chapter imports the login environment.  Put those
 ;; directories on `exec-path' now (later entries win) so the archive check
-;; below can find gpg.  The title bar is made transparent here, before the
-;; first frame; the platform chapter gives it the theme's appearance.
+;; below can find gpg, and remember them for the shells chapter.  The title
+;; bar is made transparent here, before the first frame; the platform
+;; chapter gives it the theme's appearance.
+(defvar kittymacs-launcher-path nil
+  "Directories `early-init.el' put on `exec-path' for an Emacs from the Dock.")
 (when (eq system-type 'darwin)
   (dolist (directory (list "/usr/local/bin"
                            "/opt/homebrew/bin"
@@ -37,8 +40,10 @@
                            (expand-file-name "~/.nix-profile/bin")
                            (concat "/etc/profiles/per-user/" (user-login-name) "/bin")
                            "/run/current-system/sw/bin"))
-    (when (and (file-directory-p directory) (not (member directory exec-path)))
-      (push directory exec-path)))
+    (when (file-directory-p directory)
+      (push directory kittymacs-launcher-path)
+      (unless (member directory exec-path)
+        (push directory exec-path))))
   (push '(ns-transparent-titlebar . t) default-frame-alist))
 
 ;; GNU ELPA signs its archive index and Emacs verifies it with the first

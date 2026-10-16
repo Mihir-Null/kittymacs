@@ -72,7 +72,7 @@ The whole configuration is a literate wiki (thank you, Donald Knuth). Every chap
 | `epdfinfo` (pdf-tools' server; the Nix module installs it) | reading PDFs | PDFs open as images in DocView; `M-x pdf-tools-install` builds it |
 | `claude-agent-acp`, and a `claude` login | `SPC a`, the coding agent | the agent cannot start |
 | `context7-mcp`, `mcp-nixos` | the agent's documentation and Nix tools | those tools are missing from its sessions |
-| `copilot-language-server`, a GitHub Copilot plan and `M-x copilot-login` | suggestions (`SPC t a`) | suggestions stay off and say what is missing; `M-x copilot-install-server` installs the server with `npm` |
+| `copilot-language-server` (the Nix modules' `programs.kittymacs.suggestions.enable`; unfree), a GitHub Copilot plan and `M-x copilot-login` | suggestions (`SPC t a`) | suggestions stay off and say what is missing; `M-x copilot-install-server` installs the server with `npm` |
 | [Symbols Nerd Font Mono](https://www.nerdfonts.com/) | icons | icons are hidden |
 | Google Sans Code | the preferred editing font | the platform's default font |
 | A C compiler | Tree-sitter grammars | classic major modes are used |
@@ -278,6 +278,7 @@ Then, inside Emacs, `M-x package-upgrade-all` upgrades the installed packages; r
 - *No Tree-sitter highlighting:* run `M-x kittymacs-treesit-install-grammars` (needs Git and a C compiler); until a grammar loads, its files open in the classic mode, and a grammar you declined is offered again in the next session.
 - *No language server:* `SPC l e` starts Eglot in the current buffer; add the mode to `kittymacs-eglot-auto-start-modes` to start it automatically. The server itself is yours to install.
 - *A PDF opens as a picture, not in pdf-tools:* `epdfinfo` is missing. The Nix module installs it; otherwise `M-x pdf-tools-install` builds it (it needs poppler and a C compiler).
+- *Emacs offers to build `epdfinfo` although Nix installed it:* Emacs cannot see the Nix profile. `M-: (executable-find "epdfinfo")` should name a path in `/nix/store`; if it is nil, decline the build and check `M-: exec-path` for `~/.nix-profile/bin` (or `/etc/profiles/per-user/<you>/bin` on NixOS). On macOS the shells chapter puts the profiles back after importing the login shell's `PATH`, so restart Emacs after updating.
 - *`SPC a a` fails to start:* `claude-agent-acp` must be on the path Emacs sees (`M-: (executable-find "claude-agent-acp")`), and `claude` must be logged in once in a terminal (`/login`).
 - *`SPC t a` says suggestions need the server:* `copilot-language-server` must be on the path Emacs sees (`M-: (executable-find "copilot-language-server")`), or installed by `M-x copilot-install-server`. Then `M-x copilot-login` once; `M-x copilot-diagnose` reports the server and the account.
 - *`SPC n` says there is no notes folder:* create `kittymacs-org-node-directory` (your Org directory by default), or open a project whose `.dir-locals.el` sets `kittymacs-org-node-project`. Notes under a folder whose name starts with `.` or `_` are never read, so a clone in `~/.config/emacs` cannot join the graph; `SPC n s` reports what the index holds.

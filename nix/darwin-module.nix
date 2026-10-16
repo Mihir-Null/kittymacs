@@ -38,10 +38,24 @@ in
         option or the home-manager module's, not both.
       '';
     };
+
+    suggestions = {
+      enable = lib.mkEnableOption ''
+        Copilot's language server, for the suggestions chapter's ghost text
+        and next edits.  nixpkgs marks it unfree: allow it, for example with
+        `nixpkgs.config.allowUnfreePredicate`.  Installing the server turns
+        nothing on in Emacs; `SPC t a` or `kittymacs-suggestions` does
+      '';
+      package = lib.mkPackageOption pkgs "copilot-language-server" { };
+    };
   };
 
   config = lib.mkIf cfg.enable {
-    environment.systemPackages = [ cfg.package ] ++ tools.programs;
+    environment.systemPackages = [
+      cfg.package
+    ]
+    ++ tools.programs
+    ++ lib.optional cfg.suggestions.enable cfg.suggestions.package;
     fonts.packages = tools.fonts;
 
     services.emacs = lib.mkIf cfg.daemon {

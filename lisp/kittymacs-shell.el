@@ -11,9 +11,19 @@
 (declare-function consult-history "consult" (&optional history))
 ;; Eshell's, bound with `let' in `kittymacs-eshell-project'.
 (defvar eshell-buffer-name)
+;; early-init.el's, read after the login shell's PATH is imported.
+(defvar kittymacs-launcher-path)
 
 (setopt comint-pager "cat")
 (remove-hook 'kill-buffer-query-functions #'process-kill-buffer-query-function)
+(defun kittymacs--restore-launcher-path ()
+  "Put back the directories `early-init.el' found and the shell import dropped.
+They go at the end of `exec-path' and of the PATH that subprocesses see."
+  (dolist (directory (reverse (bound-and-true-p kittymacs-launcher-path)))
+    (unless (member directory exec-path)
+      (setq exec-path (append exec-path (list directory)))
+      (setenv "PATH" (concat (getenv "PATH") path-separator directory)))))
+
 (use-package exec-path-from-shell
   :ensure t
   :if (not (memq system-type '(windows-nt android)))
@@ -22,7 +32,8 @@
   (exec-path-from-shell-arguments (and (eq system-type 'darwin) '("-l")))
   :config
   (when (or window-system (daemonp))
-    (exec-path-from-shell-initialize)))
+    (exec-path-from-shell-initialize)
+    (kittymacs--restore-launcher-path)))
 (defcustom kittymacs-eshell-dir (expand-file-name "eshell/" kittymacs-etc-dir)
   "Directory for Eshell history, aliases and the directory ring."
   :type 'directory

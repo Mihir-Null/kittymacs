@@ -134,6 +134,8 @@
 - =emacs= is an argument, so each module installs the Emacs its =package= option names.
 - =epdfinfo= is the one program nixpkgs does not ship on its own: its pdf-tools build puts the server beside the Lisp, so a small derivation links it into =bin/=.
   + Only the server is taken; the Lisp still comes from MELPA, as every package does ([[id:15f489d8-1307-491d-9a1a-ecabbd2984e6][why]]).
+- =copilot-language-server=, for [[id:0b43a1e9-2e16-4d5b-985d-342c4897634f][the suggestions chapter]], is not in this list: nixpkgs marks it unfree, and an unfree package here would make every user of the flake allow one.
+  + Each module installs it behind its own =suggestions.enable= option instead, off by default ([[id:9e0c1f52-7a43-4d0e-b1a8-63c2f5d48e17][the opt-in]]).
 
 #+begin_src nix
 # Generated from literate/90-nix.org; edit the Org source, then tangle.
@@ -207,6 +209,7 @@ git clone https://github.com/Mihir-Null/kittymacs.git ~/.config/emacs
 - Options under =programs.kittymacs=:
   + =package= :: the Emacs to install; default =pkgs.emacs=, the Cocoa build; =pkgs.emacs-macport= is the Mitsuharu port. kittymacs needs 31.1 or later.
   + =daemon= :: start the Emacs server at login through launchd, so =emacsclient= opens files as frames of one Emacs. Off by default: the configuration starts a server itself whenever it has a display. The Home Manager module has the same option; turn on one, not both.
+  + =suggestions.enable=, =suggestions.package= :: install Copilot's language server; see [[id:9e0c1f52-7a43-4d0e-b1a8-63c2f5d48e17][the opt-in]].
 
 #+begin_src nix
 # Generated from literate/90-nix.org; edit the Org source, then tangle.
@@ -249,10 +252,24 @@ in
         option or the home-manager module's, not both.
       '';
     };
+
+    suggestions = {
+      enable = lib.mkEnableOption ''
+        Copilot's language server, for the suggestions chapter's ghost text
+        and next edits.  nixpkgs marks it unfree: allow it, for example with
+        `nixpkgs.config.allowUnfreePredicate`.  Installing the server turns
+        nothing on in Emacs; `SPC t a` or `kittymacs-suggestions` does
+      '';
+      package = lib.mkPackageOption pkgs "copilot-language-server" { };
+    };
   };
 
   config = lib.mkIf cfg.enable {
-    environment.systemPackages = [ cfg.package ] ++ tools.programs;
+    environment.systemPackages = [
+      cfg.package
+    ]
+    ++ tools.programs
+    ++ lib.optional cfg.suggestions.enable cfg.suggestions.package;
     fonts.packages = tools.fonts;
 
     services.emacs = lib.mkIf cfg.daemon {
@@ -420,6 +437,31 @@ in
     };
 #+end_src
 
+** Copilot's server, opt-in :decision:
+:PROPERTIES:
+:ID: 9e0c1f52-7a43-4d0e-b1a8-63c2f5d48e17
+:END:
+
+- =suggestions.enable= installs =copilot-language-server=, which [[id:0b43a1e9-2e16-4d5b-985d-342c4897634f][the suggestions chapter]] looks for on =PATH=; =suggestions.package= picks which build.
+- Off by default, in both modules, because nixpkgs marks the server unfree.
+  + In =tools.nix= every user of the flake would have to allow an unfree package; behind an option only those who turn it on do, and they allow that one package (=allowUnfreePredicate=), or all of them.
+- It goes with the other programs the configuration looks for, so a host that imports the module gets it from one switch, not from a list of its own.
+  + It follows =installPackages=: with that off, the nix-darwin module installs it.
+- Installing the server turns nothing on in Emacs: suggestions stay off until =SPC t a=, or =kittymacs-suggestions= in =private.el=.
+- Next edits need a server of 1.434 or newer; nixos-26.05 has 1.495, nixpkgs-unstable newer.
+
+#+begin_src nix :padline yes
+    suggestions = {
+      enable = lib.mkEnableOption ''
+        Copilot's language server, for the suggestions chapter's ghost text
+        and next edits.  nixpkgs marks it unfree: allow it, for example with
+        `nixpkgs.config.allowUnfreePredicate`.  Installing the server turns
+        nothing on in Emacs; `SPC t a` or `kittymacs-suggestions` does
+      '';
+      package = lib.mkPackageOption pkgs "copilot-language-server" { };
+    };
+#+end_src
+
 ** Why the daemon names its init directory :decision:
 :PROPERTIES:
 :ID: 4a4acce6-c592-4c82-a885-d7824a07594f
@@ -462,13 +504,15 @@ in
 
 ** The link and the packages
 
-- =home.packages= gets Emacs and the tools, then the font, each behind its option; fontconfig is turned on, as a default, with the font.
+- =home.packages= gets Emacs and the tools (with Copilot's server when =suggestions.enable= is on), then the font, each behind its option; fontconfig is turned on, as a default, with the font.
 - =xdg.configFile."emacs"= is an out-of-store symlink: =~/.config/emacs= points at the checkout itself, not a copy.
 
 #+begin_src nix :padline yes
   config = lib.mkIf cfg.enable {
     home.packages =
-      (lib.optionals cfg.installPackages ([ cfg.package ] ++ tools.programs))
+      (lib.optionals cfg.installPackages (
+        [ cfg.package ] ++ tools.programs ++ lib.optional cfg.suggestions.enable cfg.suggestions.package
+      ))
       ++ (lib.optionals cfg.installFonts tools.fonts);
     fonts.fontconfig.enable = lib.mkIf cfg.installFonts (lib.mkDefault true);
 
@@ -602,6 +646,7 @@ in
 :END:
 
 - A complete Mac with both modules: nix-darwin installs Emacs, the tools and the font system-wide; Home Manager clones and links the checkout, with =installPackages = false=.
+- It turns on Copilot's server too, allowing that one unfree package, so =just eval= reads the option ([[id:9e0c1f52-7a43-4d0e-b1a8-63c2f5d48e17][the opt-in]]).
 - Copy it as a starting point.
 - =just eval= evaluates it against this checkout (=--override-input kittymacs path:$PWD=); building it needs a Mac.
 
@@ -635,9 +680,17 @@ in
           kittymacs.darwinModules.default
           home-manager.darwinModules.home-manager
           {
-            # Emacs, ripgrep, fd, git, gnupg, hunspell, gls, trash, the icon font.
-            programs.kittymacs.enable = true;
-            programs.kittymacs.daemon = false;
+            programs.kittymacs = {
+              # Emacs, ripgrep, fd, git, gnupg, hunspell, gls, trash, the icon font.
+              enable = true;
+              daemon = false;
+              # Copilot's server, for the suggestions chapter.  It is unfree,
+              # so the allowance below names that one package; leave both out
+              # to go without.
+              suggestions.enable = true;
+            };
+            nixpkgs.config.allowUnfreePredicate =
+              pkg: builtins.elem (pkg.pname or "") [ "copilot-language-server" ];
 
             # The checkout stays writable outside the store; home-manager clones
             # it on the first switch, at the kittymacs revision flake.lock pins,

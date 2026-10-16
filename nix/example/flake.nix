@@ -27,9 +27,17 @@
           kittymacs.darwinModules.default
           home-manager.darwinModules.home-manager
           {
-            # Emacs, ripgrep, fd, git, gnupg, hunspell, gls, trash, the icon font.
-            programs.kittymacs.enable = true;
-            programs.kittymacs.daemon = false;
+            programs.kittymacs = {
+              # Emacs, ripgrep, fd, git, gnupg, hunspell, gls, trash, the icon font.
+              enable = true;
+              daemon = false;
+              # Copilot's server, for the suggestions chapter.  It is unfree,
+              # so the allowance below names that one package; leave both out
+              # to go without.
+              suggestions.enable = true;
+            };
+            nixpkgs.config.allowUnfreePredicate =
+              pkg: builtins.elem (pkg.pname or "") [ "copilot-language-server" ];
 
             # The checkout stays writable outside the store; home-manager clones
             # it on the first switch, at the kittymacs revision flake.lock pins,

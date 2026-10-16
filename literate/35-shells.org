@@ -38,6 +38,8 @@
 (declare-function consult-history "consult" (&optional history))
 ;; Eshell's, bound with `let' in `kittymacs-eshell-project'.
 (defvar eshell-buffer-name)
+;; early-init.el's, read after the login shell's PATH is imported.
+(defvar kittymacs-launcher-path)
 
 (setopt comint-pager "cat")
 (remove-hook 'kill-buffer-query-functions #'process-kill-buffer-query-function)
@@ -53,13 +55,25 @@
 - =exec-path-from-shell= copies your shell's =PATH= and =MANPATH=, the locale (=LANG=), and the two variables the =nix= commands read (=NIX_PATH=, =NIX_PROFILES=).
   + On Linux it asks a plain non-interactive shell, which reads =~/.zshenv= or =$BASH_ENV=.
   + On macOS it asks a login shell: that is where the system's =path_helper= and Homebrew's =shellenv= line in =~/.zprofile= run.
-  + [[id:40302e33-d2b2-4c0b-9bc3-1f9e121307e1][The startup chapter]] already put Homebrew on =exec-path=, so on macOS this import only refines it.
+  + [[id:40302e33-d2b2-4c0b-9bc3-1f9e121307e1][The startup chapter]] already put Homebrew and the Nix profiles on =exec-path=, so on macOS this import only refines it.
+- The import replaces =exec-path= whole, so a login shell that does not list a Nix profile would drop the one the startup chapter found.
+  + Determinate's Nix, for one, sets =PATH= only for interactive shells, and this is a login shell that is not interactive.
+  + Every program in that profile would vanish at once: pdf-tools' =epdfinfo= (it then offers to build one), the agent's =claude-agent-acp=, Copilot's server.
+  + So the directories =early-init.el= found (=kittymacs-launcher-path=) go back on the end of =exec-path= and =PATH= when the import left them out; the shell's own order still wins.
   + It runs only in a graphical Emacs or a daemon.
 - Two platforms keep the environment Emacs inherited; the =:if= line means the package is not even installed there.
   + Windows: the importer would ask PowerShell to evaluate POSIX shell syntax, which it cannot, and Windows programs inherit a correct environment anyway.
   + Android, for the opposite reason: the import would succeed, and that is the problem. =/system/bin/sh= evaluates the POSIX syntax happily and reports a =PATH= that has never heard of Termux, replacing the entries [[id:afa6b7fd-742a-4c15-86a6-32e3e8027b0e][the platform chapter]] has just added.
 
 #+begin_src emacs-lisp
+(defun kittymacs--restore-launcher-path ()
+  "Put back the directories `early-init.el' found and the shell import dropped.
+They go at the end of `exec-path' and of the PATH that subprocesses see."
+  (dolist (directory (reverse (bound-and-true-p kittymacs-launcher-path)))
+    (unless (member directory exec-path)
+      (setq exec-path (append exec-path (list directory)))
+      (setenv "PATH" (concat (getenv "PATH") path-separator directory)))))
+
 (use-package exec-path-from-shell
   :ensure t
   :if (not (memq system-type '(windows-nt android)))
@@ -68,7 +82,8 @@
   (exec-path-from-shell-arguments (and (eq system-type 'darwin) '("-l")))
   :config
   (when (or window-system (daemonp))
-    (exec-path-from-shell-initialize)))
+    (exec-path-from-shell-initialize)
+    (kittymacs--restore-launcher-path)))
 
 #+end_src
 
