@@ -46,6 +46,12 @@
 ;; (setopt kittymacs-eglot-auto-start-modes '(python-mode python-ts-mode)
 ;;         kittymacs-language-packages '(nix racket guile))
 
+;; Suggestions
+;; Copilot's ghost text and next edits in every programming file, which
+;; sends those files to GitHub.  Off by default; SPC t a turns them on in one
+;; buffer.  Files matching kittymacs-suggestions-excluded-files never get them.
+;; (setopt kittymacs-suggestions t)
+
 ;; UI
 ;; (setopt kittymacs-theme 'doom-dark+
 ;;         kittymacs-light-theme 'doom-one-light

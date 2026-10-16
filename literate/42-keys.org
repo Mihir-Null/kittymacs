@@ -323,9 +323,9 @@
 | Prefix  | Group  | Doubled key          | Also                                                           |
 |---------+--------+----------------------+----------------------------------------------------------------|
 | =SPC n= | notes  | (=f= find node)      | =i= insert ID link, =c= new note, =b= backlinks, =s= rescan     |
-| =SPC a= | agent  | =a= start or switch  | =n= new shell, =t= toggle, =s= send region or file, =j= the shell waiting for you |
+| =SPC a= | agent  | =a= start or switch  | =n= new shell, =t= toggle, =s= send region or file, =j= the shell waiting for you, =c= a suggestion here |
 | =SPC o= | open   | (=e= terminal)       | =p= project terminal, =t= file tree, =s= eshell, =a= agenda dashboard, =h= home |
-| =SPC t= | toggle | =t= light/dark theme | =n= line numbers, =w= writeroom, =s= spelling, =f= frames-only mode, =d= file tree |
+| =SPC t= | toggle | =t= light/dark theme | =n= line numbers, =w= writeroom, =s= spelling, =f= frames-only mode, =d= file tree, =a= suggestions |
 | =SPC C= | config | (=c= reading guide)  | =f= find chapter, =t= tangle, =k= check tangle, =p= =private.el=, =r= restart |
 | =SPC q= | quit   | =q= save and quit    | =Q= without saving, =r= restart, =f= close frame               |
 | =SPC u= | user   | (empty)              | yours                                                          |
@@ -334,6 +334,7 @@
   + the Org inbox to [[id:8ff7e58e-c155-4513-99ae-3b2c3a6ab729][the Org chapter]];
   + the linked-notes commands to [[id:f48e8f01-88da-4e33-8398-c00ab346b8bb][org-node]];
   + the agent commands to [[id:94d55283-5011-4f98-a7f0-8c6bcb51aab9][the agents chapter]];
+  + the suggestion commands, =SPC a c= and =SPC t a=, to [[id:0b43a1e9-2e16-4d5b-985d-342c4897634f][the suggestions chapter]];
   + the =SPC C= commands that open and rebuild this configuration to [[id:9ea539a0-f1a3-4d05-aa10-6f2d2ff3e335][the maintenance chapter]].
 
 #+begin_src emacs-lisp
@@ -348,7 +349,7 @@
   "s" (cons "rescan graph" #'kittymacs-org-node-rescan))
 
 (defvar-keymap kittymacs-agent-map
-  :doc "Coding agents (agent-shell)."
+  :doc "Coding agents (agent-shell), and a suggestion at point."
   "a" (cons "start or switch" #'agent-shell)
   "n" (cons "new shell" #'agent-shell-new-shell)
   "t" (cons "toggle" #'agent-shell-toggle)
@@ -358,6 +359,7 @@
   "f" (cons "send a file" #'agent-shell-send-file)
   "j" (cons "jump to waiting shell" #'agent-shell-attention-jump)
   "d" (cons "all shells" #'agent-shell-attention-dashboard)
+  "c" (cons "suggestion here (Copilot)" #'kittymacs-suggestions-complete)
   "?" (cons "menu" #'agent-shell-help-menu))
 
 (defvar-keymap kittymacs-open-map
@@ -392,6 +394,7 @@
   "R" (cons "rainbow identifiers" #'rainbow-identifiers-mode)
   "f" (cons "frames-only mode" #'frames-only-mode)
   "d" (cons "file tree sidebar" #'treemacs)
+  "a" (cons "suggestions (Copilot)" #'kittymacs-suggestions-toggle)
   "o" (cons "outline sidebar" #'imenu-list-smart-toggle)
   "g" (cons "git gutter" #'diff-hl-mode)
   "D" (cons "dim other windows" #'dimmer-mode)

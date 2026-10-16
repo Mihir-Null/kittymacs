@@ -296,6 +296,9 @@
 #+end_src
 
 * Completion in the buffer: Corfu
+:PROPERTIES:
+:ID: a210c7c3-84da-4560-9346-156f5d28e253
+:END:
 
 - Corfu pops up after a short pause while you type; a second pause (1 s) shows documentation for the highlighted candidate.
 - The icons in the margin come from [[id:0286f652-e861-4e61-9ca6-91e225c8939d][the appearance chapter]].
