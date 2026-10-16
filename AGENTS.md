@@ -24,3 +24,7 @@ just nix-check      # deadnix, statix, nixfmt; flake check; both example hosts e
 ```
 
 `just frames-test` needs a graphical session and is run by hand. CI (`.github/workflows/ci.yml`) runs the other recipes; `literate/80-maintenance.org` explains each one.
+
+## Commits and pull requests
+
+Commits made with an AI agent end with the trailer `Assisted-by: AI tooling (Claude)`, and the pull request body ends with "Prepared with AI assistance (Claude).". Add no `Co-Authored-By` trailer and no links to agent sessions, in commits or pull requests. Commit messages explain why, in wrapped prose.
