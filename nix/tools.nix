@@ -22,6 +22,7 @@
         mkdir -p $out/bin
         ln -s ${emacsPackages.pdf-tools}/share/emacs/site-lisp/elpa/pdf-tools-*/epdfinfo $out/bin/epdfinfo
       '')
+      mupdf-headless # reading chapter: pdf-text's extractor (mutool)
       direnv # shells chapter: envrc, each project's own environment
       (python3Packages.toPythonApplication python3Packages.jupytext) # notebooks chapter: .ipynb files
       math-preview # notebooks chapter: LaTeX drawn with MathJax

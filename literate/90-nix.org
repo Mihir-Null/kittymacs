@@ -126,6 +126,7 @@
 | =python3=              | [[id:55f0b75c-d867-4474-a26e-019215b8e492][Treemacs]]        | directory collapsing, Git colouring   |
 | =zig=                  | [[id:bd2638bc-735d-4849-bafe-3dab5e8e30b7][terminal]]        | building ghostel's native module      |
 | =epdfinfo=             | [[id:78b654e1-a93e-4e31-b0d8-f266215b5b12][reading]]         | pdf-tools' PDF server, ready-built    |
+| =mutool=               | [[id:78b654e1-a93e-4e31-b0d8-f266215b5b12][reading]]         | pdf-text's extractor, from MuPDF      |
 | =direnv=               | [[id:d2e0bc37-0bd4-4b28-a8ee-04f94ac451f8][shells]]          | envrc: each project's own environment |
 | =jupytext=             | [[id:0bb7490f-71af-4c3d-9e64-741df8ae25c6][notebooks]]       | opening =.ipynb= files as scripts     |
 | =math-preview=         | [[id:0bb7490f-71af-4c3d-9e64-741df8ae25c6][notebooks]]       | LaTeX drawn as SVG, with MathJax      |
@@ -138,6 +139,7 @@
 - =emacs= is an argument, so each module installs the Emacs its =package= option names.
 - =epdfinfo= is the one program nixpkgs does not ship on its own: its pdf-tools build puts the server beside the Lisp, so a small derivation links it into =bin/=.
   + Only the server is taken; the Lisp still comes from MELPA, as every package does ([[id:15f489d8-1307-491d-9a1a-ecabbd2984e6][why]]).
+- =mutool= comes from =mupdf-headless=, MuPDF built without its X11 and OpenGL viewer: pdf-text wants only the command-line tool.
 - =kittymacs-zmq-module= is a one-line script that prints the path of emacs-zmq's native module, which nixpkgs builds for its own zmq package; the notebooks chapter links the module beside =zmq.el= ([[id:040a7e96-594a-4485-8c51-9cf7926b2275][why]]).
   + Built with =emacsPackagesFor emacs=, so the module is compiled for the Emacs this file was given, not nixpkgs' default one.
   + =jupytext= is the Python package's command alone: =python3Packages.jupytext= is a library, so it is wrapped with =toPythonApplication=, which keeps its Python out of the profile beside =python3=.
@@ -169,6 +171,7 @@
         mkdir -p $out/bin
         ln -s ${emacsPackages.pdf-tools}/share/emacs/site-lisp/elpa/pdf-tools-*/epdfinfo $out/bin/epdfinfo
       '')
+      mupdf-headless # reading chapter: pdf-text's extractor (mutool)
       direnv # shells chapter: envrc, each project's own environment
       (python3Packages.toPythonApplication python3Packages.jupytext) # notebooks chapter: .ipynb files
       math-preview # notebooks chapter: LaTeX drawn with MathJax

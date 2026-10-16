@@ -41,6 +41,23 @@
   :config
   (with-eval-after-load 'pdf-annot
     (add-hook 'pdf-annot-activate-handler-functions #'org-noter-pdftools-jump-to-note)))
+(defvar pdf-text-kill-together)
+
+(condition-case err
+    (use-package pdf-text
+      :vc (:url "https://github.com/agzam/pdf-text"
+           :rev "f844d72cad81114fcce7806c1dac72d855639f89")
+      :commands pdf-view-as-text
+      :bind (:map pdf-text-mode-map
+             ("RET" . pdf-text-show-in-pdf))
+      :config
+      (setq pdf-text-kill-together 'from-pdf))
+  (error
+   (display-warning 'kittymacs
+                    (format "pdf-text was not installed: %s
+Check that `git clone https://github.com/agzam/pdf-text' works from a terminal, and which git Emacs runs: %s"
+                            (error-message-string err) (executable-find "git"))
+                    :warning)))
 (with-eval-after-load 'meow
   (add-to-list 'meow-mode-state-list '(pdf-view-mode . motion)))
 
@@ -59,7 +76,8 @@
   "W" (cons "fit page" #'pdf-view-fit-page-to-window)
   "t" (cons "theme colours" #'pdf-view-themed-minor-mode)
   "l" (cons "store pdf: link" #'org-store-link)
-  "s" (cons "save annotations" #'save-buffer))
+  "s" (cons "save annotations" #'save-buffer)
+  "r" (cons "read as text" #'pdf-view-as-text))
 
 (defvar-keymap kittymacs-reading-org-map
   :doc "Reading-session keys in Org buffers."

@@ -8,16 +8,17 @@
 #+PROPERTY: header-args:emacs-lisp :tangle ../lisp/kittymacs-reading.el :eval never :comments no :padline no :mkdirp yes
 
 - Read a paper inside Emacs and keep its notes in an Org file beside it, both on screen at once.
-- Four packages, one job each:
+- Five packages, one job each:
 
-| Package     | Gives                                                            |
-|-------------+------------------------------------------------------------------|
-| pdf-tools   | a PDF viewer drawn by Emacs: search, outline, annotations        |
-| org-noter   | a reading session: the PDF and its notes file side by side, in step |
-| org-pdftools | =pdf:= links, so a note, a task or an agent transcript can point at a page |
+| Package            | Gives                                                                                     |
+|--------------------+-------------------------------------------------------------------------------------------|
+| pdf-tools          | a PDF viewer drawn by Emacs: search, outline, annotations                                 |
+| org-noter          | a reading session: the PDF and its notes file side by side, in step                       |
+| org-pdftools       | =pdf:= links, so a note, a task or an agent transcript can point at a page                  |
 | org-noter-pdftools | the bridge: notes remember the exact annotation, and an annotation leads back to its note |
+| pdf-text           | the PDF as reflowed Org text, beside the page and in step with it                         |
 
-- Leans on [[id:e5942eb0-4389-447d-9317-d9178adcaaae][the leader]] for =SPC m=, [[id:8ff7e58e-c155-4513-99ae-3b2c3a6ab729][the Org chapter]] for its mode menu, [[id:f48e8f01-88da-4e33-8398-c00ab346b8bb][org-node]] for the notes folder, and [[id:d25a5063-1439-4ae0-8fbe-b0162d05a0e0][the Nix chapter]] for the PDF server.
+- Leans on [[id:e5942eb0-4389-447d-9317-d9178adcaaae][the leader]] for =SPC m=, [[id:8ff7e58e-c155-4513-99ae-3b2c3a6ab729][the Org chapter]] for its mode menu, [[id:f48e8f01-88da-4e33-8398-c00ab346b8bb][org-node]] for the notes folder, and [[id:d25a5063-1439-4ae0-8fbe-b0162d05a0e0][the Nix chapter]] for the PDF server and MuPDF's =mutool=.
 - Read [[*How a reading session works]] first.
 
 #+begin_src emacs-lisp
@@ -94,7 +95,7 @@
 :END:
 
 - The package is the maintained fork, =org-noter/org-noter=, which MELPA builds; it reads PDFs through pdf-tools by itself.
-  + [[*org-noter-pdftools: notes tied to annotations][org-noter-pdftools]] adds the link from a note to one annotation, and back.
+  + [[id:b87db108-3eea-4375-89c8-54b9d212dd09][org-noter-pdftools]] adds the link from a note to one annotation, and back.
 - Where notes live:
   + =org-noter-default-notes-file-names= is empty, so a paper's notes are =<paper>.org=, never a shared =Notes.org=;
   + org-noter looks for that name in the PDF's folder and every folder above it, then in =org-noter-notes-search-path=;
@@ -160,7 +161,7 @@
 
 #+end_src
 
-* org-noter-pdftools: notes tied to annotations
+* PDF and Org bridging
 :PROPERTIES:
 :ID: b87db108-3eea-4375-89c8-54b9d212dd09
 :END:
@@ -186,6 +187,49 @@
 
 #+end_src
 
+** pdf-text: the page as Org text
+:PROPERTIES:
+:ID: a198c1ff-09a3-4147-9bb6-bbdf504a3266
+:END:
+
+- A page in =pdf-view-mode= is an image: no soft wrap, no text motions, no isearch, no spell checking.
+- =SPC m r= (=pdf-view-as-text=) opens the PDF as text in a companion buffer, at the page on screen:
+  + the outline becomes foldable headings, bold and italic become Org emphasis, footnotes become Org footnotes;
+  + =pdf-text-mode= derives from =org-mode=, so folding, sparse trees and export work, and =SPC m= is Org's menu, the =N= reading group included;
+  + =pdf-text-sync-mode=, on in a fresh companion, keeps the two on the same page both ways; =RET= in the text shows its page in the PDF.
+- The companion is a view, rebuilt from the PDF, not a file; the notes stay in org-noter's =<paper>.org=.
+- The text comes from MuPDF's =mutool=, not from =epdfinfo=: MuPDF reports each character's font, which is how pdf-text finds headings, emphasis and listings.
+  + [[id:d25a5063-1439-4ae0-8fbe-b0162d05a0e0][The tool list]] puts =mutool= on =PATH=; without Nix, =brew install mupdf-tools= or the distribution's =mupdf-tools=.
+- Not on MELPA, so it is installed from its Git repository with =:vc=, pinned to a commit, as [[id:56789f7f-90bb-4c3b-947c-16ecb6d72365][agent-shell-attention]] is.
+  + A failed =git clone= is a warning, not an error, for the same reason: an error would stop =init.el= there, and the chapters after this one would go unloaded.
+  + =M-x package-vc-upgrade= moves it; change =:rev= here to move everyone.
+- Loading it loads neither pdf-tools nor =epdfinfo=, so =pdf-view-as-text= autoloads and nothing waits for a PDF.
+  + No =:after=: it waits for features a file provides, and =epdfinfo= is a program, so an =:after= on it would never fire.
+- Closing the PDF closes its text; closing the text leaves the PDF (=pdf-text-kill-together= is =from-pdf=, not =both=).
+  + The PDF may be an org-noter session's document, and putting the text away must not end the session.
+- The setting is a =setq= in =:config=, not =:custom=: pdf-text's settings are plain variables, and the package's own =defvar= replaces a value =:custom= set before it loaded.
+
+#+begin_src emacs-lisp
+(defvar pdf-text-kill-together)
+
+(condition-case err
+    (use-package pdf-text
+      :vc (:url "https://github.com/agzam/pdf-text"
+           :rev "f844d72cad81114fcce7806c1dac72d855639f89")
+      :commands pdf-view-as-text
+      :bind (:map pdf-text-mode-map
+             ("RET" . pdf-text-show-in-pdf))
+      :config
+      (setq pdf-text-kill-together 'from-pdf))
+  (error
+   (display-warning 'kittymacs
+                    (format "pdf-text was not installed: %s
+Check that `git clone https://github.com/agzam/pdf-text' works from a terminal, and which git Emacs runs: %s"
+                            (error-message-string err) (executable-find "git"))
+                    :warning)))
+
+#+end_src
+
 * Meow in PDFs and notes :meow:
 :PROPERTIES:
 :ID: c5b90c34-6023-4954-b26b-6dbabf29de84
@@ -197,15 +241,16 @@
 - The notes buffer is an Org buffer in Normal state; its reading keys are a =N= group in Org's own =SPC m=, added to [[id:8ff7e58e-c155-4513-99ae-3b2c3a6ab729][the Org chapter]]'s map.
   + Added, not defined: =kittymacs-define-localleader= would replace Org's whole menu.
 
-| =SPC m= in a PDF | Does                         | =SPC m= in a PDF | Does                     |
-|------------------+------------------------------+------------------+--------------------------|
-| =n=              | start or resume org-noter    | =o=              | outline                  |
-| =i=              | note for this page           | =g=              | go to page               |
-| =I=              | note at a spot               | =/=              | search (occur)           |
-| =k=              | end the session              | =w= / =W=        | fit width / fit page     |
-| =h=              | highlight the selection      | =t=              | theme colours on or off  |
-| =a=              | text annotation              | =l=              | store a =pdf:= link      |
-| =A=              | list annotations             | =s=              | save annotations         |
+| =SPC m= in a PDF | Does                      | =SPC m= in a PDF | Does                    |
+|----------------+---------------------------+----------------+-------------------------|
+| =n=              | start or resume org-noter | =o=              | outline                 |
+| =i=              | note for this page        | =g=              | go to page              |
+| =I=              | note at a spot            | =/=              | search (occur)          |
+| =k=              | end the session           | =w= / =W=          | fit width / fit page    |
+| =h=              | highlight the selection   | =t=              | theme colours on or off |
+| =a=              | text annotation           | =l=              | store a =pdf:= link       |
+| =A=              | list annotations          | =s=              | save annotations        |
+|                |                           | =r=              | read as text (pdf-text) |
 
 #+begin_src emacs-lisp
 (with-eval-after-load 'meow
@@ -226,7 +271,8 @@
   "W" (cons "fit page" #'pdf-view-fit-page-to-window)
   "t" (cons "theme colours" #'pdf-view-themed-minor-mode)
   "l" (cons "store pdf: link" #'org-store-link)
-  "s" (cons "save annotations" #'save-buffer))
+  "s" (cons "save annotations" #'save-buffer)
+  "r" (cons "read as text" #'pdf-view-as-text))
 
 (defvar-keymap kittymacs-reading-org-map
   :doc "Reading-session keys in Org buffers."
@@ -256,4 +302,6 @@
 - =SPC m i= adds a heading for this page; =n= in the PDF moves the notes along.
 - In the notes, =SPC m N= lists the reading keys.
 - =SPC m l= in the PDF, then =SPC m l= in any Org file: a =pdf:= link; =RET= on it opens the page.
+- =M-: (executable-find "mutool")=: a path; =SPC m r= in a PDF opens its text at the page on screen, paging either buffer moves the other, and =RET= in the text shows its page in the PDF.
+- =C-x C-w= in the text, then reopen the file: an Org file of the paper, its headings folding.
 - =just test-packages=: the verifier fails on any warning at startup, and checks that every =SPC= key runs a command.
