@@ -60,7 +60,9 @@ subprocesses, which do not read this configuration."
   (use-package jupyter
     :ensure t
     :defer t
-    :commands (jupyter-run-repl jupyter-connect-repl jupyter-refresh-kernelspecs)))
+    :commands (jupyter-run-repl jupyter-connect-repl jupyter-refresh-kernelspecs)
+    :config
+    (advice-add 'jupyter-session-with-random-ports :around #'inheritenv-apply)))
 
 (defun kittymacs-notebooks--require-jupyter ()
   "Load emacs-jupyter, or explain how to turn it on."

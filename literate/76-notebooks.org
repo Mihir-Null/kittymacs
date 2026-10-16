@@ -210,6 +210,7 @@ subprocesses, which do not read this configuration."
 - Both declarations sit inside =(when kittymacs-notebooks-jupyter ...)=, as the terminal does with ghostel: =:ensure= installs a package even when its =:if= is nil.
 - Nothing loads at startup: the first =SPC m n j= or =J= loads emacs-jupyter, and with it zmq and the module.
 - The REPL starts in Insert state, like the other shells ([[*Meow and the notebook menu]]).
+- envrc sets =exec-path= in each buffer, but =jupyter-session-with-random-ports= runs =jupyter --paths= from a temporary buffer, which sees the global =PATH=; without =inheritenv-apply= the kernel cannot start ("Searching for program ... jupyter").
 
 #+begin_src emacs-lisp
 (when kittymacs-notebooks-jupyter
@@ -217,7 +218,9 @@ subprocesses, which do not read this configuration."
   (use-package jupyter
     :ensure t
     :defer t
-    :commands (jupyter-run-repl jupyter-connect-repl jupyter-refresh-kernelspecs)))
+    :commands (jupyter-run-repl jupyter-connect-repl jupyter-refresh-kernelspecs)
+    :config
+    (advice-add 'jupyter-session-with-random-ports :around #'inheritenv-apply)))
 
 (defun kittymacs-notebooks--require-jupyter ()
   "Load emacs-jupyter, or explain how to turn it on."
