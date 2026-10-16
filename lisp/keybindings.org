@@ -110,15 +110,17 @@ Press =SPC=, then:
 
 * Projects and workspaces
 
-| Key     | Does                                | Command                                        |
-|---------+-------------------------------------+------------------------------------------------|
-| SPC p p | Open a project in its own workspace | tabspaces-open-or-create-project-and-workspace |
-| SPC p f | Find a file in the project          | project-find-file                              |
-| SPC p b | Switch to a project buffer          | consult-project-buffer                         |
-| SPC p G | Magit status for the project        | magit-project-status                           |
-| SPC W s | Switch or create a workspace        | tabspaces-switch-or-create-workspace           |
-| SPC W d | Close this workspace                | tabspaces-close-workspace                      |
-| SPC TAB | Switch tab                          | kittymacs-tab-dwim                               |
+| Key       | Does                                | Command                                        |
+|-----------+-------------------------------------+------------------------------------------------|
+| SPC p p   | Open a project in its own workspace | tabspaces-open-or-create-project-and-workspace |
+| SPC p f   | Find a file in the project          | project-find-file                              |
+| SPC p b   | Switch to a project buffer          | consult-project-buffer                         |
+| SPC p G   | Magit status for the project        | magit-project-status                           |
+| SPC p E a | Allow this project's .envrc         | envrc-allow                                    |
+| SPC p E r | Reload the project's environment    | envrc-reload                                   |
+| SPC W s   | Switch or create a workspace        | tabspaces-switch-or-create-workspace           |
+| SPC W d   | Close this workspace                | tabspaces-close-workspace                      |
+| SPC TAB   | Switch tab                          | kittymacs-tab-dwim                             |
 
 * Version control
 
@@ -215,6 +217,8 @@ New editing surfaces are OS windows (frames); your window manager arranges them.
 | PDF          | =n= / =i= / =I=    | reading session / note / note at a spot |
 | PDF          | =h= / =o= / =g=    | highlight / outline / go to page     |
 | Org          | =N=            | reading-session keys (org-noter)     |
+| Python       | =n e= / =n s=    | run cell / run cell and go to next   |
+| Python       | =n j= / =n m=    | start a Jupyter kernel / draw the math |
 | Agent shell  | =i= / =m= / =t=    | interrupt / permission mode / transcript |
 | any of these | =?=            | a menu of everything the mode can do |
 #+TBLFM: $2=SPC m= then

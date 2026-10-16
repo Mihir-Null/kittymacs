@@ -87,6 +87,38 @@ They go at the end of `exec-path' and of the PATH that subprocesses see."
 
 #+end_src
 
+* A project's own environment: direnv :decision:
+:PROPERTIES:
+:ID: a121fda8-198e-498c-8867-eb1ecba8236d
+:END:
+
+- The import above gives Emacs /one/ environment, your shell's; a project often wants its own: its Python, its compiler, its =PYTHONPATH=.
+- [[https://direnv.net][direnv]] is the shell's answer: a =.envrc= file at a project's root says how to build that environment, and the shell enters it on =cd= and leaves it on the way out.
+  + =use flake= in a =.envrc= enters the project's =nix develop= shell; [[https://github.com/nix-community/nix-direnv][nix-direnv]] caches it, so entering takes milliseconds after the first time.
+  + A =.envrc= runs code, so direnv refuses one until you allow it, and again after every change to it.
+- [[https://github.com/purcell/envrc][envrc]] does the same per /buffer/: a buffer visiting a file under a =.envrc= gets that environment as buffer-local =process-environment= and =exec-path=.
+  + So everything started from that buffer sees the project's programs: =compile=, Eglot's language server, =run-python=, a Jupyter kernel, Eshell, =shell-command=.
+  + Buffer-local, not global: two projects with two Pythons stay open side by side, each buffer with its own.
+  + It also wraps the few commands that run programs from a temporary buffer (=shell-command=, =vc=, Org Babel's evaluation) so they see the buffer's environment too.
+- Why envrc and not its older cousin direnv.el: direnv.el changes the /global/ environment whenever you switch buffers, so a process started in the background by one project can see another's.
+- It turns on last, at depth 90 of =after-init-hook=:
+  + envrc's minor mode puts itself at the front of other modes' hooks, so it must be enabled after them, as its README asks;
+  + depth 90 is the slot [[id:6c9aefe0-32af-453b-a075-6ed429993d3a][private.el]]'s late settings use.
+- Where =direnv= is not on =exec-path= (native Windows, a machine without it) envrc enables itself in no buffer, so it costs nothing.
+  + =direnv= comes from [[id:d25a5063-1439-4ae0-8fbe-b0162d05a0e0][the tool list]] on a Nix machine.
+  + nix-direnv is the /shell's/ configuration (=programs.direnv.nix-direnv.enable= in Home Manager), not Emacs's; envrc runs the same =direnv= and finds it there.
+- The mode line shows =envrc= in green when a buffer has its project's environment, yellow when the =.envrc= waits to be allowed, red when it failed.
+- The commands are on =SPC p E= ([[id:53ad53ed-155f-47dc-973d-7be18de2893c][the keys chapter]]): =a= allow, =d= deny, =r= reload after editing a flake, =l= the log of the last =direnv= run.
+
+#+begin_src emacs-lisp
+(use-package envrc
+  :ensure t
+  :commands (envrc-allow envrc-deny envrc-reload envrc-show-log)
+  :init
+  (add-hook 'after-init-hook #'envrc-global-mode 90))
+
+#+end_src
+
 * Eshell's history, completion and prompt
 
 - History (10,000 entries, duplicates dropped) and the last-directory ring persist under =var/etc/eshell/=, or wherever =kittymacs-eshell-dir= points if =private.el= sets it.
@@ -302,4 +334,5 @@ With REGEXP, go to the most recent directory matching it."
 - Type =htop= in Eshell: it opens in a terminal buffer and works.
 - =ESC= in Eshell, select some output with =x=, =y= copies it; =i= goes back to typing.
 - =M-x shell=, then =git log=: the output lands in the buffer, with no pager waiting for keys.
+- In a project with a =.envrc=, open a file: the mode line shows =envrc= as waiting; =SPC p E a= allows it, and =M-: (executable-find "python3")= then names the project's Python, not the system's.
 - =just test-packages= replays a real startup: this module must load and every =SPC= key must run a command.

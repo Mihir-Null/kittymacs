@@ -45,7 +45,7 @@ The chapters after it still load; `--debug-init' shows the backtrace."
 (kittymacs-require-module 'kittymacs-meow)
 (kittymacs-require-module 'kittymacs-keys)
 
-;; Applications: shells, programming, Org, reading, agents, suggestions, and finally frame policy.
+;; Applications: shells, programming, Org, reading, notebooks, agents, suggestions, and finally frame policy.
 (kittymacs-require-module 'kittymacs-shell)
 (kittymacs-require-module 'kittymacs-programming)
 (kittymacs-require-module 'kittymacs-treesit)
@@ -54,6 +54,7 @@ The chapters after it still load; `--debug-init' shows the backtrace."
 (kittymacs-require-module 'kittymacs-org)
 (kittymacs-require-module 'kittymacs-org-node)
 (kittymacs-require-module 'kittymacs-reading)
+(kittymacs-require-module 'kittymacs-notebooks)
 (kittymacs-require-module 'kittymacs-agents)
 (kittymacs-require-module 'kittymacs-suggestions)
 (kittymacs-require-module 'kittymacs-frames)

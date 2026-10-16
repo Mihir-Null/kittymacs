@@ -283,6 +283,13 @@ Group maps are walked too.  Autoloaded commands count as commands."
                                  "Suggestions turned on without a server"))
               (setq buffer-file-name nil)))
         (error (kittymacs-verify-check nil (format "Suggestions failed: %S" err))))
+      ;; Jupyter kernels need emacs-zmq's native module: off by default, and
+      ;; emacs-jupyter is not even loaded until a kernel is asked for.
+      (kittymacs-verify-check (null kittymacs-notebooks-jupyter) "Jupyter kernels are on by default")
+      (kittymacs-verify-check (not (featurep 'jupyter)) "emacs-jupyter loaded at startup")
+      (kittymacs-verify-check (and (bound-and-true-p envrc-global-mode)
+                                   (eq (lookup-key kittymacs-leader-map (kbd "p E a")) #'envrc-allow))
+                       "envrc is not on, or SPC p E a is not envrc-allow")
       (kittymacs-verify-check (not (featurep 'kittymacs-key-hints)) "Hint adapter still loads")
       (kittymacs-verify-check (eq (lookup-key meow-normal-state-keymap (kbd "SPC")) kittymacs-leader-map)
                        "SPC is not the literal leader in Normal state")
