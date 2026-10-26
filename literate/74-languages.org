@@ -36,7 +36,7 @@
 - Two options act on those declarations:
   + =treesit-enabled-modes= :: =t= copies every remap into =major-mode-remap-alist=, where Emacs looks when it chooses a mode for a file;
   + =treesit-auto-install-grammar= :: =ask= offers to clone and compile a missing grammar the first time a mode needs it.
-- So the remap table, the file mappings and the grammar pins all belong to Emacs; kittymacs keeps none of its own for the languages Emacs ships.
+- So the remap table, the file mappings and the grammar pins all belong to Emacs; kittymacs keeps none of its own for the languages Emacs ships, except Markdown, which Emacs ships undeclared ([[*Markdown, which Emacs ships unwired]]).
 - =M-x describe-variable RET treesit-major-mode-remap-alist= lists them: 26 remaps on Emacs 31.1, from Bash, C and CMake to Rust, TOML and YAML.
 
 ** Where compiled grammars live
@@ -170,6 +170,34 @@ says."
               '((name . kittymacs-treesit-ensure-grammar))))
 #+end_src
 
+** Markdown, which Emacs ships unwired :decision:
+:PROPERTIES:
+:ID: 999217f2-b036-42b7-ab61-791e980119cc
+:END:
+
+- Emacs 31.1 ships =markdown-ts-mode= and pins its two grammars, =markdown= and =markdown-inline=, but declares none of the rest: no autoload, no =.md= entry in =auto-mode-alist=, no remap.
+  + Left alone, a =.md= file opens in =fundamental-mode= and =M-x markdown-ts-mode= does not exist until something loads the library.
+- So kittymacs declares what the other modes declare for themselves:
+  + an autoload for the mode and for =markdown-ts-mode-maybe=;
+  + =.md=, =.markdown= and the other usual extensions → =markdown-ts-mode-maybe=, which chooses the mode when it is enabled or both grammars load, and =text-mode= otherwise;
+  + the remap =markdown-mode= → =markdown-ts-mode=, so a file the =markdown-mode= package claims also opens in the Tree-sitter mode, and the fallback below recognises the mode.
+- The mode offers to build both grammars itself, so it needs no registration ([[*Registering a mode from a package]]).
+- With no grammar, the file goes to =markdown-mode= when that package is installed and to =text-mode= otherwise, as =markdown-ts-mode-maybe= would choose.
+- Remove this section once an Emacs release declares Markdown like its other modes.
+
+#+begin_src emacs-lisp
+(autoload 'markdown-ts-mode "markdown-ts-mode" "Major mode for Markdown." t)
+(autoload 'markdown-ts-mode-maybe "markdown-ts-mode")
+(add-to-list 'auto-mode-alist
+             '("\\.\\(?:md\\|markdown\\|mkd\\|mdown\\|mkdn\\|mdwn\\)\\'"
+               . markdown-ts-mode-maybe))
+(add-to-list 'treesit-major-mode-remap-alist
+             '(markdown-mode . markdown-ts-mode))
+(when (or (eq treesit-enabled-modes t)
+          (memq 'markdown-ts-mode treesit-enabled-modes))
+  (add-to-list 'major-mode-remap-alist '(markdown-mode . markdown-ts-mode)))
+#+end_src
+
 ** A missing grammar leaves the classic mode in charge :decision:
 :PROPERTIES:
 :ID: 09fd36a6-44f3-45a7-bef3-e3bb2b156a31
@@ -181,7 +209,7 @@ says."
 - So after Emacs chooses a mode for a file, kittymacs checks it: a Tree-sitter mode that made no parser, or that failed with an error, is replaced by its classic mode.
   + An error from any other mode is passed on unchanged.
   + A Tree-sitter mode that itself hands the file to a classic mode, as =bash-ts-mode= does with a Zsh script, is left alone: only the mode the buffer ends up in counts.
-  + The classic mode is the one the remap came from; a language with no classic mode, such as YAML, gets =fundamental-mode=, which is what Emacs itself chooses when the mode is not enabled.
+  + The classic mode is the one the remap came from; a language with no classic mode, such as YAML, gets what its =-maybe= function chooses when the mode is not enabled: =fundamental-mode=, or =text-mode= for Markdown.
   + The mode is then left out of =treesit-enabled-modes= for the rest of the session, so the next file of that kind opens straight in the classic mode, without asking again.
   + That one setting uses =customize-set-variable= rather than =setopt=: the option's type lists only the modes Emacs ships, so =setopt= would warn about a list that also holds =nix-ts-mode=.
   + A file over =treesit-max-buffer-size= also makes no parser; it gets the classic mode, but the Tree-sitter mode stays enabled for other files.
@@ -189,10 +217,17 @@ says."
 - The check wraps =set-auto-mode-0=, the function that applies the mode Emacs chose for a file, once; =M-x python-ts-mode= typed by hand is not second-guessed.
 
 #+begin_src emacs-lisp
+(defconst kittymacs-treesit--uninstalled-classic-modes
+  '((markdown-ts-mode . text-mode))
+  "Modes to use for a Tree-sitter mode whose classic mode is not installed.
+A mode not listed gets `fundamental-mode'.")
 (defun kittymacs-treesit--classic-mode (treesit-mode)
   "Return the mode to use instead of TREESIT-MODE while its grammar is missing."
   (let ((classic (car (rassq treesit-mode treesit-major-mode-remap-alist))))
-    (if (and classic (fboundp classic)) classic #'fundamental-mode)))
+    (if (and classic (fboundp classic))
+        classic
+      (alist-get treesit-mode kittymacs-treesit--uninstalled-classic-modes
+                 #'fundamental-mode))))
 (defun kittymacs-treesit--disable (treesit-mode)
   "Leave TREESIT-MODE out of `treesit-enabled-modes' for this session."
   (customize-set-variable
@@ -236,7 +271,7 @@ the mode that replaced the Tree-sitter one."
 ** Building grammars ahead of time
 
 - The prompt builds a grammar the first time a file needs it; =M-x kittymacs-treesit-install-grammars= builds the usual ones in one go, for a new machine or an Emacs upgrade.
-  + =kittymacs-treesit-languages= lists them: the languages of the files this configuration is mostly used on, and the extra grammars their modes need (=jsdoc= inside JavaScript, =gomod= for =go.mod=).
+  + =kittymacs-treesit-languages= lists them: the languages of the files this configuration is mostly used on, and the extra grammars their modes need (=jsdoc= inside JavaScript, =gomod= for =go.mod=, =markdown-inline= inside Markdown).
   + With =C-u= it asks which languages to build, from every recipe Emacs and kittymacs know, and rebuilds them even when they load.
 - Emacs registers a mode's recipe only when the mode's library loads, so the command first loads the library of every Tree-sitter mode, then puts the kittymacs pins back on top.
 - Afterwards =treesit-enabled-modes= is set to =t= again, so a mode left out earlier in the session ([[*A missing grammar leaves the classic mode in charge]]) is back for the next file.
@@ -245,8 +280,8 @@ the mode that replaced the Tree-sitter one."
 
 #+begin_src emacs-lisp
 (defcustom kittymacs-treesit-languages
-  '(bash cmake css dockerfile go gomod html javascript jsdoc json nix python
-         rust toml tsx typescript yaml)
+  '(bash cmake css dockerfile go gomod html javascript jsdoc json markdown
+         markdown-inline nix python rust toml tsx typescript yaml)
   "Grammars that `kittymacs-treesit-install-grammars' builds by default."
   :type '(repeat symbol)
   :group 'kittymacs-treesit)
@@ -435,6 +470,7 @@ until the language server for a mode is deliberately installed on each machine."
   + Answer =y=: the mode line shows =python-ts-mode=, with highlighting.
   + Answer =n=: the file opens in =python-mode=, the echo area says so, and the next =.py= file opens in =python-mode= without asking.
 - Open a =.yaml= or =.go= file: the same question, and =yaml-ts-mode= or =go-ts-mode= once the grammar is built; Emacs has no classic mode for these, so =n= gives =fundamental-mode=.
+- Open a =.md= file: Emacs asks to build the =markdown= and =markdown-inline= grammars, and the file opens in =markdown-ts-mode= once both are built; =n= gives =text-mode=, or =markdown-mode= when that package is installed.
 - With =nix= in =kittymacs-language-packages=, a =.nix= file opens in =nix-ts-mode= once the pinned grammar is built, and in =nix-mode= until then.
 - =M-x kittymacs-treesit-install-grammars= builds every grammar in =kittymacs-treesit-languages= that does not load yet and returns the list it built; =C-u M-x kittymacs-treesit-install-grammars= chooses languages and rebuilds them.
 - =C-h v major-mode-remap-alist=: one remap per Tree-sitter mode, minus any left out this session.
@@ -445,7 +481,8 @@ until the language server for a mode is deliberately installed on each machine."
   + every Tree-sitter mode is enabled, and a missing grammar is offered;
   + the Nix recipe is pinned to a commit, and on Windows uses MSYS2's GCC without touching =PATH=;
   + a registered package mode is remapped, offers its grammar, and registers once however often it is called;
-  + a Tree-sitter mode without a parser hands the file to its classic mode, or to =fundamental-mode=, and is left out for the session, but not for an oversized file;
+  + =.md= files go to =markdown-ts-mode-maybe=, and =markdown-mode= is remapped to =markdown-ts-mode=;
+  + a Tree-sitter mode without a parser hands the file to its classic mode, or to =fundamental-mode= (=text-mode= for Markdown), and is left out for the session, but not for an oversized file;
   + the installer builds only what is missing unless told to rebuild, and explains when this Emacs cannot build grammars.
 - One test parses a real Nix file; it runs only when =NIX_GRAMMAR_TEST_DIR= names a directory holding the compiled Nix grammar, and is skipped otherwise.
 - =just test-packages= runs the verifier, which checks that =SPC l e= is =eglot=.

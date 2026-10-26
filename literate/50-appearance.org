@@ -295,7 +295,7 @@ Use t for a terminal configured with a Nerd Font, or nil to disable icons."
 
 (use-package hl-todo
   :ensure t
-  :hook ((prog-mode markdown-mode) . hl-todo-mode))
+  :hook ((prog-mode markdown-mode markdown-ts-mode) . hl-todo-mode))
 
 (use-package highlight-numbers
   :ensure t

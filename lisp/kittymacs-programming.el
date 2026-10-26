@@ -23,7 +23,7 @@
 
 (use-package puni
   :ensure t
-  :hook ((prog-mode tex-mode org-mode markdown-mode eval-expression-minibuffer-setup) . puni-mode)
+  :hook ((prog-mode tex-mode org-mode markdown-mode markdown-ts-mode eval-expression-minibuffer-setup) . puni-mode)
   :bind (:map puni-mode-map
          ("C-(" . puni-slurp-backward)
          ("C-)" . puni-slurp-forward)
@@ -40,7 +40,8 @@
   :commands (embrace-commander embrace-add embrace-change embrace-delete)
   :hook (org-mode . embrace-org-mode-hook)
   :config
-  (add-hook 'markdown-mode-hook #'kittymacs--embrace-markdown))
+  (add-hook 'markdown-mode-hook #'kittymacs--embrace-markdown)
+  (add-hook 'markdown-ts-mode-hook #'kittymacs--embrace-markdown))
 
 (use-package iedit
   :ensure t

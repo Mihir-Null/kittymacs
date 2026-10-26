@@ -166,6 +166,23 @@ and is left out for the rest of the session."
         (set-auto-mode-0 'kittymacs-treesit-test-ts-mode))
       (should (eq major-mode 'fundamental-mode)))))
 
+(ert-deftest kittymacs-treesit-markdown-files-open-in-markdown-ts-mode ()
+  "Markdown files reach `markdown-ts-mode', which Emacs 31.1 leaves unmapped."
+  (should (eq (assoc-default "README.md" auto-mode-alist #'string-match-p)
+              'markdown-ts-mode-maybe))
+  (should (fboundp 'markdown-ts-mode-maybe))
+  (should (eq (alist-get 'markdown-mode treesit-major-mode-remap-alist)
+              'markdown-ts-mode))
+  (should (eq (alist-get 'markdown-mode major-mode-remap-alist)
+              'markdown-ts-mode)))
+
+(ert-deftest kittymacs-treesit-missing-markdown-grammar-gives-text-mode ()
+  "Markdown with no grammar and no `markdown-mode' falls back to `text-mode'."
+  (let ((treesit-major-mode-remap-alist
+         '((kittymacs-treesit-test-absent-mode . markdown-ts-mode))))
+    (should (eq (kittymacs-treesit--classic-mode 'markdown-ts-mode)
+                'text-mode))))
+
 (define-derived-mode kittymacs-treesit-test-failing-ts-mode prog-mode "TS!"
   (error "Tree-sitter for TEST isn't available"))
 

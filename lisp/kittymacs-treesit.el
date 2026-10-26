@@ -69,10 +69,27 @@ says."
   (advice-add treesit-mode :before
               (lambda (&rest _) (treesit-ensure-installed language))
               '((name . kittymacs-treesit-ensure-grammar))))
+(autoload 'markdown-ts-mode "markdown-ts-mode" "Major mode for Markdown." t)
+(autoload 'markdown-ts-mode-maybe "markdown-ts-mode")
+(add-to-list 'auto-mode-alist
+             '("\\.\\(?:md\\|markdown\\|mkd\\|mdown\\|mkdn\\|mdwn\\)\\'"
+               . markdown-ts-mode-maybe))
+(add-to-list 'treesit-major-mode-remap-alist
+             '(markdown-mode . markdown-ts-mode))
+(when (or (eq treesit-enabled-modes t)
+          (memq 'markdown-ts-mode treesit-enabled-modes))
+  (add-to-list 'major-mode-remap-alist '(markdown-mode . markdown-ts-mode)))
+(defconst kittymacs-treesit--uninstalled-classic-modes
+  '((markdown-ts-mode . text-mode))
+  "Modes to use for a Tree-sitter mode whose classic mode is not installed.
+A mode not listed gets `fundamental-mode'.")
 (defun kittymacs-treesit--classic-mode (treesit-mode)
   "Return the mode to use instead of TREESIT-MODE while its grammar is missing."
   (let ((classic (car (rassq treesit-mode treesit-major-mode-remap-alist))))
-    (if (and classic (fboundp classic)) classic #'fundamental-mode)))
+    (if (and classic (fboundp classic))
+        classic
+      (alist-get treesit-mode kittymacs-treesit--uninstalled-classic-modes
+                 #'fundamental-mode))))
 (defun kittymacs-treesit--disable (treesit-mode)
   "Leave TREESIT-MODE out of `treesit-enabled-modes' for this session."
   (customize-set-variable
@@ -112,8 +129,8 @@ the mode that replaced the Tree-sitter one."
      (failure (signal (car failure) (cdr failure)))
      (t applied))))
 (defcustom kittymacs-treesit-languages
-  '(bash cmake css dockerfile go gomod html javascript jsdoc json nix python
-         rust toml tsx typescript yaml)
+  '(bash cmake css dockerfile go gomod html javascript jsdoc json markdown
+         markdown-inline nix python rust toml tsx typescript yaml)
   "Grammars that `kittymacs-treesit-install-grammars' builds by default."
   :type '(repeat symbol)
   :group 'kittymacs-treesit)
