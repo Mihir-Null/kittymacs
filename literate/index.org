@@ -70,19 +70,19 @@
 
 * Where things are
 
-| Path                      | Holds                                                                 |
-|---------------------------+-----------------------------------------------------------------------|
-| =literate/=               | these chapters: the source of everything generated                    |
-| =early-init.el=, =init.el= | generated from [[id:40302e33-d2b2-4c0b-9bc3-1f9e121307e1][startup]]; the only files Emacs reads on its own        |
-| =lisp/kittymacs-*.el=     | generated, one module per chapter                                     |
-| =lisp/keybindings.org=    | the cheat sheet; the startup verifier checks it against the live keys |
-| =lisp/themes/=            | the Sonokai port                                                      |
-| =lisp/private.el=         | your machine's settings; ignored by Git ([[id:9ea539a0-f1a3-4d05-aa10-6f2d2ff3e335][maintenance]])                  |
-| =flake.nix=, =nix/=       | generated from [[id:d25a5063-1439-4ae0-8fbe-b0162d05a0e0][the Nix chapter]]                                    |
-| =tools/tangle.el=         | the builder                                                           |
-| =justfile=                | the recipes that run everything                                       |
-| =tests/=                  | the test suites and the startup verifier                              |
-| =var/=                    | packages, caches, =custom.el=; ignored by Git                         |
+| Path                   | Holds                                                                 |
+|------------------------+-----------------------------------------------------------------------|
+| =literate/=              | these chapters: the source of everything generated                    |
+| =early-init.el=, =init.el= | generated from [[id:40302e33-d2b2-4c0b-9bc3-1f9e121307e1][startup]]; the only files Emacs reads on its own         |
+| =lisp/kittymacs-*.el=    | generated, one module per chapter                                     |
+| =lisp/keybindings.org=   | the cheat sheet; the startup verifier checks it against the live keys |
+| =lisp/themes/=           | the Sonokai port                                                      |
+| =lisp/private.el=        | your machine's settings; ignored by Git ([[id:9ea539a0-f1a3-4d05-aa10-6f2d2ff3e335][maintenance]])                 |
+| =flake.nix=, =nix/=        | generated from [[id:d25a5063-1439-4ae0-8fbe-b0162d05a0e0][the Nix chapter]]                                        |
+| =tools/tangle.el=        | the builder                                                           |
+| =justfile=               | the recipes that run everything                                       |
+| =tests/=                 | the test suites and the startup verifier                              |
+| =var/=                   | packages, caches, =custom.el=; ignored by Git                           |
 
 * Vocabulary
 
