@@ -283,6 +283,7 @@
   "a" (cons "suggestions (Copilot)" #'kittymacs-suggestions-toggle)
   "o" (cons "outline sidebar" #'imenu-list-smart-toggle)
   "g" (cons "git gutter" #'diff-hl-mode)
+  "G" (cons "tree guides" #'tree-guide-mode)
   "D" (cons "dim other windows" #'dimmer-mode)
   "k" (cons "show keys (keycast)" #'keycast-header-line-mode)
   "K" (cons "log keys" #'keycast-log-mode)
