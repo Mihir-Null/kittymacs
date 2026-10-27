@@ -32,6 +32,7 @@
 
 ;;; Code:
 
+(require 'seq)
 (require 'kittymacs-defaults)
 (require 'kittymacs-leader)
 
@@ -116,6 +117,60 @@ The package cannot derive its faces without a display."
   (aggressive-indent-comments-too nil)
   :config
   (add-to-list 'aggressive-indent-protected-commands 'comment-dwim))
+
+#+end_src
+
+** Tree guides in Lisp
+:PROPERTIES:
+:ID: 94a96273-c127-433b-811e-8395bbe912e1
+:END:
+
+- In Lisp buffers, =tree-guide-mode= replaces the indentation with lines that join each form to its parent, =├─= for a child and =╰─= for the last one, so nesting reads at a glance.
+  + On in every =lisp-data-mode= buffer (Emacs Lisp, =*scratch*=, Common Lisp, data files) and in =scheme-mode=, which is not one; =SPC t G= toggles it in the current buffer.
+  + The guides take the face =shadow=, so they follow the theme.
+- One kind of guide at a time: while tree guides are on, the indent guides above are off, and they come back when tree guides are turned off.
+- It hides each line's indentation and draws the guides in its place, so:
+  + long lines are cut at the window edge rather than wrapped, as its author advises; it restores the wrapping when turned off;
+  + it advises Lisp's indentation functions to see the hidden whitespace, which is what keeps =aggressive-indent= correct.
+- That advice is global, and turning the mode off in one buffer removes it while other buffers still hide their indentation: they would then indent every line too deep.
+  + So turning it off puts the advice back from any buffer still using it.
+- It is not on MELPA and carries no licence, so it is installed from its author's repository, pinned to a commit, as pdf-text is ([[id:78b654e1-a93e-4e31-b0d8-f266215b5b12][the reading chapter]]); a failed clone is a warning, not a stopped startup.
+  + The repository's code is fetched at install time, never copied into this one.
+  + Upstream has tested it with Emacs Lisp only, and warns that the guides may flicker while they update.
+
+#+begin_src emacs-lisp
+(defvar tree-guide-mode)
+(declare-function tree-guide--indent-advice-init "tree-guide")
+
+(defun kittymacs--tree-guide-swap ()
+  "Show one kind of guide: tree guides replace indent guides while on.
+Turning tree guides off here also removes tree-guide's global
+indentation advice, which buffers still hiding their indentation need,
+so put it back from one of them."
+  (if tree-guide-mode
+      (when (bound-and-true-p highlight-indent-guides-mode)
+        (highlight-indent-guides-mode -1))
+    (when (derived-mode-p 'prog-mode)
+      (kittymacs--indent-guides))
+    (when-let* ((other (seq-find (lambda (buffer)
+                                   (buffer-local-value 'tree-guide-mode buffer))
+                                 (buffer-list))))
+      (with-current-buffer other
+        (tree-guide--indent-advice-init)))))
+
+(condition-case err
+    (use-package tree-guide
+      :vc (:url "https://github.com/benvvalk/tree-guide.el"
+           :rev "5b58cef81fa639e842cd76ce72886a07fd652ae8")
+      :hook ((lisp-data-mode scheme-mode) . tree-guide-mode)
+      :init
+      (add-hook 'tree-guide-mode-hook #'kittymacs--tree-guide-swap))
+  (error
+   (display-warning 'kittymacs
+                    (format "tree-guide was not installed: %s
+Check that `git clone https://github.com/benvvalk/tree-guide.el' works from a terminal, and which git Emacs runs: %s"
+                            (error-message-string err) (executable-find "git"))
+                    :warning)))
 
 #+end_src
 
@@ -267,11 +322,12 @@ The package cannot derive its faces without a display."
 * Check
 
 - In a Lisp buffer, put point after a form and press =SPC m e=: the echo area shows its value.
+- In an Emacs Lisp file, nested forms hang from =├─= and =╰─= guides instead of indentation; =SPC t G= turns them off and the indent guides come back.
 - Type =(= inside code: the =)= appears.
 - Select an expression with =o= and press =d=: it is gone, and the parens around it stay balanced.
 - Break something on purpose: the fringe marks it; =SPC m E= lists it.
 - =SPC m= in a Python or shell buffer: =compile=, the error list and =format=, with no evaluation keys.
-- =just test-packages= runs the verifier, which starts the real configuration and fails if this module does not load or a startup warning appears.
+- =just test-packages= runs the verifier, which starts the real configuration and fails if this module does not load, a startup warning appears, or an Emacs Lisp buffer opens without tree guides.
 
 #+begin_src sh :tangle no
 just test-packages
