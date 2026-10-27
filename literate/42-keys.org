@@ -332,7 +332,7 @@
 | =SPC n= | notes  | (=f= find node)      | =i= insert ID link, =c= new note, =b= backlinks, =s= rescan     |
 | =SPC a= | agent  | =a= start or switch  | =n= new shell, =t= toggle, =s= send region or file, =j= the shell waiting for you, =c= a suggestion here |
 | =SPC o= | open   | (=e= terminal)       | =p= project terminal, =t= file tree, =s= eshell, =a= agenda dashboard, =h= home |
-| =SPC t= | toggle | =t= light/dark theme | =n= line numbers, =w= writeroom, =s= spelling, =f= frames-only mode, =d= file tree, =a= suggestions |
+| =SPC t= | toggle | =t= light/dark theme | =n= line numbers, =w= writeroom, =P= prose font, =s= spelling, =f= frames-only mode, =d= file tree, =a= suggestions |
 | =SPC C= | config | (=c= reading guide)  | =f= find chapter, =t= tangle, =k= check tangle, =p= =private.el=, =r= restart |
 | =SPC q= | quit   | =q= save and quit    | =Q= without saving, =r= restart, =f= close frame               |
 | =SPC u= | user   | (empty)              | yours                                                          |
@@ -393,6 +393,7 @@
   "h" (cons "highlight line" #'hl-line-mode)
   "H" (cons "hide mode line" #'hide-mode-line-mode)
   "w" (cons "writeroom" #'writeroom-mode)
+  "P" (cons "prose font" #'kittymacs-org-prose-mode)
   "v" (cons "visual lines" #'visual-line-mode)
   "l" (cons "truncate lines" #'toggle-truncate-lines)
   "s" (cons "spell check" #'flyspell-mode)

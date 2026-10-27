@@ -80,6 +80,7 @@ The whole configuration is a literate wiki (thank you, Donald Knuth). Every chap
 | `copilot-language-server` (the Nix modules' `programs.kittymacs.suggestions.enable`; unfree), a GitHub Copilot plan and `M-x copilot-login` | suggestions (`SPC t a`) | suggestions stay off and say what is missing; `M-x copilot-install-server` installs the server with `npm` |
 | [Symbols Nerd Font Mono](https://www.nerdfonts.com/) | icons | icons are hidden |
 | Google Sans Code | the preferred editing font | the platform's default font |
+| Google Sans Flex | prose in Org | the platform's sans |
 | A C compiler | Tree-sitter grammars | classic major modes are used |
 | Language servers (pyright, nil, clangd, …) | Eglot | no language server features |
 
@@ -182,7 +183,7 @@ There are two ways, and they are alternatives rather than layers:
 
 ### Nix
 
-The flake installs everything the configuration uses (Emacs with the Lisp packages it declares, the tools and the icon font), pinned by the flake's lock, so starting Emacs needs no network; the configuration itself stays a writable clone, with its state in `var/`. Set `programs.kittymacs.packagesFromNix = false` to have the configuration install its packages from the archives instead.
+The flake installs everything the configuration uses (Emacs with the Lisp packages it declares, the tools and the editing, prose and icon fonts), pinned by the flake's lock, so starting Emacs needs no network; the configuration itself stays a writable clone, with its state in `var/`. Set `programs.kittymacs.packagesFromNix = false` to have the configuration install its packages from the archives instead.
 
 ```nix
 {
@@ -241,7 +242,8 @@ In Normal state, Meow selects first and acts second: `w` selects a word, `x` a l
 | Option | Sets |
 |---|---|
 | `kittymacs-theme`, `kittymacs-light-theme` | the dark theme, and the one `SPC t t` toggles to |
-| `kittymacs-font-family`, `kittymacs-font-size`, `kittymacs-nerd-font`, `kittymacs-icons` | fonts and icons |
+| `kittymacs-font-family`, `kittymacs-font-size`, `kittymacs-prose-font-family`, `kittymacs-nerd-font`, `kittymacs-icons` | fonts and icons |
+| `kittymacs-org-prose` | whether Org sets prose in the proportional font (`SPC t P` per buffer) |
 | `kittymacs-org-directory`, `kittymacs-org-node-directory`, `kittymacs-project-directory` | where notes and projects live |
 | `kittymacs-eglot-auto-start-modes`, `kittymacs-language-packages` | language servers started automatically; extra language packages (`nix`, `racket`, `guile`) |
 | `kittymacs-frames-only` | whether new surfaces become OS windows |

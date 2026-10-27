@@ -20,6 +20,10 @@
   "Default editing font size, in points."
   :type 'natnum)
 
+(defcustom kittymacs-prose-font-family "Google Sans Flex"
+  "Proportional font for prose; the platform's sans is used if it is absent."
+  :type 'string)
+
 (defcustom kittymacs-nerd-font "Symbols Nerd Font Mono"
   "Font family used for Nerd Font icons."
   :type 'string)
@@ -49,6 +53,12 @@ Use t for a terminal configured with a Nerd Font, or nil to disable icons."
                   (list kittymacs-font-family "GoogleSansCode NF")
                 (list kittymacs-font-family)))))
 
+(defun kittymacs-resolve-prose-font-family ()
+  "Return `kittymacs-prose-font-family' if it is installed, or nil."
+  (when (and (display-graphic-p)
+             (find-font (font-spec :family kittymacs-prose-font-family)))
+    kittymacs-prose-font-family))
+
 (defun kittymacs-icons-available-p ()
   "Return non-nil when Nerd Font icons should be rendered."
   (pcase kittymacs-icons
@@ -65,11 +75,14 @@ Use t for a terminal configured with a Nerd Font, or nil to disable icons."
       (nerd-icons-set-font kittymacs-nerd-font (selected-frame)))))
 
 (defun kittymacs--apply-font (&optional frame)
-  "Apply the editing, symbol and icon fonts to FRAME."
+  "Apply the editing, prose, symbol and icon fonts to FRAME."
   (with-selected-frame (or frame (selected-frame))
     (when (display-graphic-p)
       (when-let* ((family (kittymacs-resolve-font-family)))
-        (set-face-attribute 'default (selected-frame) :family family))
+        (set-face-attribute 'default (selected-frame) :family family)
+        (set-face-attribute 'fixed-pitch (selected-frame) :family family))
+      (when-let* ((prose (kittymacs-resolve-prose-font-family)))
+        (set-face-attribute 'variable-pitch (selected-frame) :family prose))
       (set-face-attribute 'default (selected-frame) :height (* 10 kittymacs-font-size))
       (when-let* ((symbols (seq-find (lambda (family) (find-font (font-spec :family family)))
                                      '("Segoe UI Symbol" "Symbola" "Apple Symbols" "Symbol"))))

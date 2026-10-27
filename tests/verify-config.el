@@ -214,6 +214,13 @@ Group maps are walked too.  Autoloaded commands count as commands."
               (kittymacs-verify-check (string-match-p "Another decision" (buffer-string))
                                "SPC m g did not run the Org QL query again")))
         (error (kittymacs-verify-check nil (format "SPC s Q failed: %S" err))))
+      (with-temp-buffer
+        (org-mode)
+        (kittymacs-verify-check (and kittymacs-org-prose-mode buffer-face-mode
+                                     (assq 'org-block face-remapping-alist))
+                                "Org buffers do not set prose in variable-pitch")
+        (kittymacs-verify-check (bound-and-true-p org-modern-indent-mode)
+                                "org-modern-indent is not on in Org buffers"))
       (kittymacs-verify-check (equal custom-enabled-themes '(doom-sonokai)) "Theme changed")
       ;; Exercise the real loader in both directions: themes must not stack.
       (kittymacs-toggle-theme)

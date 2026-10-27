@@ -28,7 +28,7 @@
           home-manager.darwinModules.home-manager
           {
             programs.kittymacs = {
-              # Emacs, ripgrep, fd, git, gnupg, hunspell, gls, trash, the icon font.
+              # Emacs, ripgrep, fd, git, gnupg, hunspell, gls, trash, the fonts.
               enable = true;
               daemon = false;
               # Copilot's server, for the suggestions chapter.  It is unfree,
