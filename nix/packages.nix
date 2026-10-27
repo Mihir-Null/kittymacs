@@ -4,7 +4,14 @@
 { emacs }:
 
 emacs.pkgs.withPackages (
-  epkgs: with epkgs; [
+  epkgs:
+  let
+    # MELPA builds ws-butler from a clone of Savannah's whole NonGNU ELPA
+    # repository; NonGNU ELPA's own release is one small tarball.
+    inherit (epkgs.nongnuPackages) ws-butler;
+  in
+  with epkgs;
+  [
     ace-window
     agent-shell
     aggressive-indent

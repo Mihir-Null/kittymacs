@@ -44,6 +44,7 @@
 | =frames-test=     | a display          | the frame-policy tests, in a graphical Emacs                                 |
 | =lint=            | Nix tools          | =deadnix=, =statix= and =nixfmt= over the generated Nix                      |
 | =eval=            | Nix                | evaluate the flake, on unstable and on stable, and both example hosts        |
+| =sources=         | Nix                | fail if an Emacs package's source clones a whole ELPA repository (in =eval=) |
 | =nix-check=       | Nix                | =lint= and =eval=                                                            |
 | =all=             | Nix, network       | everything CI runs on Linux, in order                                        |
 | =update=          | Nix, network       | =update-flake=, =update-packages=, =update-grammars=                         |

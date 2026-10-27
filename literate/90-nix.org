@@ -21,7 +21,7 @@
 | =darwinModules.default=      | nix-darwin: =programs.kittymacs.enable= installs Emacs, the tools and the fonts system-wide         |
 | =homeManagerModules.default= | Home Manager: clones a checkout, links it to =~/.config/emacs=; can install the tools and run a daemon |
 | =packages.<system>.default=  | the bare Emacs (=pkgs.emacs=)                                                                      |
-| =packages.<system>.with-packages= | that Emacs with [[id:3c7f2a90-8e15-4b6d-a2c4-5d9e0f1b7a68][the Emacs packages]] built in: what the modules install by default |
+| =packages.<system>.with-packages= | that Emacs with [[id:3c7f2a90-8e15-4b6d-a2c4-5d9e0f1b7a68][the Emacs packages]] built in: what the modules install with =packagesFromNix= |
 | =packages.<system>.tools=    | one environment with every tool, for =nix profile install=                                         |
 | =devShells.<system>.default= | Emacs, the tools, =just= and the Nix linters, for the recipes                                      |
 
@@ -225,7 +225,7 @@
 :header-args:nix: :tangle ../nix/packages.nix :eval never :comments no :padline no :mkdirp yes
 :END:
 
-- Every package a chapter declares with =:ensure t=, built by Nix into the Emacs the modules install, unless =packagesFromNix= is off.
+- Every package a chapter declares with =:ensure t=, built by Nix into the Emacs the modules install when =packagesFromNix= is on; it is off by default.
 - Why Nix installs them, when the configuration could install them itself:
   + the flake's lock pins them, so a machine starts with the versions the lock names rather than whatever MELPA built last night;
   + they are in the store before Emacs starts, so startup needs no network and cannot fail on an archive that is down or out of date;
@@ -233,9 +233,15 @@
 - Nothing in the configuration changes: =use-package … :ensure t= asks =package-installed-p=, which sees the packages nixpkgs' wrapper puts on =package-directory-list=, and installs nothing.
   + A package nixpkgs lacks still comes from the archives into =var/elpa=, as on a machine without Nix.
   + So the clone stays the configuration and stays writable; Nix only supplies what it loads.
-- The Emacs is built from =emacs.pkgs=, the package set of the Emacs's own nixpkgs, not the host's =emacsPackagesFor=:
-  + nixpkgs' build farm compiles that set against that very Emacs, so a switch downloads the native-compiled packages instead of compiling ninety of them;
-  + a host whose Emacs comes from a second nixpkgs (unstable on a stable system, say) still gets matching packages.
+- Why it is off by default: no binary cache carries these packages.
+  + Hydra does not build nixpkgs' Emacs package sets, so the first switch after each =nix flake update= fetches every package's source and compiles all ninety of them on the machine.
+  + Any one source host being down then stops the whole switch, where the archives would have failed one package at startup.
+  + Turn it on for a machine that should start without network, and accept the build.
+- The Emacs is built from =emacs.pkgs=, the package set of the Emacs's own nixpkgs, not the host's =emacsPackagesFor=, so a host whose Emacs comes from a second nixpkgs (unstable on a stable system, say) still gets packages built against it.
+- No source may be a clone of a whole ELPA repository from Savannah.
+  + MELPA builds a package that moved to GNU or NonGNU ELPA from that ELPA's Git repository, which holds every package's history; nixpkgs fetches it whole, slowly, from a host that is often unreachable.
+  + Such a package is taken from =elpaPackages= or =nongnuPackages= instead, ELPA's own release tarball: today only =ws-butler=, bound in the =let= below, which wins over =with epkgs=.
+  + =just eval= fails if any derivation behind the package build, a dependency's included, fetches from =savannah.gnu.org/git/elpa=, on unstable and on stable nixpkgs.
 - Two are left to the archives on purpose, and =tests/kittymacs-startup-tests.el= keeps this list and the chapters' declarations in step, with these two as the only exceptions:
   + =copilot= :: nixpkgs marks it unfree with its server, and an unfree package here would make every user of the flake allow it ([[id:9e0c1f52-7a43-4d0e-b1a8-63c2f5d48e17][the server's opt-in]] has the same reasoning);
   + =consult-ghostel= :: not in nixpkgs.
@@ -249,7 +255,14 @@
 { emacs }:
 
 emacs.pkgs.withPackages (
-  epkgs: with epkgs; [
+  epkgs:
+  let
+    # MELPA builds ws-butler from a clone of Savannah's whole NonGNU ELPA
+    # repository; NonGNU ELPA's own release is one small tarball.
+    inherit (epkgs.nongnuPackages) ws-butler;
+  in
+  with epkgs;
+  [
     ace-window
     agent-shell
     aggressive-indent
@@ -381,7 +394,7 @@ git clone https://github.com/Mihir-Null/kittymacs.git ~/.config/emacs
 - Emacs reads =~/.config/emacs= only when =~/.emacs.d= does not exist, empty or not: move an old =~/.emacs.d= aside first.
 - Options under =programs.kittymacs=:
   + =package= :: the Emacs to install; default =pkgs.emacs=, the Cocoa build; =pkgs.emacs-macport= is the Mitsuharu port. kittymacs needs 31.1 or later.
-  + =packagesFromNix= :: on by default: =package= is installed with [[id:3c7f2a90-8e15-4b6d-a2c4-5d9e0f1b7a68][the Emacs packages]] built in; off, the configuration installs them all from the archives.
+  + =packagesFromNix= :: off by default: the configuration installs its packages from the archives; on, =package= is installed with the Emacs packages built in, compiled on the machine ([[id:3c7f2a90-8e15-4b6d-a2c4-5d9e0f1b7a68][why it is off]]).
   + =daemon= :: start the Emacs server at login through launchd, so =emacsclient= opens files as frames of one Emacs. Off by default: the configuration starts a server itself whenever it has a display. The Home Manager module has the same option; turn on one, not both.
   + =suggestions.enable=, =suggestions.package= :: install Copilot's language server; see [[id:9e0c1f52-7a43-4d0e-b1a8-63c2f5d48e17][the opt-in]].
 
@@ -419,12 +432,14 @@ in
 
     packagesFromNix = lib.mkOption {
       type = lib.types.bool;
-      default = true;
+      default = false;
       description = ''
         Build the Emacs packages the configuration declares into `package`
         with Nix, pinned by the flake's lock, so startup installs nothing
         from the network.  The few nixpkgs lacks still install into the
-        checkout's `var/elpa`.  Off, every package comes from the archives.
+        checkout's `var/elpa`.  No binary cache carries them, so each
+        flake update compiles them all on the machine.  Off, every package
+        comes from the archives.
       '';
     };
 
@@ -572,7 +587,7 @@ in
 - =installPackages= :: Emacs and the tools into the user profile. Turn it off when the nix-darwin module already installs them system-wide.
 - =installFonts= :: follows =installPackages=; turn it off alone for a terminal Emacs, which has no use for the editing, prose and icon fonts. The configuration notices the missing fonts: it renders without icons and falls back to the platform's fonts.
 - =package= :: the Emacs to install and, with =daemon=, to run; default =pkgs.emacs=.
-- =packagesFromNix= :: on by default: what is installed and run is =package= with [[id:3c7f2a90-8e15-4b6d-a2c4-5d9e0f1b7a68][the Emacs packages]] built in, so the configuration installs almost nothing itself; off, it installs them all from the archives into =var/elpa=.
+- =packagesFromNix= :: off by default: the configuration installs its packages from the archives into =var/elpa=; on, what is installed and run is =package= with the Emacs packages built in, compiled on the machine, so startup installs almost nothing ([[id:3c7f2a90-8e15-4b6d-a2c4-5d9e0f1b7a68][why it is off]]).
 - =daemon= :: run Emacs as a server for this user through Home Manager's =services.emacs=:
   + a systemd user service on Linux, a launchd agent on macOS, and an "Emacs Client" desktop entry on Linux;
   + where no systemd user session runs (nix-on-droid, WSL without systemd) the service is written but nothing starts it;
@@ -612,12 +627,14 @@ in
 
     packagesFromNix = lib.mkOption {
       type = lib.types.bool;
-      default = true;
+      default = false;
       description = ''
         Build the Emacs packages the configuration declares into `package`
         with Nix, pinned by the flake's lock, so startup installs nothing
         from the network.  The few nixpkgs lacks still install into the
-        checkout's `var/elpa`.  Off, every package comes from the archives.
+        checkout's `var/elpa`.  No binary cache carries them, so each
+        flake update compiles them all on the machine.  Off, every package
+        comes from the archives.
       '';
     };
 

@@ -95,12 +95,14 @@ in
 
     packagesFromNix = lib.mkOption {
       type = lib.types.bool;
-      default = true;
+      default = false;
       description = ''
         Build the Emacs packages the configuration declares into `package`
         with Nix, pinned by the flake's lock, so startup installs nothing
         from the network.  The few nixpkgs lacks still install into the
-        checkout's `var/elpa`.  Off, every package comes from the archives.
+        checkout's `var/elpa`.  No binary cache carries them, so each
+        flake update compiles them all on the machine.  Off, every package
+        comes from the archives.
       '';
     };
 

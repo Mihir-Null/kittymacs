@@ -95,12 +95,22 @@ eval:
     nix flake check --no-build --all-systems
     nix flake check --no-build --all-systems --no-write-lock-file \
       --override-input nixpkgs github:NixOS/nixpkgs/{{stable}}
+    {{just_executable()}} sources
+    {{just_executable()}} sources --override-input nixpkgs github:NixOS/nixpkgs/{{stable}}
     nix eval --no-write-lock-file --override-input kittymacs "path:$PWD" \
       --json ./nix/example#darwinConfigurations.example.config.environment.systemPackages \
       --apply 'ps: map (p: p.name) ps'
     nix eval --no-write-lock-file --override-input kittymacs "path:$PWD" \
       --json ./nix/example-nix-on-droid#nixOnDroidConfigurations.default.config.home-manager.config.home.packages \
       --apply 'ps: map (p: p.name) ps'
+
+# Fail if any derivation behind the Emacs package build, a dependency's
+# included, clones a whole ELPA repository from Savannah; the matches print.
+# Why: "The Emacs packages" in literate/90-nix.org. Nothing is built; FLAGS
+# can point nixpkgs elsewhere.
+sources *FLAGS:
+    nix derivation show -r --no-write-lock-file {{FLAGS}} .#packages.x86_64-linux.with-packages > "${TMPDIR:-/tmp}/kittymacs-derivations.json"
+    ! grep -o 'savannah[.]gnu[.]org/git/elpa[^"]*' "${TMPDIR:-/tmp}/kittymacs-derivations.json"
 
 # Everything that needs Nix.
 nix-check: lint eval
