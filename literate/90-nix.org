@@ -8,8 +8,8 @@
 #+PROPERTY: header-args:nix :eval never :comments no :padline no :mkdirp yes
 
 - The repository is a flake, but it does not put the configuration in the Nix store.
-  + The configuration installs its Emacs packages under =var/= and keeps =private.el= beside its modules; both must stay writable.
-- What the flake provides is everything /around/ the configuration: Emacs, every program the chapters look for, and the icon font.
+  + The configuration keeps its state under =var/= and =private.el= beside its modules; both must stay writable.
+- What the flake provides is everything the configuration /uses/: Emacs with [[*The Emacs packages][the packages the chapters declare]], every program the chapters look for, and the icon font.
   + A fresh Mac needs one =darwin-rebuild switch= and one =git clone=; with the Home Manager module, not even the clone.
 - The Nix layer is a convenience: Homebrew, a package manager or a manual install work as well, and every chapter degrades quietly when a program is missing.
 - Each top heading writes one file; =just lint= and =just eval= check them ([[id:9ea539a0-f1a3-4d05-aa10-6f2d2ff3e335][the loop]]).
@@ -20,7 +20,8 @@
 |------------------------------+----------------------------------------------------------------------------------------------------|
 | =darwinModules.default=      | nix-darwin: =programs.kittymacs.enable= installs Emacs, the tools and the font system-wide          |
 | =homeManagerModules.default= | Home Manager: clones a checkout, links it to =~/.config/emacs=; can install the tools and run a daemon |
-| =packages.<system>.default=  | the Emacs the modules install (=pkgs.emacs=)                                                       |
+| =packages.<system>.default=  | the bare Emacs (=pkgs.emacs=)                                                                      |
+| =packages.<system>.with-packages= | that Emacs with [[id:3c7f2a90-8e15-4b6d-a2c4-5d9e0f1b7a68][the Emacs packages]] built in: what the modules install by default |
 | =packages.<system>.tools=    | one environment with every tool, for =nix profile install=                                         |
 | =devShells.<system>.default= | Emacs, the tools, =just= and the Nix linters, for the recipes                                      |
 
@@ -82,6 +83,7 @@
             paths = tools.programs ++ tools.fonts;
           };
           default = tools.emacs;
+          with-packages = import ./nix/packages.nix { inherit (tools) emacs; };
         }
       );
 
@@ -195,6 +197,135 @@
 }
 #+end_src
 
+* The Emacs packages :decision:
+:PROPERTIES:
+:ID: 3c7f2a90-8e15-4b6d-a2c4-5d9e0f1b7a68
+:header-args:nix: :tangle ../nix/packages.nix :eval never :comments no :padline no :mkdirp yes
+:END:
+
+- Every package a chapter declares with =:ensure t=, built by Nix into the Emacs the modules install, unless =packagesFromNix= is off.
+- Why Nix installs them, when the configuration could install them itself:
+  + the flake's lock pins them, so a machine starts with the versions the lock names rather than whatever MELPA built last night;
+  + they are in the store before Emacs starts, so startup needs no network and cannot fail on an archive that is down or out of date;
+  + an index of MELPA a few weeks old names tarballs MELPA has since deleted ([[id:8d3b6e0f-5a41-4c2e-9f7a-2b6c1e4d9a53][the startup chapter]] tells the story); a package Nix installed is never fetched from one.
+- Nothing in the configuration changes: =use-package … :ensure t= asks =package-installed-p=, which sees the packages nixpkgs' wrapper puts on =package-directory-list=, and installs nothing.
+  + A package nixpkgs lacks still comes from the archives into =var/elpa=, as on a machine without Nix.
+  + So the clone stays the configuration and stays writable; Nix only supplies what it loads.
+- The Emacs is built from =emacs.pkgs=, the package set of the Emacs's own nixpkgs, not the host's =emacsPackagesFor=:
+  + nixpkgs' build farm compiles that set against that very Emacs, so a switch downloads the native-compiled packages instead of compiling ninety of them;
+  + a host whose Emacs comes from a second nixpkgs (unstable on a stable system, say) still gets matching packages.
+- Two are left to the archives on purpose, and =tests/kittymacs-startup-tests.el= keeps this list and the chapters' declarations in step, with these two as the only exceptions:
+  + =copilot= :: nixpkgs marks it unfree with its server, and an unfree package here would make every user of the flake allow it ([[id:9e0c1f52-7a43-4d0e-b1a8-63c2f5d48e17][the server's opt-in]] has the same reasoning);
+  + =consult-ghostel= :: not in nixpkgs.
+- Upgrading: =nix flake update= (=just update-flake=) moves these with nixpkgs; =package-upgrade-all= leaves them alone, since they are not in =var/elpa=.
+- A package added to a chapter goes in this list too; the test fails until it does.
+
+#+begin_src nix
+# Generated from literate/90-nix.org; edit the Org source, then tangle.
+# EMACS with every package the chapters declare with `:ensure t`, except
+# copilot (unfree) and consult-ghostel (not in nixpkgs).
+{ emacs }:
+
+emacs.pkgs.withPackages (
+  epkgs: with epkgs; [
+    ace-window
+    agent-shell
+    aggressive-indent
+    async
+    avy
+    cape
+    casual
+    code-cells
+    consult
+    consult-dir
+    consult-flyspell
+    corfu
+    dashboard
+    deadgrep
+    diff-hl
+    dimmer
+    diredfl
+    dired-narrow
+    dired-ranger
+    doom-modeline
+    doom-themes
+    elisp-def
+    elisp-demos
+    embark
+    embark-consult
+    embrace
+    envrc
+    eshell-syntax-highlighting
+    eshell-up
+    esh-help
+    exec-path-from-shell
+    flymake-collection
+    flyspell-correct
+    frames-only-mode
+    geiser
+    geiser-guile
+    ghostel
+    goggles
+    goto-last-change
+    helpful
+    hide-mode-line
+    highlight-indent-guides
+    highlight-numbers
+    hl-todo
+    iedit
+    imenu-list
+    info-colors
+    jupyter
+    keycast
+    magit
+    marginalia
+    math-preview
+    meow
+    meow-tree-sitter
+    nerd-icons
+    nerd-icons-completion
+    nerd-icons-corfu
+    nerd-icons-dired
+    nix-mode
+    nix-ts-mode
+    orderless
+    org-appear
+    org-contrib
+    org-modern
+    org-node
+    org-noter
+    org-noter-pdftools
+    org-pdftools
+    org-ql
+    org-super-agenda
+    outline-minor-faces
+    package-lint
+    pcmpl-args
+    pcomplete-extension
+    pdf-tools
+    popper
+    puni
+    racket-mode
+    rainbow-delimiters
+    rainbow-identifiers
+    rainbow-mode
+    spacious-padding
+    tabspaces
+    treemacs
+    treemacs-magit
+    treemacs-nerd-icons
+    treemacs-tab-bar
+    vertico
+    visual-regexp
+    visual-regexp-steroids
+    vundo
+    writeroom-mode
+    ws-butler
+    yasnippet
+  ]
+)
+#+end_src
+
 * nix-darwin :macos:
 :PROPERTIES:
 :ID: fff6b1f2-3651-474b-8ecf-dcad207ead9d
@@ -228,6 +359,7 @@ git clone https://github.com/Mihir-Null/kittymacs.git ~/.config/emacs
 - Emacs reads =~/.config/emacs= only when =~/.emacs.d= does not exist, empty or not: move an old =~/.emacs.d= aside first.
 - Options under =programs.kittymacs=:
   + =package= :: the Emacs to install; default =pkgs.emacs=, the Cocoa build; =pkgs.emacs-macport= is the Mitsuharu port. kittymacs needs 31.1 or later.
+  + =packagesFromNix= :: on by default: =package= is installed with [[id:3c7f2a90-8e15-4b6d-a2c4-5d9e0f1b7a68][the Emacs packages]] built in; off, the configuration installs them all from the archives.
   + =daemon= :: start the Emacs server at login through launchd, so =emacsclient= opens files as frames of one Emacs. Off by default: the configuration starts a server itself whenever it has a display. The Home Manager module has the same option; turn on one, not both.
   + =suggestions.enable=, =suggestions.package= :: install Copilot's language server; see [[id:9e0c1f52-7a43-4d0e-b1a8-63c2f5d48e17][the opt-in]].
 
@@ -246,6 +378,7 @@ let
     inherit pkgs;
     emacs = cfg.package;
   };
+  emacs = if cfg.packagesFromNix then import ./packages.nix { emacs = cfg.package; } else cfg.package;
 in
 {
   options.programs.kittymacs = {
@@ -259,6 +392,17 @@ in
         The Emacs to install, and to run when `daemon` is on.  kittymacs
         needs 31.1 or later.  `pkgs.emacs` is nixpkgs' current release as
         the Cocoa build; `pkgs.emacs-macport` is the Mitsuharu port.
+      '';
+    };
+
+    packagesFromNix = lib.mkOption {
+      type = lib.types.bool;
+      default = true;
+      description = ''
+        Build the Emacs packages the configuration declares into `package`
+        with Nix, pinned by the flake's lock, so startup installs nothing
+        from the network.  The few nixpkgs lacks still install into the
+        checkout's `var/elpa`.  Off, every package comes from the archives.
       '';
     };
 
@@ -286,7 +430,7 @@ in
 
   config = lib.mkIf cfg.enable {
     environment.systemPackages = [
-      cfg.package
+      emacs
     ]
     ++ tools.programs
     ++ lib.optional cfg.suggestions.enable cfg.suggestions.package;
@@ -294,7 +438,7 @@ in
 
     services.emacs = lib.mkIf cfg.daemon {
       enable = true;
-      inherit (cfg) package;
+      package = emacs;
     };
   };
 }
@@ -339,6 +483,7 @@ let
     inherit pkgs;
     emacs = cfg.package;
   };
+  emacs = if cfg.packagesFromNix then import ./packages.nix { emacs = cfg.package; } else cfg.package;
   git = "${pkgs.git}/bin/git";
   coreutils = "${pkgs.coreutils}/bin";
 in
@@ -405,6 +550,7 @@ in
 - =installPackages= :: Emacs and the tools into the user profile. Turn it off when the nix-darwin module already installs them system-wide.
 - =installFonts= :: follows =installPackages=; turn it off alone for a terminal Emacs, which has no use for the icon font. The configuration notices the missing font and renders without icons.
 - =package= :: the Emacs to install and, with =daemon=, to run; default =pkgs.emacs=.
+- =packagesFromNix= :: on by default: what is installed and run is =package= with [[id:3c7f2a90-8e15-4b6d-a2c4-5d9e0f1b7a68][the Emacs packages]] built in, so the configuration installs almost nothing itself; off, it installs them all from the archives into =var/elpa=.
 - =daemon= :: run Emacs as a server for this user through Home Manager's =services.emacs=:
   + a systemd user service on Linux, a launchd agent on macOS, and an "Emacs Client" desktop entry on Linux;
   + where no systemd user session runs (nix-on-droid, WSL without systemd) the service is written but nothing starts it;
@@ -439,6 +585,17 @@ in
       description = ''
         The Emacs to install, and to run when `daemon` is on.  kittymacs
         needs 31.1 or later.
+      '';
+    };
+
+    packagesFromNix = lib.mkOption {
+      type = lib.types.bool;
+      default = true;
+      description = ''
+        Build the Emacs packages the configuration declares into `package`
+        with Nix, pinned by the flake's lock, so startup installs nothing
+        from the network.  The few nixpkgs lacks still install into the
+        checkout's `var/elpa`.  Off, every package comes from the archives.
       '';
     };
 
@@ -524,14 +681,14 @@ in
 
 ** The link and the packages
 
-- =home.packages= gets Emacs and the tools (with Copilot's server when =suggestions.enable= is on), then the font, each behind its option; fontconfig is turned on, as a default, with the font.
+- =home.packages= gets Emacs (with its packages, under =packagesFromNix=) and the tools (with Copilot's server when =suggestions.enable= is on), then the font, each behind its option; fontconfig is turned on, as a default, with the font.
 - =xdg.configFile."emacs"= is an out-of-store symlink: =~/.config/emacs= points at the checkout itself, not a copy.
 
 #+begin_src nix :padline yes
   config = lib.mkIf cfg.enable {
     home.packages =
       (lib.optionals cfg.installPackages (
-        [ cfg.package ] ++ tools.programs ++ lib.optional cfg.suggestions.enable cfg.suggestions.package
+        [ emacs ] ++ tools.programs ++ lib.optional cfg.suggestions.enable cfg.suggestions.package
       ))
       ++ (lib.optionals cfg.installFonts tools.fonts);
     fonts.fontconfig.enable = lib.mkIf cfg.installFonts (lib.mkDefault true);
@@ -630,9 +787,9 @@ in
           systemctl=${config.systemd.user.systemctlPath}
           if [[ ! -v DRY_RUN ]] \
             && running=$("$systemctl" --user show emacs.service --property=ExecStart --value 2>/dev/null) \
-            && [[ -n $running && $running != *"${cfg.package}"* ]] \
+            && [[ -n $running && $running != *"${emacs}"* ]] \
             && "$systemctl" --user is-active --quiet emacs.service; then
-            noteEcho "kittymacs: the Emacs daemon still runs the previous Emacs, not ${cfg.package}; systemctl --user restart emacs when nothing is unsaved"
+            noteEcho "kittymacs: the Emacs daemon still runs the previous Emacs, not ${emacs}; systemctl --user restart emacs when nothing is unsaved"
           fi
         ''
       );
@@ -647,13 +804,26 @@ in
   + So on Linux, once systemd has reloaded, activation compares the running unit's =ExecStart= with =package= and says in one line when they differ: =systemctl --user restart emacs=, when nothing is unsaved.
   + Where no user systemd runs (boot-time activation, nix-on-droid) =systemctl= answers nothing and the check stays quiet.
   + Its code, =kittymacsDaemon=, sits in [[id:41497b01-c9a9-4aa9-b658-7fda73fce4a8][the clone's]] =home.activation= set: =statix= rejects a third =home.…= key in one set.
+- A daemon that fails as it starts is retried three times, ten seconds apart, and then left failed:
+  + Home Manager's unit says =Restart=on-failure= with no limit, so a configuration that cannot start (*seen* 2026-10-27: a package that failed to install) was restarted every three seconds, at ten seconds of CPU each, for as long as nobody looked;
+  + three tries ride out a slow network at login; after them =systemctl --user status emacs= says =failed= and =journalctl --user -u emacs= has the reason;
+  + =systemctl --user reset-failed emacs= and then =start= try again once it is fixed;
+  + On macOS the launchd agent (=KeepAlive= with =SuccessfulExit= false) also restarts a failed start, but launchd has no limit to set: it only throttles, to one start every ten seconds by default, so there the loop is slower but does not stop.
 
 #+begin_src nix :padline yes
     services.emacs = lib.mkIf cfg.daemon {
       enable = true;
-      inherit (cfg) package;
+      package = emacs;
       client.enable = true;
       extraOptions = lib.optional (cfg.initDirectory != null) "--init-directory=${cfg.initDirectory}";
+    };
+
+    systemd.user.services.emacs = lib.mkIf (cfg.daemon && pkgs.stdenv.isLinux) {
+      Unit = {
+        StartLimitIntervalSec = 120;
+        StartLimitBurst = 3;
+      };
+      Service.RestartSec = 10;
     };
   };
 }

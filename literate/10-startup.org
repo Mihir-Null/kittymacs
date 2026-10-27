@@ -35,11 +35,28 @@
 
 - Each chapter declares its packages with =use-package … :ensure t=.
   + A fresh clone installs them on first start; an existing =var/elpa= is used as is.
+  + With [[id:d25a5063-1439-4ae0-8fbe-b0162d05a0e0][the Nix module]], Nix has already installed nearly all of them, pinned by the flake's lock; =:ensure t= finds them installed and fetches nothing, and only what nixpkgs lacks comes from the archives.
 - Global modes are switched on one way throughout:
   + a built-in mode :: =(mode 1)= right after its settings;
   + a package's mode :: in the =:config= of its =use-package=, which runs once the package has loaded;
   + a mode that must be on from the start :: also =:demand t=, because =:bind= and =:hook= would otherwise postpone loading until a key or hook is used;
-  + Tabspaces :: the one exception: its mode reads some options only as it turns on, so it is turned on after =init.el= finishes and your settings reach it ([[id:e4d65984-892d-4046-b718-d4265ab74215][the navigation chapter]] explains).
+  + Tabspaces and envrc :: the two exceptions, turned on from =after-init-hook= with =kittymacs-after-init=: Tabspaces reads some options only as it turns on, so it waits for your settings ([[id:e4d65984-892d-4046-b718-d4265ab74215][the navigation chapter]] explains); envrc must be enabled after every other mode ([[id:a121fda8-198e-498c-8867-eb1ecba8236d][the shells chapter]] explains).
+
+* A stale archive index :decision:
+:PROPERTIES:
+:ID: 8d3b6e0f-5a41-4c2e-9f7a-2b6c1e4d9a53
+:END:
+
+- Emacs keeps a copy of each archive's index under =var/elpa/archives/=, and installs from it without asking the archive again.
+- MELPA keeps only the /latest/ build of each package: once a package is rebuilt, the tarball an older index names is gone.
+  + So an index a couple of weeks old names tarballs that answer =404=, and =:ensure t= fails for any package not yet installed (*seen* 2026-10-27: a new =envrc= declaration against an index from 2026-10-15 stopped the daemon).
+  + =use-package-ensure-elpa= refreshes only when a package is /missing/ from the index, never when the version it names is stale.
+- =kittymacs-ensure-package= is =use-package-ensure-function=: before the /first/ install of a session it refreshes the index, then hands the install to =use-package-ensure-elpa=.
+  + Nothing is refreshed while every declared package is installed, so a normal start, and every start under the Nix module, stays off the network.
+  + One refresh per session at most: a fresh clone installing ninety packages fetches the index once, not ninety times.
+  + Refreshing first, rather than retrying after a failure, means no install is ever tried against a stale index, so no "Failed to install" warning appears for a failure that a retry then mends.
+  + Offline, the refresh fails with a warning and the install goes ahead from the cached index; a package it lists may still be there.
+- =init.el= no longer refreshes an empty index up front for the same reason: under Nix nothing needs it.
 
 * GNU ELPA's signature check needs a native gpg :windows:macos:
 :PROPERTIES:
@@ -197,12 +214,16 @@
   + the terminal comes after the programming chapter, whose mode menu it extends;
   + frames policy goes last.
 - Two files of your own are read along the way: =private.el= right after the platform chapter, the Customize file at the end; [[*Machine-specific settings]] says why there.
-- If the package index is missing, the first start fetches it.
+- The archive index is fetched only when a package has to be installed, by =kittymacs-ensure-package= ([[*A stale archive index]]); a start that installs nothing touches no network.
 - From the UI on, each chapter is loaded with =kittymacs-require-module=, not a bare =require=:
   + an error while a chapter loads (most often a package that failed to install, so its variables do not exist) becomes a warning naming the chapter, and the chapters after it still load;
   + a bare =require= would end =init.el= there, leaving every later chapter, frames included, unloaded, for a failure in one;
   + under =--debug-init= the error is not caught (=condition-case-unless-debug=), so the backtrace is still there when you ask for it.
   + Defaults and platform keep a bare =require=: nothing after them works without them, and stopping early is the clearer failure.
+- A function a chapter puts on =after-init-hook= runs /after/ that guard has returned, so it is added with =kittymacs-after-init= instead of a bare =add-hook=:
+  + a function whose package failed to install is skipped with a warning naming it, instead of a void-function error;
+  + an error inside it becomes a warning, like a chapter's;
+  + an uncaught error in =after-init-hook= aborts startup, and for the daemon (=--fg-daemon=) that means exiting: one package that did not install would take the whole server down on every restart.
 - kittymacs needs Emacs 31.1 or later ([[id:0a7aaddc-ecdf-4349-9218-e4a1d058379f][the Tree-sitter chapter]] relies on what 31 added); an older Emacs stops at the first line with a message that says so.
   + An error in =init.el= ends the file there; Emacs reports it and starts without the configuration, instead of failing in a dozen chapters for reasons that would not name the version.
 
@@ -216,10 +237,36 @@
   (error "kittymacs needs Emacs 31.1 or later; this is Emacs %s" emacs-version))
 (add-to-list 'load-path kittymacs-lisp-dir)
 (package-initialize)
-(unless package-archive-contents
-  (package-refresh-contents))
 (require 'use-package)
 (setopt use-package-enable-imenu-support t)
+
+(defvar kittymacs--archives-refreshed nil
+  "Non-nil once this session has refreshed the archive index, or tried to.")
+
+(defun kittymacs-ensure-package (name args state &optional no-refresh)
+  "Install the package that `use-package' NAME's `:ensure' ARGS names.
+The `use-package-ensure-function' of kittymacs.  Before the session's
+first install it refreshes the cached archive index, whose tarballs may
+be gone; then `use-package-ensure-elpa' installs.  STATE and NO-REFRESH
+are passed through."
+  (unless (or kittymacs--archives-refreshed
+              (seq-every-p (lambda (ensure)
+                             (let ((package (if (eq ensure t) (use-package-as-symbol name) ensure)))
+                               (or (null package)
+                                   (package-installed-p (if (consp package) (car package) package)))))
+                           args))
+    (setq kittymacs--archives-refreshed t)
+    (condition-case-unless-debug err
+        (package-refresh-contents)
+      (error
+       (display-warning 'kittymacs
+                        (format "Could not refresh the package archives: %s
+Installing from the cached index, which may name tarballs that are gone."
+                                (error-message-string err))
+                        :warning))))
+  (use-package-ensure-elpa name args state no-refresh))
+
+(setopt use-package-ensure-function #'kittymacs-ensure-package)
 
 (defun kittymacs-require-module (feature)
   "Load the kittymacs module FEATURE; on an error, warn and carry on.
@@ -232,6 +279,27 @@ Under `--debug-init' the error is not caught, so it shows a backtrace."
 The chapters after it still load; `--debug-init' shows the backtrace."
                               feature (error-message-string err))
                       :error))))
+
+(defun kittymacs-after-init (function &optional depth)
+  "Call FUNCTION from `after-init-hook' at DEPTH; on an error, warn and carry on.
+FUNCTION is skipped, with a warning, when nothing has defined it by then:
+its package failed to install.  Under `--debug-init' an error is not
+caught, so it shows a backtrace."
+  (add-hook 'after-init-hook
+            (lambda ()
+              (if (not (fboundp function))
+                  (display-warning 'kittymacs
+                                   (format "%s is not defined, so it was not called after init; did its package install?"
+                                           function)
+                                   :error)
+                (condition-case-unless-debug err
+                    (funcall function)
+                  (error
+                   (display-warning 'kittymacs
+                                    (format "%s failed after init: %s"
+                                            function (error-message-string err))
+                                    :error)))))
+            depth))
 
 ;; Foundation: defaults, platform paths, machine overrides, the look.
 (require 'kittymacs-defaults)

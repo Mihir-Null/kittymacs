@@ -41,6 +41,7 @@
             paths = tools.programs ++ tools.fonts;
           };
           default = tools.emacs;
+          with-packages = import ./nix/packages.nix { inherit (tools) emacs; };
         }
       );
 

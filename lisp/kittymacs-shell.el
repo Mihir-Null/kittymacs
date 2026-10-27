@@ -38,7 +38,7 @@ They go at the end of `exec-path' and of the PATH that subprocesses see."
   :ensure t
   :commands (envrc-allow envrc-deny envrc-reload envrc-show-log)
   :init
-  (add-hook 'after-init-hook #'envrc-global-mode 90))
+  (kittymacs-after-init #'envrc-global-mode 90))
 (defcustom kittymacs-eshell-dir (expand-file-name "eshell/" kittymacs-etc-dir)
   "Directory for Eshell history, aliases and the directory ring."
   :type 'directory
