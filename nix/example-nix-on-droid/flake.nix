@@ -46,7 +46,7 @@
 
                 # Installs Emacs and everything the configuration discovers at
                 # startup: git, ripgrep, fd, gnupg, hunspell with its
-                # dictionary, python3, and the Nerd Font for the icons.
+                # dictionary, python3, and the editing, prose and icon fonts.
                 installPackages = true;
 
                 # pgtk speaks Wayland and X11 both, so one build serves

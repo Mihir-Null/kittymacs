@@ -9,7 +9,7 @@
 
 - The repository is a flake, but it does not put the configuration in the Nix store.
   + The configuration keeps its state under =var/= and =private.el= beside its modules; both must stay writable.
-- What the flake provides is everything the configuration /uses/: Emacs with [[*The Emacs packages][the packages the chapters declare]], every program the chapters look for, and the icon font.
+- What the flake provides is everything the configuration /uses/: Emacs with [[*The Emacs packages][the packages the chapters declare]], every program the chapters look for, and its fonts.
   + A fresh Mac needs one =darwin-rebuild switch= and one =git clone=; with the Home Manager module, not even the clone.
 - The Nix layer is a convenience: Homebrew, a package manager or a manual install work as well, and every chapter degrades quietly when a program is missing.
 - Each top heading writes one file; =just lint= and =just eval= check them ([[id:9ea539a0-f1a3-4d05-aa10-6f2d2ff3e335][the loop]]).
@@ -18,7 +18,7 @@
 
 | Output                       | What it is                                                                                         |
 |------------------------------+----------------------------------------------------------------------------------------------------|
-| =darwinModules.default=      | nix-darwin: =programs.kittymacs.enable= installs Emacs, the tools and the font system-wide          |
+| =darwinModules.default=      | nix-darwin: =programs.kittymacs.enable= installs Emacs, the tools and the fonts system-wide         |
 | =homeManagerModules.default= | Home Manager: clones a checkout, links it to =~/.config/emacs=; can install the tools and run a daemon |
 | =packages.<system>.default=  | the bare Emacs (=pkgs.emacs=)                                                                      |
 | =packages.<system>.with-packages= | that Emacs with [[id:3c7f2a90-8e15-4b6d-a2c4-5d9e0f1b7a68][the Emacs packages]] built in: what the modules install by default |
@@ -136,8 +136,11 @@
 | =gls= (macOS)          | [[id:878a9e46-62be-4b9f-82f6-589560d2ebc1][Dired]]           | GNU =ls=, directories first           |
 | =trash= (macOS)        | [[id:afa6b7fd-742a-4c15-86a6-32e3e8027b0e][platform]]        | the Trash, with Finder's "Put Back"   |
 
-- Fonts: Symbols Nerd Font Mono for the icons.
-  + Google Sans Code, the preferred editing font, is not in nixpkgs; the platform font is used until it is installed by hand.
+- Fonts: the three [[id:0286f652-e861-4e61-9ca6-91e225c8939d][the appearance chapter]] looks for.
+  + Google Sans Code, the editing font, as its Nerd Font build, the family the configuration asks for first.
+  + Google Sans Flex, the prose font, is not in nixpkgs yet: nixpkgs' =google-fonts= is built from a revision of Google's font repository older than it.
+    So a fixed derivation fetches its one file from a pinned commit of that repository; once =google-fonts= carries it, =google-fonts.override { fonts = [ "GoogleSansFlex" ]; }= replaces the derivation.
+  + Symbols Nerd Font Mono for the icons.
 - =emacs= is an argument, so each module installs the Emacs its =package= option names.
 - =epdfinfo= is the one program nixpkgs does not ship on its own: its pdf-tools build puts the server beside the Lisp, so a small derivation links it into =bin/=.
   + Only the server is taken; the Lisp still comes from MELPA, as every package does ([[id:15f489d8-1307-491d-9a1a-ecabbd2984e6][why]]).
@@ -190,8 +193,25 @@
       darwin.trash # platform chapter: Trash with Finder's "Put Back"
     ];
 
-  # Symbols Nerd Font Mono renders the icons.
+  # The editing font, the prose font and the icon font.
   fonts = with pkgs; [
+    nerd-fonts.googlesanscode
+    (stdenvNoCC.mkDerivation {
+      pname = "google-sans-flex";
+      version = "0-unstable-2026-10-27";
+      # Not yet in nixpkgs' google-fonts; replace with
+      # `google-fonts.override { fonts = [ "GoogleSansFlex" ]; }` once it is.
+      src = fetchurl {
+        name = "GoogleSansFlex.ttf";
+        url = "https://raw.githubusercontent.com/google/fonts/ddf386ba1b9fbc6b2c818f1ddcd9148f54ced94b/ofl/googlesansflex/GoogleSansFlex%5BROND%2Copsz%2Cslnt%2Cwdth%2Cwght%5D.ttf";
+        hash = "sha256-qax3B5iFfV6KxZPO1Csi5Ap8CM7Jgxn5Kw7Mwng6d7o=";
+      };
+      dontUnpack = true;
+      installPhase = ''
+        install -Dm444 $src $out/share/fonts/truetype/GoogleSansFlex.ttf
+      '';
+      meta.license = lib.licenses.ofl;
+    })
     nerd-fonts.symbols-only
   ];
 }
@@ -496,7 +516,7 @@ in
 
 - =source= :: where the checkout lives; =~/.config/emacs= becomes a link to it.
   + The link points outside the store on purpose: the checkout must stay writable.
-  + Null leaves cloning and placing to you; nothing is linked or cloned, and =repository= and =revision= do nothing. The other options still install Emacs, the tools and the font, and run the daemon.
+  + Null leaves cloning and placing to you; nothing is linked or cloned, and =repository= and =revision= do nothing. The other options still install Emacs, the tools and the fonts, and run the daemon.
 - =repository= :: the Git URL to clone from; point it at a fork to start from your own copy.
 - =revision= :: the commit to check out; defaults to the kittymacs revision the host's =flake.lock= pins, so the lock decides what a new machine starts from.
   + The pin applies to the /first clone only/ ([[*Cloning the checkout on first activation]]).
@@ -548,7 +568,7 @@ in
 ** What gets installed, and the daemon
 
 - =installPackages= :: Emacs and the tools into the user profile. Turn it off when the nix-darwin module already installs them system-wide.
-- =installFonts= :: follows =installPackages=; turn it off alone for a terminal Emacs, which has no use for the icon font. The configuration notices the missing font and renders without icons.
+- =installFonts= :: follows =installPackages=; turn it off alone for a terminal Emacs, which has no use for the editing, prose and icon fonts. The configuration notices the missing fonts: it renders without icons and falls back to the platform's fonts.
 - =package= :: the Emacs to install and, with =daemon=, to run; default =pkgs.emacs=.
 - =packagesFromNix= :: on by default: what is installed and run is =package= with [[id:3c7f2a90-8e15-4b6d-a2c4-5d9e0f1b7a68][the Emacs packages]] built in, so the configuration installs almost nothing itself; off, it installs them all from the archives into =var/elpa=.
 - =daemon= :: run Emacs as a server for this user through Home Manager's =services.emacs=:
@@ -571,10 +591,10 @@ in
       default = cfg.installPackages;
       defaultText = lib.literalExpression "config.programs.kittymacs.installPackages";
       description = ''
-        Install the Nerd Font that renders the icons, and turn on
-        fontconfig.  Turn off for a terminal-only Emacs, which has no use
-        for either; the configuration detects the missing font and renders
-        without icons.
+        Install the editing, prose and icon fonts, and turn on fontconfig.
+        Turn off for a terminal-only Emacs, which has no use for either;
+        the configuration detects the missing fonts and renders without
+        icons.
       '';
     };
 
@@ -681,7 +701,7 @@ in
 
 ** The link and the packages
 
-- =home.packages= gets Emacs (with its packages, under =packagesFromNix=) and the tools (with Copilot's server when =suggestions.enable= is on), then the font, each behind its option; fontconfig is turned on, as a default, with the font.
+- =home.packages= gets Emacs (with its packages, under =packagesFromNix=) and the tools (with Copilot's server when =suggestions.enable= is on), then the fonts, each behind its option; fontconfig is turned on, as a default, with the fonts.
 - =xdg.configFile."emacs"= is an out-of-store symlink: =~/.config/emacs= points at the checkout itself, not a copy.
 
 #+begin_src nix :padline yes
@@ -835,7 +855,7 @@ in
 :header-args:nix: :tangle ../nix/example/flake.nix :eval never :comments no :padline no :mkdirp yes
 :END:
 
-- A complete Mac with both modules: nix-darwin installs Emacs, the tools and the font system-wide; Home Manager clones and links the checkout, with =installPackages = false=.
+- A complete Mac with both modules: nix-darwin installs Emacs, the tools and the fonts system-wide; Home Manager clones and links the checkout, with =installPackages = false=.
 - It turns on Copilot's server too, allowing that one unfree package, so =just eval= reads the option ([[id:9e0c1f52-7a43-4d0e-b1a8-63c2f5d48e17][the opt-in]]).
 - Copy it as a starting point.
 - =just eval= evaluates it against this checkout (=--override-input kittymacs path:$PWD=); building it needs a Mac.
@@ -871,7 +891,7 @@ in
           home-manager.darwinModules.home-manager
           {
             programs.kittymacs = {
-              # Emacs, ripgrep, fd, git, gnupg, hunspell, gls, trash, the icon font.
+              # Emacs, ripgrep, fd, git, gnupg, hunspell, gls, trash, the fonts.
               enable = true;
               daemon = false;
               # Copilot's server, for the suggestions chapter.  It is unfree,
@@ -978,7 +998,7 @@ in
 
                 # Installs Emacs and everything the configuration discovers at
                 # startup: git, ripgrep, fd, gnupg, hunspell with its
-                # dictionary, python3, and the Nerd Font for the icons.
+                # dictionary, python3, and the editing, prose and icon fonts.
                 installPackages = true;
 
                 # pgtk speaks Wayland and X11 both, so one build serves

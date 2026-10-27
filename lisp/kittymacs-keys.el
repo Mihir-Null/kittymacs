@@ -271,6 +271,7 @@
   "h" (cons "highlight line" #'hl-line-mode)
   "H" (cons "hide mode line" #'hide-mode-line-mode)
   "w" (cons "writeroom" #'writeroom-mode)
+  "P" (cons "prose font" #'kittymacs-org-prose-mode)
   "v" (cons "visual lines" #'visual-line-mode)
   "l" (cons "truncate lines" #'toggle-truncate-lines)
   "s" (cons "spell check" #'flyspell-mode)

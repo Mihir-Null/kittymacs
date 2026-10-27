@@ -76,10 +76,10 @@ in
       default = cfg.installPackages;
       defaultText = lib.literalExpression "config.programs.kittymacs.installPackages";
       description = ''
-        Install the Nerd Font that renders the icons, and turn on
-        fontconfig.  Turn off for a terminal-only Emacs, which has no use
-        for either; the configuration detects the missing font and renders
-        without icons.
+        Install the editing, prose and icon fonts, and turn on fontconfig.
+        Turn off for a terminal-only Emacs, which has no use for either;
+        the configuration detects the missing fonts and renders without
+        icons.
       '';
     };
 
