@@ -9,7 +9,8 @@ name: CI
 #      Emacs 31.1, the oldest it supports?  And on macOS, and on Windows,
 #      the machine this is written on?
 #                      (startup: just install, compile, test-packages)
-#   3. Does the Nix flake still evaluate, with its nix-darwin and
+#   3. Does the Nix flake still evaluate, on unstable and on the stable
+#      release a host may make it follow, with its nix-darwin and
 #      nix-on-droid examples and the home-manager module's clone step?
 #                                                  (nix: just nix-check)
 # The weekly run skips the package cache so upstream package breakage

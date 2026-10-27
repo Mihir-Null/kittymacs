@@ -10,6 +10,12 @@ default: check
 
 # Batch Emacs with this checkout as its init directory, so early-init.el
 # puts packages, caches and grammars under ./var, as a real startup does.
+# The stable nixpkgs `eval` also checks the flake against: a host whose
+# flake has kittymacs follow its own nixpkgs (EmptyNet does) evaluates
+# kittymacs on that release, which may lack attributes unstable has. Move it
+# to each new release.
+stable := "nixos-26.05"
+
 emacs := "emacs -Q --batch --eval '(setq user-emacs-directory (file-name-as-directory (expand-file-name \".\")))'"
 
 # The tests that load the configuration need its installed packages: the
@@ -82,10 +88,13 @@ lint:
     statix check .
     nixfmt --check $(git ls-files '*.nix')
 
-# Evaluate the flake on every system it supports, then the two example hosts
+# Evaluate the flake on every system it supports, on its own nixpkgs and on
+# the stable release a host may make it follow, then the two example hosts
 # against this checkout. Nothing is built.
 eval:
     nix flake check --no-build --all-systems
+    nix flake check --no-build --all-systems --no-write-lock-file \
+      --override-input nixpkgs github:NixOS/nixpkgs/{{stable}}
     nix eval --no-write-lock-file --override-input kittymacs "path:$PWD" \
       --json ./nix/example#darwinConfigurations.example.config.environment.systemPackages \
       --apply 'ps: map (p: p.name) ps'

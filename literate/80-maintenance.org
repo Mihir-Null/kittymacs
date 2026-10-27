@@ -43,7 +43,7 @@
 | =test-packages=   | installed packages | leader and org-node tests, and the startup verifier                          |
 | =frames-test=     | a display          | the frame-policy tests, in a graphical Emacs                                 |
 | =lint=            | Nix tools          | =deadnix=, =statix= and =nixfmt= over the generated Nix                      |
-| =eval=            | Nix                | evaluate the flake and both example hosts; nothing is built                  |
+| =eval=            | Nix                | evaluate the flake, on unstable and on stable, and both example hosts        |
 | =nix-check=       | Nix                | =lint= and =eval=                                                            |
 | =all=             | Nix, network       | everything CI runs on Linux, in order                                        |
 | =update=          | Nix, network       | =update-flake=, =update-packages=, =update-grammars=                         |
@@ -112,6 +112,7 @@
   + =tangle= job :: =just check=: the chapters match the generated files, and the package-free tests pass.
   + =startup= job :: a fresh clone runs =just install=, =just compile= and =just test-packages= on Emacs 31.1 on Linux, plus informational macOS and Windows runs.
   + =nix= job :: =just nix-check= in =nix develop=, then the home-manager module's clone options read as a device would see them.
+    =eval= checks the flake twice: on its own nixpkgs-unstable, and on the stable release in the justfile's =stable= variable, since a host that makes the flake follow its nixpkgs evaluates it there; move =stable= to each new release.
 - A weekly run repeats the fresh install without the package cache, so upstream breakage shows up even when nothing here changed.
 - =just frames-test= is the one suite CI cannot run: it needs a graphical session.
 - Dependabot proposes weekly updates to the workflow's actions.
