@@ -169,7 +169,7 @@
   + =SPC b b= in a project's tab lists that project's buffers first.
   + The full list is a narrow key away; =w= narrows back to the workspace.
   + Turning Tabspaces off restores Consult's ordinary buffer list.
-- Tabspaces is the one global mode this configuration does not switch on in =:config=; it turns on from =after-init-hook= at depth 95.
+- Tabspaces is one of two global modes this configuration does not switch on in =:config= (envrc is the other); it turns on from =after-init-hook= at depth 95, through =kittymacs-after-init=, so a failure there is a warning rather than the end of startup.
   + The mode reads some of its options only when it turns on:
     - whether =switch-to-buffer= shows the workspace's buffers (=tabspaces-use-filtered-buffers-as-default=);
     - whether sessions are saved and restored (=tabspaces-session=, =tabspaces-session-auto-restore=);
@@ -225,7 +225,7 @@
   (tabspaces-use-filtered-buffers-as-default t)
   (tabspaces-default-tab "Home")
   :config
-  (add-hook 'after-init-hook #'tabspaces-mode 95)
+  (kittymacs-after-init #'tabspaces-mode 95)
   (with-eval-after-load 'consult
     (add-hook 'tabspaces-mode-hook #'kittymacs--consult-tabspaces)
     (kittymacs--consult-tabspaces)))
@@ -241,5 +241,5 @@
 - =SPC f r= for recent files; reopen one and you are where you left off.
 - =SPC j j= then a character: letters appear on every match in the frame.
 - =SPC t o=: the outline sidebar opens on the right and follows point.
-- =C-h v after-init-hook=: =tabspaces-mode= comes after the =private.el= function.
+- =C-h v tabspaces-mode=: =t= once started, after the =private.el= function has run.
 - =just test-packages=: the startup verifier replays a real startup, after-init hooks included, and fails on any warning.

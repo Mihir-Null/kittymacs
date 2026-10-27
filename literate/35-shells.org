@@ -115,7 +115,7 @@ They go at the end of `exec-path' and of the PATH that subprocesses see."
   :ensure t
   :commands (envrc-allow envrc-deny envrc-reload envrc-show-log)
   :init
-  (add-hook 'after-init-hook #'envrc-global-mode 90))
+  (kittymacs-after-init #'envrc-global-mode 90))
 
 #+end_src
 

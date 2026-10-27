@@ -55,8 +55,8 @@
 ** Updating
 
 - =just update= runs three recipes; each also works alone:
-  + =update-flake= :: =nix flake update=: moves nixpkgs, and so the Emacs and tools the Nix modules install. Commit =flake.lock=.
-  + =update-packages= :: a batch Emacs refreshes the archives and upgrades every package in =var/elpa=, without loading the configuration.
+  + =update-flake= :: =nix flake update=: moves nixpkgs, and so the Emacs, its packages and the tools the Nix modules install. Commit =flake.lock=.
+  + =update-packages= :: a batch Emacs refreshes the archives and upgrades every package in =var/elpa=, without loading the configuration; packages Nix installed are not in =var/elpa= and move with =update-flake= instead.
   + =update-grammars= :: rebuilds every Tree-sitter grammar at the revision [[id:560fcdca-6cb8-49d9-bf27-eb78f32b9285][the languages chapter]] pins; needs =git= and a C compiler.
 - =var/= is not tracked, so only =flake.lock= (and a changed pin) reaches a commit.
 - Run =just test-packages= after =update-packages=: the verifier is what notices an upstream change.

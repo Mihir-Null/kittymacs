@@ -13,6 +13,7 @@ let
     inherit pkgs;
     emacs = cfg.package;
   };
+  emacs = if cfg.packagesFromNix then import ./packages.nix { emacs = cfg.package; } else cfg.package;
   git = "${pkgs.git}/bin/git";
   coreutils = "${pkgs.coreutils}/bin";
 in
@@ -92,6 +93,17 @@ in
       '';
     };
 
+    packagesFromNix = lib.mkOption {
+      type = lib.types.bool;
+      default = true;
+      description = ''
+        Build the Emacs packages the configuration declares into `package`
+        with Nix, pinned by the flake's lock, so startup installs nothing
+        from the network.  The few nixpkgs lacks still install into the
+        checkout's `var/elpa`.  Off, every package comes from the archives.
+      '';
+    };
+
     daemon = lib.mkOption {
       type = lib.types.bool;
       default = false;
@@ -144,7 +156,7 @@ in
   config = lib.mkIf cfg.enable {
     home.packages =
       (lib.optionals cfg.installPackages (
-        [ cfg.package ] ++ tools.programs ++ lib.optional cfg.suggestions.enable cfg.suggestions.package
+        [ emacs ] ++ tools.programs ++ lib.optional cfg.suggestions.enable cfg.suggestions.package
       ))
       ++ (lib.optionals cfg.installFonts tools.fonts);
     fonts.fontconfig.enable = lib.mkIf cfg.installFonts (lib.mkDefault true);
@@ -218,9 +230,9 @@ in
           systemctl=${config.systemd.user.systemctlPath}
           if [[ ! -v DRY_RUN ]] \
             && running=$("$systemctl" --user show emacs.service --property=ExecStart --value 2>/dev/null) \
-            && [[ -n $running && $running != *"${cfg.package}"* ]] \
+            && [[ -n $running && $running != *"${emacs}"* ]] \
             && "$systemctl" --user is-active --quiet emacs.service; then
-            noteEcho "kittymacs: the Emacs daemon still runs the previous Emacs, not ${cfg.package}; systemctl --user restart emacs when nothing is unsaved"
+            noteEcho "kittymacs: the Emacs daemon still runs the previous Emacs, not ${emacs}; systemctl --user restart emacs when nothing is unsaved"
           fi
         ''
       );
@@ -228,9 +240,17 @@ in
 
     services.emacs = lib.mkIf cfg.daemon {
       enable = true;
-      inherit (cfg) package;
+      package = emacs;
       client.enable = true;
       extraOptions = lib.optional (cfg.initDirectory != null) "--init-directory=${cfg.initDirectory}";
+    };
+
+    systemd.user.services.emacs = lib.mkIf (cfg.daemon && pkgs.stdenv.isLinux) {
+      Unit = {
+        StartLimitIntervalSec = 120;
+        StartLimitBurst = 3;
+      };
+      Service.RestartSec = 10;
     };
   };
 }

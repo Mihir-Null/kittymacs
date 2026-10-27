@@ -12,6 +12,7 @@ let
     inherit pkgs;
     emacs = cfg.package;
   };
+  emacs = if cfg.packagesFromNix then import ./packages.nix { emacs = cfg.package; } else cfg.package;
 in
 {
   options.programs.kittymacs = {
@@ -25,6 +26,17 @@ in
         The Emacs to install, and to run when `daemon` is on.  kittymacs
         needs 31.1 or later.  `pkgs.emacs` is nixpkgs' current release as
         the Cocoa build; `pkgs.emacs-macport` is the Mitsuharu port.
+      '';
+    };
+
+    packagesFromNix = lib.mkOption {
+      type = lib.types.bool;
+      default = true;
+      description = ''
+        Build the Emacs packages the configuration declares into `package`
+        with Nix, pinned by the flake's lock, so startup installs nothing
+        from the network.  The few nixpkgs lacks still install into the
+        checkout's `var/elpa`.  Off, every package comes from the archives.
       '';
     };
 
@@ -52,7 +64,7 @@ in
 
   config = lib.mkIf cfg.enable {
     environment.systemPackages = [
-      cfg.package
+      emacs
     ]
     ++ tools.programs
     ++ lib.optional cfg.suggestions.enable cfg.suggestions.package;
@@ -60,7 +72,7 @@ in
 
     services.emacs = lib.mkIf cfg.daemon {
       enable = true;
-      inherit (cfg) package;
+      package = emacs;
     };
   };
 }

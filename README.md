@@ -182,7 +182,7 @@ There are two ways, and they are alternatives rather than layers:
 
 ### Nix
 
-The flake installs everything *around* the configuration (Emacs, the tools and the icon font); the configuration itself stays a writable clone, because it installs its packages into `var/`.
+The flake installs everything the configuration uses (Emacs with the Lisp packages it declares, the tools and the icon font), pinned by the flake's lock, so starting Emacs needs no network; the configuration itself stays a writable clone, with its state in `var/`. Set `programs.kittymacs.packagesFromNix = false` to have the configuration install its packages from the archives instead.
 
 ```nix
 {
@@ -259,7 +259,7 @@ cd ~/.config/emacs
 git pull
 ```
 
-Then, inside Emacs, `M-x package-upgrade-all` upgrades the installed packages; restart afterwards. With [just](https://github.com/casey/just), `just update-packages` does the same from a shell, `just update-grammars` rebuilds the Tree-sitter grammars at their pinned revisions, and `just update` also moves the Nix flake's lock.
+Then, inside Emacs, `M-x package-upgrade-all` upgrades the installed packages; restart afterwards. Packages the Nix modules installed move with the flake's lock instead (`nix flake update`, then switch). With [just](https://github.com/casey/just), `just update-packages` does the same from a shell, `just update-grammars` rebuilds the Tree-sitter grammars at their pinned revisions, and `just update` also moves the Nix flake's lock.
 
 ## Troubleshooting
 
