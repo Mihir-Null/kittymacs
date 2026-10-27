@@ -41,7 +41,8 @@
 
   # The editing font, the prose font and the icon font.
   fonts = with pkgs; [
-    nerd-fonts.googlesanscode
+    # Older nixpkgs (nixos-26.05) has no Nerd Font build of it.
+    (nerd-fonts.googlesanscode or googlesans-code)
     (stdenvNoCC.mkDerivation {
       pname = "google-sans-flex";
       version = "0-unstable-2026-10-27";

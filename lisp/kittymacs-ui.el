@@ -50,7 +50,7 @@ Use t for a terminal configured with a Nerd Font, or nil to disable icons."
   (when (display-graphic-p)
     (seq-find (lambda (family) (find-font (font-spec :family family)))
               (if (equal kittymacs-font-family "GoogleSansCode Nerd Font")
-                  (list kittymacs-font-family "GoogleSansCode NF")
+                  (list kittymacs-font-family "GoogleSansCode NF" "Google Sans Code")
                 (list kittymacs-font-family)))))
 
 (defun kittymacs-resolve-prose-font-family ()

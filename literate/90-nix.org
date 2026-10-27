@@ -137,7 +137,8 @@
 | =trash= (macOS)        | [[id:afa6b7fd-742a-4c15-86a6-32e3e8027b0e][platform]]        | the Trash, with Finder's "Put Back"   |
 
 - Fonts: the three [[id:0286f652-e861-4e61-9ca6-91e225c8939d][the appearance chapter]] looks for.
-  + Google Sans Code, the editing font, as its Nerd Font build, the family the configuration asks for first.
+  + Google Sans Code, the editing font, as its Nerd Font build, the family the configuration asks for first, where this nixpkgs has one.
+    nixos-26.05 does not, and a host that makes this flake follow its nixpkgs gets the plain =googlesans-code= instead, which the configuration also accepts: its icons come from the icon font either way.
   + Google Sans Flex, the prose font, is not in nixpkgs yet: nixpkgs' =google-fonts= is built from a revision of Google's font repository older than it.
     So a fixed derivation fetches its one file from a pinned commit of that repository; once =google-fonts= carries it, =google-fonts.override { fonts = [ "GoogleSansFlex" ]; }= replaces the derivation.
   + Symbols Nerd Font Mono for the icons.
@@ -195,7 +196,8 @@
 
   # The editing font, the prose font and the icon font.
   fonts = with pkgs; [
-    nerd-fonts.googlesanscode
+    # Older nixpkgs (nixos-26.05) has no Nerd Font build of it.
+    (nerd-fonts.googlesanscode or googlesans-code)
     (stdenvNoCC.mkDerivation {
       pname = "google-sans-flex";
       version = "0-unstable-2026-10-27";
