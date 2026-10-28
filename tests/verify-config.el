@@ -221,10 +221,6 @@ Group maps are walked too.  Autoloaded commands count as commands."
                                 "Org buffers do not set prose in variable-pitch")
         (kittymacs-verify-check (bound-and-true-p org-modern-indent-mode)
                                 "org-modern-indent is not on in Org buffers"))
-      (with-temp-buffer
-        (emacs-lisp-mode)
-        (kittymacs-verify-check (bound-and-true-p tree-guide-mode)
-                                "tree-guide is not on in Emacs Lisp buffers"))
       (kittymacs-verify-check (equal custom-enabled-themes '(doom-sonokai)) "Theme changed")
       ;; Exercise the real loader in both directions: themes must not stack.
       (kittymacs-toggle-theme)

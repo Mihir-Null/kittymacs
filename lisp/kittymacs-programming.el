@@ -71,38 +71,6 @@ The package cannot derive its faces without a display."
   (aggressive-indent-comments-too nil)
   :config
   (add-to-list 'aggressive-indent-protected-commands 'comment-dwim))
-(defvar tree-guide-mode)
-(declare-function tree-guide--indent-advice-init "tree-guide")
-
-(defun kittymacs--tree-guide-swap ()
-  "Show one kind of guide: tree guides replace indent guides while on.
-Turning tree guides off here also removes tree-guide's global
-indentation advice, which buffers still hiding their indentation need,
-so put it back from one of them."
-  (if tree-guide-mode
-      (when (bound-and-true-p highlight-indent-guides-mode)
-        (highlight-indent-guides-mode -1))
-    (when (derived-mode-p 'prog-mode)
-      (kittymacs--indent-guides))
-    (when-let* ((other (seq-find (lambda (buffer)
-                                   (buffer-local-value 'tree-guide-mode buffer))
-                                 (buffer-list))))
-      (with-current-buffer other
-        (tree-guide--indent-advice-init)))))
-
-(condition-case err
-    (use-package tree-guide
-      :vc (:url "https://github.com/benvvalk/tree-guide.el"
-           :rev "5b58cef81fa639e842cd76ce72886a07fd652ae8")
-      :hook ((lisp-data-mode scheme-mode) . tree-guide-mode)
-      :init
-      (add-hook 'tree-guide-mode-hook #'kittymacs--tree-guide-swap))
-  (error
-   (display-warning 'kittymacs
-                    (format "tree-guide was not installed: %s
-Check that `git clone https://github.com/benvvalk/tree-guide.el' works from a terminal, and which git Emacs runs: %s"
-                            (error-message-string err) (executable-find "git"))
-                    :warning)))
 (use-package flymake
   :ensure nil
   :hook (prog-mode . flymake-mode)
