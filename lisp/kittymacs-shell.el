@@ -161,6 +161,8 @@ With REGEXP, go to the most recent directory matching it."
         tramp-default-method "ssh"
         tramp-copy-size-limit nil
         tramp-use-ssh-controlmaster-options nil)
+(with-eval-after-load 'tramp
+  (add-to-list 'tramp-remote-path 'tramp-own-remote-path))
 (with-eval-after-load 'meow
   (dolist (entry '((eshell-mode . insert) (shell-mode . insert) (term-mode . insert)))
     (add-to-list 'meow-mode-state-list entry)))

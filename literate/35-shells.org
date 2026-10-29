@@ -281,13 +281,79 @@ With REGEXP, go to the most recent directory matching it."
 
 - =C-x C-f /ssh:host:/path= edits a remote file.
 - SSH is the default method; connection state goes under the cache.
+- A program on the remote is looked up on its login shell's =PATH=.
+  + By default Tramp searches =getconf PATH= and a fixed list of system directories, which misses a Nix profile, =~/.local/bin= and anything else a login adds.
+  + =tramp-own-remote-path= in =tramp-remote-path= stands for the =PATH= that =sh -l= prints on the remote; listed first, its directories win.
+  + So Eglot, Magit, project search and Eshell find a remote =git=, =rg= or language server wherever a terminal on that machine would.
+  + Tramp asks once per connection and caches the answer: after installing something on the remote, =M-x tramp-cleanup-connection= makes it ask again.
 
 #+begin_src emacs-lisp
 (setopt tramp-persistency-file-name (expand-file-name "tramp" kittymacs-cache-dir)
         tramp-default-method "ssh"
         tramp-copy-size-limit nil
         tramp-use-ssh-controlmaster-options nil)
+(with-eval-after-load 'tramp
+  (add-to-list 'tramp-remote-path 'tramp-own-remote-path))
 
+#+end_src
+
+** A Linux virtual machine as Android's backend :android:
+:PROPERTIES:
+:ID: a575f179-35ff-4131-8b9f-2d5a4b1ab535
+:END:
+
+- Pixels and other telephones with Android's Terminal app run a Debian virtual machine beside Android.
+  + Inside it is ordinary GNU/Linux: =apt=, Nix, compilers and language servers all work there.
+  + It has its own kernel, so the Android port cannot run its programs directly; it reaches them over SSH, through Tramp.
+- So the port is the screen and the virtual machine is the backend.
+  + Files kept in the machine and opened as =/ssh:vm:~/project/= get its programs: Eglot starts the language server there, Magit runs its =git=, project search its =rg=, Eshell its commands.
+  + Files on Android's own storage get only what the port can run locally.
+  + Whatever Emacs loads into itself, a Tree-sitter grammar or a native module, is still built for Android.
+- Tramp never speaks SSH itself; it runs an =ssh= program.
+  + The port runs only programs from an application signed like itself ([[id:ca1bff94-4ca3-40b4-8cda-6a290e7889a5][Termux on Android]]), so =ssh= comes from the paired Termux: =pkg install openssh=.
+  + That is Termux's whole part here; everything else comes from the virtual machine.
+  + The paired Termux itself is not reached through Tramp; why is in [[file:../ARCHITECTURE.md][ARCHITECTURE.md]].
+- In the virtual machine, once:
+  + an SSH server on port 2222, since Android lets no application listen below 1024;
+  + the Terminal app offers to forward the port once something listens on it, and Android then reaches it as =localhost:2222=;
+  + Nix, and the flake's =tools= bundle: every program the configuration looks for ([[id:d25a5063-1439-4ae0-8fbe-b0162d05a0e0][the Nix chapter]]).
+
+#+begin_example
+sudo apt install openssh-server
+echo 'Port 2222' | sudo tee /etc/ssh/sshd_config.d/android.conf
+sudo systemctl restart ssh
+sh <(curl -L https://nixos.org/nix/install) --daemon
+nix profile install github:Mihir-Null/kittymacs#tools
+#+end_example
+
+- Then from Eshell inside Emacs, not from Termux's own window:
+  + =ssh-keygen=, and append the new =.pub= file to =~/.ssh/authorized_keys= in the virtual machine;
+  + a =Host vm= entry in =~/.ssh/config=, as below, with =User= set to what =whoami= prints in the machine.
+- Eshell, because the port runs =ssh= with its own home directory, which need not be Termux's.
+  + =ssh -G vm= in Eshell shows the configuration that Tramp's =ssh= will read.
+- The =Control= lines let every Eglot, Magit and search process share one connection.
+  + Tramp's own copy of those options is off ([[*Remote files: Tramp]]), so they live in the SSH configuration.
+
+#+begin_example
+Host vm
+  HostName 127.0.0.1
+  Port 2222
+  User droid
+  ControlMaster auto
+  ControlPath ~/.ssh/cm-%r@%h:%p
+  ControlPersist 10m
+#+end_example
+
+- Optionally, =private.el= can start the machine's processes straight through =ssh= rather than through Tramp's shell.
+  + Eglot and Magit start several processes, so this is noticeably quicker.
+  + Those processes still get the =PATH= above: Tramp passes it to each one.
+
+#+begin_src emacs-lisp :tangle no
+(with-eval-after-load 'tramp
+  (connection-local-set-profile-variables
+   'kittymacs-vm '((tramp-direct-async-process . t)))
+  (connection-local-set-profiles
+   '(:application tramp :protocol "ssh" :machine "vm") 'kittymacs-vm))
 #+end_src
 
 * Meow in shells :meow:
@@ -334,5 +400,7 @@ With REGEXP, go to the most recent directory matching it."
 - Type =htop= in Eshell: it opens in a terminal buffer and works.
 - =ESC= in Eshell, select some output with =x=, =y= copies it; =i= goes back to typing.
 - =M-x shell=, then =git log=: the output lands in the buffer, with no pager waiting for keys.
+- On a remote machine with Nix, =C-x C-f /ssh:host:~/=, then =M-: (executable-find "rg" t)= in that buffer: it names the Nix profile's =rg=.
+  + On Android with the virtual machine, =host= is =vm=.
 - In a project with a =.envrc=, open a file: the mode line shows =envrc= as waiting; =SPC p E a= allows it, and =M-: (executable-find "python3")= then names the project's Python, not the system's.
 - =just test-packages= replays a real startup: this module must load and every =SPC= key must run a command.
