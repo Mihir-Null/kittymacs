@@ -168,7 +168,7 @@ There are two ways, and they are alternatives rather than layers:
 | | The Android port (`org.gnu.emacs`) | nix-on-droid |
 |---|---|---|
 | What runs | a native graphical Emacs | an ordinary Linux Emacs inside a PRoot |
-| External programs | from [Termux](https://termux.dev), installed from builds with a matching `sharedUserId` | from Nix |
+| External programs | from [Termux](https://termux.dev), installed from builds with a matching `sharedUserId`; on a telephone with Android's Terminal app, also from its Linux virtual machine over Tramp | from Nix |
 | Terminal | Eshell (the port cannot load ghostel's module) | ghostel |
 | Display | native | needs [Termux:X11](https://github.com/termux/termux-x11) |
 
@@ -178,6 +178,14 @@ There are two ways, and they are alternatives rather than layers:
 - Frames-only mode is off: on Android a frame is an entry in the task switcher. Set `kittymacs-frames-only` to `t` in `private.el` on a tablet with a desktop mode.
 - With a hardware keyboard, Alt is Meta and `C-SPC` reaches Emacs, so the leader works as everywhere else.
 - On-screen keyboards edit the buffer directly, which only suits Insert state, so kittymacs follows Meow's state. Set `kittymacs-android-modal-text-conversion` to `nil` if your keyboard misbehaves.
+
+**Android's Linux virtual machine as a backend.** Pixels and other telephones with Android's Terminal app run a Debian virtual machine. The port stays the screen, and the machine runs the programs: open a project there as `/ssh:vm:~/project/`, and Eglot, Magit, project search and Eshell use the machine's language servers, `git` and `rg`. kittymacs looks programs up on the remote login shell's `PATH`, so a Nix profile there is found.
+
+- In the paired Termux: `pkg install openssh`. Tramp runs `ssh`; that is all Termux provides here.
+- In the virtual machine: an SSH server on port 2222, allowed when the Terminal app offers to forward it; then Nix and `nix profile install github:Mihir-Null/kittymacs#tools`.
+- In Eshell inside Emacs: `ssh-keygen`, and a `Host vm` entry in `~/.ssh/config` for `127.0.0.1` port 2222.
+
+[The shells chapter](literate/35-shells.org) has every step and the reasons for each.
 
 **nix-on-droid** uses the Home Manager module; [`nix/example-nix-on-droid/flake.nix`](nix/example-nix-on-droid/flake.nix) is a complete device. The two cannot be combined: Nix programs exist only inside the PRoot.
 
@@ -294,6 +302,7 @@ Then, inside Emacs, `M-x package-upgrade-all` upgrades the installed packages; r
 
 - *Windows: Emacs ignores the clone:* see the `HOME` and junction note under [Windows](#windows).
 - *macOS: programs installed with Homebrew or Nix are not found:* start Emacs once from a terminal to compare; the shells chapter imports the environment of your *login* shell, so set `PATH` in `~/.zprofile`, not only `~/.zshrc`.
+- *A program on a remote machine is not found* (Eglot, Magit or search over Tramp): Tramp reads the remote login shell's `PATH` once per connection. After installing something there, run `M-x tramp-cleanup-connection`.
 - *Android: a program from Termux is not found:* the port and Termux must come from a matching pair of builds; check `kittymacs-termux-root`.
 
 **Check the installation itself.** From a shell in the clone, with [just](https://github.com/casey/just):

@@ -294,6 +294,11 @@ Group maps are walked too.  Autoloaded commands count as commands."
       ;; emacs-jupyter is not even loaded until a kernel is asked for.
       (kittymacs-verify-check (null kittymacs-notebooks-jupyter) "Jupyter kernels are on by default")
       (kittymacs-verify-check (not (featurep 'jupyter)) "emacs-jupyter loaded at startup")
+      ;; Remote programs are found on the remote login shell's PATH, so a
+      ;; Nix profile on an SSH host (the Android VM backend) is searched.
+      (require 'tramp)
+      (kittymacs-verify-check (memq 'tramp-own-remote-path tramp-remote-path)
+                       "Tramp does not search the remote login shell's PATH")
       (kittymacs-verify-check (and (bound-and-true-p envrc-global-mode)
                                    (eq (lookup-key kittymacs-leader-map (kbd "p E a")) #'envrc-allow))
                        "envrc is not on, or SPC p E a is not envrc-allow")
