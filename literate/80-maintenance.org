@@ -24,7 +24,7 @@
 3. *Check*: =just check=, before every commit. In turn:
    + =tangle-check= :: tangles into a temporary directory and fails if any committed generated file differs;
    + =doc-test= :: every page follows [[id:7edccfdc-3c38-489a-bc9e-4c002b432ab4][the conventions]]: IDs, tags, links, a closing Check;
-   + =test= :: the suites that need no packages: the builder, every operating system's platform branch, the Tree-sitter policy.
+   + =test= :: the suites that need no packages: the builder, every operating system's platform branch, the Tree-sitter policy, Org table wrapping.
 4. *Restart Emacs*, then commit the chapter and its generated file together.
 - One decision per commit, with its generated files.
 - For a quick experiment, evaluate a block with =C-c C-c= or a form with =SPC e e=: it changes the running Emacs without rebuilding anything.

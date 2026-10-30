@@ -50,7 +50,7 @@ jobs:
         run: just tangle-check
       - name: Pages follow the conventions (IDs, tags, links)
         run: just doc-test
-      - name: Builder, platform (every operating system's branch) and Tree-sitter tests
+      - name: Builder, platform (every operating system's branch), Tree-sitter and Org table tests
         run: just test
 
   startup:
