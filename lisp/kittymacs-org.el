@@ -60,6 +60,202 @@
                 (let ((inherited electric-pair-inhibit-predicate))
                   (lambda (char) (or (char-equal char ?<) (funcall inherited char))))))
   (add-hook 'org-mode-hook #'kittymacs--org-no-angle-pairs))
+(declare-function org-at-table-p "org")
+(declare-function org-table-align "org-table")
+(declare-function org-table-begin "org-table")
+(declare-function org-table-end "org-table")
+(declare-function org-at-table-hline-p "org")
+(declare-function org-table-current-column "org-table")
+(declare-function org-table-goto-column "org-table")
+(declare-function org-table-to-lisp "org-table")
+(declare-function orgtbl-to-orgtbl "org-table")
+(defvar org-table-line-regexp)
+
+(defcustom kittymacs-org-table-wrap-on-save t
+  "Non-nil means wrap the cells of opted-in Org tables before saving.
+A table opts in with a row of width cookies; see `kittymacs-org-table-wrap'."
+  :type 'boolean
+  :safe #'booleanp
+  :group 'org-table)
+
+(defconst kittymacs--org-table-cookie-regexp "\\`<\\([lrc]?\\)\\([0-9]*\\)>\\'"
+  "A width or alignment cookie: <12>, <r>, <l20>.")
+
+(defun kittymacs--org-table-cookie-row-p (row)
+  "Non-nil if ROW holds width or alignment cookies and nothing else."
+  (and (listp row)
+       (seq-some (lambda (cell) (string-match-p "\\`<[lrc]?[0-9]+>\\'\\|\\`<[lrc]>\\'" cell))
+                 row)
+       (seq-every-p (lambda (cell) (or (string-empty-p cell)
+                                       (string-match-p kittymacs--org-table-cookie-regexp cell)))
+                    row)))
+
+(defun kittymacs--org-table-words (text)
+  "Split TEXT at spaces into the words that may not be broken across rows.
+A link, or a ~code~ or =verbatim= span starting a word, is one word even
+when it contains spaces.  Every other character belongs to some word, so
+joining the words with single spaces gives TEXT back with its runs of
+whitespace collapsed."
+  (let ((pos 0)
+        (link "\\[\\[[^]]*\\]\\(?:\\[[^]]*\\]\\)?\\]")
+        words)
+    (while (string-match
+            (concat "[-({'\"]*\\(?:" link "\\|~[^~]*~\\|=[^=]*=\\|[^ \t]\\)"
+                    "\\(?:" link "\\|[^ \t]\\)*")
+            text pos)
+      (push (match-string 0 text) words)
+      (setq pos (match-end 0)))
+    (nreverse words)))
+
+(defun kittymacs--org-table-fill (text width)
+  "Break TEXT into lines at most WIDTH wide; a longer word gets a line alone."
+  (let (lines line)
+    (dolist (word (kittymacs--org-table-words text))
+      (if (and line (> (+ (string-width line) 1 (string-width word)) width))
+          (progn (push line lines) (setq line word))
+        (setq line (if line (concat line " " word) word))))
+    (when line (push line lines))
+    (or (nreverse lines) (list ""))))
+
+(defun kittymacs--org-table-wrap-entry (rows widths)
+  "Join ROWS, one entry's lines, column by column and fill them to WIDTHS.
+A cookie row among them is kept, unwrapped, ahead of the filled rows."
+  (let* ((cookies (seq-filter #'kittymacs--org-table-cookie-row-p rows))
+         (rows (seq-remove #'kittymacs--org-table-cookie-row-p rows)))
+    (append
+     cookies
+     (when rows
+       (let* ((cells (apply #'seq-mapn
+                            (lambda (&rest column)
+                              (string-join (seq-remove #'string-empty-p column) " "))
+                            rows))
+              (columns (seq-mapn #'kittymacs--org-table-fill cells widths))
+              (height (apply #'max (mapcar #'length columns))))
+         (mapcar (lambda (i) (mapcar (lambda (lines) (or (nth i lines) "")) columns))
+                 (number-sequence 0 (1- height))))))))
+
+(defun kittymacs--org-table-wrapped (rows)
+  "The table ROWS, from `org-table-to-lisp', with its cells wrapped.
+Nil when the table has not opted in, has no hline, or is already wrapped."
+  (let* ((width (apply #'max (mapcar (lambda (row) (if (listp row) (length row) 0)) rows)))
+         (rows (mapcar (lambda (row)
+                         (if (listp row)
+                             (append row (make-list (- width (length row)) ""))
+                           row))
+                       rows))
+         (cookies (seq-find #'kittymacs--org-table-cookie-row-p rows)))
+    (when (and cookies (memq 'hline rows))
+      (let ((widths (mapcar (lambda (cell)
+                              (if (and (string-match kittymacs--org-table-cookie-regexp cell)
+                                       (not (string-empty-p (match-string 2 cell))))
+                                  (string-to-number (match-string 2 cell))
+                                most-positive-fixnum))
+                            cookies))
+            (entries (list nil)))
+        (dolist (row rows)
+          (if (eq row 'hline)
+              (push nil entries)
+            (push row (car entries))))
+        (let ((wrapped
+               (cdr (seq-mapcat (lambda (entry)
+                                  (cons 'hline
+                                        (kittymacs--org-table-wrap-entry (reverse entry) widths)))
+                                (nreverse entries)))))
+          (unless (equal wrapped rows)
+            wrapped))))))
+
+(defun kittymacs--org-table-position ()
+  "Where point is in its table: (ENTRY ROW COLUMN OFFSET).
+ENTRY counts the hlines above point, ROW the lines since the last one (nil
+on an hline), COLUMN is the field and OFFSET how far into it point is."
+  (let ((line (line-beginning-position))
+        (entry 0)
+        (row 0))
+    (save-excursion
+      (goto-char (org-table-begin))
+      (while (< (point) line)
+        (if (org-at-table-hline-p)
+            (setq entry (1+ entry) row 0)
+          (setq row (1+ row)))
+        (forward-line 1)))
+    (if (org-at-table-hline-p)
+        (list entry nil 0 0)
+      (let ((column (org-table-current-column)))
+        (list entry row column
+              (max 0 (- (point) (save-excursion (org-table-goto-column column) (point)))))))))
+
+(defun kittymacs--org-table-goto-position (position)
+  "Move to POSITION, from `kittymacs--org-table-position', in the table at point.
+Rows an entry no longer has, and offsets past a field's end, are clamped."
+  (pcase-let ((`(,entry ,row ,column ,offset) position)
+              (end (org-table-end)))
+    (goto-char (org-table-begin))
+    (while (and (> entry 0) (< (point) end))
+      (when (org-at-table-hline-p) (setq entry (1- entry)))
+      (forward-line 1))
+    (when row
+      (while (and (> row 0)
+                  (save-excursion (forward-line 1)
+                                  (and (< (point) end) (not (org-at-table-hline-p)))))
+        (forward-line 1)
+        (setq row (1- row)))
+      (org-table-goto-column column)
+      (forward-char (min offset (- (save-excursion (skip-chars-forward "^|\n") (point))
+                                   (point)))))))
+
+(defun kittymacs-org-table-wrap ()
+  "Wrap the cells of the table at point to its columns' width cookies.
+The table opts in with a row of cookies such as | <12> | <30> |; the rows
+between two hlines are one entry, refilled as a whole each time.  A table
+without cookies or hlines, or with a #+TBLFM line, is left alone.  Point
+stays in the same cell."
+  (interactive)
+  (unless (org-at-table-p) (user-error "Not in an Org table"))
+  (let* ((beg (copy-marker (org-table-begin)))
+         (end (org-table-end))
+         (wrapped (save-excursion
+                    (goto-char end)
+                    (unless (looking-at-p "[ \t]*#\\+TBLFM:")
+                      (kittymacs--org-table-wrapped (org-table-to-lisp))))))
+    (when wrapped
+      (let ((position (kittymacs--org-table-position)))
+        (delete-region beg end)
+        (goto-char beg)
+        (insert (orgtbl-to-orgtbl wrapped nil) "\n")
+        (goto-char beg)
+        (org-table-align)
+        (goto-char beg)
+        (kittymacs--org-table-goto-position position)))
+    (set-marker beg nil)))
+
+(defun kittymacs-org-table-wrap-all ()
+  "Run `kittymacs-org-table-wrap' on every table in the buffer.
+Point stays where it was, in or out of a table."
+  (interactive)
+  (let ((origin (point-marker))
+        here)
+    (save-excursion
+      (goto-char (point-min))
+      (while (re-search-forward org-table-line-regexp nil t)
+        (when (org-at-table-p)
+          (let ((inside (and (>= origin (org-table-begin)) (< origin (org-table-end)))))
+            (when inside (goto-char origin))
+            (kittymacs-org-table-wrap)
+            (when inside (setq here (point)))
+            (goto-char (org-table-end))))))
+    (goto-char (or here origin))
+    (set-marker origin nil)))
+
+(defun kittymacs--org-table-wrap-before-save ()
+  "Wrap opted-in tables, when `kittymacs-org-table-wrap-on-save' says to."
+  (when kittymacs-org-table-wrap-on-save
+    (kittymacs-org-table-wrap-all)))
+
+(defun kittymacs--org-table-wrap-setup ()
+  "Wrap this Org buffer's opted-in tables whenever it is saved."
+  (add-hook 'before-save-hook #'kittymacs--org-table-wrap-before-save nil t))
+
+(add-hook 'org-mode-hook #'kittymacs--org-table-wrap-setup)
 (setopt org-todo-keywords '((sequence "TODO(t)" "NEXT(n)" "WAITING(w@/!)" "|" "DONE(d)" "CANCELED(c@)"))
         org-use-fast-todo-selection 'expert
         org-enforce-todo-dependencies t
@@ -277,6 +473,7 @@ Headings are semi-bold.  The faces are remapped in this buffer only."
   "b" (cons "run source block" #'org-babel-execute-src-block)
   "'" (cons "edit source block" #'org-edit-special)
   "w" (cons "wrap in block" #'org-insert-structure-template)
+  "W" (cons "wrap table cells" #'kittymacs-org-table-wrap)
   "e" (cons "export" #'org-export-dispatch)
   "i" (cons "insert heading" #'org-insert-heading-respect-content)
   "?" (cons "menu" #'casual-org-tmenu))

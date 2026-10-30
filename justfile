@@ -42,12 +42,13 @@ doc-test:
 
 # The tests that need no packages: the builder; the startup guards and the
 # Nix package list; each operating system's platform branch (on any
-# machine); the Tree-sitter grammar policy, offline.
+# machine); the Tree-sitter grammar policy, offline; Org table wrapping.
 test:
     emacs -Q --batch -l tests/kittymacs-tangle-tests.el -f ert-run-tests-batch-and-exit
     emacs -Q --batch -l tests/kittymacs-startup-tests.el -f ert-run-tests-batch-and-exit
     emacs -Q --batch -l tests/kittymacs-platform-tests.el -f ert-run-tests-batch-and-exit
     emacs -Q --batch -l tests/kittymacs-treesit-tests.el -f ert-run-tests-batch-and-exit
+    emacs -Q --batch -l tests/kittymacs-org-table-tests.el -f ert-run-tests-batch-and-exit
 
 # 3. Everything that needs only Emacs. Run before every commit.
 check: tangle-check doc-test test
