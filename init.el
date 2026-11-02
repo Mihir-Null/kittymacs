@@ -100,7 +100,7 @@ caught, so it shows a backtrace."
 (kittymacs-require-module 'kittymacs-languages)
 (kittymacs-require-module 'kittymacs-terminal)
 (kittymacs-require-module 'kittymacs-org)
-(kittymacs-require-module 'kittymacs-org-node)
+(kittymacs-require-module 'kittymacs-org-roam)
 (kittymacs-require-module 'kittymacs-reading)
 (kittymacs-require-module 'kittymacs-notebooks)
 (kittymacs-require-module 'kittymacs-agents)

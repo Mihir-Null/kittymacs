@@ -4,7 +4,7 @@
 ;;; Code:
 
 (require 'kittymacs-leader)
-(require 'kittymacs-org-node)
+(require 'kittymacs-org-roam)
 (use-package pdf-tools
   :ensure t
   :defer t
@@ -19,7 +19,7 @@
              org-noter-sync-current-note org-noter-sync-next-note org-noter-sync-prev-note)
   :custom
   (org-noter-default-notes-file-names nil)
-  (org-noter-notes-search-path (list kittymacs-org-node-directory))
+  (org-noter-notes-search-path (list kittymacs-org-roam-directory))
   (org-noter-always-create-frame 'reuse-if-free))
 (declare-function org-pdftools-open "org-pdftools" (link &optional arg))
 

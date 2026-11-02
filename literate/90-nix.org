@@ -328,11 +328,11 @@ emacs.pkgs.withPackages (
     org-appear
     org-contrib
     org-modern
-    org-node
     org-noter
     org-noter-pdftools
     org-pdftools
     org-ql
+    org-roam
     org-super-agenda
     outline-minor-faces
     package-lint

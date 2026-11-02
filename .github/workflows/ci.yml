@@ -125,7 +125,7 @@ jobs:
       # uninstalled.
       - name: Byte-compile the modules
         run: just compile
-      - name: Leader and org-node tests, and the startup verifier
+      - name: Leader and Org-roam tests, and the startup verifier
         run: just test-packages
 
   nix:

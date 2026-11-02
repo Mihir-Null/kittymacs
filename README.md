@@ -51,7 +51,7 @@ The whole configuration is a literate wiki (thank you, Donald Knuth). Every chap
 - **Files and projects:** Dired with directories first on every platform, a Treemacs sidebar, `project.el` projects in Tabspaces workspaces, ripgrep search.
 - **Version control:** Magit with Meow-friendly Motion state and a `SPC m` menu, VC, diff-hl in the gutter.
 - **A real terminal:** [ghostel](https://github.com/dakra/ghostel) (libghostty), with Meow inside it; Eshell and Tramp alongside.
-- **Notes:** Org with an agenda, Org QL queries by tag and TODO state, and org-node linked notes in one graph across your notes folder and your projects.
+- **Notes:** Org with an agenda, Org QL queries by tag and TODO state, and Org-roam graphs scoped per project.
 - **Reading papers:** pdf-tools renders PDFs inside Emacs; org-noter keeps a notes file beside each one, in step with the page; `pdf:` links point at a page or a highlight.
 - **Notebooks:** Jupyter notebooks edited as [Jupytext](https://jupytext.readthedocs.io) scripts: `# %%` cells you run with `C-c C-c`, an optional Jupyter kernel, LaTeX in Markdown cells drawn in place, and each project's own environment through direnv.
 - **A coding agent:** Claude Code in an Emacs buffer through [agent-shell](https://github.com/xenodium/agent-shell), under `SPC a`; every edit it proposes waits for your answer.
@@ -81,6 +81,7 @@ The whole configuration is a literate wiki (thank you, Donald Knuth). Every chap
 | [Symbols Nerd Font Mono](https://www.nerdfonts.com/) | icons | icons are hidden |
 | Google Sans Code | the preferred editing font | the platform's default font |
 | Google Sans Flex | prose in Org | the platform's sans |
+| SQLite support in Emacs (built in on most builds) | Org-roam's index | Org-roam stays off |
 | A C compiler | Tree-sitter grammars | classic major modes are used |
 | Language servers (pyright, nil, clangd, …) | Eglot | no language server features |
 
@@ -213,7 +214,7 @@ The flake installs everything the configuration uses (Emacs, the tools and the e
 3. Optional, when you want them:
    - `SPC o e` opens a terminal; the first time, it offers to download ghostel's small native module.
    - Opening a file whose Tree-sitter grammar is missing asks to build it; `M-x kittymacs-treesit-install-grammars` builds the usual ones in one go (both need Git and a C compiler).
-   - `SPC n f` finds your linked notes; their index builds itself in the background at startup.
+   - `SPC n s` indexes your Org-roam notes, once per graph.
 
 Nothing is written outside the clone: packages, caches, history and `custom.el` all live in `var/`, which Git ignores.
 
@@ -252,7 +253,7 @@ In Normal state, Meow selects first and acts second: `w` selects a word, `x` a l
 | `kittymacs-theme`, `kittymacs-light-theme` | the dark theme, and the one `SPC t t` toggles to |
 | `kittymacs-font-family`, `kittymacs-font-size`, `kittymacs-prose-font-family`, `kittymacs-nerd-font`, `kittymacs-icons` | fonts and icons |
 | `kittymacs-org-prose` | whether Org sets prose in the proportional font (`SPC t P` per buffer) |
-| `kittymacs-org-directory`, `kittymacs-org-node-directory`, `kittymacs-project-directory` | where notes and projects live |
+| `kittymacs-org-directory`, `kittymacs-org-roam-directory`, `kittymacs-project-directory` | where notes and projects live |
 | `kittymacs-eglot-auto-start-modes`, `kittymacs-language-packages` | language servers started automatically; extra language packages (`nix`, `racket`, `guile`) |
 | `kittymacs-frames-only` | whether new surfaces become OS windows |
 | `kittymacs-macos-modifiers`, `kittymacs-msys2-root`, `kittymacs-termux-root` | per-platform keys and paths |
@@ -296,7 +297,7 @@ Then, inside Emacs, `M-x package-upgrade-all` upgrades the installed packages; r
 - *Emacs offers to build `epdfinfo` although Nix installed it:* Emacs cannot see the Nix profile. `M-: (executable-find "epdfinfo")` should name a path in `/nix/store`; if it is nil, decline the build and check `M-: exec-path` for `~/.nix-profile/bin` (or `/etc/profiles/per-user/<you>/bin` on NixOS). On macOS the shells chapter puts the profiles back after importing the login shell's `PATH`, so restart Emacs after updating.
 - *`SPC a a` fails to start:* `claude-agent-acp` must be on the path Emacs sees (`M-: (executable-find "claude-agent-acp")`), and `claude` must be logged in once in a terminal (`/login`).
 - *`SPC t a` says suggestions need the server:* `copilot-language-server` must be on the path Emacs sees (`M-: (executable-find "copilot-language-server")`), or installed by `M-x copilot-install-server`. Then `M-x copilot-login` once; `M-x copilot-diagnose` reports the server and the account.
-- *`SPC n` says there is no notes folder:* create `kittymacs-org-node-directory` (your Org directory by default), or open a project whose `.dir-locals.el` sets `kittymacs-org-node-project`. Notes under a folder whose name starts with `.` or `_` are never read, so a clone in `~/.config/emacs` cannot join the graph; `SPC n s` reports what the index holds.
+- *Org-roam does nothing:* your Emacs needs SQLite (`M-: (sqlite-available-p)`), and each graph needs one `SPC n s`.
 
 **Platform problems.**
 
@@ -336,7 +337,7 @@ The loop:
 | Recipe | Needs | Checks |
 |---|---|---|
 | `just check` | Emacs | chapters match generated files; pages follow the conventions; builder, platform and Tree-sitter tests |
-| `just install`, `just compile`, `just test-packages` | network, then installed packages | a fresh install byte-compiles, and the leader, org-node and startup-verifier tests pass |
+| `just install`, `just compile`, `just test-packages` | network, then installed packages | a fresh install byte-compiles, and the leader, Org-roam and startup-verifier tests pass |
 | `just frames-test` | a display | the frame policy |
 | `just nix-check` | Nix | the generated Nix lints, and the flake and both example hosts evaluate |
 
