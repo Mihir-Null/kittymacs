@@ -3,11 +3,12 @@
 
 ;;; Code:
 (defcustom kittymacs-frames-only
-  (not (eq system-type 'android))
+  (not (or (eq system-type 'android) (bound-and-true-p kittymacs-exwm)))
   "Whether every auxiliary buffer becomes its own operating-system window.
 Off on Android, where an Emacs frame is an activity in the task switcher
-rather than a window some desktop window manager arranges for you.  Set
-it in `private.el', before this module is loaded, to override."
+rather than a window some desktop window manager arranges for you, and
+under EXWM, where Emacs is the window manager.  Set it in `private.el',
+before this module is loaded, to override."
   :type 'boolean
   :group 'kittymacs)
 (use-package frames-only-mode

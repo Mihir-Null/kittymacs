@@ -43,14 +43,25 @@
 
 #+begin_src emacs-lisp
 (defcustom kittymacs-frames-only
-  (not (eq system-type 'android))
+  (not (or (eq system-type 'android) (bound-and-true-p kittymacs-exwm)))
   "Whether every auxiliary buffer becomes its own operating-system window.
 Off on Android, where an Emacs frame is an activity in the task switcher
-rather than a window some desktop window manager arranges for you.  Set
-it in `private.el', before this module is loaded, to override."
+rather than a window some desktop window manager arranges for you, and
+under EXWM, where Emacs is the window manager.  Set it in `private.el',
+before this module is loaded, to override."
   :type 'boolean
   :group 'kittymacs)
 #+end_src
+
+* Under EXWM, Emacs is the window manager :linux:
+:PROPERTIES:
+:ID: dad932c6-af99-440e-b1e4-f9b4036d4eac
+:END:
+
+- Frames-only mode hands arranging to a window manager outside Emacs; under [[id:86fcd506-34c8-476d-8903-acbef46275bf][EXWM]] there is none, since Emacs is it.
+  + An EXWM frame is a workspace: a Help buffer in its own frame would be a workspace of its own, and Emacs's windows, which EXWM's keys arrange, would go unused.
+- So the option above is off by default there too; it reads =kittymacs-exwm=, which the EXWM chapter, loaded just before this one, has set.
+  + =bound-and-true-p=, because this chapter also loads alone, in [[file:../tests/kittymacs-frames-tests.el][the frame tests]].
 
 * Magit gets a frame
 

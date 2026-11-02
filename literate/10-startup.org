@@ -212,6 +212,7 @@
   + the UI must exist before the dashboard measures text;
   + Meow must be up before the keys chapter binds the leader;
   + the terminal comes after the programming chapter, whose mode menu it extends;
+  + [[id:86fcd506-34c8-476d-8903-acbef46275bf][EXWM]] comes just before the frames policy, which reads =kittymacs-exwm= for its default;
   + frames policy goes last.
 - Two files of your own are read along the way: =private.el= right after the platform chapter, the Customize file at the end; [[*Machine-specific settings]] says why there.
 - The archive index is fetched only when a package has to be installed, by =kittymacs-ensure-package= ([[*A stale archive index]]); a start that installs nothing touches no network.
@@ -322,7 +323,8 @@ caught, so it shows a backtrace."
 (kittymacs-require-module 'kittymacs-meow)
 (kittymacs-require-module 'kittymacs-keys)
 
-;; Applications: shells, programming, Org, reading, notebooks, agents, suggestions, and finally frame policy.
+;; Applications: shells, programming, Org, reading, notebooks, agents, suggestions,
+;; then the window manager, and finally frame policy, which reads it.
 (kittymacs-require-module 'kittymacs-shell)
 (kittymacs-require-module 'kittymacs-programming)
 (kittymacs-require-module 'kittymacs-treesit)
@@ -334,6 +336,7 @@ caught, so it shows a backtrace."
 (kittymacs-require-module 'kittymacs-notebooks)
 (kittymacs-require-module 'kittymacs-agents)
 (kittymacs-require-module 'kittymacs-suggestions)
+(kittymacs-require-module 'kittymacs-exwm)
 (kittymacs-require-module 'kittymacs-frames)
 
 ;; Settings saved by M-x customize come last, so they override the chapters.
