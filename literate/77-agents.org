@@ -144,6 +144,28 @@ The key is the password `auth-source' holds for host api.alphaxiv.org."
 
 #+end_src
 
+* org-mcp's Emacs half, when the Claude stack installs it
+:PROPERTIES:
+:ID: c34cee63-5911-48fc-91dd-7097aaff40dc
+:END:
+
+- org-mcp is an MCP server that lets Claude search, read and write your Org-roam notes through this Emacs, so it uses your own configuration rather than a copy of it. EmptyNet's Claude stack (=literate/cc-agentic-stack.org= there) declares the server in =~/.claude.json=.
+- Its Emacs half is two files, which the stack links into =~/.local/share/cc-agentic-stack/elisp/=: =org-mcp.el= (nettnaut/org-mcp, pinned) and =org-mcp-babel.el= (two Babel tools, =org_babel_execute= and =org_babel_tangle=).
+- They are loaded here once Org-roam is, since org-mcp finds notes through Org-roam's database: without that folder (no stack, or the Windows host before its install) nothing happens.
+- The server reaches this Emacs with =emacsclient=, so Emacs's server must be running; each graph needs one =SPC n s= before its notes can be found.
+- Not added to =agent-shell-mcp-servers=: the agent's sessions get org-mcp from the user's Claude configuration, where its permission rules live.
+
+#+begin_src emacs-lisp
+(defconst kittymacs-agent-org-mcp-directory
+  (expand-file-name "~/.local/share/cc-agentic-stack/elisp/")
+  "Where EmptyNet's Claude stack links org-mcp's Emacs files.")
+
+(when (file-directory-p kittymacs-agent-org-mcp-directory)
+  (add-to-list 'load-path kittymacs-agent-org-mcp-directory)
+  (with-eval-after-load 'org-roam
+    (require 'org-mcp-babel nil t)))
+#+end_src
+
 * Knowing when a shell waits for you
 :PROPERTIES:
 :ID: 56789f7f-90bb-4c3b-947c-16ecb6d72365

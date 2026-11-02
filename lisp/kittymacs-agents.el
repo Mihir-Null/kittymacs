@@ -37,6 +37,14 @@ The key is the password `auth-source' holds for host api.alphaxiv.org."
            (type . "http")
            (url . "https://api.alphaxiv.org/mcp/v1")
            (headers . ,(lambda () (kittymacs-agent-alphaxiv-headers))))))
+(defconst kittymacs-agent-org-mcp-directory
+  (expand-file-name "~/.local/share/cc-agentic-stack/elisp/")
+  "Where EmptyNet's Claude stack links org-mcp's Emacs files.")
+
+(when (file-directory-p kittymacs-agent-org-mcp-directory)
+  (add-to-list 'load-path kittymacs-agent-org-mcp-directory)
+  (with-eval-after-load 'org-roam
+    (require 'org-mcp-babel nil t)))
 (defun kittymacs-agent-notify (_buffer title body)
   "Show a desktop notification with TITLE and BODY.
 The value of `agent-shell-attention-notify-function'."
