@@ -61,6 +61,7 @@ Press \\`H-R' after changing it."
 (declare-function exwm-layout-toggle-fullscreen "exwm-layout" (&optional id))
 (declare-function exwm-reset "exwm" ())
 (declare-function exwm-wm-mode "exwm" (&optional arg))
+(declare-function exwm-randr-mode "exwm-randr" (&optional arg))
 (defvar exwm-workspace-current-index)
 (defvar exwm-input-global-keys)
 (defvar exwm--floating-frame)
@@ -226,6 +227,8 @@ A command, or a function taking the key's ARGS."
             (lambda ()
               (exwm-workspace-rename-buffer
                (format "%s: %s" exwm-class-name exwm-title))))
+  (require 'exwm-randr)
+  (exwm-randr-mode 1)
   (exwm-wm-mode 1))
 (defvar meow-mode-state-list)
 (with-eval-after-load 'meow

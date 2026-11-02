@@ -137,6 +137,7 @@ Press \\`H-R' after changing it."
 (declare-function exwm-layout-toggle-fullscreen "exwm-layout" (&optional id))
 (declare-function exwm-reset "exwm" ())
 (declare-function exwm-wm-mode "exwm" (&optional arg))
+(declare-function exwm-randr-mode "exwm-randr" (&optional arg))
 (defvar exwm-workspace-current-index)
 (defvar exwm-input-global-keys)
 (defvar exwm--floating-frame)
@@ -340,8 +341,20 @@ A command, or a function taking the key's ARGS."
             (lambda ()
               (exwm-workspace-rename-buffer
                (format "%s: %s" exwm-class-name exwm-title))))
+  (require 'exwm-randr)
+  (exwm-randr-mode 1)
   (exwm-wm-mode 1))
 #+end_src
+
+** The screen's size can change :decision:
+:PROPERTIES:
+:ID: 2d48b60f-6466-4b44-b1ca-db4328ad1889
+:END:
+
+- A remote desktop's screen is as large as the client's window, and the client says so again whenever its window is resized: the RDP client sends a display update, and xrdp resizes the X screen through RandR.
+- EXWM itself sizes its workspaces once, at start, and ignores a root window that changes size afterwards; =exwm-randr-mode= listens for RandR's change notices and fits every workspace to the screen again (=exwm-randr-refresh=).
+  + With no =exwm-randr-workspace-monitor-plist=, every workspace goes to the primary monitor, or the only one: one screen needs no configuration.
+- Turned on before =exwm-wm-mode=, so it starts with EXWM; on a desk with several monitors it is also what places workspaces on them.
 
 * X windows in Meow :meow:
 :PROPERTIES:
@@ -363,7 +376,8 @@ A command, or a function taking the key's ARGS."
 
 * Check
 
-- Start a session whose script sets =KITTYMACS_EXWM=1= and runs =emacs=; =M-: kittymacs-exwm= is =t=, =M-: exwm-wm-mode= is =t=.
+- Start a session whose script sets =KITTYMACS_EXWM=1= and runs =emacs=; =M-: kittymacs-exwm= is =t=, =M-: exwm-wm-mode= is =t=, =M-: exwm-randr-mode= is =t=.
+- Resize the RDP client's window (or rotate the tablet): after a moment the workspace fills the new size; =xrandr= in the session shows the new resolution.
 - =M-x= then =xev=, press the Hyper key: =Hyper_L= with =mod3=, and no other modifier.
 - Start Chrome: a buffer named =Google-chrome: …= appears; =H-l= and =H-h= move between it and an Emacs window beside it.
 - =H-2=, then =H-1=: a second workspace, and back; =H-@= in Chrome moves it to workspace 2.
