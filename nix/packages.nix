@@ -43,6 +43,7 @@ emacs.pkgs.withPackages (
     eshell-up
     esh-help
     exec-path-from-shell
+    exwm
     flymake-collection
     flyspell-correct
     frames-only-mode
