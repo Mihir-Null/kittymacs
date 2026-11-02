@@ -1,0 +1,371 @@
+:PROPERTIES:
+:ID: 86fcd506-34c8-476d-8903-acbef46275bf
+:END:
+
+#+TITLE: EXWM: Emacs as the X window manager
+#+FILETAGS: :interface:linux:
+#+STARTUP: overview
+#+PROPERTY: header-args:emacs-lisp :tangle ../lisp/kittymacs-exwm.el :eval never :comments no :padline no :mkdirp yes
+
+- In an X session that has no other window manager (a remote desktop, say), Emacs arranges every window itself: Chrome and other X programs become buffers, shown in Emacs windows, switched like any buffer.
+- The keys are LeopardWM's, the tiler on Windows: one modifier (Hyper here), the same letters, the nearest EXWM action.
+  + The key table is data, separate from what each action does, so a Wayland compositor such as EWM can bind the same table later.
+- Leans on nothing in kittymacs; [[id:f1d045c2-e2dc-4514-ab17-dd982ed6be00][the frames chapter]] reads =kittymacs-exwm=, so this chapter loads just before it.
+- Does not know how Hyper is made: the session maps a key to it (on EmptyNet, Caps Lock and F13).
+
+* Only when the session asks :decision:
+:PROPERTIES:
+:ID: 09277c62-e114-4ae6-a53b-f22650c0a4c0
+:END:
+
+- EXWM is on only when the program that starts Emacs sets =KITTYMACS_EXWM=1= and the first frame is on X.
+  + An Emacs started any other way (the daemon, a WSLg window, a Wayland session) loads none of this, and EXWM is never installed into it.
+  + An environment variable, not a command-line switch: the session script sets it, and =init.el= can read it before any chapter loads.
+- The first frame is already on X when =init.el= runs, so =window-system= is =x= by then; a daemon has no frame yet, which is why the daemon can never be the window manager here.
+- The session's Emacs is a second Emacs, beside the daemon:
+  + [[id:3fd783cd-deb8-48aa-bb44-0d9b16535365][the defaults]] start a server only if none runs, so =emacsclient= keeps reaching the daemon;
+  + the two share =var/= as any two Emacs processes do.
+
+#+begin_src emacs-lisp
+;;; kittymacs-exwm.el --- Emacs as the X window manager -*- lexical-binding: t; -*-
+;; Generated from literate/44-exwm.org; edit the Org source, then tangle.
+
+;;; Code:
+
+(require 'seq)
+
+(defcustom kittymacs-exwm
+  (and (eq window-system 'x) (equal (getenv "KITTYMACS_EXWM") "1"))
+  "Whether this Emacs is the X session's window manager, through EXWM.
+On when the program starting Emacs sets KITTYMACS_EXWM=1 and the first
+frame is on X.  Frames-only mode is off by default while it is on."
+  :type 'boolean
+  :group 'kittymacs)
+#+end_src
+
+* The key grammar, from LeopardWM :decision:
+:PROPERTIES:
+:ID: 44577bed-4dfb-4432-b608-98e3e79e791b
+:END:
+
+- The grammar carries over; the mechanics are EXWM's:
+  + =H-key= :: act on the focused thing;
+  + =H-S-key= :: move it;
+  + =H-C-key= and =H-C-S-key= :: monitors, unbound while a session has one screen ([[*Actions with no EXWM equivalent]]).
+- Each entry is =(KEY ACTION . ARGS)=: a key in =kbd= notation, an action named as LeopardWM names it (=focus_left= is =focus-left=), and its arguments.
+  + A shifted letter is its capital, =H-H=; a shifted digit or symbol is the character it types on a US layout, =H-!= for Shift+1, =H-+= for Shift+=.
+- Set it in =private.el= before this chapter loads, or change it later and press =H-R=.
+
+#+begin_src emacs-lisp
+
+(defcustom kittymacs-wm-keys
+  (append
+   '(("H-h" focus-left) ("H-j" focus-down) ("H-k" focus-up) ("H-l" focus-right)
+     ("H-H" move-column-left) ("H-J" move-window-down)
+     ("H-K" move-window-up) ("H-L" move-column-right)
+     ("H-[" move-window-left) ("H-]" move-window-right)
+     ("H-<left>" workspace-prev) ("H-<right>" workspace-next)
+     ("H-S-<left>" move-to-workspace-prev) ("H-S-<right>" move-to-workspace-next)
+     ("H-w" close-window)
+     ("H-f" toggle-floating) ("H-F" toggle-fullscreen)
+     ("H-m" maximize-column)
+     ("H-=" cycle-width-up) ("H--" cycle-width-down)
+     ("H-+" cycle-height-up) ("H-_" cycle-height-down)
+     ("H-0" equalize-widths) ("H-)" equalize-heights)
+     ("H-SPC" toggle-overview)
+     ("H-s" scratchpad-toggle) ("H-S" scratchpad-stash)
+     ("H-t" toggle-tabbed)
+     ("H-r" refresh) ("H-R" reload))
+   ;; H-1 … H-9 switch workspace; H-! … H-( (Shift+1 … Shift+9) move there.
+   (seq-map-indexed (lambda (key i) (list key 'move-to-workspace (1+ i)))
+                    '("H-!" "H-@" "H-#" "H-$" "H-%" "H-^" "H-&" "H-*" "H-("))
+   (mapcar (lambda (n) (list (format "H-%d" n) 'switch-workspace n))
+           (number-sequence 1 9)))
+  "The window manager's keys: a list of (KEY ACTION . ARGS).
+KEY is in `kbd' notation; ACTION is a key of `kittymacs-exwm-actions'.
+Press \\`H-R' after changing it."
+  :type '(repeat (cons string (cons symbol (repeat sexp))))
+  :group 'kittymacs)
+
+(defcustom kittymacs-wm-width-presets '(0.25 0.33 0.5 0.667 0.75)
+  "Widths the width cycle steps through, as fractions of the frame."
+  :type '(repeat number)
+  :group 'kittymacs)
+
+(defcustom kittymacs-wm-height-presets '(0.333 0.5 0.667)
+  "Heights the height cycle steps through, as fractions of the frame."
+  :type '(repeat number)
+  :group 'kittymacs)
+#+end_src
+
+* What each action does
+
+- An action is a command, or a function of the entry's =ARGS=; the table's names map to EXWM, Emacs and the helpers below.
+
+| Action                      | EXWM or Emacs                                     | Differs from LeopardWM                                   |
+|-----------------------------+---------------------------------------------------+----------------------------------------------------------|
+| =focus-left= … =focus-right= | =windmove-left= …                                   | windows, not columns                                     |
+| =move-column-*=, =move-window-*= | =windmove-swap-states-left= …                    | swaps with the neighbour; no columns to move between     |
+| =switch-workspace N=        | =exwm-workspace-switch-create=                      | made when first visited                                  |
+| =move-to-workspace N=       | =exwm-workspace-move-window=                        | X windows only; an Emacs buffer stays                    |
+| =workspace-prev=, =-next=   | the neighbouring workspace, wrapping at the ends  |                                                          |
+| =close-window=              | an X window's buffer is killed; the window closes | the last window of a frame stays                         |
+| =toggle-floating=           | =exwm-floating-toggle-floating=                     |                                                          |
+| =toggle-fullscreen=         | =exwm-layout-toggle-fullscreen=                     | X windows only                                           |
+| =maximize-column=           | =delete-other-windows=, and back                    | the layout comes back on the second press                |
+| =cycle-width-*=, =-height-*= | resize to the next preset                         |                                                          |
+| =equalize-widths=, =-heights= | =balance-windows=                                 | both directions at once                                  |
+| =toggle-overview=           | =exwm-workspace-switch=: the workspace list         | a list, not a live overview                              |
+| =scratchpad-stash=          | float the X window and hide it                    | one window at a time                                     |
+| =scratchpad-toggle=         | show or hide the stashed window                   |                                                          |
+| =toggle-tabbed=             | =global-tab-line-mode=: each window's buffers as tabs | every window at once                                 |
+| =refresh=                   | =exwm-reset=: line mode, layout redrawn             |                                                          |
+| =reload=                    | the key table bound again                         | the table, not the whole configuration                   |
+
+#+begin_src emacs-lisp
+
+(declare-function exwm-workspace-switch "exwm-workspace" (frame-or-index &optional force))
+(declare-function exwm-workspace-switch-create "exwm-workspace" (frame-or-index))
+(declare-function exwm-workspace-move-window "exwm-workspace" (frame-or-index &optional id))
+(declare-function exwm-workspace-add "exwm-workspace" (&optional index))
+(declare-function exwm-workspace--count "exwm-workspace" ())
+(declare-function exwm-workspace-rename-buffer "exwm-workspace" (newname))
+(declare-function exwm-floating-toggle-floating "exwm-floating" ())
+(declare-function exwm-floating-hide "exwm-floating" ())
+(declare-function exwm-layout-toggle-fullscreen "exwm-layout" (&optional id))
+(declare-function exwm-reset "exwm" ())
+(declare-function exwm-wm-mode "exwm" (&optional arg))
+(defvar exwm-workspace-current-index)
+(defvar exwm-input-global-keys)
+(defvar exwm--floating-frame)
+(defvar exwm-class-name)
+(defvar exwm-title)
+
+(defun kittymacs-exwm--workspace-index (n)
+  "The index of workspace N, counted from 1, made if it does not exist yet."
+  (while (>= (1- n) (exwm-workspace--count))
+    (exwm-workspace-add))
+  (1- n))
+
+(defun kittymacs-exwm-switch-workspace (n)
+  "Show workspace N, counted from 1 as the keys are."
+  (exwm-workspace-switch-create (1- n)))
+
+(defun kittymacs-exwm-move-to-workspace (n)
+  "Move the focused X window to workspace N, counted from 1."
+  (exwm-workspace-move-window (kittymacs-exwm--workspace-index n)))
+
+(defun kittymacs-exwm--neighbour (step)
+  "The index STEP workspaces away from this one, wrapping at the ends."
+  (mod (+ exwm-workspace-current-index step) (exwm-workspace--count)))
+
+(defun kittymacs-exwm-workspace-step (step)
+  "Show the workspace STEP away from this one."
+  (exwm-workspace-switch (kittymacs-exwm--neighbour step)))
+
+(defun kittymacs-exwm-move-step (step)
+  "Move the focused X window to the workspace STEP away."
+  (exwm-workspace-move-window (kittymacs-exwm--neighbour step)))
+
+(defun kittymacs-exwm-close ()
+  "Close the focused thing.
+An X window's buffer is killed, which asks its program to close it; then
+the Emacs window goes too, unless it is the frame's last."
+  (interactive)
+  (let ((window (selected-window)))
+    (when (derived-mode-p 'exwm-mode)
+      (kill-current-buffer))
+    (when (and (window-live-p window) (not (one-window-p)))
+      (delete-window window))))
+
+(defun kittymacs-exwm-maximize ()
+  "Show only the selected window; pressed again, bring the others back."
+  (interactive)
+  (if-let* ((saved (frame-parameter nil 'kittymacs-exwm-maximized)))
+      (progn (set-frame-parameter nil 'kittymacs-exwm-maximized nil)
+             (set-window-configuration saved))
+    (unless (one-window-p)
+      (set-frame-parameter nil 'kittymacs-exwm-maximized
+                           (current-window-configuration))
+      (delete-other-windows))))
+
+(defun kittymacs-exwm--cycle (presets step horizontal)
+  "Resize the selected window to the preset STEP (1 or -1) away in PRESETS.
+PRESETS are fractions of the frame, in increasing order; HORIZONTAL
+means widths.  Past the last preset, the first comes round again."
+  (let* ((total (window-total-size (frame-root-window) horizontal))
+         (now (/ (float (window-total-size nil horizontal)) total))
+         (next (if (> step 0)
+                   (or (seq-find (lambda (p) (> p (+ now 0.01))) presets)
+                       (car presets))
+                 (or (seq-find (lambda (p) (< p (- now 0.01))) (reverse presets))
+                     (car (last presets))))))
+    (condition-case err
+        (window-resize nil (- (round (* next total))
+                              (window-total-size nil horizontal))
+                       horizontal)
+      (error (message "%s" (error-message-string err))))))
+
+(defvar kittymacs-exwm--scratchpad nil
+  "The X window's buffer last stashed with `scratchpad-stash'.")
+
+(defun kittymacs-exwm-scratchpad-stash ()
+  "Float the focused X window and hide it, to call back with `scratchpad-toggle'."
+  (interactive)
+  (unless (derived-mode-p 'exwm-mode)
+    (user-error "Only an X window can be stashed"))
+  (setq kittymacs-exwm--scratchpad (current-buffer))
+  (unless exwm--floating-frame
+    (exwm-floating-toggle-floating))
+  (exwm-floating-hide))
+
+(defun kittymacs-exwm-scratchpad-toggle ()
+  "Show the stashed X window, or hide it again if it is showing."
+  (interactive)
+  (let* ((buffer kittymacs-exwm--scratchpad)
+         (window (and (buffer-live-p buffer) (get-buffer-window buffer t))))
+    (cond ((not (buffer-live-p buffer))
+           (user-error "Nothing is stashed: the stash key stashes an X window"))
+          (window (with-selected-window window (exwm-floating-hide)))
+          (t (switch-to-buffer buffer)))))
+
+(defcustom kittymacs-exwm-actions
+  `((focus-left . windmove-left) (focus-down . windmove-down)
+    (focus-up . windmove-up) (focus-right . windmove-right)
+    (move-column-left . windmove-swap-states-left)
+    (move-column-right . windmove-swap-states-right)
+    (move-window-left . windmove-swap-states-left)
+    (move-window-right . windmove-swap-states-right)
+    (move-window-up . windmove-swap-states-up)
+    (move-window-down . windmove-swap-states-down)
+    (switch-workspace . kittymacs-exwm-switch-workspace)
+    (move-to-workspace . kittymacs-exwm-move-to-workspace)
+    (workspace-prev . ,(lambda () (interactive) (kittymacs-exwm-workspace-step -1)))
+    (workspace-next . ,(lambda () (interactive) (kittymacs-exwm-workspace-step 1)))
+    (move-to-workspace-prev . ,(lambda () (interactive) (kittymacs-exwm-move-step -1)))
+    (move-to-workspace-next . ,(lambda () (interactive) (kittymacs-exwm-move-step 1)))
+    (close-window . kittymacs-exwm-close)
+    (toggle-floating . exwm-floating-toggle-floating)
+    (toggle-fullscreen . exwm-layout-toggle-fullscreen)
+    (maximize-column . kittymacs-exwm-maximize)
+    (cycle-width-up
+     . ,(lambda () (interactive) (kittymacs-exwm--cycle kittymacs-wm-width-presets 1 t)))
+    (cycle-width-down
+     . ,(lambda () (interactive) (kittymacs-exwm--cycle kittymacs-wm-width-presets -1 t)))
+    (cycle-height-up
+     . ,(lambda () (interactive) (kittymacs-exwm--cycle kittymacs-wm-height-presets 1 nil)))
+    (cycle-height-down
+     . ,(lambda () (interactive) (kittymacs-exwm--cycle kittymacs-wm-height-presets -1 nil)))
+    (equalize-widths . balance-windows)
+    (equalize-heights . balance-windows)
+    (toggle-overview . exwm-workspace-switch)
+    (scratchpad-stash . kittymacs-exwm-scratchpad-stash)
+    (scratchpad-toggle . kittymacs-exwm-scratchpad-toggle)
+    (toggle-tabbed . global-tab-line-mode)
+    (refresh . exwm-reset)
+    (reload . kittymacs-exwm-apply-keys))
+  "What each action in `kittymacs-wm-keys' does under EXWM.
+A command, or a function taking the key's ARGS."
+  :type '(alist :key-type symbol :value-type function)
+  :group 'kittymacs)
+#+end_src
+
+** Actions with no EXWM equivalent
+:PROPERTIES:
+:ID: bcba57df-d1a1-4412-b064-b6d10c5cb1b4
+:END:
+
+- LeopardWM scrolls an endless strip of columns; Emacs splits a fixed frame. What only a strip can do stays unbound:
+
+| LeopardWM key and action                          | Why it stays unbound                                         |
+|---------------------------------------------------+--------------------------------------------------------------|
+| =C= =center_column=                                   | nothing scrolls, so nothing to centre                        |
+| =,= =.= =consume_from_left=, =_right=                   | a window holds one buffer; columns hold windows              |
+| =Shift+[= =Shift+]= =expel_to_left=, =_right=           | the same                                                     |
+| =Home= =End=, with Shift: the strip's ends            | no strip; =H-h= and =H-l= reach the frame's edges              |
+| =N= =toggle_new_window_placement=                     | EXWM shows a new window in the selected one                  |
+| =P= =toggle_pause=, =Y= =toggle_sticky=                 | no counterpart worth a key yet                               |
+| =Ctrl+HJKL=, =Ctrl+Shift+HJKL=: monitors              | a remote session has one screen; =exwm-randr-mode= when not    |
+
+* Binding the table
+
+- =exwm-input-global-keys= holds keys that work everywhere: in Emacs buffers, and in X windows, which would otherwise receive every key.
+- Set with =setopt=, not =setq=: the option's setter binds the keys, and tells a running EXWM about them.
+- An action the actions list lacks is an error naming it, so a typo in the table is found at once.
+
+#+begin_src emacs-lisp
+
+(defun kittymacs-exwm--command (action args)
+  "The command for ACTION, called with ARGS."
+  (let ((function (alist-get action kittymacs-exwm-actions)))
+    (unless function
+      (error "`kittymacs-wm-keys' names %s, which `kittymacs-exwm-actions' lacks"
+             action))
+    (if args
+        (lambda () (interactive) (apply function args))
+      function)))
+
+(defun kittymacs-exwm-apply-keys ()
+  "Bind `kittymacs-wm-keys' everywhere, in Emacs buffers and X windows."
+  (interactive)
+  (setopt exwm-input-global-keys
+          (mapcar (lambda (entry)
+                    (cons (kbd (car entry))
+                          (kittymacs-exwm--command (cadr entry) (cddr entry))))
+                  kittymacs-wm-keys)))
+#+end_src
+
+* EXWM itself
+
+- Four workspaces to begin with; =H-5= to =H-9= make the rest when first used.
+- An X window's buffer is named after its program and title, =Google-chrome: Inbox=, so =C-x b= and Consult find it by either.
+- =exwm-wm-mode= waits for =window-setup-hook= when called while the first frame is still being set up, so it can be turned on from here.
+- =C-x=, =C-h=, =M-x= and the other prefix keys reach Emacs even from an X window ([[https://github.com/emacs-exwm/exwm/wiki][EXWM's wiki]]); =C-q= sends the next key to the program instead.
+
+#+begin_src emacs-lisp
+
+(use-package exwm
+  :ensure t
+  :if kittymacs-exwm
+  :demand t
+  :custom
+  (exwm-workspace-number 4)
+  :config
+  (kittymacs-exwm-apply-keys)
+  (add-hook 'exwm-update-class-hook
+            (lambda () (exwm-workspace-rename-buffer exwm-class-name)))
+  (add-hook 'exwm-update-title-hook
+            (lambda ()
+              (exwm-workspace-rename-buffer
+               (format "%s: %s" exwm-class-name exwm-title))))
+  (exwm-wm-mode 1))
+#+end_src
+
+* X windows in Meow :meow:
+:PROPERTIES:
+:ID: d76ef53a-2792-4a3c-b4a9-83d2ad9cbcf4
+:END:
+
+- An X window's buffer starts in insert state: its keys belong to the program, and Meow's indicator says so.
+  + EXWM sends a key to Emacs only if it is global or a prefix key, so Meow's normal-state keys would never arrive anyway.
+
+#+begin_src emacs-lisp
+
+(defvar meow-mode-state-list)
+(with-eval-after-load 'meow
+  (add-to-list 'meow-mode-state-list '(exwm-mode . insert)))
+
+(provide 'kittymacs-exwm)
+;;; kittymacs-exwm.el ends here
+#+end_src
+
+* Check
+
+- Start a session whose script sets =KITTYMACS_EXWM=1= and runs =emacs=; =M-: kittymacs-exwm= is =t=, =M-: exwm-wm-mode= is =t=.
+- =M-x= then =xev=, press the Hyper key: =Hyper_L= with =mod3=, and no other modifier.
+- Start Chrome: a buffer named =Google-chrome: …= appears; =H-l= and =H-h= move between it and an Emacs window beside it.
+- =H-2=, then =H-1=: a second workspace, and back; =H-@= in Chrome moves it to workspace 2.
+- =H-m= twice: one window, then the old layout; =H-== a few times steps through the widths, back to the narrowest.
+- =H-S= in Chrome: it vanishes; =H-s= brings it back floating, and again hides it.
+- =C-h k H-w=: =kittymacs-exwm-close=, from the table.
+- In an Emacs started any other way: =M-: kittymacs-exwm= is =nil=, and =(featurep 'exwm)= is =nil=.

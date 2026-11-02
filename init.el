@@ -92,7 +92,8 @@ caught, so it shows a backtrace."
 (kittymacs-require-module 'kittymacs-meow)
 (kittymacs-require-module 'kittymacs-keys)
 
-;; Applications: shells, programming, Org, reading, notebooks, agents, suggestions, and finally frame policy.
+;; Applications: shells, programming, Org, reading, notebooks, agents, suggestions,
+;; then the window manager, and finally frame policy, which reads it.
 (kittymacs-require-module 'kittymacs-shell)
 (kittymacs-require-module 'kittymacs-programming)
 (kittymacs-require-module 'kittymacs-treesit)
@@ -104,6 +105,7 @@ caught, so it shows a backtrace."
 (kittymacs-require-module 'kittymacs-notebooks)
 (kittymacs-require-module 'kittymacs-agents)
 (kittymacs-require-module 'kittymacs-suggestions)
+(kittymacs-require-module 'kittymacs-exwm)
 (kittymacs-require-module 'kittymacs-frames)
 
 ;; Settings saved by M-x customize come last, so they override the chapters.
