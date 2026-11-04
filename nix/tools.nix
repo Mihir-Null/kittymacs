@@ -11,7 +11,7 @@
     with pkgs;
     [
       git # version control chapter (Magit)
-      ripgrep # navigation chapter (consult-ripgrep, deadgrep)
+      ripgrep # navigation chapter (consult-ripgrep)
       fd # navigation chapter (consult-fd)
       gnupg # startup chapter: GNU ELPA's signed index
       (hunspell.withDicts (d: [ d.en_US ])) # platform chapter: spelling

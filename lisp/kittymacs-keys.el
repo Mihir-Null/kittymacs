@@ -59,7 +59,6 @@
   "S" (cons "lines in all buffers" #'consult-line-multi)
   "." (cons "symbol at point" #'kittymacs-search-symbol-at-point)
   "d" (cons "ripgrep" #'consult-ripgrep)
-  "D" (cons "ripgrep buffer" #'deadgrep)
   "r" (cons "replace (visual)" #'vr/query-replace)
   "c" (cons "edit occurrences" #'iedit-mode)
   "i" (cons "imenu" #'consult-imenu)
@@ -205,8 +204,7 @@
   "d" (cons "list buffer" #'flymake-show-buffer-diagnostics)
   "D" (cons "list project" #'flymake-show-project-diagnostics)
   "c" (cons "choose" #'consult-flymake)
-  "s" (cons "start check" #'flymake-start)
-  "P" (cons "package lint" #'package-lint-current-buffer))
+  "s" (cons "start check" #'flymake-start))
 
 (defun kittymacs-insert-date ()
   "Insert today's date as YYYY-MM-DD."
@@ -277,7 +275,6 @@
   "s" (cons "spell check" #'flyspell-mode)
   "F" (cons "flymake" #'flymake-mode)
   "r" (cons "colour names" #'rainbow-mode)
-  "R" (cons "rainbow identifiers" #'rainbow-identifiers-mode)
   "f" (cons "frames-only mode" #'frames-only-mode)
   "d" (cons "file tree sidebar" #'treemacs)
   "a" (cons "suggestions (Copilot)" #'kittymacs-suggestions-toggle)

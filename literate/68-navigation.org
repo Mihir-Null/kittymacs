@@ -12,7 +12,7 @@
   + a /project/ is any Git repository or directory with a marker file; =SPC p= finds files, buffers and text inside one;
   + a /workspace/ is a tab with its own set of buffers, usually one per project, under =SPC W=;
   + searches use ripgrep when it is installed.
-- Most of it is built into Emacs (=project.el=, =recentf=, =saveplace=, bookmarks, the tab bar); packages add jumping (Avy), a ripgrep buffer (=deadgrep=), live replacement (=visual-regexp=) and workspaces (Tabspaces).
+- Most of it is built into Emacs (=project.el=, =recentf=, =saveplace=, bookmarks, the tab bar); packages add jumping (Avy), live replacement (=visual-regexp=) and workspaces (Tabspaces).
 - Leans on [[id:42b02bb4-ea68-4981-b427-35705bf162f4][the completion chapter]] for Consult, [[id:3fd783cd-deb8-48aa-bb44-0d9b16535365][the defaults chapter]] for the cache directory and [[id:afa6b7fd-742a-4c15-86a6-32e3e8027b0e][the platform chapter]]; [[id:53ad53ed-155f-47dc-973d-7be18de2893c][the keys chapter]] binds the commands.
 - Distilled from Lambda-Emacs by Colin McLear (=lem-setup-navigation=, =-projects=, =-search=, =-tabs=).
 
@@ -51,9 +51,6 @@
 
 (setopt bookmark-default-file (expand-file-name "bookmarks" kittymacs-cache-dir))
 
-(use-package goto-last-change
-  :ensure t
-  :bind (("C-\"" . goto-last-change)))
 
 (dolist (hook '(compilation-mode-hook eshell-mode-hook shell-mode-hook text-mode-hook))
   (add-hook hook #'goto-address-mode))
@@ -141,18 +138,13 @@
 
 * Searching files
 
-- Consult's ripgrep (=SPC s d=) is the everyday search.
-- =deadgrep= (=SPC s D=) gives a results buffer you can keep and revisit.
+- Consult's ripgrep (=SPC s d=) is the everyday search; =embark-export= turns its results into a buffer you can keep and revisit.
 - =visual-regexp= (=SPC s r=) shows replacements live before you commit to them.
 
 #+begin_src emacs-lisp
-(use-package deadgrep :ensure t :commands deadgrep)
 (use-package visual-regexp
   :ensure t
   :commands (vr/query-replace vr/replace))
-(use-package visual-regexp-steroids
-  :ensure t
-  :after visual-regexp)
 
 #+end_src
 

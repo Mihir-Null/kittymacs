@@ -17,9 +17,6 @@
 
 (setopt bookmark-default-file (expand-file-name "bookmarks" kittymacs-cache-dir))
 
-(use-package goto-last-change
-  :ensure t
-  :bind (("C-\"" . goto-last-change)))
 
 (dolist (hook '(compilation-mode-hook eshell-mode-hook shell-mode-hook text-mode-hook))
   (add-hook hook #'goto-address-mode))
@@ -70,13 +67,9 @@
   (when (executable-find "rg")
     (setopt xref-search-program 'ripgrep))
   (project-forget-zombie-projects))
-(use-package deadgrep :ensure t :commands deadgrep)
 (use-package visual-regexp
   :ensure t
   :commands (vr/query-replace vr/replace))
-(use-package visual-regexp-steroids
-  :ensure t
-  :after visual-regexp)
 (setopt tab-bar-tab-hints t
         tab-bar-new-tab-choice "*scratch*"
         tab-bar-new-tab-to 'rightmost

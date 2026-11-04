@@ -25,7 +25,6 @@ emacs.pkgs.withPackages (
     consult-flyspell
     corfu
     dashboard
-    deadgrep
     diff-hl
     dimmer
     diredfl
@@ -33,7 +32,6 @@ emacs.pkgs.withPackages (
     dired-ranger
     doom-modeline
     doom-themes
-    elisp-def
     elisp-demos
     embark
     embark-consult
@@ -51,7 +49,6 @@ emacs.pkgs.withPackages (
     geiser-guile
     ghostel
     goggles
-    goto-last-change
     helpful
     hide-mode-line
     highlight-indent-guides
@@ -84,7 +81,6 @@ emacs.pkgs.withPackages (
     org-roam
     org-super-agenda
     outline-minor-faces
-    package-lint
     pcmpl-args
     pcomplete-extension
     pdf-tools
@@ -92,7 +88,6 @@ emacs.pkgs.withPackages (
     puni
     racket-mode
     rainbow-delimiters
-    rainbow-identifiers
     rainbow-mode
     spacious-padding
     tabspaces
@@ -102,7 +97,6 @@ emacs.pkgs.withPackages (
     treemacs-tab-bar
     vertico
     visual-regexp
-    visual-regexp-steroids
     vundo
     writeroom-mode
     ws-butler

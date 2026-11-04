@@ -66,7 +66,7 @@ The whole configuration is a literate wiki (thank you, Donald Knuth). Every chap
 | **GNU Emacs 31.1+** | everything | — |
 | **Git** | installing packages, Magit | no Magit; package installs from Git fail |
 | **GnuPG** (`gpg`) | verifying GNU ELPA's signed index | the signature check is skipped |
-| [ripgrep](https://github.com/BurntSushi/ripgrep) | project search (`SPC s d`, `SPC s D`), and faster `xref` searches | those two searches fail; `xref` uses `grep` |
+| [ripgrep](https://github.com/BurntSushi/ripgrep) | project search (`SPC s d`), and faster `xref` searches | those two searches fail; `xref` uses `grep` |
 | [fd](https://github.com/sharkdp/fd) | `M-x consult-fd` | use `SPC f f` or `SPC p f` instead |
 | `hunspell` or `aspell`, plus a dictionary | spell checking | spell checking stays off |
 | `python3` | Treemacs' directory collapsing and Git colours | Treemacs uses its simpler modes |
