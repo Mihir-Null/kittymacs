@@ -196,6 +196,7 @@ Use t for a terminal configured with a Nerd Font, or nil to disable icons."
 
 (use-package dimmer
   :ensure t
+  :commands dimmer-mode
   :custom
   (dimmer-fraction 0.3)
   (dimmer-adjustment-mode :foreground)
@@ -205,8 +206,7 @@ Use t for a terminal configured with a Nerd Font, or nil to disable icons."
   (dimmer-configure-which-key)
   (dimmer-configure-magit)
   (dimmer-configure-posframe)
-  (add-to-list 'dimmer-buffer-exclusion-regexps "^ \\*Vertico\\*$")
-  (dimmer-mode 1))
+  (add-to-list 'dimmer-buffer-exclusion-regexps "^ \\*Vertico\\*$"))
 
 (defun kittymacs--pulse-line (&rest _)
   "Briefly highlight the current line."

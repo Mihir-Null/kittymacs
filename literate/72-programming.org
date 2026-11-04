@@ -86,7 +86,7 @@
 :ID: 2bbfeaaa-f982-4661-8e26-2c0aa1e92800
 :END:
 
-- Guides draw a thin =│= at each indentation level; the guide of the current level is highlighted.
+- Guides draw a thin =│= at each indentation level; the current level is not highlighted, because that recomputes after each command.
   + Graphical frames only: the package cannot derive its faces without a display.
 - In Lisp buffers =aggressive-indent= re-indents as you type, which is how Lisp is meant to feel.
   + In other languages it fights with formatters, so it stays off.
@@ -105,7 +105,7 @@ The package cannot derive its faces without a display."
   :custom
   (highlight-indent-guides-method 'character)
   (highlight-indent-guides-character ?│)
-  (highlight-indent-guides-responsive 'top)
+  (highlight-indent-guides-responsive nil)
   (highlight-indent-guides-auto-odd-face-perc 5)
   (highlight-indent-guides-auto-even-face-perc 5)
   (highlight-indent-guides-auto-character-face-perc 15))

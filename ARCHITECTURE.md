@@ -77,6 +77,8 @@ Design decisions, with the reason:
 - **The default `major-mode` must be a symbol.** Every buffer made by `get-buffer-create` carries it, and `get`, `symbol-name` and `derived-mode-parent` all assume a mode name; `kittymacs-guess-major-mode` is a named function for that reason.
 - **Licence is GPL-3.0-or-later**, matching the sources the code is distilled from.
 
+- **Responsiveness outranks ambient polish.** Emacs does Lisp and redisplay on one thread, and on a managed Mac long stalls ended in Force Quit. So work that scales with open buffers or runs per save is off or event-driven: auto-revert relies on notifications (`auto-revert-avoid-polling`, interval 5 s), the `diff-hl` gutter updates on save rather than through flydiff, Magit's status does not refresh on save, `dimmer` starts off, undo keeps about 16 MB per buffer, and agent output stays collapsed and unhighlighted. `envrc-async` is 1 second, so a Nix evaluation cannot freeze Emacs; a mode hook that outruns direnv sees the global environment until `SPC p E r`.
+
 ### Keys and Meow
 
 - **Buffer-local emulation entry over a `menu-item :filter`.** Both work; only the emulation entry is visible to `where-is`, which Marginalia uses for M-x annotations.

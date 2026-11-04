@@ -263,7 +263,7 @@ Use t for a terminal configured with a Nerd Font, or nil to disable icons."
 | Package or setting       | Effect                                                     |
 |--------------------------+------------------------------------------------------------|
 | =spacious-padding=       | a little padding around the frame                          |
-| =dimmer=                 | inactive windows dim, so the active one is obvious         |
+| =dimmer=, off until =SPC t D= | inactive windows dim, so the active one is obvious    |
 | =pulse= on scroll, recenter and window change | the current line pulses when you change window or page |
 | =hl-todo=, =highlight-numbers= | =TODO=, =FIXME= and numbers stand out in code        |
 | =goggles=                | recent edits flash briefly, so you see what a command changed |
@@ -271,6 +271,7 @@ Use t for a terminal configured with a Nerd Font, or nil to disable icons."
 
 - The cursor shows only in the selected window.
 - The dimmer is set up for which-key, Magit and posframes, and never dims the minibuffer or Vertico.
+- It starts off, because it remaps faces on every window change; the cursor and the pulse already mark the active window.
 
 #+begin_src emacs-lisp
 (use-package spacious-padding
@@ -293,6 +294,7 @@ Use t for a terminal configured with a Nerd Font, or nil to disable icons."
 
 (use-package dimmer
   :ensure t
+  :commands dimmer-mode
   :custom
   (dimmer-fraction 0.3)
   (dimmer-adjustment-mode :foreground)
@@ -302,8 +304,7 @@ Use t for a terminal configured with a Nerd Font, or nil to disable icons."
   (dimmer-configure-which-key)
   (dimmer-configure-magit)
   (dimmer-configure-posframe)
-  (add-to-list 'dimmer-buffer-exclusion-regexps "^ \\*Vertico\\*$")
-  (dimmer-mode 1))
+  (add-to-list 'dimmer-buffer-exclusion-regexps "^ \\*Vertico\\*$"))
 
 (defun kittymacs--pulse-line (&rest _)
   "Briefly highlight the current line."

@@ -59,7 +59,7 @@ The package cannot derive its faces without a display."
   :custom
   (highlight-indent-guides-method 'character)
   (highlight-indent-guides-character ?│)
-  (highlight-indent-guides-responsive 'top)
+  (highlight-indent-guides-responsive nil)
   (highlight-indent-guides-auto-odd-face-perc 5)
   (highlight-indent-guides-auto-even-face-perc 5)
   (highlight-indent-guides-auto-character-face-perc 15))

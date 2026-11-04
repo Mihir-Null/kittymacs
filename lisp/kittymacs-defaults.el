@@ -19,6 +19,14 @@
   (make-directory directory t))
 
 (setopt custom-file (expand-file-name "custom.el" kittymacs-etc-dir))
+(setopt read-process-output-max (* 1024 1024)
+        fast-but-imprecise-scrolling t
+        redisplay-skip-fontification-on-input t
+        highlight-nonselected-windows nil)
+(setq process-adaptive-read-buffering nil
+      inhibit-compacting-font-caches t
+      bidi-inhibit-bpa t)
+(setq-default bidi-paragraph-direction 'left-to-right)
 (setopt require-final-newline t
         large-file-warning-threshold 100000000
         confirm-kill-processes nil
@@ -39,6 +47,7 @@
         kept-old-versions 0
         vc-make-backup-files t
         create-lockfiles nil)
+(setopt auto-save-visited-interval 15)
 (auto-save-visited-mode 1)
 
 (setopt savehist-file (expand-file-name "savehist" kittymacs-cache-dir))
@@ -88,7 +97,8 @@
         uniquify-ignore-buffers-re "^\\*")
 
 (setopt auto-revert-verbose nil
-        auto-revert-interval 0.5
+        auto-revert-interval 5
+        auto-revert-avoid-polling t
         revert-without-query '(".*")
         global-auto-revert-non-file-buffers t)
 (global-auto-revert-mode 1)
@@ -106,9 +116,9 @@
       (set-auto-mode))))
 (setopt major-mode #'kittymacs-guess-major-mode)
 (fset 'undo-auto-amalgamate #'ignore)
-(setopt undo-limit 67108864
-        undo-strong-limit 100663296
-        undo-outer-limit 1006632960)
+(setopt undo-limit 16777216
+        undo-strong-limit 25165824
+        undo-outer-limit 134217728)
 
 (use-package vundo
   :ensure t

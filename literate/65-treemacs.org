@@ -67,7 +67,7 @@
   (treemacs-display-in-side-window t)
   (treemacs-is-never-other-window t)
   (treemacs-follow-after-init t)
-  (treemacs-file-follow-delay 0.2)
+  (treemacs-file-follow-delay 1)
   (treemacs-project-follow-cleanup t)
   (treemacs-collapse-dirs (if (executable-find "python3") 3 0))
   (treemacs-indent-guide-style 'line)

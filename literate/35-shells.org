@@ -107,6 +107,8 @@ They go at the end of `exec-path' and of the PATH that subprocesses see."
 - Where =direnv= is not on =exec-path= (native Windows, a machine without it) envrc enables itself in no buffer, so it costs nothing.
   + =direnv= comes from [[id:d25a5063-1439-4ae0-8fbe-b0162d05a0e0][the tool list]] on a Nix machine.
   + nix-direnv is the /shell's/ configuration (=programs.direnv.nix-direnv.enable= in Home Manager), not Emacs's; envrc runs the same =direnv= and finds it there.
+- =envrc-async= is 1: a cached shell usually arrives within that second, and a long Nix evaluation finishes in the background instead of freezing Emacs.
+  + A mode hook that outruns direnv, such as Eglot's start, can then see the global environment; =SPC p E r= and =M-x eglot-reconnect= correct it.
 - The mode line shows =envrc= in green when a buffer has its project's environment, yellow when the =.envrc= waits to be allowed, red when it failed.
 - The commands are on =SPC p E= ([[id:53ad53ed-155f-47dc-973d-7be18de2893c][the keys chapter]]): =a= allow, =d= deny, =r= reload after editing a flake, =l= the log of the last =direnv= run.
 
@@ -114,6 +116,8 @@ They go at the end of `exec-path' and of the PATH that subprocesses see."
 (use-package envrc
   :ensure t
   :commands (envrc-allow envrc-deny envrc-reload envrc-show-log)
+  :custom
+  (envrc-async 1)
   :init
   (kittymacs-after-init #'envrc-global-mode 90))
 
