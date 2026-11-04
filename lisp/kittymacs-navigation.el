@@ -22,18 +22,6 @@
   (add-hook hook #'goto-address-mode))
 (add-hook 'prog-mode-hook #'goto-address-prog-mode)
 
-(use-package imenu-list
-  :ensure t
-  :commands (imenu-list-smart-toggle imenu-list-minor-mode)
-  :custom
-  (imenu-list-position 'right)
-  (imenu-list-auto-resize t)
-  (imenu-list-focus-after-activation t)
-  :config
-  ;; Register its side-window placement so frames-only mode never gives it a frame.
-  (when (fboundp 'imenu-list-install-display-buffer)
-    (imenu-list-install-display-buffer)))
-
 (defun kittymacs-jump-in-buffer ()
   "Jump to a heading or definition in this buffer with completion."
   (interactive)

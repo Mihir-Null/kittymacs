@@ -40,10 +40,6 @@
   :config
   (add-hook 'markdown-mode-hook #'kittymacs--embrace-markdown)
   (add-hook 'markdown-ts-mode-hook #'kittymacs--embrace-markdown))
-
-(use-package iedit
-  :ensure t
-  :commands iedit-mode)
 (defun kittymacs--indent-guides ()
   "Show indent guides in graphical frames.
 The package cannot derive its faces without a display."
@@ -110,7 +106,6 @@ The package cannot derive its faces without a display."
   "f" (cons "format" #'indent-region)
   ";" (cons "comment" #'comment-dwim)
   "s" (cons "surround" #'embrace-commander)
-  "i" (cons "edit all occurrences" #'iedit-mode)
   "d" (cons "definition" #'xref-find-definitions)
   "D" (cons "references" #'xref-find-references))
 

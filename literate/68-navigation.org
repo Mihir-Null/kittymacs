@@ -23,7 +23,6 @@
 - Places, recent files and bookmarks are saved under the cache directory.
 - =C-"= jumps to the last change in the buffer.
 - URLs and e-mail addresses are clickable in compilation, shell, Eshell and text buffers, and in the comments and strings of code.
-- The outline sidebar (=SPC t o=) lists the buffer's headings or definitions in a side window on the right of the same frame, and follows point.
   + It registers its side-window placement, so frames-only mode never gives it a frame.
 - =SPC b j= jumps to a heading or definition with completion: Org headings in Org, the outline elsewhere.
 
@@ -55,18 +54,6 @@
 (dolist (hook '(compilation-mode-hook eshell-mode-hook shell-mode-hook text-mode-hook))
   (add-hook hook #'goto-address-mode))
 (add-hook 'prog-mode-hook #'goto-address-prog-mode)
-
-(use-package imenu-list
-  :ensure t
-  :commands (imenu-list-smart-toggle imenu-list-minor-mode)
-  :custom
-  (imenu-list-position 'right)
-  (imenu-list-auto-resize t)
-  (imenu-list-focus-after-activation t)
-  :config
-  ;; Register its side-window placement so frames-only mode never gives it a frame.
-  (when (fboundp 'imenu-list-install-display-buffer)
-    (imenu-list-install-display-buffer)))
 
 (defun kittymacs-jump-in-buffer ()
   "Jump to a heading or definition in this buffer with completion."
@@ -232,6 +219,5 @@
 - =SPC s d= then a word: ripgrep across the project, with live preview.
 - =SPC f r= for recent files; reopen one and you are where you left off.
 - =SPC j j= then a character: letters appear on every match in the frame.
-- =SPC t o=: the outline sidebar opens on the right and follows point.
 - =C-h v tabspaces-mode=: =t= once started, after the =private.el= function has run.
 - =just test-packages=: the startup verifier replays a real startup, after-init hooks included, and fails on any warning.

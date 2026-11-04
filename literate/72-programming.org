@@ -21,7 +21,6 @@
   + deleting never breaks a pair;
   + =C-)= and =C-(= slurp the next or previous expression into the current one; =C-}= and =C-{= barf it out.
 - Embrace adds, changes and removes surrounding pairs (=SPC c s=); Org and Markdown get their own pairs (=*=, =_=, =`=, =$= in Markdown).
-- =iedit= edits every occurrence of a symbol at once (=SPC s c=).
 - =prettify-symbols-mode= is on everywhere and shows the real text when point is on a symbol.
 
 #+begin_src emacs-lisp
@@ -71,10 +70,6 @@
   :config
   (add-hook 'markdown-mode-hook #'kittymacs--embrace-markdown)
   (add-hook 'markdown-ts-mode-hook #'kittymacs--embrace-markdown))
-
-(use-package iedit
-  :ensure t
-  :commands iedit-mode)
 
 #+end_src
 
@@ -207,7 +202,7 @@ The package cannot derive its faces without a display."
 | =f= | format (=indent-region=)   |                                               |
 | =;= | comment                    |                                               |
 | =s= | surround (Embrace)         |                                               |
-| =i= | edit all occurrences       | IELM                                          |
+| =i= |                            | IELM                                          |
 | =d= | definition                 | eval defun                                    |
 | =D= | references                 |                                               |
 | =b= |                            | eval buffer                                   |
@@ -226,7 +221,6 @@ The package cannot derive its faces without a display."
   "f" (cons "format" #'indent-region)
   ";" (cons "comment" #'comment-dwim)
   "s" (cons "surround" #'embrace-commander)
-  "i" (cons "edit all occurrences" #'iedit-mode)
   "d" (cons "definition" #'xref-find-definitions)
   "D" (cons "references" #'xref-find-references))
 

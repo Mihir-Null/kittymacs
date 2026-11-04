@@ -192,14 +192,13 @@ They go at the end of `exec-path' and of the PATH that subprocesses see."
 | =gd=, =gl=       | coloured diff, last 20 commits   |
 | =l=, =la=, =ll=  | =ls=, =ls -la=, =ls -lah=        |
 | =fr=, =bb=, =pp= | recent files, buffers, projects  |
-| =up=             | a parent directory (=eshell-up=) |
 | =q=, =x=         | =exit=                           |
 
 - =z= jumps to any directory you have visited, with completion; =z REGEXP= goes to the most recent match.
 - =SPC o s= opens an Eshell named =*eshell: PROJECT*= at the project root, or in this directory outside a project.
   + [[id:bd2638bc-735d-4849-bafe-3dab5e8e30b7][The terminal]] falls back to it for =SPC o p= where ghostel is off.
 - In every Eshell buffer =C-l= clears it, =imenu= lists the prompts, lines wrap visually and the current line is not highlighted.
-- Small packages add syntax highlighting, the =up= command, Eldoc help for commands (=esh-help=) and richer argument completion (=pcmpl-args=, =pcomplete-extension=).
+- =eshell-syntax-highlighting= colours the command line as you type.
 
 #+begin_src emacs-lisp
 (defvar kittymacs-eshell-aliases
@@ -216,7 +215,6 @@ They go at the end of `exec-path' and of the PATH that subprocesses see."
     ("fr" "consult-recent-file")
     ("bb" "consult-buffer")
     ("pp" "project-switch-project")
-    ("up" "eshell-up $1")
     ("q" "exit")
     ("x" "exit"))
   "Eshell aliases defined in Lisp.")
@@ -263,21 +261,6 @@ With REGEXP, go to the most recent directory matching it."
   :after eshell
   :config
   (eshell-syntax-highlighting-global-mode 1))
-
-(use-package eshell-up
-  :ensure t
-  :commands eshell-up
-  :config
-  (defalias 'eshell/up #'eshell-up))
-
-(use-package esh-help
-  :ensure t
-  :after eshell
-  :config
-  (setup-esh-help-eldoc))
-
-(use-package pcmpl-args :ensure t :after eshell)
-(use-package pcomplete-extension :ensure t :after eshell)
 
 #+end_src
 

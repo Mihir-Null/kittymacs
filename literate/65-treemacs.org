@@ -31,7 +31,6 @@
   + with Python 3, the /deferred/ variant: directories as well as files, the status parsed asynchronously, and the tree drawn first and coloured a moment later, which feels quicker on a large repository;
   + without Python 3, the /simple/ variant colours files only;
   + without =git=, no colours.
-- The sidebar is a panel that serves the buffer beside it, so =dimmer= leaves it alone: dimming it as an "inactive window" only makes the tree harder to read.
 - PNG icons are off in a text terminal.
 
 #+begin_src emacs-lisp
@@ -96,12 +95,7 @@
     ('(t . t) (treemacs-git-mode 'deferred))
     ('(t . nil) (treemacs-git-mode 'simple)))
   ;; Show files that Git ignores, too.
-  (treemacs-hide-gitignored-files-mode -1)
-
-  ;; The sidebar is a panel that serves the buffer beside it; dimming it as
-  ;; an "inactive window" only makes the tree harder to read.
-  (with-eval-after-load 'dimmer
-    (add-to-list 'dimmer-buffer-exclusion-regexps "\\*Treemacs")))
+  (treemacs-hide-gitignored-files-mode -1))
 
 #+end_src
 

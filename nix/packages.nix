@@ -26,7 +26,6 @@ emacs.pkgs.withPackages (
     corfu
     dashboard
     diff-hl
-    dimmer
     diredfl
     dired-narrow
     dired-ranger
@@ -38,8 +37,6 @@ emacs.pkgs.withPackages (
     embrace
     envrc
     eshell-syntax-highlighting
-    eshell-up
-    esh-help
     exec-path-from-shell
     exwm
     flymake-collection
@@ -54,8 +51,6 @@ emacs.pkgs.withPackages (
     highlight-indent-guides
     highlight-numbers
     hl-todo
-    iedit
-    imenu-list
     info-colors
     jupyter
     keycast
@@ -81,8 +76,6 @@ emacs.pkgs.withPackages (
     org-roam
     org-super-agenda
     outline-minor-faces
-    pcmpl-args
-    pcomplete-extension
     pdf-tools
     popper
     puni
