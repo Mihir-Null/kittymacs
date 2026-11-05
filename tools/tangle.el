@@ -9,6 +9,7 @@
 ;; Two kinds of output exist: Emacs Lisp (the startup files and lisp/) and
 ;; Nix (flake.nix and nix/).  See literate/80-maintenance.org.
 (require 'cl-lib)
+(require 'json)
 (require 'org)
 (require 'ob-tangle)
 
@@ -79,6 +80,45 @@ module, and the flake would still import the Nix file."
         (mapcar (lambda (file) (file-relative-name file root))
                 (directory-files-recursively nix "\\.nix\\'")))))))
 
+(defconst kittymacs-tangle-features-output "nix/features.json"
+  "What the builder writes from the catalogue, for the flake to read.")
+
+(defun kittymacs-tangle--catalogue-json (catalogue-file)
+  "Return the JSON text for the list in CATALOGUE-FILE.
+The file is read and never evaluated.  Features keep their order, so a change
+to the list shows as a small diff."
+  (let ((form (with-temp-buffer
+                (insert-file-contents catalogue-file)
+                (read (current-buffer))))
+        (json-encoding-pretty-print t)
+        (json-encoding-default-indentation "  "))
+    (pcase form
+      (`(defconst kittymacs-catalogue (quote ,entries) . ,_)
+       (concat
+        (json-encode
+         (mapcar
+          (lambda (entry)
+            (cons (car entry)
+                  (cl-loop for (key value) on (cdr entry) by #'cddr
+                           collect (cons (substring (symbol-name key) 1)
+                                         (cond ((stringp value) value)
+                                               ((listp value) (vconcat (mapcar #'symbol-name value)))
+                                               (t (symbol-name value)))))))
+          entries))
+        "\n"))
+      (_ (error "%s does not start with the catalogue's defconst" catalogue-file)))))
+
+(defun kittymacs-tangle--write-features (stage)
+  "Write the catalogue's JSON under STAGE; return its output name, or nil.
+Nil when the chapters tangle no catalogue."
+  (let ((catalogue (expand-file-name "lisp/kittymacs-catalogue.el" stage)))
+    (when (file-exists-p catalogue)
+      (let ((destination (expand-file-name kittymacs-tangle-features-output stage)))
+        (make-directory (file-name-directory destination) t)
+        (with-temp-file destination
+          (insert (kittymacs-tangle--catalogue-json catalogue)))
+        kittymacs-tangle-features-output))))
+
 (defun kittymacs-tangle-build (root &optional write)
   "Tangle ROOT in temporary storage; check outputs or WRITE changed files.
 No personal startup, package installation, or source-block evaluation is run."
@@ -114,6 +154,8 @@ No personal startup, package installation, or source-block evaluation is run."
                    (mapconcat #'identity orphans ", ")))
           (dolist (source sources)
             (org-babel-tangle-file (expand-file-name (concat "literate/" source) stage)))
+          (when-let* ((features (kittymacs-tangle--write-features stage)))
+            (setq outputs (sort (cons features outputs) #'string<)))
           ;; Validate every result before touching any deployed file.
           (dolist (output outputs)
             (let ((file (expand-file-name output stage)))

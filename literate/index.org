@@ -30,6 +30,7 @@
 | Chapter         | Kind      | Explains                                                                           |
 |-----------------+-----------+------------------------------------------------------------------------------------|
 | [[id:40302e33-d2b2-4c0b-9bc3-1f9e121307e1][Startup]]         | core      | the two files Emacs reads, and the order the rest loads in                         |
+| [[id:3f8a6c02-9d14-4b7e-a2c5-1e7d90b64f31][Catalogue]]       | core      | every optional feature and the packages behind it                  |
 | [[id:3fd783cd-deb8-48aa-bb44-0d9b16535365][Defaults]]        | core      | files, backups, text, the interface, windows, scratch, the server                  |
 | [[id:afa6b7fd-742a-4c15-86a6-32e3e8027b0e][Platform]]        | core      | paths, shells, spelling; the macOS, Windows and Android policies                   |
 | [[id:bd2638bc-735d-4849-bafe-3dab5e8e30b7][Terminal]]        | apps      | ghostel: a real terminal, its integrations, and Meow inside it                     |

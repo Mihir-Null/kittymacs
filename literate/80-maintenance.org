@@ -93,6 +93,7 @@
   + a block's language must match its target's;
   + no two chapters may write one file;
   + a =lisp/kittymacs-*.el= or =nix/**.nix= that no chapter writes is an error: startup would go on loading a module whose source is gone, and the flake importing a file nothing explains.
+- It writes =nix/features.json= from [[id:3f8a6c02-9d14-4b7e-a2c5-1e7d90b64f31][the catalogue]], which it reads and never evaluates, so the flake and the configuration share one list.
 - It tangles into a temporary directory, checks that every Lisp file's parentheses balance, and only then copies the files that changed.
   + =--check= copies nothing and fails on any difference: the guard against a hand edit to a generated file, or a forgotten tangle.
 - Chapters and outputs are UTF-8 with LF line endings on every platform; =.gitattributes= keeps Git from converting them.
@@ -105,6 +106,7 @@
 2. Add =(require 'kittymacs-name)= to =init.el= in the startup chapter, where it belongs in that order.
 3. Give a package with its own buffers a =:meow:= heading: its starting state and a =kittymacs-define-localleader= form for =SPC m= ([[id:e5942eb0-4389-447d-9317-d9178adcaaae][the leader]]).
 4. Add a row to [[id:52a45bf9-9521-4e0d-9867-1c54721844a3][the reading guide]]'s table; =just doc-test= fails until you do.
+5. List any package it declares in [[id:3f8a6c02-9d14-4b7e-a2c5-1e7d90b64f31][the catalogue]]; =just test= fails until you do.
 
 * Measuring :decision:
 :PROPERTIES:

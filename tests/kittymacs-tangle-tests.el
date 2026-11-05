@@ -141,3 +141,50 @@
     (kittymacs-tangle-test-write root "nix/gone.nix" "{ }\n")
     (should-error (kittymacs-tangle-build root t))
     (should-not (file-exists-p (expand-file-name "init.el" root)))))
+
+(defconst kittymacs-tangle-test-catalogue
+  "#+begin_src emacs-lisp :tangle ../lisp/kittymacs-catalogue.el :mkdirp yes
+(defconst kittymacs-catalogue
+  '((alpha :group one :packages (a b) :deps (beta) :summary \"Says \\\"hi\\\".\")
+    (beta :group two :packages (c) :summary \"Never runs (error).\")))
+#+end_src\n"
+  "A chapter that tangles a small catalogue.")
+
+(ert-deftest kittymacs-tangle-writes-features-from-the-catalogue ()
+  (kittymacs-tangle-test-fixture
+    (kittymacs-tangle-test-write root "literate/20-catalogue.org" kittymacs-tangle-test-catalogue)
+    (should (member "nix/features.json" (kittymacs-tangle-build root t)))
+    (let ((json (json-parse-string
+                 (kittymacs-tangle--read (expand-file-name "nix/features.json" root))
+                 :object-type 'alist :array-type 'list)))
+      (should (equal (mapcar #'car json) '(alpha beta)))
+      (should (equal (alist-get 'packages (alist-get 'alpha json)) '("a" "b")))
+      (should (equal (alist-get 'deps (alist-get 'alpha json)) '("beta")))
+      (should (equal (alist-get 'group (alist-get 'beta json)) "two"))
+      (should (equal (alist-get 'summary (alist-get 'alpha json)) "Says \"hi\".")))))
+
+(ert-deftest kittymacs-tangle-check-notices-edited-features ()
+  (kittymacs-tangle-test-fixture
+    (kittymacs-tangle-test-write root "literate/20-catalogue.org" kittymacs-tangle-test-catalogue)
+    (kittymacs-tangle-build root t)
+    (should-not (kittymacs-tangle-build root))
+    (kittymacs-tangle-test-write root "nix/features.json" "{}\n")
+    (should-error (kittymacs-tangle-build root))))
+
+(ert-deftest kittymacs-tangle-writes-no-features-without-a-catalogue ()
+  (kittymacs-tangle-test-fixture
+    (kittymacs-tangle-build root t)
+    (should-not (file-exists-p (expand-file-name "nix/features.json" root)))))
+
+(ert-deftest kittymacs-tangle-reads-the-catalogue-without-evaluating-it ()
+  (let ((file (make-temp-file "kittymacs-catalogue-" nil ".el")))
+    (unwind-protect
+        (progn
+          (with-temp-file file
+            (insert "(defconst kittymacs-catalogue '((a :packages (b))))\n"
+                    "(error \"This line must never run\")\n"))
+          (should (string-match-p "\"a\"" (kittymacs-tangle--catalogue-json file)))
+          (with-temp-file file
+            (insert "(setq kittymacs-catalogue nil)\n"))
+          (should-error (kittymacs-tangle--catalogue-json file)))
+      (delete-file file))))
