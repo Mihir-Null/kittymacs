@@ -8,6 +8,7 @@
 #+PROPERTY: header-args:emacs-lisp :tangle ../lisp/kittymacs-reading.el :eval never :comments no :padline no :mkdirp yes
 
 - Read a paper inside Emacs and keep its notes in an Org file beside it, both on screen at once.
+- This chapter is the =pdf-reading= feature: [[id:40302e33-d2b2-4c0b-9bc3-1f9e121307e1][=init.el=]] loads it only when that is on.
 - Five packages, one job each:
 
 | Package            | Gives                                                                                     |

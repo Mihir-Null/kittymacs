@@ -9,6 +9,9 @@
 (defvar kittymacs-verify-source
   (file-name-directory (directory-file-name (file-name-directory load-file-name))))
 (defvar kittymacs-verify-root (make-temp-file "kittymacs-verify-" t))
+(load (expand-file-name "tests/kittymacs-profile-checks.el" kittymacs-verify-source) nil t)
+(defvar kittymacs-verify-profile (getenv "KITTYMACS_TEST_PROFILE")
+  "The profile to check, or nil for what the configuration chooses by itself.")
 (defvar kittymacs-verify-failures nil)
 (defun kittymacs-verify-check (predicate description)
   (unless predicate (push description kittymacs-verify-failures)))
@@ -20,33 +23,6 @@ Types the configuration deliberately silences are left out."
   (unless (or (eq level :debug)
               (warning-suppress-p type warning-suppress-types))
     (push (format "%S: %s" type message) kittymacs-verify-warnings)))
-(defun kittymacs-verify-uncallable-bindings (map prefix)
-  "Return the keys under PREFIX in MAP whose binding is not a command.
-Group maps are walked too.  Autoloaded commands count as commands."
-  (let (uncallable)
-    (map-keymap
-     (lambda (event binding)
-       (let ((key (vconcat prefix (vector event)))
-             (definition (pcase binding
-                           (`(menu-item ,_ ,definition . ,_) definition)
-                           (`(,(pred stringp) . ,definition) definition)
-                           (_ binding))))
-         (cond ((keymapp definition)
-                (setq uncallable
-                      (nconc uncallable
-                             (kittymacs-verify-uncallable-bindings definition key))))
-               ((and definition (not (commandp definition)))
-                (push (format "%s -> %S" (key-description key) definition)
-                      uncallable)))))
-     map)
-    uncallable))
-(defun kittymacs-verify-org-features ()
-  "Return the loaded features that are Org or one of its add-ons."
-  (seq-filter (lambda (feature)
-                (let ((name (symbol-name feature)))
-                  (and (string-match-p "\\`\\(?:org\\|ol\\|ox\\)\\(?:-\\|\\'\\)" name)
-                       (not (string-suffix-p "-autoloads" name)))))
-              features))
 (defun kittymacs-verify-org-options ()
   "Return the options that lisp/kittymacs-org.el sets at its top level."
   (with-temp-buffer
@@ -90,6 +66,9 @@ Group maps are walked too.  Autoloaded commands count as commands."
           "(custom-set-variables '(corfu-min-width 20) '(org-tags-column 7))\n"))
 (with-temp-file (expand-file-name "lisp/private.el" user-emacs-directory)
   (insert ";;; -*- lexical-binding: t; -*-\n"
+          (if kittymacs-verify-profile
+              (format "(setopt kittymacs-profile '%s)\n" kittymacs-verify-profile)
+            "")
           "(unless (boundp 'kittymacs-project-directory) (error \"Private loaded before platform\"))\n"
           "(setq kittymacs-verify-private-loads (1+ (if (boundp 'kittymacs-verify-private-loads) kittymacs-verify-private-loads 0)))\n"
           "(setopt kittymacs-project-directory (expand-file-name \"test-projects/\" user-emacs-directory))\n"
@@ -135,20 +114,26 @@ Group maps are walked too.  Autoloaded commands count as commands."
       (advice-remove 'display-warning #'kittymacs-verify-record-warning)
       (dolist (warning (reverse kittymacs-verify-warnings))
         (kittymacs-verify-check nil (format "Startup warning: %s" warning)))
-      ;; Org waits for its first use.  First of all, because the checks below
-      ;; load it themselves, and with the home page drawn, as a plain start does.
-      (kittymacs-verify-check (null (kittymacs-verify-org-features))
-                              (format "Startup loaded Org: %S" (kittymacs-verify-org-features)))
-      (save-window-excursion (dashboard-open))
-      (kittymacs-verify-check (null (kittymacs-verify-org-features))
-                              (format "The home page loaded Org: %S" (kittymacs-verify-org-features)))
+      ;; What any start must satisfy: first of all, because Org must wait for
+      ;; its first use, and the checks below load it themselves.
+      (dolist (failure (kittymacs-check-start))
+        (kittymacs-verify-check nil failure))
+      (when (kittymacs-feature-p 'home-page)
+        (save-window-excursion (dashboard-open))
+        (kittymacs-verify-check (null (kittymacs-check-org-features))
+                                (format "The home page loaded Org: %S" (kittymacs-check-org-features))))
+      ;; Minimal's cache starts empty, so this directory holds what it installed.
+      (when (equal kittymacs-verify-profile "minimal")
+        (dolist (failure (kittymacs-check-package-set))
+          (kittymacs-verify-check nil failure)))
       (require 'cus-edit)
       (kittymacs-verify-check (= kittymacs-verify-private-loads 1) "private.el must load once")
       (kittymacs-verify-check (equal (bound-and-true-p kittymacs-verify-host-order) '(second first))
                        "Host files did not load, or not in name order")
-      (kittymacs-verify-check (equal (bound-and-true-p agent-shell-mcp-servers)
-                                     '(((name . "host-server"))))
-                       "A host file's MCP servers did not reach agent-shell")
+      (when (kittymacs-feature-p 'agents)
+        (kittymacs-verify-check (equal (bound-and-true-p agent-shell-mcp-servers)
+                                       '(((name . "host-server"))))
+                                "A host file's MCP servers did not reach agent-shell"))
       (kittymacs-verify-check (equal kittymacs-project-directory
                               (expand-file-name "test-projects/" user-emacs-directory))
                        "Project override was overwritten")
@@ -160,17 +145,18 @@ Group maps are walked too.  Autoloaded commands count as commands."
                        "A chapter overwrote a value saved by Customize")
       (kittymacs-verify-check (eql corfu-scroll-margin 3)
                        "A chapter overwrote a private.el after-init-hook override")
-      (kittymacs-verify-check (and tabspaces-mode
-                                   (null (command-remapping 'switch-to-buffer)))
-                       "tabspaces-mode turned on before the private.el override")
-      ;; Every generated module must have loaded: the list is the modules on disk.
+      (when (kittymacs-feature-p 'workspaces)
+        (kittymacs-verify-check (and tabspaces-mode
+                                     (null (command-remapping 'switch-to-buffer)))
+                                "tabspaces-mode turned on before the private.el override"))
+      ;; Every generated module must have loaded, or be a chapter whose feature
+      ;; is off: the list is the modules on disk.
       (dolist (file (directory-files (expand-file-name "lisp" kittymacs-verify-source)
                                      nil "\\`kittymacs-.*\\.el\\'"))
-        (let ((feature (intern (file-name-sans-extension file))))
-          (kittymacs-verify-check (featurep feature) (format "Missing feature %s" feature))))
-      ;; Every key in the leader tree must run a command, not a void function.
-      (dolist (binding (kittymacs-verify-uncallable-bindings kittymacs-leader-map []))
-        (kittymacs-verify-check nil (format "SPC %s is not a command" binding)))
+        (let* ((module (intern (file-name-sans-extension file)))
+               (chapter-feature (car (rassq module kittymacs-check-chapter-features))))
+          (when (or (null chapter-feature) (kittymacs-feature-p chapter-feature))
+            (kittymacs-verify-check (featurep module) (format "Missing feature %s" module)))))
       ;; The terminal comes from MELPA.  package.el keeps a Git checkout left
       ;; by an older :vc install as installed, so name one if it is there.
       (when kittymacs-terminal-ghostel
@@ -189,28 +175,30 @@ Group maps are walked too.  Autoloaded commands count as commands."
               (kittymacs-verify-check (bound-and-true-p consult-ghostel-mode)
                                "Loading ghostel and Consult did not turn on consult-ghostel-mode"))
           (error (kittymacs-verify-check nil (format "Loading ghostel failed: %S" err)))))
-      (kittymacs-verify-check (equal kittymacs-org-roam-directory
-                              (expand-file-name "test-roam/" user-emacs-directory))
-                       "Personal graph private override was overwritten")
-      (kittymacs-verify-check (equal kittymacs-org-roam-excluded-directories '("test-excluded"))
-                       "Graph exclusion private override was overwritten")
-      (kittymacs-verify-check (equal org-roam-directory
-                              (file-name-as-directory (file-truename kittymacs-org-roam-directory)))
-                       "Upstream root does not reflect personal graph override")
-      (kittymacs-verify-check (not (file-exists-p kittymacs-org-roam-directory))
-                       "Startup created the graph root")
-      ;; A SPC n command loads Org-roam itself, and Org with it.  This one stops
-      ;; at the root, which does not exist.
-      (condition-case nil (kittymacs--org-roam-scope) (user-error nil))
-      (kittymacs-verify-check (and (featurep 'org) (featurep 'org-roam)
-                                   (memq 'kittymacs--org-roam-restore hack-local-variables-hook))
-                              "A SPC n command did not load Org-roam")
+      (when (kittymacs-feature-p 'linked-notes)
+        (kittymacs-verify-check (equal kittymacs-org-roam-directory
+                                       (expand-file-name "test-roam/" user-emacs-directory))
+                                "Personal graph private override was overwritten")
+        (kittymacs-verify-check (equal kittymacs-org-roam-excluded-directories '("test-excluded"))
+                                "Graph exclusion private override was overwritten")
+        (kittymacs-verify-check (equal org-roam-directory
+                                       (file-name-as-directory (file-truename kittymacs-org-roam-directory)))
+                                "Upstream root does not reflect personal graph override")
+        (kittymacs-verify-check (not (file-exists-p kittymacs-org-roam-directory))
+                                "Startup created the graph root")
+        ;; A SPC n command loads Org-roam itself, and Org with it.  This one stops
+        ;; at the root, which does not exist.
+        (condition-case nil (kittymacs--org-roam-scope) (user-error nil))
+        (kittymacs-verify-check (and (featurep 'org) (featurep 'org-roam)
+                                     (memq 'kittymacs--org-roam-restore hack-local-variables-hook))
+                                "A SPC n command did not load Org-roam")
+        (kittymacs-verify-check (not org-roam-db-autosync-mode) "Org-roam must not rebuild at startup")
+        (kittymacs-verify-check (= (hash-table-count org-roam-db--connection) 0) "Startup opened a graph database")
+        (kittymacs-verify-check (string-match-p "\\${tags" org-roam-node-display-template)
+                                "SPC n f does not show the notes' tags"))
+      (require 'org)
       (kittymacs-verify-check (and (eql org-tags-column 7) (equal org-ellipsis "!"))
                               "Org's loading overwrote a value from Customize or private.el")
-      (kittymacs-verify-check (not org-roam-db-autosync-mode) "Org-roam must not rebuild at startup")
-      (kittymacs-verify-check (= (hash-table-count org-roam-db--connection) 0) "Startup opened a graph database")
-      (kittymacs-verify-check (string-match-p "\\${tags" org-roam-node-display-template)
-                       "SPC n f does not show the notes' tags")
       ;; The Org chapter runs before these libraries load: `setopt' warns only
       ;; when one does, long after the warnings above, and `setq' never does.
       ;; ox-odt cannot load after a `setopt' on its output format: the check
@@ -229,9 +217,10 @@ Group maps are walked too.  Autoloaded commands count as commands."
       ;; SPC s Q parses a plain query, lists its headings grouped by file,
       ;; refreshes through Org QL, and a group header keeps Meow's keys and
       ;; the leader.  An error here must not skip the checks after it.
-      (with-temp-file (expand-file-name "tagged.org" org-directory)
-        (insert "* TODO Choose the services :decision:\n* Unrelated heading\n"))
-      (condition-case err
+      (when (kittymacs-feature-p 'org-extras)
+        (with-temp-file (expand-file-name "tagged.org" org-directory)
+          (insert "* TODO Choose the services :decision:\n* Unrelated heading\n"))
+        (condition-case err
           (save-window-excursion
             (kittymacs-org-ql-search "tags:decision")
             (with-current-buffer "*Org QL View: tags:decision*"
@@ -253,23 +242,29 @@ Group maps are walked too.  Autoloaded commands count as commands."
               (kittymacs-org-agenda-refresh)
               (kittymacs-verify-check (string-match-p "Another decision" (buffer-string))
                                "SPC m g did not run the Org QL query again")))
-        (error (kittymacs-verify-check nil (format "SPC s Q failed: %S" err))))
+        (error (kittymacs-verify-check nil (format "SPC s Q failed: %S" err)))))
       (with-temp-buffer
         (org-mode)
         (kittymacs-verify-check (and kittymacs-org-prose-mode buffer-face-mode
                                      (assq 'org-block face-remapping-alist))
                                 "Org buffers do not set prose in variable-pitch")
-        (kittymacs-verify-check (bound-and-true-p org-modern-indent-mode)
-                                "org-modern-indent is not on in Org buffers"))
-      (kittymacs-verify-check (equal custom-enabled-themes '(doom-sonokai)) "Theme changed")
-      ;; Exercise the real loader in both directions: themes must not stack.
-      (kittymacs-toggle-theme)
-      (kittymacs-verify-check (equal custom-enabled-themes (list kittymacs-light-theme))
-                       "Light theme toggle failed")
-      (kittymacs-toggle-theme)
-      (kittymacs-verify-check (equal custom-enabled-themes '(doom-sonokai))
-                       "Sonokai was not restored by the theme toggle")
-      (kittymacs-verify-check (and meow-global-mode doom-modeline-mode) "Editor modes missing")
+        (when (kittymacs-feature-p 'org-extras)
+          (kittymacs-verify-check (bound-and-true-p org-modern-indent-mode)
+                                  "org-modern-indent is not on in Org buffers")))
+      ;; Sonokai needs doom-themes; without that feature the built-in pair stands in.
+      (let ((dark (if (kittymacs-feature-p 'doom-look) 'doom-sonokai 'modus-vivendi))
+            (light (if (kittymacs-feature-p 'doom-look) kittymacs-light-theme 'modus-operandi)))
+        (kittymacs-verify-check (equal custom-enabled-themes (list dark)) "Theme changed")
+        ;; Exercise the real loader in both directions: themes must not stack.
+        (kittymacs-toggle-theme)
+        (kittymacs-verify-check (equal custom-enabled-themes (list light))
+                                "Light theme toggle failed")
+        (kittymacs-toggle-theme)
+        (kittymacs-verify-check (equal custom-enabled-themes (list dark))
+                                "The dark theme was not restored by the theme toggle"))
+      (kittymacs-verify-check meow-global-mode "Meow is off")
+      (when (kittymacs-feature-p 'doom-look)
+        (kittymacs-verify-check doom-modeline-mode "The mode line is missing"))
       (kittymacs-verify-check (null kittymacs-eglot-auto-start-modes) "LSP auto-start changed")
       (kittymacs-verify-check (null kittymacs-language-packages) "Language package opt-ins changed")
       ;; Importing the login shell's PATH replaces `exec-path' whole; the
@@ -287,7 +282,8 @@ Group maps are walked too.  Autoloaded commands count as commands."
                          "Restoring early-init.el's directories duplicated one already on exec-path"))
       ;; Suggestions send buffers to GitHub: off by default, and copilot.el
       ;; loads only when a buffer turns them on.
-      (kittymacs-verify-check (null kittymacs-suggestions) "Suggestions are on by default")
+      (when (kittymacs-feature-p 'suggestions)
+        (kittymacs-verify-check (null kittymacs-suggestions) "Suggestions are on by default"))
       (kittymacs-verify-check (not (featurep 'copilot)) "copilot.el loaded at startup")
       ;; Next edits' TAB and C-g are a minor mode's; Meow's state maps must
       ;; not take them first.
@@ -295,6 +291,7 @@ Group maps are walked too.  Autoloaded commands count as commands."
         (dolist (map (list meow-normal-state-keymap meow-insert-state-keymap))
           (kittymacs-verify-check (not (commandp (keymap-lookup map key)))
                            (format "Meow binds %s, which next edits need" key))))
+      (when (kittymacs-feature-p 'suggestions)
       (condition-case err
           (let ((kittymacs-verify-warnings nil))
             (advice-add 'display-warning :before #'kittymacs-verify-record-warning)
@@ -329,10 +326,11 @@ Group maps are walked too.  Autoloaded commands count as commands."
                                              (not copilot-mode))
                                  "Suggestions turned on without a server"))
               (setq buffer-file-name nil)))
-        (error (kittymacs-verify-check nil (format "Suggestions failed: %S" err))))
+        (error (kittymacs-verify-check nil (format "Suggestions failed: %S" err)))))
       ;; Jupyter kernels need emacs-zmq's native module: off by default, and
       ;; emacs-jupyter is not even loaded until a kernel is asked for.
-      (kittymacs-verify-check (null kittymacs-notebooks-jupyter) "Jupyter kernels are on by default")
+      (when (kittymacs-feature-p 'notebooks)
+        (kittymacs-verify-check (null kittymacs-notebooks-jupyter) "Jupyter kernels are on by default"))
       (kittymacs-verify-check (not (featurep 'jupyter)) "emacs-jupyter loaded at startup")
       ;; Remote programs are found on the remote login shell's PATH, so a
       ;; Nix profile on an SSH host (the Android VM backend) is searched.
@@ -351,6 +349,8 @@ Group maps are walked too.  Autoloaded commands count as commands."
                        "SPC l is not the language-server menu")
       (kittymacs-verify-check (eq (lookup-key kittymacs-leader-map (kbd "s l")) #'vertico-repeat)
                        "SPC s l is not completion history")
+      ;; The home page opens the cheat sheet, which describes the full profile.
+      (when (eq (kittymacs-features-profile) 'full)
       (kittymacs-verify-check (eq (lookup-key kittymacs-leader-map (kbd "h ?"))
                            #'kittymacs-dashboard-open-cheatsheet)
                        "Cheat-sheet leader binding was overwritten")
@@ -386,7 +386,7 @@ Group maps are walked too.  Autoloaded commands count as commands."
             (let* ((key (string-trim (match-string 1)))
                    (command (intern (match-string 2))))
               (kittymacs-verify-check (eq (lookup-key kittymacs-leader-map (kbd (substring key 4))) command)
-                               (format "Cheat sheet binding mismatch: %s -> %s" key command)))))))
+                               (format "Cheat sheet binding mismatch: %s -> %s" key command))))))))
   (error (push (format "Startup error: %S" err) kittymacs-verify-failures)))
 ;; Check syntax without running installed packages' programming-mode hooks.
 (let ((emacs-lisp-mode-hook nil) (prog-mode-hook nil))

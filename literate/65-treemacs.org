@@ -13,6 +13,7 @@
   + It follows you: change to a buffer from another project and the tree switches to that project, unasked.
   + Files are coloured by their Git status; the tree notices changes on disk, including Magit's when you stage or commit.
 - [[https://github.com/Alexander-Miller/treemacs][Treemacs]] by Alexander Miller is the file tree; this chapter scopes it to the current project, points its state files at =var/=, and gives it the icons, Git colours and Meow state the rest of this configuration uses.
+- This chapter is the =file-tree= feature: [[id:40302e33-d2b2-4c0b-9bc3-1f9e121307e1][=init.el=]] loads it only when that is on.
 - It is a /panel/, not a buffer you edit, so it stays inside the current frame instead of becoming its own OS window; [[id:f1d045c2-e2dc-4514-ab17-dd982ed6be00][the frames chapter]] explains the distinction.
 - Leans on [[id:0286f652-e861-4e61-9ca6-91e225c8939d][the appearance chapter]] for icons, [[id:e4d65984-892d-4046-b718-d4265ab74215][navigation]] for workspaces and [[id:878a9e46-62be-4b9f-82f6-589560d2ebc1][Dired]] for operating on files.
 

@@ -50,11 +50,11 @@ is what the terminal needs."
         (expand-file-name (concat "ghostel-module" module-file-suffix)
                           kittymacs-terminal-module-directory))))
 (defcustom kittymacs-terminal-ghostel
-  (not (eq system-type 'android))
+  (kittymacs-feature-p 'terminal)
   "Whether ghostel provides the terminal.
-Off on Android, whose port is commonly built without the dynamic module
-support ghostel needs.  `kittymacs-terminal-open' falls back to Eshell
-whenever this is nil."
+It follows the `terminal' feature.  That is off on Android, whose port is
+commonly built without the dynamic module support ghostel needs.
+`kittymacs-terminal-open' falls back to Eshell whenever this is nil."
   :type 'boolean)
 (when kittymacs-terminal-ghostel
   (use-package ghostel
@@ -199,7 +199,8 @@ With prefix ARG, create another one instead of reusing the existing buffer."
 
 (keymap-set kittymacs-open-map "e" (cons "terminal" #'kittymacs-terminal-open))
 (keymap-set kittymacs-open-map "p" (cons "project terminal" #'kittymacs-terminal-project))
-(keymap-set kittymacs-open-map "m" (cons "MSYS2 terminal (Windows)" #'kittymacs-terminal-msys2))
+(when kittymacs-terminal-ghostel
+  (keymap-set kittymacs-open-map "m" (cons "MSYS2 terminal (Windows)" #'kittymacs-terminal-msys2)))
 (when kittymacs-terminal-ghostel
   (with-eval-after-load 'project
     (add-to-list 'project-switch-commands '(ghostel-project "Terminal" ?t) t))
@@ -211,12 +212,13 @@ With prefix ARG, create another one instead of reusing the existing buffer."
     :bind (:map ghostel-semi-char-mode-map
            ("C-c h" . consult-ghostel-history))
     :config
-    (consult-ghostel-mode 1)))
+    (consult-ghostel-mode 1))
 
-(keymap-set kittymacs-open-map "E" (cons "pick a terminal" #'consult-ghostel))
-(with-eval-after-load 'eshell
-  (when (require 'ghostel-eshell nil t)
-    (ghostel-eshell-visual-command-mode 1)))
+  (keymap-set kittymacs-open-map "E" (cons "pick a terminal" #'consult-ghostel)))
+(when kittymacs-terminal-ghostel
+  (with-eval-after-load 'eshell
+    (when (require 'ghostel-eshell nil t)
+      (ghostel-eshell-visual-command-mode 1))))
 
 (defun kittymacs-terminal--comint-colours ()
   "Render this comint buffer's output with ghostel's terminal parser."
@@ -224,41 +226,43 @@ With prefix ARG, create another one instead of reusing the existing buffer."
              (require 'ghostel-comint nil t))
     (ghostel-comint-mode 1)))
 
-(add-hook 'shell-mode-hook #'kittymacs-terminal--comint-colours)
-;; `ghostel-recompile' carries no autoload cookie, and `SPC m t' must work
-;; before the terminal has ever been opened.
-(autoload 'ghostel-compile "ghostel-compile" "Run a command in a terminal." t)
-(autoload 'ghostel-recompile "ghostel-compile" "Re-run the last command." t)
-(with-eval-after-load 'ghostel
-  (require 'ghostel-compile nil t))
-
-;; `kittymacs-define-localleader' replaces a mode's whole map, and prog-mode's
-;; belongs to the programming chapter, so add to the map it built.
 (when kittymacs-terminal-ghostel
+  (add-hook 'shell-mode-hook #'kittymacs-terminal--comint-colours))
+(when kittymacs-terminal-ghostel
+  ;; `ghostel-recompile' carries no autoload cookie, and `SPC m t' must work
+  ;; before the terminal has ever been opened.
+  (autoload 'ghostel-compile "ghostel-compile" "Run a command in a terminal." t)
+  (autoload 'ghostel-recompile "ghostel-compile" "Re-run the last command." t)
+  (with-eval-after-load 'ghostel
+    (require 'ghostel-compile nil t))
+
+  ;; `kittymacs-define-localleader' replaces a mode's whole map, and prog-mode's
+  ;; belongs to the programming chapter, so add to the map it built.
   (with-eval-after-load 'kittymacs-programming
     (when-let* ((map (alist-get 'prog-mode kittymacs-localleader-alist)))
       (keymap-set map "t" (cons "compile in a terminal" #'ghostel-compile))
       (keymap-set map "T" (cons "recompile in a terminal" #'ghostel-recompile))
       (kittymacs-refresh-localleaders))))
-(kittymacs-define-localleader 'ghostel-mode
-  "i" (cons "type in the terminal" #'ghostel-semi-char-mode)
-  "I" (cons "send every key (char mode)" #'ghostel-char-mode)
-  "e" (cons "read live output" #'ghostel-emacs-mode)
-  "c" (cons "freeze and copy" #'ghostel-copy-mode)
-  "l" (cons "compose a line first" #'ghostel-line-mode)
-  "y" (cons "copy everything" #'ghostel-copy-all)
-  "p" (cons "paste" #'ghostel-paste)
-  "k" (cons "clear" #'ghostel-clear)
-  "K" (cons "clear scrollback" #'ghostel-clear-scrollback)
-  "n" (cons "next prompt" #'ghostel-next-prompt)
-  "N" (cons "previous prompt" #'ghostel-previous-prompt)
-  "f" (cons "next link" #'ghostel-next-hyperlink)
-  "F" (cons "previous link" #'ghostel-previous-hyperlink)
-  "h" (cons "shell history" #'consult-ghostel-history)
-  "b" (cons "another terminal" #'consult-ghostel)
-  "q" (cons "send the next key literally" #'ghostel-send-next-key)
-  "<escape>" (cons "where escape goes" #'kittymacs-terminal-toggle-escape)
-  "M" (cons "install the native module" #'ghostel-download-module))
+(when kittymacs-terminal-ghostel
+  (kittymacs-define-localleader 'ghostel-mode
+    "i" (cons "type in the terminal" #'ghostel-semi-char-mode)
+    "I" (cons "send every key (char mode)" #'ghostel-char-mode)
+    "e" (cons "read live output" #'ghostel-emacs-mode)
+    "c" (cons "freeze and copy" #'ghostel-copy-mode)
+    "l" (cons "compose a line first" #'ghostel-line-mode)
+    "y" (cons "copy everything" #'ghostel-copy-all)
+    "p" (cons "paste" #'ghostel-paste)
+    "k" (cons "clear" #'ghostel-clear)
+    "K" (cons "clear scrollback" #'ghostel-clear-scrollback)
+    "n" (cons "next prompt" #'ghostel-next-prompt)
+    "N" (cons "previous prompt" #'ghostel-previous-prompt)
+    "f" (cons "next link" #'ghostel-next-hyperlink)
+    "F" (cons "previous link" #'ghostel-previous-hyperlink)
+    "h" (cons "shell history" #'consult-ghostel-history)
+    "b" (cons "another terminal" #'consult-ghostel)
+    "q" (cons "send the next key literally" #'ghostel-send-next-key)
+    "<escape>" (cons "where escape goes" #'kittymacs-terminal-toggle-escape)
+    "M" (cons "install the native module" #'ghostel-download-module)))
 
 (provide 'kittymacs-terminal)
 ;;; kittymacs-terminal.el ends here

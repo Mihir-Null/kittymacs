@@ -62,12 +62,13 @@ Use t for a terminal configured with a Nerd Font, or nil to disable icons."
 
 (defun kittymacs-icons-available-p ()
   "Return non-nil when Nerd Font icons should be rendered."
-  (pcase kittymacs-icons
-    ('t t)
-    ('nil nil)
-    ('auto (and (display-graphic-p)
-                (find-font (font-spec :family kittymacs-nerd-font))
-                t))))
+  (and (kittymacs-feature-p 'icons)
+       (pcase kittymacs-icons
+         ('t t)
+         ('nil nil)
+         ('auto (and (display-graphic-p)
+                     (find-font (font-spec :family kittymacs-nerd-font))
+                     t)))))
 
 (defun kittymacs--apply-icon-font (&optional frame)
   "Map Nerd icon ranges to `kittymacs-nerd-font' in graphical FRAME."
@@ -93,11 +94,12 @@ Use t for a terminal configured with a Nerd Font, or nil to disable icons."
 (setopt line-spacing 0.1
         text-scale-mode-step 1.08)
 
-(use-package nerd-icons
-  :ensure t
-  :demand t
-  :custom
-  (nerd-icons-font-family kittymacs-nerd-font))
+(when (kittymacs-feature-p 'icons)
+  (use-package nerd-icons
+    :ensure t
+    :demand t
+    :custom
+    (nerd-icons-font-family kittymacs-nerd-font)))
 
 (add-hook 'after-setting-font-hook #'kittymacs--apply-icon-font)
 (add-hook 'after-make-frame-functions #'kittymacs--apply-font)
@@ -138,11 +140,12 @@ Use t for a terminal configured with a Nerd Font, or nil to disable icons."
 (keymap-set kittymacs-toggle-map "t" (cons "light/dark theme" #'kittymacs-toggle-theme))
 (keymap-set kittymacs-toggle-map "T" (cons "choose theme" #'load-theme))
 
-(use-package doom-themes
-  :ensure t
-  :custom
-  (doom-themes-enable-bold t)
-  (doom-themes-enable-italic t))
+(when (kittymacs-feature-p 'doom-look)
+  (use-package doom-themes
+    :ensure t
+    :custom
+    (doom-themes-enable-bold t)
+    (doom-themes-enable-italic t)))
 
 (condition-case-unless-debug err
     (kittymacs-load-theme (kittymacs--default-theme))
@@ -151,23 +154,25 @@ Use t for a terminal configured with a Nerd Font, or nil to disable icons."
                     (format "Theme %s did not load: %s"
                             (kittymacs--default-theme) (error-message-string err))
                     :error)))
-(use-package doom-modeline
-  :ensure t
-  :custom
-  (doom-modeline-height 28)
-  (doom-modeline-project-detection 'project)
-  (doom-modeline-buffer-file-name-style 'truncate-upto-project)
-  (doom-modeline-icon (kittymacs-icons-available-p))
-  (doom-modeline-major-mode-icon t)
-  (doom-modeline-buffer-state-icon t)
-  :config
-  (doom-modeline-mode 1))
+(when (kittymacs-feature-p 'doom-look)
+  (use-package doom-modeline
+    :ensure t
+    :custom
+    (doom-modeline-height 28)
+    (doom-modeline-project-detection 'project)
+    (doom-modeline-buffer-file-name-style 'truncate-upto-project)
+    (doom-modeline-icon (kittymacs-icons-available-p))
+    (doom-modeline-major-mode-icon t)
+    (doom-modeline-buffer-state-icon t)
+    :config
+    (doom-modeline-mode 1)))
 
-(use-package hide-mode-line
-  :ensure t
-  :commands hide-mode-line-mode)
+(when (kittymacs-feature-p 'focus-mode)
+  (use-package hide-mode-line
+    :ensure t
+    :commands hide-mode-line-mode)
 
-(keymap-set kittymacs-toggle-map "H" (cons "hide mode line" #'hide-mode-line-mode))
+  (keymap-set kittymacs-toggle-map "H" (cons "hide mode line" #'hide-mode-line-mode)))
 
 (defun kittymacs--tab-bar-faces (&rest _)
   "Give the tab bar a compact, mode-line-like look."
@@ -179,42 +184,45 @@ Use t for a terminal configured with a Nerd Font, or nil to disable icons."
   (setopt tab-bar-show 1)
   (kittymacs--tab-bar-faces)
   (add-hook 'enable-theme-functions #'kittymacs--tab-bar-faces))
-(use-package nerd-icons-completion
-  :ensure t
-  :after marginalia
-  :config
-  (when (kittymacs-icons-available-p)
-    (nerd-icons-completion-mode 1)
-    (add-hook 'marginalia-mode-hook #'nerd-icons-completion-marginalia-setup)))
+(when (kittymacs-feature-p 'icons)
+  (use-package nerd-icons-completion
+    :ensure t
+    :after marginalia
+    :config
+    (when (kittymacs-icons-available-p)
+      (nerd-icons-completion-mode 1)
+      (add-hook 'marginalia-mode-hook #'nerd-icons-completion-marginalia-setup)))
 
-(use-package nerd-icons-corfu
-  :ensure t
-  :after corfu
-  :config
-  (when (kittymacs-icons-available-p)
-    (add-to-list 'corfu-margin-formatters #'nerd-icons-corfu-formatter)))
+  (use-package nerd-icons-corfu
+    :ensure t
+    :after corfu
+    :config
+    (when (kittymacs-icons-available-p)
+      (add-to-list 'corfu-margin-formatters #'nerd-icons-corfu-formatter))))
 
 (defun kittymacs--maybe-dired-icons ()
   "Enable Dired icons when their font is usable."
   (when (kittymacs-icons-available-p)
     (nerd-icons-dired-mode 1)))
 
-(use-package nerd-icons-dired
-  :ensure t
-  :commands nerd-icons-dired-mode
-  :hook (dired-mode . kittymacs--maybe-dired-icons))
-(use-package spacious-padding
-  :ensure t
-  :custom
-  (spacious-padding-widths '(:internal-border-width 8
-                             :header-line-width 2
-                             :mode-line-width 4
-                             :tab-width 2
-                             :right-divider-width 1
-                             :scroll-bar-width 0
-                             :fringe-width 6))
-  :config
-  (spacious-padding-mode 1))
+(when (kittymacs-feature-p 'icons)
+  (use-package nerd-icons-dired
+    :ensure t
+    :commands nerd-icons-dired-mode
+    :hook (dired-mode . kittymacs--maybe-dired-icons)))
+(when (kittymacs-feature-p 'ui-polish)
+  (use-package spacious-padding
+    :ensure t
+    :custom
+    (spacious-padding-widths '(:internal-border-width 8
+                               :header-line-width 2
+                               :mode-line-width 4
+                               :tab-width 2
+                               :right-divider-width 1
+                               :scroll-bar-width 0
+                               :fringe-width 6))
+    :config
+    (spacious-padding-mode 1)))
 
 (setopt x-underline-at-descent-line t
         cursor-in-non-selected-windows nil
@@ -229,30 +237,32 @@ Use t for a terminal configured with a Nerd Font, or nil to disable icons."
 ;; Every change of window, by `other-window', a mouse click or a leader key.
 (add-hook 'window-selection-change-functions #'kittymacs--pulse-line)
 
-(use-package hl-todo
-  :ensure t
-  :hook ((prog-mode markdown-mode markdown-ts-mode) . hl-todo-mode))
+(when (kittymacs-feature-p 'ui-polish)
+  (use-package hl-todo
+    :ensure t
+    :hook ((prog-mode markdown-mode markdown-ts-mode) . hl-todo-mode))
 
-(keymap-set kittymacs-search-map "t" (cons "todo keywords" #'hl-todo-occur))
+  (keymap-set kittymacs-search-map "t" (cons "todo keywords" #'hl-todo-occur))
 
-(use-package highlight-numbers
-  :ensure t
-  :hook (prog-mode . highlight-numbers-mode))
+  (use-package highlight-numbers
+    :ensure t
+    :hook (prog-mode . highlight-numbers-mode))
 
-(use-package goggles
-  :ensure t
-  :hook ((prog-mode text-mode) . goggles-mode)
-  :custom
-  (goggles-pulse t))
+  (use-package goggles
+    :ensure t
+    :hook ((prog-mode text-mode) . goggles-mode)
+    :custom
+    (goggles-pulse t))
 
-(use-package outline-minor-faces
-  :ensure t
-  :hook ((emacs-lisp-mode lisp-interaction-mode lisp-mode) . outline-minor-faces-mode))
-(use-package writeroom-mode
-  :ensure t
-  :commands writeroom-mode)
+  (use-package outline-minor-faces
+    :ensure t
+    :hook ((emacs-lisp-mode lisp-interaction-mode lisp-mode) . outline-minor-faces-mode)))
+(when (kittymacs-feature-p 'focus-mode)
+  (use-package writeroom-mode
+    :ensure t
+    :commands writeroom-mode)
 
-(keymap-set kittymacs-toggle-map "w" (cons "writeroom" #'writeroom-mode))
+  (keymap-set kittymacs-toggle-map "w" (cons "writeroom" #'writeroom-mode)))
 (defun kittymacs--programming-presentation ()
   "Visual aids for programming buffers."
   (when kittymacs-line-numbers-in-programming

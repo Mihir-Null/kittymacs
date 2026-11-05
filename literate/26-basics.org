@@ -10,6 +10,7 @@
 - Five small packages that extend [[id:3fd783cd-deb8-48aa-bb44-0d9b16535365][the defaults]].
 - They live apart because the defaults load before =private.el= and host files, too early for anything to choose a package or leave it out.
   + So this module loads right after them, and every package here can be a choice in [[id:3f8a6c02-9d14-4b7e-a2c5-1e7d90b64f31][the catalogue]].
+- The undo tree and whitespace cleanup are in the =minimal= profile; =window-picker=, =popups= and =color-names= each sit behind a =when=, with their keys.
 - Distilled from Lambda-Emacs by Colin McLear: its =lem-setup-windows= and =-colors= modules.
 - [[id:f1d045c2-e2dc-4514-ab17-dd982ed6be00][The frames chapter]] decides where popups appear.
 
@@ -77,31 +78,33 @@
 | =C-M-`= | turn a buffer into a popup, or back |
 
 #+begin_src emacs-lisp
-(use-package ace-window
-  :ensure t
-  :commands (ace-window ace-swap-window aw-flip-window))
+(when (kittymacs-feature-p 'window-picker)
+  (use-package ace-window
+    :ensure t
+    :commands (ace-window ace-swap-window aw-flip-window))
 
-(keymap-set kittymacs-window-map "w" (cons "jump to window" #'ace-window))
-(keymap-set kittymacs-window-map "s" (cons "swap windows" #'ace-swap-window))
+  (keymap-set kittymacs-window-map "w" (cons "jump to window" #'ace-window))
+  (keymap-set kittymacs-window-map "s" (cons "swap windows" #'ace-swap-window)))
 
-(use-package popper
-  :ensure t
-  :demand t
-  :bind (("M-`" . popper-toggle)
-         ("C-`" . popper-cycle)
-         ("C-M-`" . popper-toggle-type))
-  :custom
-  (popper-window-height 20)
-  (popper-group-function #'popper-group-by-directory)
-  (popper-reference-buffers
-   '("\\*Messages\\*"
-     "Output\\*$"
-     "\\*Async Shell Command\\*"
-     help-mode
-     compilation-mode))
-  :config
-  (popper-mode 1)
-  (popper-echo-mode 1))
+(when (kittymacs-feature-p 'popups)
+  (use-package popper
+    :ensure t
+    :demand t
+    :bind (("M-`" . popper-toggle)
+           ("C-`" . popper-cycle)
+           ("C-M-`" . popper-toggle-type))
+    :custom
+    (popper-window-height 20)
+    (popper-group-function #'popper-group-by-directory)
+    (popper-reference-buffers
+     '("\\*Messages\\*"
+       "Output\\*$"
+       "\\*Async Shell Command\\*"
+       help-mode
+       compilation-mode))
+    :config
+    (popper-mode 1)
+    (popper-echo-mode 1)))
 
 #+end_src
 
@@ -110,11 +113,12 @@
 - =rainbow-mode= colours colour names in place; =SPC t r= turns it on in a buffer.
 
 #+begin_src emacs-lisp
-(use-package rainbow-mode
-  :ensure t
-  :commands rainbow-mode)
+(when (kittymacs-feature-p 'color-names)
+  (use-package rainbow-mode
+    :ensure t
+    :commands rainbow-mode)
 
-(keymap-set kittymacs-toggle-map "r" (cons "colour names" #'rainbow-mode))
+  (keymap-set kittymacs-toggle-map "r" (cons "colour names" #'rainbow-mode)))
 
 (provide 'kittymacs-basics)
 ;;; kittymacs-basics.el ends here

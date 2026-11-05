@@ -1,0 +1,348 @@
+:PROPERTIES:
+:ID: 5c1e7a94-8f30-4d26-b7a1-3e92d06f4c18
+:END:
+
+#+TITLE: Features: what this machine selected
+#+FILETAGS: :core:
+#+STARTUP: overview
+#+PROPERTY: header-args:emacs-lisp :tangle ../lisp/kittymacs-features.el :eval never :comments no :padline no :mkdirp yes
+
+- Turns [[id:3f8a6c02-9d14-4b7e-a2c5-1e7d90b64f31][the catalogue]] and three options into one answer: which features are on here.
+  + Every gate in every chapter asks =kittymacs-feature-p=, so one function decides, and no chapter knows why.
+- Leans on the catalogue alone, so a test or a later onboarding script can load it under =emacs -Q=.
+- =init.el= calls it after host files and =private.el=, and before the modules: [[id:40302e33-d2b2-4c0b-9bc3-1f9e121307e1][the startup chapter]] has the order.
+
+* The three options :decision:
+:PROPERTIES:
+:ID: 7d20c8f1-46ab-4e93-a15c-9b3f7e60d214
+:END:
+
+- A machine says what it wants in a host file or =private.el=, with =setopt=.
+
+| Option                       | Says                                                                  |
+|------------------------------+-----------------------------------------------------------------------|
+| =kittymacs-profile=          | where to start: =minimal=, or =full= for everything but the catalogue's =optional= features |
+| =kittymacs-features=         | features to add to that, by the catalogue's name                      |
+| =kittymacs-features-excluded= | features to take away from it                                        |
+
+- A later setting wins: the system's host files, then the user's, then =private.el=.
+- Customize cannot set these.
+  + Its file loads after every chapter, and by then the chapters have already asked.
+- =kittymacs-profile= starts as nil, which means nobody has chosen.
+  + A choice and the default have to look different, or the next section's rule could not tell a machine that asked for =minimal= from one that never asked.
+  + =kittymacs-default-profile= holds what nil means.
+
+#+begin_src emacs-lisp
+;;; kittymacs-features.el --- What this machine selected from the catalogue -*- lexical-binding: t; -*-
+;; Generated from literate/21-features.org; edit the Org source, then tangle.
+
+;;; Code:
+
+(require 'seq)
+(require 'kittymacs-catalogue)
+
+(defvar kittymacs-lisp-dir)
+(defvar package-alist)
+
+(defconst kittymacs-default-profile 'full
+  "The profile of a machine that chose none.")
+
+(defcustom kittymacs-profile nil
+  "Where this machine's features start: `minimal' or `full'.
+`full' leaves out the features the catalogue marks `optional'.  Nil means no
+choice yet, so `kittymacs-default-profile' decides.  Set it with `setopt' in a
+host file or private.el: Customize's file loads after every chapter has asked."
+  :type '(choice (const :tag "Not chosen" nil) (const minimal) (const full))
+  :group 'kittymacs)
+
+(defcustom kittymacs-features nil
+  "Features to turn on beyond `kittymacs-profile', by their catalogue names.
+A feature brings the features it depends on.  Set it where `kittymacs-profile'
+is set, for the same reason."
+  :type '(repeat symbol)
+  :group 'kittymacs)
+
+(defcustom kittymacs-features-excluded nil
+  "Features to turn off, by their catalogue names.
+What depends on them goes too.  The `minimal' profile's features stay on.
+Set it where `kittymacs-profile' is set, for the same reason."
+  :type '(repeat symbol)
+  :group 'kittymacs)
+
+#+end_src
+
+* A machine with no choice keeps what it has :decision:
+:PROPERTIES:
+:ID: 2ea4f7b0-6c19-4d85-93f2-c07a1be58d36
+:END:
+
+- A machine that has run kittymacs and has chosen no profile stays on =full=, and a warning says how to choose.
+  + =kittymacs-default-profile= is =full= today, so nothing warns yet: the rule gives the answer the default already gives.
+  + Once that default moves to =minimal=, pulling that change must not take packages away from anyone unannounced.
+- The sign of a machine in use is a =private.el=, or any package =package.el= has found.
+- A value that is neither =minimal= nor =full= warns and counts as no choice, because a typo in a setting must not cost the editor.
+
+#+begin_src emacs-lisp
+(defun kittymacs-features--warn (message &rest args)
+  "Show the warning MESSAGE, formatted with ARGS."
+  (display-warning 'kittymacs (apply #'format message args) :warning))
+
+(defun kittymacs-features--in-use-p ()
+  "Return non-nil on a machine that has run kittymacs before."
+  (or (bound-and-true-p package-alist)
+      (and (boundp 'kittymacs-lisp-dir)
+           (file-exists-p (expand-file-name "private.el" kittymacs-lisp-dir)))))
+
+(defun kittymacs-features--choose-profile ()
+  "Return the profile to start from, warning when it is not the one asked for."
+  (when (and kittymacs-profile (not (memq kittymacs-profile '(minimal full))))
+    (kittymacs-features--warn "kittymacs-profile is %S, which is neither `minimal' nor `full'; ignoring it"
+                              kittymacs-profile))
+  (cond ((memq kittymacs-profile '(minimal full)) kittymacs-profile)
+        ((eq kittymacs-default-profile 'full) 'full)
+        ((kittymacs-features--in-use-p)
+         (kittymacs-features--warn
+          "No profile is chosen and this machine has run kittymacs, so it stays on `full'.
+Set `kittymacs-profile' to `full' or `minimal' in private.el to choose, and to end this warning.")
+         'full)
+        (t kittymacs-default-profile)))
+
+#+end_src
+
+* What older options still decide
+:PROPERTIES:
+:ID: e81b3c56-0d47-4fa2-8c69-74a2d95f1b07
+:END:
+
+- Four options came before the catalogue, and a machine may already set them.
+  + This module reads them because the answer comes before the modules that define them: a =setopt= in =private.el= has already set them by then.
+
+| Option                        | Effect                            |
+|-------------------------------+-----------------------------------|
+| =kittymacs-language-packages= | selects =lang-nix=, =lang-racket=, =lang-guile= |
+| =kittymacs-notebooks-jupyter= | selects =jupyter=                 |
+| =kittymacs-exwm=, =KITTYMACS_EXWM=1= | select =window-manager=    |
+| =kittymacs-terminal-ghostel=  | =t= selects =terminal=, and =nil= excludes it |
+
+- =kittymacs-exwm-session-p= lives here, for the same reason: the selection needs that answer before [[id:86fcd506-34c8-476d-8903-acbef46275bf][the EXWM chapter]] loads.
+
+#+begin_src emacs-lisp
+(defun kittymacs-exwm-session-p ()
+  "Return non-nil when the program starting Emacs asked for EXWM, on X."
+  (and (eq window-system 'x) (equal (getenv "KITTYMACS_EXWM") "1")))
+
+(defun kittymacs-features--selected-by-older-options ()
+  "Return the features that the options older than the catalogue turn on."
+  (append (seq-filter (lambda (name) (assq name kittymacs-catalogue))
+                      (mapcar (lambda (language) (intern (format "lang-%s" language)))
+                              (bound-and-true-p kittymacs-language-packages)))
+          (and (bound-and-true-p kittymacs-notebooks-jupyter) '(jupyter))
+          (and (or (bound-and-true-p kittymacs-exwm) (kittymacs-exwm-session-p))
+               '(window-manager))
+          (and (bound-and-true-p kittymacs-terminal-ghostel) '(terminal))))
+
+(defun kittymacs-features--excluded-by-older-options ()
+  "Return the features that the options older than the catalogue turn off."
+  (and (boundp 'kittymacs-terminal-ghostel)
+       (not kittymacs-terminal-ghostel)
+       '(terminal)))
+
+#+end_src
+
+* From the options to the answer :decision:
+:PROPERTIES:
+:ID: 0fb86d27-93c1-4ea5-b2d8-6a1e47c3f9d0
+:END:
+
+1. Start from the profile: =minimal= features always, and =full= ones under =full=.
+2. Add what is selected, and the features each of those depends on.
+3. Take away what is excluded, and whatever the catalogue's =:not-on= rules out on this =system-type=.
+4. Take away any feature whose =:deps= are no longer all on, until none is left.
+
+- A name the catalogue does not know warns and changes nothing, because a checkout and a host's settings can drift apart.
+  + Ending startup there would leave no editor to fix it with.
+- A selected feature that step 3 or 4 removed warns, since the machine asked for something it cannot have.
+  + The exception is =:not-on=: one =private.el= can serve several machines, and a feature that does not apply on this one is no mistake.
+- Excluding a =minimal= feature warns and leaves it on.
+  + They are the floor the rest stands on: every =SPC= key needs Meow, and most lists need Consult.
+- What depends on an excluded feature goes without a warning: the exclusion asked for that.
+- The answer is in the catalogue's order, which is the order the installer uses.
+
+#+begin_src emacs-lisp
+(defvar kittymacs-features--enabled 'unresolved
+  "The features that are on, or `unresolved' before the first answer.")
+
+(defvar kittymacs-features--profile nil
+  "The profile the last answer started from.")
+
+(defun kittymacs-features--property (feature property)
+  "Return PROPERTY of FEATURE in the catalogue."
+  (plist-get (alist-get feature kittymacs-catalogue) property))
+
+(defun kittymacs-features--known (names option)
+  "Return the NAMES the catalogue lists, warning about the rest, which OPTION set."
+  (cond ((not (listp names))
+         (kittymacs-features--warn "%s must be a list of features; ignoring %S" option names)
+         nil)
+        (t
+         (seq-filter (lambda (name)
+                       (or (assq name kittymacs-catalogue)
+                           (progn
+                             (kittymacs-features--warn
+                              "%s names %S, which the catalogue does not have; ignoring it"
+                              option name)
+                             nil)))
+                     names))))
+
+(defun kittymacs-features--in-profile (profile)
+  "Return the features PROFILE turns on."
+  (let ((profiles (if (eq profile 'full) '(minimal full) '(minimal))))
+    (mapcar #'car (seq-filter (lambda (entry) (memq (plist-get (cdr entry) :profile) profiles))
+                              kittymacs-catalogue))))
+
+(defun kittymacs-features--with-deps (features)
+  "Return FEATURES and everything they depend on, however indirectly."
+  (let (result)
+    (while features
+      (let ((feature (pop features)))
+        (unless (memq feature result)
+          (push feature result)
+          (setq features (append (kittymacs-features--property feature :deps) features)))))
+    result))
+
+(defun kittymacs-features--applies-p (feature)
+  "Return non-nil unless the catalogue rules FEATURE out on this system."
+  (not (memq system-type (kittymacs-features--property feature :not-on))))
+
+(defun kittymacs-features--drop-unmet (features)
+  "Return FEATURES without any whose dependencies are not all among them."
+  (let ((kept (seq-filter (lambda (feature)
+                            (seq-every-p (lambda (dep) (memq dep features))
+                                         (kittymacs-features--property feature :deps)))
+                          features)))
+    (if (= (length kept) (length features))
+        kept
+      (kittymacs-features--drop-unmet kept))))
+
+(defun kittymacs-features--compute (profile selected excluded)
+  "Return the features that are on, from PROFILE, SELECTED and EXCLUDED.
+They come in the catalogue's order."
+  (let* ((floor (kittymacs-features--in-profile 'minimal))
+         (removed (seq-difference excluded floor))
+         (wanted (append (kittymacs-features--in-profile profile)
+                         (kittymacs-features--with-deps selected)))
+         (on (kittymacs-features--drop-unmet
+              (seq-filter (lambda (feature)
+                            (and (not (memq feature removed))
+                                 (kittymacs-features--applies-p feature)))
+                          wanted))))
+    (mapcar #'car (seq-filter (lambda (entry) (memq (car entry) on)) kittymacs-catalogue))))
+
+(defun kittymacs-features-resolve ()
+  "Work out which features are on from the options, and return them.
+`init.el' calls this once, after host files and private.el; a warning here
+names what was asked for and cannot be had."
+  (let* ((asked (kittymacs-features--known kittymacs-features 'kittymacs-features))
+         (refused (kittymacs-features--known kittymacs-features-excluded
+                                             'kittymacs-features-excluded))
+         (floor (kittymacs-features--in-profile 'minimal))
+         (profile (kittymacs-features--choose-profile))
+         (enabled (kittymacs-features--compute
+                   profile
+                   (append asked (kittymacs-features--selected-by-older-options))
+                   (append refused (kittymacs-features--excluded-by-older-options)))))
+    (dolist (feature (seq-intersection refused floor))
+      (kittymacs-features--warn
+       "%s is part of the minimal profile, which stays on; ignoring its exclusion" feature))
+    (dolist (feature asked)
+      (when (and (not (memq feature enabled))
+                 (kittymacs-features--applies-p feature))
+        (kittymacs-features--warn
+         "%s is selected but stays off: it, or a feature it depends on, is excluded" feature)))
+    (setq kittymacs-features--profile profile
+          kittymacs-features--enabled enabled)))
+
+(defun kittymacs-features-enabled ()
+  "Return the features that are on, working them out if nothing has yet."
+  (if (eq kittymacs-features--enabled 'unresolved)
+      (kittymacs-features-resolve)
+    kittymacs-features--enabled))
+
+(defun kittymacs-features-profile ()
+  "Return the profile the features that are on started from."
+  (kittymacs-features-enabled)
+  kittymacs-features--profile)
+
+(defun kittymacs-feature-p (feature)
+  "Return non-nil if FEATURE, a name in the catalogue, is on."
+  (and (memq feature (kittymacs-features-enabled)) t))
+
+#+end_src
+
+* The installer :decision:
+:PROPERTIES:
+:ID: a9d3e1c7-52f8-4b06-8e14-6c07f2b1d945
+:END:
+
+- A step before the modules load installs every package the features that are on need, from the catalogue.
+- A declaration's =:ensure= cannot do this job alone.
+  + =use-package-handler/:ensure= runs the install while it compiles a file, and leaves nothing to run later.
+  + A compiled module would therefore never install a feature selected after it compiled.
+- =:ensure t= stays on each declaration, because a module loaded from source still reads it, and =nix/packages.nix= is checked against those declarations.
+  + By then this step has installed the package, so =:ensure= finds it there and does nothing.
+- It installs through =use-package-ensure-function=, so a first install refreshes a stale index as any other does ([[id:8d3b6e0f-5a41-4c2e-9f7a-2b6c1e4d9a53][A stale archive index]]), and a start that installs nothing touches no network.
+- The packages in a feature's =:vc= are left to their declarations, which clone them as those modules load, with the warning each chapter writes when that fails.
+- A failed install is a warning, because the rest of the editor still works without one package.
+  + =kittymacs-features--failed= remembers it, so the declaration that follows does not try again and warn a second time.
+- A package left behind by a feature now off stays installed: =M-x package-delete= removes it, and leftover files do nothing.
+
+#+begin_src emacs-lisp
+(defvar use-package-ensure-function)
+(declare-function package-installed-p "package" (package &optional min-version))
+
+(defvar kittymacs-features--failed nil
+  "Packages the installer could not install in this session.")
+
+(defun kittymacs-features-packages ()
+  "Return the packages the features that are on install from an archive."
+  (seq-mapcat (lambda (feature)
+                (seq-difference (kittymacs-features--property feature :packages)
+                                (kittymacs-features--property feature :vc)))
+              (kittymacs-features-enabled)))
+
+(defun kittymacs-features-install ()
+  "Install what the features that are on need and this machine lacks.
+A package that cannot be installed warns, and the rest carry on."
+  (dolist (package (kittymacs-features-packages))
+    (unless (package-installed-p package)
+      (condition-case-unless-debug err
+          (funcall use-package-ensure-function package '(t) nil)
+        (error
+         (kittymacs-features--warn "Could not install %s: %s"
+                                   package (error-message-string err))))
+      (unless (package-installed-p package)
+        (push package kittymacs-features--failed)))))
+
+#+end_src
+
+* A directory can name an option of a chapter that is off
+
+- A project's =.dir-locals.el= can set two Org-roam options, and this repository's own does.
+- Those two are declared safe here rather than in [[id:f48e8f01-88da-4e33-8398-c00ab346b8bb][the Org-roam chapter]], which may not load.
+  + Otherwise a machine without linked notes would be asked about them on every file in such a project.
+
+#+begin_src emacs-lisp
+(put 'kittymacs-org-roam-project 'safe-local-variable #'booleanp)
+(put 'kittymacs-org-roam-excluded-directories 'safe-local-variable #'list-of-strings-p)
+
+(provide 'kittymacs-features)
+;;; kittymacs-features.el ends here
+#+end_src
+
+* Check
+
+- =M-: (kittymacs-features-profile)= names the profile, and =M-: (kittymacs-features-enabled)= lists what is on.
+- =M-: (kittymacs-feature-p 'jump)=: =t= here means =SPC j j= exists.
+- Add =(setopt kittymacs-features '(no-such-feature))= to =private.el= and restart: a warning names it, and everything else starts.
+- =(setopt kittymacs-features '(jump))= on a machine without Avy: the next start installs it, and =SPC j j= works.
+- =just test= runs [[file:../tests/kittymacs-features-tests.el][the features tests]], which need no packages.

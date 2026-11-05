@@ -94,11 +94,12 @@
   (kittymacs-meow-setup)
   (meow-global-mode 1)
   (kittymacs-leader-enable))
-(use-package meow-tree-sitter
-  :ensure t
-  :after meow
-  :config
-  (meow-tree-sitter-register-defaults))
+(when (kittymacs-feature-p 'syntax-things)
+  (use-package meow-tree-sitter
+    :ensure t
+    :after meow
+    :config
+    (meow-tree-sitter-register-defaults)))
 (declare-function meow-tutor "meow-tutor")
 (declare-function meow-cheatsheet "meow-cheatsheet")
 (keymap-set kittymacs-help-map "t" (cons "meow tutor" #'meow-tutor))

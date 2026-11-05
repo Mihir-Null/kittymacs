@@ -18,23 +18,25 @@
 The `use-package-ensure-function' of kittymacs.  Before the session's
 first install it refreshes the cached archive index, whose tarballs may
 be gone; then `use-package-ensure-elpa' installs.  STATE and NO-REFRESH
-are passed through."
-  (unless (or kittymacs--archives-refreshed
-              (seq-every-p (lambda (ensure)
-                             (let ((package (if (eq ensure t) (use-package-as-symbol name) ensure)))
-                               (or (null package)
-                                   (package-installed-p (if (consp package) (car package) package)))))
-                           args))
-    (setq kittymacs--archives-refreshed t)
-    (condition-case-unless-debug err
-        (package-refresh-contents)
-      (error
-       (display-warning 'kittymacs
-                        (format "Could not refresh the package archives: %s
+are passed through.  A package the installer already failed on is left
+alone, since it warned once."
+  (unless (memq name (bound-and-true-p kittymacs-features--failed))
+    (unless (or kittymacs--archives-refreshed
+                (seq-every-p (lambda (ensure)
+                               (let ((package (if (eq ensure t) (use-package-as-symbol name) ensure)))
+                                 (or (null package)
+                                     (package-installed-p (if (consp package) (car package) package)))))
+                             args))
+      (setq kittymacs--archives-refreshed t)
+      (condition-case-unless-debug err
+          (package-refresh-contents)
+        (error
+         (display-warning 'kittymacs
+                          (format "Could not refresh the package archives: %s
 Installing from the cached index, which may name tarballs that are gone."
-                                (error-message-string err))
-                        :warning))))
-  (use-package-ensure-elpa name args state no-refresh))
+                                  (error-message-string err))
+                          :warning))))
+    (use-package-ensure-elpa name args state no-refresh)))
 
 (setopt use-package-ensure-function #'kittymacs-ensure-package)
 
@@ -97,25 +99,30 @@ Set before init.el loads to change them, because they are read during init.")
             (directory-files directory t "\\`[^.#].*\\.el\\'")))))
 
 ;; Foundation: the feature list, defaults, platform paths, host and machine
-;; overrides, then the look.
+;; overrides, what they selected, then the look.
 (require 'kittymacs-catalogue)
+(require 'kittymacs-features)
 (require 'kittymacs-defaults)
 (require 'kittymacs-platform)
 (kittymacs-load-host-files)
 (let ((private (expand-file-name "private.el" kittymacs-lisp-dir)))
   (when (file-exists-p private)
     (kittymacs-load-user-file private)))
+(kittymacs-features-resolve)
+(kittymacs-features-install)
 (kittymacs-platform-apply)
 (kittymacs-require-module 'kittymacs-basics)
 (kittymacs-require-module 'kittymacs-ui)
 (kittymacs-require-module 'kittymacs-literate)
-(kittymacs-require-module 'kittymacs-dashboard)
+(when (kittymacs-feature-p 'home-page)
+  (kittymacs-require-module 'kittymacs-dashboard))
 
 ;; Editing: completion, help, files, git, navigation, then Meow and the leader.
 (kittymacs-require-module 'kittymacs-completion)
 (kittymacs-require-module 'kittymacs-help)
 (kittymacs-require-module 'kittymacs-dired)
-(kittymacs-require-module 'kittymacs-treemacs)
+(when (kittymacs-feature-p 'file-tree)
+  (kittymacs-require-module 'kittymacs-treemacs))
 (kittymacs-require-module 'kittymacs-vc)
 (kittymacs-require-module 'kittymacs-navigation)
 (kittymacs-require-module 'kittymacs-meow)
@@ -129,14 +136,21 @@ Set before init.el loads to change them, because they are read during init.")
 (kittymacs-require-module 'kittymacs-languages)
 (kittymacs-require-module 'kittymacs-terminal)
 (kittymacs-require-module 'kittymacs-org)
-(kittymacs-require-module 'kittymacs-org-extras)
-(kittymacs-require-module 'kittymacs-org-roam)
-(kittymacs-require-module 'kittymacs-reading)
-(kittymacs-require-module 'kittymacs-notebooks)
-(kittymacs-require-module 'kittymacs-agents)
-(kittymacs-require-module 'kittymacs-suggestions)
+(when (kittymacs-feature-p 'org-extras)
+  (kittymacs-require-module 'kittymacs-org-extras))
+(when (kittymacs-feature-p 'linked-notes)
+  (kittymacs-require-module 'kittymacs-org-roam))
+(when (kittymacs-feature-p 'pdf-reading)
+  (kittymacs-require-module 'kittymacs-reading))
+(when (kittymacs-feature-p 'notebooks)
+  (kittymacs-require-module 'kittymacs-notebooks))
+(when (kittymacs-feature-p 'agents)
+  (kittymacs-require-module 'kittymacs-agents))
+(when (kittymacs-feature-p 'suggestions)
+  (kittymacs-require-module 'kittymacs-suggestions))
 (kittymacs-require-module 'kittymacs-exwm)
 (kittymacs-require-module 'kittymacs-frames)
+(kittymacs-after-init #'kittymacs-leader-drop-empty-groups 100)
 
 ;; Settings saved by M-x customize come last, so they override the chapters.
 (load custom-file 'noerror 'nomessage)

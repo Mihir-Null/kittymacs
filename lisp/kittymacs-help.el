@@ -12,23 +12,25 @@
         help-window-select t
         help-at-pt-timer-delay 0.1
         help-at-pt-display-when-idle '(flymake-diagnostic))
-(use-package helpful
-  :ensure t
-  :bind (([remap display-local-help] . helpful-at-point)
-         ([remap describe-function] . helpful-callable)
-         ([remap describe-variable] . helpful-variable)
-         ([remap describe-symbol] . helpful-symbol)
-         ([remap describe-key] . helpful-key)
-         ([remap describe-command] . helpful-command)
-         ("C-h C-l" . find-library)
-         ("C-h C-c" . finder-commentary)))
+(when (kittymacs-feature-p 'help-extras)
+  (use-package helpful
+    :ensure t
+    :bind (([remap display-local-help] . helpful-at-point)
+           ([remap describe-function] . helpful-callable)
+           ([remap describe-variable] . helpful-variable)
+           ([remap describe-symbol] . helpful-symbol)
+           ([remap describe-key] . helpful-key)
+           ([remap describe-command] . helpful-command)
+           ("C-h C-l" . find-library)
+           ("C-h C-c" . finder-commentary))))
 
-(keymap-set kittymacs-help-map "k" (cons "key" #'helpful-key))
-(keymap-set kittymacs-help-map "f" (cons "function" #'helpful-callable))
-(keymap-set kittymacs-help-map "v" (cons "variable" #'helpful-variable))
-(keymap-set kittymacs-help-map "o" (cons "symbol" #'helpful-symbol))
-(keymap-set kittymacs-help-map "c" (cons "command" #'helpful-command))
-(keymap-set kittymacs-help-map "." (cons "at point" #'helpful-at-point))
+(let ((helpful (kittymacs-feature-p 'help-extras)))
+  (keymap-set kittymacs-help-map "k" (cons "key" (if helpful #'helpful-key #'describe-key)))
+  (keymap-set kittymacs-help-map "f" (cons "function" (if helpful #'helpful-callable #'describe-function)))
+  (keymap-set kittymacs-help-map "v" (cons "variable" (if helpful #'helpful-variable #'describe-variable)))
+  (keymap-set kittymacs-help-map "o" (cons "symbol" (if helpful #'helpful-symbol #'describe-symbol)))
+  (keymap-set kittymacs-help-map "c" (cons "command" (if helpful #'helpful-command #'describe-command)))
+  (keymap-set kittymacs-help-map "." (cons "at point" (if helpful #'helpful-at-point #'display-local-help))))
 
 (keymap-set kittymacs-help-map "m" (cons "mode" #'describe-mode))
 (keymap-set kittymacs-help-map "B" (cons "all bindings" #'describe-bindings))
@@ -42,15 +44,16 @@
 (keymap-set kittymacs-help-map "V" (cons "find variable" #'find-variable))
 (keymap-set kittymacs-help-map "K" (cons "find key" #'find-function-on-key))
 
-(use-package elisp-demos
-  :ensure t
-  :after helpful
-  :config
-  (advice-add 'helpful-update :after #'elisp-demos-advice-helpful-update))
+(when (kittymacs-feature-p 'help-extras)
+  (use-package elisp-demos
+    :ensure t
+    :after helpful
+    :config
+    (advice-add 'helpful-update :after #'elisp-demos-advice-helpful-update))
 
-(use-package info-colors
-  :ensure t
-  :hook (Info-selection . info-colors-fontify-node))
+  (use-package info-colors
+    :ensure t
+    :hook (Info-selection . info-colors-fontify-node)))
 (use-package transient
   :ensure nil
   :defer t
@@ -65,37 +68,39 @@
                                      (dedicated . t)
                                      (inhibit-same-window . t)
                                      (window-parameters (no-other-window . t)))))
-(use-package keycast
-  :ensure t
-  :commands (keycast-header-line-mode keycast-log-mode keycast-tab-bar-mode)
-  :config
-  (dolist (input '(self-insert-command org-self-insert-command))
-    (add-to-list 'keycast-substitute-alist `(,input "." "Typing...")))
-  (dolist (event '(mouse-event-p mouse-movement-p mwheel-scroll))
-    (add-to-list 'keycast-substitute-alist `(,event nil))))
+(when (kittymacs-feature-p 'key-display)
+  (use-package keycast
+    :ensure t
+    :commands (keycast-header-line-mode keycast-log-mode keycast-tab-bar-mode)
+    :config
+    (dolist (input '(self-insert-command org-self-insert-command))
+      (add-to-list 'keycast-substitute-alist `(,input "." "Typing...")))
+    (dolist (event '(mouse-event-p mouse-movement-p mwheel-scroll))
+      (add-to-list 'keycast-substitute-alist `(,event nil))))
 
-(keymap-set kittymacs-toggle-map "k" (cons "show keys (keycast)" #'keycast-header-line-mode))
-(keymap-set kittymacs-toggle-map "K" (cons "log keys" #'keycast-log-mode))
-(use-package casual
-  :ensure t
-  :defer t)
+  (keymap-set kittymacs-toggle-map "k" (cons "show keys (keycast)" #'keycast-header-line-mode))
+  (keymap-set kittymacs-toggle-map "K" (cons "log keys" #'keycast-log-mode)))
+(when (kittymacs-feature-p 'command-menus)
+  (use-package casual
+    :ensure t
+    :defer t)
 
-(keymap-set kittymacs-code-map "m" (cons "editing menu" #'casual-editkit-main-tmenu))
+  (keymap-set kittymacs-code-map "m" (cons "editing menu" #'casual-editkit-main-tmenu))
 
-(with-eval-after-load 'calc (keymap-set calc-mode-map "C-o" #'casual-calc-tmenu))
-(with-eval-after-load 'isearch (keymap-set isearch-mode-map "C-o" #'casual-isearch-tmenu))
-(with-eval-after-load 're-builder (keymap-set reb-mode-map "C-o" #'casual-re-builder-tmenu))
-(with-eval-after-load 'bookmark (keymap-set bookmark-bmenu-mode-map "C-o" #'casual-bookmarks-tmenu))
-(with-eval-after-load 'ibuffer (keymap-set ibuffer-mode-map "C-o" #'casual-ibuffer-tmenu))
-(with-eval-after-load 'dired (keymap-set dired-mode-map "C-o" #'casual-dired-tmenu))
-(with-eval-after-load 'info (keymap-set Info-mode-map "C-o" #'casual-info-tmenu))
-(with-eval-after-load 'compile (keymap-set compilation-mode-map "C-o" #'casual-compile-tmenu))
+  (with-eval-after-load 'calc (keymap-set calc-mode-map "C-o" #'casual-calc-tmenu))
+  (with-eval-after-load 'isearch (keymap-set isearch-mode-map "C-o" #'casual-isearch-tmenu))
+  (with-eval-after-load 're-builder (keymap-set reb-mode-map "C-o" #'casual-re-builder-tmenu))
+  (with-eval-after-load 'bookmark (keymap-set bookmark-bmenu-mode-map "C-o" #'casual-bookmarks-tmenu))
+  (with-eval-after-load 'ibuffer (keymap-set ibuffer-mode-map "C-o" #'casual-ibuffer-tmenu))
+  (with-eval-after-load 'dired (keymap-set dired-mode-map "C-o" #'casual-dired-tmenu))
+  (with-eval-after-load 'info (keymap-set Info-mode-map "C-o" #'casual-info-tmenu))
+  (with-eval-after-load 'compile (keymap-set compilation-mode-map "C-o" #'casual-compile-tmenu))
 
-(kittymacs-define-localleader 'ibuffer-mode
-  "?" (cons "menu" #'casual-ibuffer-tmenu))
+  (kittymacs-define-localleader 'ibuffer-mode
+    "?" (cons "menu" #'casual-ibuffer-tmenu))
 
-(kittymacs-define-localleader 'compilation-mode
-  "?" (cons "menu" #'casual-compile-tmenu))
+  (kittymacs-define-localleader 'compilation-mode
+    "?" (cons "menu" #'casual-compile-tmenu)))
 (kittymacs-define-localleader 'Info-mode
   "n" (cons "next node" #'Info-next)
   "p" (cons "previous node" #'Info-prev)
@@ -108,19 +113,20 @@
   "m" (cons "menu" #'Info-menu)
   "l" (cons "back" #'Info-history-back)
   "r" (cons "forward" #'Info-history-forward)
-  "?" (cons "menu" #'casual-info-tmenu))
+  "?" (and (kittymacs-feature-p 'command-menus) (cons "menu" #'casual-info-tmenu)))
 
 (kittymacs-define-localleader 'help-mode
   "l" (cons "back" #'help-go-back)
   "r" (cons "forward" #'help-go-forward)
   "s" (cons "source" #'help-view-source)
   "i" (cons "info" #'help-goto-info)
-  "?" (cons "menu" #'casual-help-tmenu))
+  "?" (and (kittymacs-feature-p 'command-menus) (cons "menu" #'casual-help-tmenu)))
 
-(with-eval-after-load 'helpful
-  (kittymacs-define-localleader 'helpful-mode
-    "u" (cons "update" #'helpful-update)
-    "s" (cons "source" #'helpful-visit-reference)))
+(when (kittymacs-feature-p 'help-extras)
+  (with-eval-after-load 'helpful
+    (kittymacs-define-localleader 'helpful-mode
+      "u" (cons "update" #'helpful-update)
+      "s" (cons "source" #'helpful-visit-reference))))
 
 (provide 'kittymacs-help)
 ;;; kittymacs-help.el ends here

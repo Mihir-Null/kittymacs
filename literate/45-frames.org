@@ -87,23 +87,26 @@ before this module is loaded, to override."
   + A remap is a property of keys, not of the command: =M-x split-window-below= still splits the current frame.
 - Re-evaluating the module does not enable the mode a second time, which would overwrite its saved defaults.
 - =SPC t f= can turn the mode on in any session, so the package stays installed when =kittymacs-frames-only= is off; the option only decides whether it starts on.
+- The =frames= feature holds the package and that key; without it this chapter still sets where diagnostics go, and Emacs's own windows behave as usual.
 
 #+begin_src emacs-lisp
-(use-package frames-only-mode
-  :ensure t
-  :commands frames-only-mode
-  :custom
-  (frames-only-mode-use-windows-for-completion t)
-  :config
-  (setopt frames-only-mode-configuration-variables
-          (cons '(popper-display-control nil)
-                (seq-remove (lambda (setting)
-                              (memq (car setting)
-                                    '(magit-commit-show-diff magit-bury-buffer-function)))
-                            frames-only-mode-configuration-variables)))
-  (frames-only-mode-remap-common-window-split-keybindings))
-(keymap-set kittymacs-toggle-map "f" (cons "frames-only mode" #'frames-only-mode))
-(when kittymacs-frames-only
+(when (kittymacs-feature-p 'frames)
+  (use-package frames-only-mode
+    :ensure t
+    :commands frames-only-mode
+    :custom
+    (frames-only-mode-use-windows-for-completion t)
+    :config
+    (setopt frames-only-mode-configuration-variables
+            (cons '(popper-display-control nil)
+                  (seq-remove (lambda (setting)
+                                (memq (car setting)
+                                      '(magit-commit-show-diff magit-bury-buffer-function)))
+                              frames-only-mode-configuration-variables)))
+    (frames-only-mode-remap-common-window-split-keybindings)))
+(when (kittymacs-feature-p 'frames)
+  (keymap-set kittymacs-toggle-map "f" (cons "frames-only mode" #'frames-only-mode)))
+(when (and kittymacs-frames-only (kittymacs-feature-p 'frames))
   (require 'frames-only-mode)
   ;; Re-evaluating this file must not overwrite the mode's saved defaults.
   (unless frames-only-mode

@@ -67,6 +67,7 @@
                    (list feature (and (memq (plist-get plist :profile) '(minimal full optional)) t))))
     (should (plist-get plist :group))
     (should (plist-get plist :packages))
+    (should-not (seq-difference (plist-get plist :vc) (plist-get plist :packages)))
     (dolist (property '(:summary :example))
       (let ((text (plist-get plist property)))
         (should (equal (list feature property t)
@@ -101,6 +102,135 @@
                               kittymacs-catalogue)))
     (should (memq 'meow packages))
     (should (<= (length packages) kittymacs-catalogue-test-minimal-limit))))
+
+(defun kittymacs-catalogue-test--vc-declared (form)
+  "Names of the `use-package' declarations with `:vc' anywhere in FORM."
+  (when (consp form)
+    (append (and (eq (car form) 'use-package)
+                 (memq :vc (cddr form))
+                 (list (cadr form)))
+            (let (names)
+              (while (consp form)
+                (setq names (append names (kittymacs-catalogue-test--vc-declared (car form)))
+                      form (cdr form)))
+              names))))
+
+(ert-deftest kittymacs-catalogue-says-which-packages-come-from-git ()
+  "The installer leaves these to their declarations, so it must know them all."
+  (let ((declared (seq-mapcat
+                   (lambda (file)
+                     (seq-mapcat #'kittymacs-catalogue-test--vc-declared
+                                 (kittymacs-bench--forms file)))
+                   (directory-files (expand-file-name "lisp" kittymacs-catalogue-test-root)
+                                    t "\\`kittymacs-.*\\.el\\'")))
+        (listed (apply #'append (mapcar #'cdr (kittymacs-catalogue-test--property :vc)))))
+    (should declared)
+    (should-not (seq-difference declared listed))
+    (should-not (seq-difference listed declared))))
+
+;;; The gates
+
+(defun kittymacs-catalogue-test--init-gates ()
+  "Return (FEATURE . MODULE) for each chapter init.el loads behind a feature."
+  (let (gates)
+    (dolist (form (kittymacs-bench--forms
+                   (expand-file-name "init.el" kittymacs-catalogue-test-root)))
+      (pcase form
+        (`(when (kittymacs-feature-p ',feature) (kittymacs-require-module ',module))
+         (push (cons feature module) gates))))
+    gates))
+
+(defun kittymacs-catalogue-test--declarations-and-gates (form gates)
+  "Return (PACKAGE . CONDITIONS) for each `use-package' in FORM.
+CONDITIONS are those of the `when' forms around it, starting from GATES."
+  (when (consp form)
+    (pcase form
+      (`(use-package ,(and name (pred symbolp)) . ,_) (list (cons name gates)))
+      (`(when ,condition . ,body)
+       (seq-mapcat (lambda (inner)
+                     (kittymacs-catalogue-test--declarations-and-gates
+                      inner (cons condition gates)))
+                   body))
+      (_ (let (found)
+           (while (consp form)
+             (setq found (append found (kittymacs-catalogue-test--declarations-and-gates
+                                        (car form) gates))
+                   form (cdr form)))
+           found)))))
+
+(defun kittymacs-catalogue-test--asks-for-p (conditions feature)
+  "Return non-nil if one of CONDITIONS asks whether FEATURE is on."
+  (seq-some (lambda (condition)
+              (or (and (eq feature 'terminal) (eq condition 'kittymacs-terminal-ghostel))
+                  (string-search (format "%S" `(kittymacs-feature-p ',feature))
+                                 (format "%S" condition))))
+            conditions))
+
+(defun kittymacs-catalogue-test--ungated (entries init-gates declarations)
+  "Return (FEATURE PACKAGE) for each package of ENTRIES its feature cannot stop.
+INIT-GATES are the chapters init.el gates, and DECLARATIONS come from
+`kittymacs-catalogue-test--declarations-and-gates', with each module's name."
+  (let (ungated)
+    (pcase-dolist (`(,feature . ,plist) entries)
+      (unless (or (eq (plist-get plist :profile) 'minimal)
+                  (equal (assq feature init-gates) (cons feature (plist-get plist :module))))
+        (dolist (package (plist-get plist :packages))
+          (unless (kittymacs-catalogue-test--asks-for-p
+                   (alist-get package declarations) feature)
+            (push (list feature package) ungated)))))
+    ungated))
+
+(ert-deftest kittymacs-catalogue-ungated-finds-a-package-no-gate-stops ()
+  (let* ((entries '((plain :profile full :module m :packages (a))
+                    (gated :profile full :module m :packages (b))
+                    (wrong :profile full :module m :packages (c))
+                    (floor :profile minimal :module m :packages (d))
+                    (whole :profile full :module n :packages (e))))
+         (declarations
+          (kittymacs-catalogue-test--declarations-and-gates
+           '(progn (use-package a :ensure t)
+                   (when (kittymacs-feature-p 'gated) (use-package b :ensure t))
+                   (when (kittymacs-feature-p 'gated) (use-package c :ensure t))
+                   (use-package d :ensure t)
+                   (use-package e :ensure t))
+           nil)))
+    (should (equal (sort (kittymacs-catalogue-test--ungated
+                          entries '((whole . n)) declarations)
+                         (lambda (x y) (string< (car x) (car y))))
+                   '((plain a) (wrong c))))))
+
+(ert-deftest kittymacs-catalogue-every-optional-package-sits-behind-its-feature ()
+  "A package added to a mixed module without a gate would install for everyone."
+  (let ((declarations
+         (seq-mapcat (lambda (file)
+                       (seq-mapcat (lambda (form)
+                                     (kittymacs-catalogue-test--declarations-and-gates form nil))
+                                   (kittymacs-bench--forms file)))
+                     (directory-files (expand-file-name "lisp" kittymacs-catalogue-test-root)
+                                      t "\\`kittymacs-.*\\.el\\'"))))
+    (should (> (length declarations) 50))
+    (should-not (kittymacs-catalogue-test--ungated
+                 kittymacs-catalogue (kittymacs-catalogue-test--init-gates) declarations))))
+
+(ert-deftest kittymacs-catalogue-init-gates-each-chapter-on-its-own-feature ()
+  (let ((gates (kittymacs-catalogue-test--init-gates)))
+    (should (>= (length gates) 8))
+    (pcase-dolist (`(,feature . ,module) gates)
+      (should (equal (list feature module)
+                     (list feature (plist-get (alist-get feature kittymacs-catalogue) :module)))))))
+
+(ert-deftest kittymacs-catalogue-gates-name-features-that-exist ()
+  (let (asked)
+    (dolist (file (cons (expand-file-name "init.el" kittymacs-catalogue-test-root)
+                        (directory-files (expand-file-name "lisp" kittymacs-catalogue-test-root)
+                                         t "\\`kittymacs-.*\\.el\\'")))
+      (with-temp-buffer
+        (insert-file-contents file)
+        (while (re-search-forward "(kittymacs-feature-p '\\([a-z-]+\\))" nil t)
+          (push (intern (match-string 1)) asked))))
+    (should (> (length asked) 30))
+    (should-not (seq-remove (lambda (name) (assq name kittymacs-catalogue))
+                            (seq-uniq asked)))))
 
 (ert-deftest kittymacs-catalogue-loads-without-anything-else ()
   "Onboarding reads this under `emacs -Q', before any package exists."

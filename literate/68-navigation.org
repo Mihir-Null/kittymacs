@@ -15,6 +15,8 @@
 - Most of it is built into Emacs (=project.el=, =recentf=, =saveplace=, bookmarks, the tab bar); packages add jumping (Avy), live replacement (=visual-regexp=) and workspaces (Tabspaces).
 - Leans on [[id:42b02bb4-ea68-4981-b427-35705bf162f4][the completion chapter]] for Consult, [[id:3fd783cd-deb8-48aa-bb44-0d9b16535365][the defaults chapter]] for the cache directory and [[id:afa6b7fd-742a-4c15-86a6-32e3e8027b0e][the platform chapter]], and on [[id:e5942eb0-4389-447d-9317-d9178adcaaae][the leader]] for the groups its keys go in.
 - Distilled from Lambda-Emacs by Colin McLear (=lem-setup-navigation=, =-projects=, =-search=, =-tabs=).
+- Those three are the =jump=, =visual-replace= and =workspaces= features, each behind a =when= with its keys.
+  + Without =workspaces=, =SPC p p= is Emacs's own =project-switch-project=, and =SPC W= still holds the plain tab commands.
 
 * Remembering places and files
 
@@ -80,21 +82,22 @@
 | =SPC j i= | a character in this line    |
 
 #+begin_src emacs-lisp
-(use-package avy
-  :ensure t
-  :commands (avy-goto-char-timer avy-goto-line avy-goto-word-1 avy-goto-symbol-1
-             avy-goto-end-of-line avy-goto-char-in-line)
-  :custom
-  (avy-timeout-seconds 0.4)
-  (avy-all-windows t)
-  (avy-style 'at-full))
+(when (kittymacs-feature-p 'jump)
+  (use-package avy
+    :ensure t
+    :commands (avy-goto-char-timer avy-goto-line avy-goto-word-1 avy-goto-symbol-1
+               avy-goto-end-of-line avy-goto-char-in-line)
+    :custom
+    (avy-timeout-seconds 0.4)
+    (avy-all-windows t)
+    (avy-style 'at-full))
 
-(keymap-set kittymacs-jump-map "j" (cons "to character" #'avy-goto-char-timer))
-(keymap-set kittymacs-jump-map "l" (cons "to line" #'avy-goto-line))
-(keymap-set kittymacs-jump-map "w" (cons "to word" #'avy-goto-word-1))
-(keymap-set kittymacs-jump-map "s" (cons "to symbol" #'avy-goto-symbol-1))
-(keymap-set kittymacs-jump-map "e" (cons "to end of line" #'avy-goto-end-of-line))
-(keymap-set kittymacs-jump-map "i" (cons "in this line" #'avy-goto-char-in-line))
+  (keymap-set kittymacs-jump-map "j" (cons "to character" #'avy-goto-char-timer))
+  (keymap-set kittymacs-jump-map "l" (cons "to line" #'avy-goto-line))
+  (keymap-set kittymacs-jump-map "w" (cons "to word" #'avy-goto-word-1))
+  (keymap-set kittymacs-jump-map "s" (cons "to symbol" #'avy-goto-symbol-1))
+  (keymap-set kittymacs-jump-map "e" (cons "to end of line" #'avy-goto-end-of-line))
+  (keymap-set kittymacs-jump-map "i" (cons "in this line" #'avy-goto-char-in-line)))
 
 #+end_src
 
@@ -141,11 +144,12 @@
 - =visual-regexp= (=SPC s r=) shows replacements live before you commit to them.
 
 #+begin_src emacs-lisp
-(use-package visual-regexp
-  :ensure t
-  :commands (vr/query-replace vr/replace))
+(when (kittymacs-feature-p 'visual-replace)
+  (use-package visual-regexp
+    :ensure t
+    :commands (vr/query-replace vr/replace))
 
-(keymap-set kittymacs-search-map "r" (cons "replace (visual)" #'vr/query-replace))
+  (keymap-set kittymacs-search-map "r" (cons "replace (visual)" #'vr/query-replace)))
 
 #+end_src
 
@@ -222,17 +226,18 @@
     (plist-put consult-source-buffer :default t)
     (setq consult-buffer-sources (remove 'kittymacs-consult-source-workspace consult-buffer-sources))))
 
-(use-package tabspaces
-  :ensure t
-  :demand t
-  :custom
-  (tabspaces-use-filtered-buffers-as-default t)
-  (tabspaces-default-tab "Home")
-  :config
-  (kittymacs-after-init #'tabspaces-mode 95)
-  (with-eval-after-load 'consult
-    (add-hook 'tabspaces-mode-hook #'kittymacs--consult-tabspaces)
-    (kittymacs--consult-tabspaces)))
+(when (kittymacs-feature-p 'workspaces)
+  (use-package tabspaces
+    :ensure t
+    :demand t
+    :custom
+    (tabspaces-use-filtered-buffers-as-default t)
+    (tabspaces-default-tab "Home")
+    :config
+    (kittymacs-after-init #'tabspaces-mode 95)
+    (with-eval-after-load 'consult
+      (add-hook 'tabspaces-mode-hook #'kittymacs--consult-tabspaces)
+      (kittymacs--consult-tabspaces))))
 
 ;; Loaded by the `use-package' above; these quiet the byte compiler.
 (declare-function tabspaces-switch-to-buffer "tabspaces")
@@ -242,16 +247,17 @@
 (declare-function tabspaces-close-workspace "tabspaces")
 (declare-function tabspaces-kill-buffers-close-workspace "tabspaces")
 
-(keymap-set kittymacs-project-map "p" (cons "open in a workspace" #'tabspaces-open-or-create-project-and-workspace))
+(when (kittymacs-feature-p 'workspaces)
+  (keymap-set kittymacs-project-map "p" (cons "open in a workspace" #'tabspaces-open-or-create-project-and-workspace))
 
-(keymap-set kittymacs-workspace-map "s" (cons "switch or create" #'tabspaces-switch-or-create-workspace))
-(keymap-set kittymacs-workspace-map "o" (cons "open project" #'tabspaces-open-or-create-project-and-workspace))
-(keymap-set kittymacs-workspace-map "b" (cons "workspace buffer" #'tabspaces-switch-to-buffer))
-(keymap-set kittymacs-workspace-map "r" (cons "remove buffer" #'tabspaces-remove-current-buffer))
-(keymap-set kittymacs-workspace-map "R" (cons "remove some buffer" #'tabspaces-remove-selected-buffer))
-(keymap-set kittymacs-workspace-map "c" (cons "clear buffers" #'tabspaces-clear-buffers))
-(keymap-set kittymacs-workspace-map "d" (cons "close workspace" #'tabspaces-close-workspace))
-(keymap-set kittymacs-workspace-map "k" (cons "kill buffers and close" #'tabspaces-kill-buffers-close-workspace))
+  (keymap-set kittymacs-workspace-map "s" (cons "switch or create" #'tabspaces-switch-or-create-workspace))
+  (keymap-set kittymacs-workspace-map "o" (cons "open project" #'tabspaces-open-or-create-project-and-workspace))
+  (keymap-set kittymacs-workspace-map "b" (cons "workspace buffer" #'tabspaces-switch-to-buffer))
+  (keymap-set kittymacs-workspace-map "r" (cons "remove buffer" #'tabspaces-remove-current-buffer))
+  (keymap-set kittymacs-workspace-map "R" (cons "remove some buffer" #'tabspaces-remove-selected-buffer))
+  (keymap-set kittymacs-workspace-map "c" (cons "clear buffers" #'tabspaces-clear-buffers))
+  (keymap-set kittymacs-workspace-map "d" (cons "close workspace" #'tabspaces-close-workspace))
+  (keymap-set kittymacs-workspace-map "k" (cons "kill buffers and close" #'tabspaces-kill-buffers-close-workspace)))
 
 (provide 'kittymacs-navigation)
 ;;; kittymacs-navigation.el ends here

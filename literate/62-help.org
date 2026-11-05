@@ -12,6 +12,7 @@
   + Helpful makes those pages richer, Info manuals get colour, and Casual gives the built-in tools menus.
 - Leans on [[id:e5942eb0-4389-447d-9317-d9178adcaaae][the leader]] for its =SPC m= menus and the =SPC h= group; [[id:42b02bb4-ea68-4981-b427-35705bf162f4][the completion chapter]] supplies =C-h B= and the manual search.
 - Distilled from Lambda-Emacs by Colin McLear (=lem-setup-help=).
+- =help-extras=, =command-menus= and =key-display= each sit behind a =when=; without any of them, Emacs's own help remains under the same keys.
 
 * Help windows and help at point
 
@@ -44,27 +45,29 @@
 - =info-colors= makes manuals readable.
 - Two extra keys: =C-h C-l= finds a library's source, =C-h C-c= shows its commentary.
 - =SPC h= gathers the describe commands, source lookup and the manuals, so a learner finds them all under one letter.
-  + The first six keys below run the Helpful versions; the rest run Emacs's own commands.
+  + The first six keys below run the Helpful versions, or Emacs's own when =help-extras= is off; the rest always run Emacs's own commands.
   + The home page and cheat sheet keys are in [[id:e73c0805-dc30-4671-a448-65a78921ec92][the dashboard chapter]], and Meow's tutorial is in [[id:a1607a41-b741-428a-9de3-c16e7c8d3ecc][the editing chapter]].
 
 #+begin_src emacs-lisp
-(use-package helpful
-  :ensure t
-  :bind (([remap display-local-help] . helpful-at-point)
-         ([remap describe-function] . helpful-callable)
-         ([remap describe-variable] . helpful-variable)
-         ([remap describe-symbol] . helpful-symbol)
-         ([remap describe-key] . helpful-key)
-         ([remap describe-command] . helpful-command)
-         ("C-h C-l" . find-library)
-         ("C-h C-c" . finder-commentary)))
+(when (kittymacs-feature-p 'help-extras)
+  (use-package helpful
+    :ensure t
+    :bind (([remap display-local-help] . helpful-at-point)
+           ([remap describe-function] . helpful-callable)
+           ([remap describe-variable] . helpful-variable)
+           ([remap describe-symbol] . helpful-symbol)
+           ([remap describe-key] . helpful-key)
+           ([remap describe-command] . helpful-command)
+           ("C-h C-l" . find-library)
+           ("C-h C-c" . finder-commentary))))
 
-(keymap-set kittymacs-help-map "k" (cons "key" #'helpful-key))
-(keymap-set kittymacs-help-map "f" (cons "function" #'helpful-callable))
-(keymap-set kittymacs-help-map "v" (cons "variable" #'helpful-variable))
-(keymap-set kittymacs-help-map "o" (cons "symbol" #'helpful-symbol))
-(keymap-set kittymacs-help-map "c" (cons "command" #'helpful-command))
-(keymap-set kittymacs-help-map "." (cons "at point" #'helpful-at-point))
+(let ((helpful (kittymacs-feature-p 'help-extras)))
+  (keymap-set kittymacs-help-map "k" (cons "key" (if helpful #'helpful-key #'describe-key)))
+  (keymap-set kittymacs-help-map "f" (cons "function" (if helpful #'helpful-callable #'describe-function)))
+  (keymap-set kittymacs-help-map "v" (cons "variable" (if helpful #'helpful-variable #'describe-variable)))
+  (keymap-set kittymacs-help-map "o" (cons "symbol" (if helpful #'helpful-symbol #'describe-symbol)))
+  (keymap-set kittymacs-help-map "c" (cons "command" (if helpful #'helpful-command #'describe-command)))
+  (keymap-set kittymacs-help-map "." (cons "at point" (if helpful #'helpful-at-point #'display-local-help))))
 
 (keymap-set kittymacs-help-map "m" (cons "mode" #'describe-mode))
 (keymap-set kittymacs-help-map "B" (cons "all bindings" #'describe-bindings))
@@ -78,15 +81,16 @@
 (keymap-set kittymacs-help-map "V" (cons "find variable" #'find-variable))
 (keymap-set kittymacs-help-map "K" (cons "find key" #'find-function-on-key))
 
-(use-package elisp-demos
-  :ensure t
-  :after helpful
-  :config
-  (advice-add 'helpful-update :after #'elisp-demos-advice-helpful-update))
+(when (kittymacs-feature-p 'help-extras)
+  (use-package elisp-demos
+    :ensure t
+    :after helpful
+    :config
+    (advice-add 'helpful-update :after #'elisp-demos-advice-helpful-update))
 
-(use-package info-colors
-  :ensure t
-  :hook (Info-selection . info-colors-fontify-node))
+  (use-package info-colors
+    :ensure t
+    :hook (Info-selection . info-colors-fontify-node)))
 
 #+end_src
 
@@ -122,17 +126,18 @@
 - Typing collapses to "Typing..." and mouse movement is dropped, so the display stays readable.
 
 #+begin_src emacs-lisp
-(use-package keycast
-  :ensure t
-  :commands (keycast-header-line-mode keycast-log-mode keycast-tab-bar-mode)
-  :config
-  (dolist (input '(self-insert-command org-self-insert-command))
-    (add-to-list 'keycast-substitute-alist `(,input "." "Typing...")))
-  (dolist (event '(mouse-event-p mouse-movement-p mwheel-scroll))
-    (add-to-list 'keycast-substitute-alist `(,event nil))))
+(when (kittymacs-feature-p 'key-display)
+  (use-package keycast
+    :ensure t
+    :commands (keycast-header-line-mode keycast-log-mode keycast-tab-bar-mode)
+    :config
+    (dolist (input '(self-insert-command org-self-insert-command))
+      (add-to-list 'keycast-substitute-alist `(,input "." "Typing...")))
+    (dolist (event '(mouse-event-p mouse-movement-p mwheel-scroll))
+      (add-to-list 'keycast-substitute-alist `(,event nil))))
 
-(keymap-set kittymacs-toggle-map "k" (cons "show keys (keycast)" #'keycast-header-line-mode))
-(keymap-set kittymacs-toggle-map "K" (cons "log keys" #'keycast-log-mode))
+  (keymap-set kittymacs-toggle-map "k" (cons "show keys (keycast)" #'keycast-header-line-mode))
+  (keymap-set kittymacs-toggle-map "K" (cons "log keys" #'keycast-log-mode)))
 
 #+end_src
 
@@ -151,26 +156,27 @@
 - =SPC c m= opens the general editing menu from any buffer.
 
 #+begin_src emacs-lisp
-(use-package casual
-  :ensure t
-  :defer t)
+(when (kittymacs-feature-p 'command-menus)
+  (use-package casual
+    :ensure t
+    :defer t)
 
-(keymap-set kittymacs-code-map "m" (cons "editing menu" #'casual-editkit-main-tmenu))
+  (keymap-set kittymacs-code-map "m" (cons "editing menu" #'casual-editkit-main-tmenu))
 
-(with-eval-after-load 'calc (keymap-set calc-mode-map "C-o" #'casual-calc-tmenu))
-(with-eval-after-load 'isearch (keymap-set isearch-mode-map "C-o" #'casual-isearch-tmenu))
-(with-eval-after-load 're-builder (keymap-set reb-mode-map "C-o" #'casual-re-builder-tmenu))
-(with-eval-after-load 'bookmark (keymap-set bookmark-bmenu-mode-map "C-o" #'casual-bookmarks-tmenu))
-(with-eval-after-load 'ibuffer (keymap-set ibuffer-mode-map "C-o" #'casual-ibuffer-tmenu))
-(with-eval-after-load 'dired (keymap-set dired-mode-map "C-o" #'casual-dired-tmenu))
-(with-eval-after-load 'info (keymap-set Info-mode-map "C-o" #'casual-info-tmenu))
-(with-eval-after-load 'compile (keymap-set compilation-mode-map "C-o" #'casual-compile-tmenu))
+  (with-eval-after-load 'calc (keymap-set calc-mode-map "C-o" #'casual-calc-tmenu))
+  (with-eval-after-load 'isearch (keymap-set isearch-mode-map "C-o" #'casual-isearch-tmenu))
+  (with-eval-after-load 're-builder (keymap-set reb-mode-map "C-o" #'casual-re-builder-tmenu))
+  (with-eval-after-load 'bookmark (keymap-set bookmark-bmenu-mode-map "C-o" #'casual-bookmarks-tmenu))
+  (with-eval-after-load 'ibuffer (keymap-set ibuffer-mode-map "C-o" #'casual-ibuffer-tmenu))
+  (with-eval-after-load 'dired (keymap-set dired-mode-map "C-o" #'casual-dired-tmenu))
+  (with-eval-after-load 'info (keymap-set Info-mode-map "C-o" #'casual-info-tmenu))
+  (with-eval-after-load 'compile (keymap-set compilation-mode-map "C-o" #'casual-compile-tmenu))
 
-(kittymacs-define-localleader 'ibuffer-mode
-  "?" (cons "menu" #'casual-ibuffer-tmenu))
+  (kittymacs-define-localleader 'ibuffer-mode
+    "?" (cons "menu" #'casual-ibuffer-tmenu))
 
-(kittymacs-define-localleader 'compilation-mode
-  "?" (cons "menu" #'casual-compile-tmenu))
+  (kittymacs-define-localleader 'compilation-mode
+    "?" (cons "menu" #'casual-compile-tmenu)))
 
 #+end_src
 
@@ -212,19 +218,20 @@
   "m" (cons "menu" #'Info-menu)
   "l" (cons "back" #'Info-history-back)
   "r" (cons "forward" #'Info-history-forward)
-  "?" (cons "menu" #'casual-info-tmenu))
+  "?" (and (kittymacs-feature-p 'command-menus) (cons "menu" #'casual-info-tmenu)))
 
 (kittymacs-define-localleader 'help-mode
   "l" (cons "back" #'help-go-back)
   "r" (cons "forward" #'help-go-forward)
   "s" (cons "source" #'help-view-source)
   "i" (cons "info" #'help-goto-info)
-  "?" (cons "menu" #'casual-help-tmenu))
+  "?" (and (kittymacs-feature-p 'command-menus) (cons "menu" #'casual-help-tmenu)))
 
-(with-eval-after-load 'helpful
-  (kittymacs-define-localleader 'helpful-mode
-    "u" (cons "update" #'helpful-update)
-    "s" (cons "source" #'helpful-visit-reference)))
+(when (kittymacs-feature-p 'help-extras)
+  (with-eval-after-load 'helpful
+    (kittymacs-define-localleader 'helpful-mode
+      "u" (cons "update" #'helpful-update)
+      "s" (cons "source" #'helpful-visit-reference))))
 
 (provide 'kittymacs-help)
 ;;; kittymacs-help.el ends here

@@ -8,8 +8,7 @@
 #+PROPERTY: header-args:emacs-lisp :tangle ../lisp/kittymacs-catalogue.el :eval never :comments no :padline no :mkdirp yes
 
 - One list says which packages make up which feature, so Elisp, the Nix flake and onboarding cannot disagree.
-- Nothing reads it to decide anything yet: every package still installs as its chapter says.
-  + Later changes gate modules on it, and let =private.el= choose among its features.
+- [[id:5c1e7a94-8f30-4d26-b7a1-3e92d06f4c18][The features chapter]] decides from it which features are on, and installs their packages.
 - Leans on nothing, and must stay that way: =emacs -Q= reads this file before any package exists.
 
 * The list :decision:
@@ -23,6 +22,7 @@
 |-------------+------------------------------------------------------------------------|
 | =:group=    | where onboarding shows it                                              |
 | =:packages= | what it installs; each package belongs to exactly one feature          |
+| =:vc=       | which of those its chapter's declaration installs from Git             |
 | =:module=   | the chapter's module that declares those packages                      |
 | =:profile=  | =minimal= for everyone, =full= for what kittymacs ships today, =optional= for what stays off even then |
 | =:deps=     | features it cannot work without                                        |
@@ -32,9 +32,11 @@
 
 - =minimal= is the default that later changes move to; =full= stays exactly what a machine has today.
 - =:not-on= lists exceptions rather than systems, because nearly every feature runs everywhere.
+- =:vc= is a subset of =:packages=, so a list of everything stays one property.
 - The builder writes =nix/features.json= from this list, by reading it and never evaluating it ([[id:d702f35a-3b2f-4cb5-9b4c-c176f0711db0][the builder]]).
 - [[file:../tests/kittymacs-catalogue-tests.el][The catalogue tests]] hold it to the code: every declared package appears once, in the feature of the module that declares it.
   + A package added without an entry fails =just test=, which is the point.
+  + So does one that its feature's gate does not stop, and a gate that names a feature this list lacks.
 
 #+begin_src emacs-lisp
 ;;; kittymacs-catalogue.el --- Every optional feature and its packages -*- lexical-binding: t; -*-
@@ -201,6 +203,7 @@
     (org-extras
      :group notes :module kittymacs-org-extras :profile full
      :packages (org-ql org-super-agenda org-contrib org-modern org-appear org-modern-indent)
+     :vc (org-modern-indent)
      :summary "A tidier Org display, grouped agendas and searches across your notes."
      :example "=SPC s q= finds headings by tag or state in every Org file.")
     (linked-notes
@@ -210,6 +213,7 @@
     (pdf-reading
      :group notes :module kittymacs-reading :profile full
      :packages (pdf-tools org-noter org-pdftools org-noter-pdftools pdf-text)
+     :vc (pdf-text)
      :summary "Reads PDFs in Emacs and keeps notes beside each page."
      :example "Opening a PDF renders it in a buffer, where you can search and annotate.")
 
@@ -242,6 +246,7 @@
     ;; Assistants
     (agents
      :group assistants :packages (agent-shell agent-shell-attention) :module kittymacs-agents :profile full
+     :vc (agent-shell-attention)
      :summary "Runs a coding agent such as Claude Code in a buffer."
      :example "=SPC a a= starts an agent in this project.")
     (suggestions
@@ -266,4 +271,4 @@ The chapter that writes this file explains the properties.")
 
 - =just test=: the catalogue tests compare this list with every declared package.
 - =just tangle=: =nix/features.json= changes only when this list does.
-- =C-h v kittymacs-catalogue=: the list, loaded at startup and read by nothing else.
+- =C-h v kittymacs-catalogue=: the list, loaded at startup.

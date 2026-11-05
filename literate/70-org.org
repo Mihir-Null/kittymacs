@@ -645,7 +645,7 @@ Headings are semi-bold.  The faces are remapped in this buffer only."
   "W" (cons "wrap table cells" #'kittymacs-org-table-wrap)
   "e" (cons "export" #'org-export-dispatch)
   "i" (cons "insert heading" #'org-insert-heading-respect-content)
-  "?" (cons "menu" #'casual-org-tmenu))
+  "?" (and (kittymacs-feature-p 'command-menus) (cons "menu" #'casual-org-tmenu)))
 
 (kittymacs-define-localleader 'org-agenda-mode
   "t" (cons "todo state" #'org-agenda-todo)
@@ -656,7 +656,7 @@ Headings are semi-bold.  The faces are remapped in this buffer only."
   "v" (cons "view" #'org-agenda-view-mode-dispatch)
   "f" (cons "filter by tag" #'org-agenda-filter-by-tag)
   "q" (cons "quit" #'org-agenda-quit)
-  "?" (cons "menu" #'casual-agenda-tmenu))
+  "?" (and (kittymacs-feature-p 'command-menus) (cons "menu" #'casual-agenda-tmenu)))
 
 (provide 'kittymacs-org)
 ;;; kittymacs-org.el ends here

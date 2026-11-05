@@ -334,7 +334,7 @@ with a backtick.  `SPC m' is left out: a major mode's map decides what follows."
 
 (ert-deftest kittymacs-lint-nothing-before-private-declares-a-package ()
   "These load before host files and private.el, too early for them to choose."
-  (dolist (name '("kittymacs-catalogue" "kittymacs-defaults" "kittymacs-platform"))
+  (dolist (name '("kittymacs-catalogue" "kittymacs-features" "kittymacs-defaults" "kittymacs-platform"))
     (let (found)
       (dolist (form (kittymacs-lint--forms (kittymacs-lint--path (format "lisp/%s.el" name))))
         (kittymacs-lint--walk
@@ -417,7 +417,7 @@ has defined `kittymacs-after-init', so a call at its top level would fail.")
     (kittymacs-org-roam)
     (kittymacs-reading))
   "Each module and the others of this list it may lean on.
-A later change decides per feature whether each of them loads, so one must not
+`init.el' decides per feature whether each of them loads, so one must not
 need another that may be off.  `bound-and-true-p' and its like ask first, which
 is allowed; so does waiting for the other with `with-eval-after-load'.")
 
@@ -627,6 +627,7 @@ For these names that is an Org library, so `setq' sets them instead."
            ;; A theme's name is data; only a package can make it work.
            (`(defcustom . ,_) t)
            (`(featurep . ,_) t)
+           (`(kittymacs-feature-p . ,_) t)
            (`(when (featurep . ,_) . ,_) t)
            (`(use-package ,(and name (pred symbolp)) . ,_)
             (string-prefix-p "doom-" (symbol-name name)))))))
@@ -639,6 +640,7 @@ For these names that is an Org library, so `setq' sets them instead."
                  '(doom-modeline-mode)))
   (should-not (kittymacs-lint--doom-names
                '((defcustom my-theme 'doom-one "Doc.")
+                 (when (kittymacs-feature-p 'doom-look) (use-package doom-modeline))
                  (when (featurep 'doom-themes) (doom-themes-org-config))
                  (use-package doom-modeline :config (doom-modeline-mode 1))))))
 

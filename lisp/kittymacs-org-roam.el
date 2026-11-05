@@ -39,14 +39,12 @@ that ignores case, so every spelling of one directory shares one file."
 (defcustom kittymacs-org-roam-project nil
   "Non-nil in a directory's .dir-locals.el to make that directory a graph root."
   :type 'boolean
-  :safe #'booleanp
   :group 'kittymacs-org-roam)
 
 (defcustom kittymacs-org-roam-excluded-directories '(".git" ".cache" "cache" "caches")
   "Folder names whose contents are never notes, at any depth of a graph.
 A project graph sets its own list in its .dir-locals.el."
   :type '(repeat string)
-  :safe #'list-of-strings-p
   :group 'kittymacs-org-roam)
 
 (defvar org-roam-file-exclude-regexp)

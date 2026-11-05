@@ -8,6 +8,14 @@
 ;; the `after-init-hook' function at the end of this file instead: the chapter
 ;; runs after this file and would replace a top-level value.
 
+;; Features
+;; Where this machine starts, and what it adds or leaves out; the names are in
+;; literate/20-catalogue.org.  Set these here or in a host file: Customize's
+;; file loads too late.  A feature's packages install on the next start.
+;; (setopt kittymacs-profile 'minimal)
+;; (setopt kittymacs-features '(jump lang-nix))
+;; (setopt kittymacs-features-excluded '(suggestions agents))
+
 ;; Identity
 ;; (setq user-full-name "Your Name"
 ;;       user-mail-address "you@example.com")
@@ -45,6 +53,11 @@
 ;; (setopt kittymacs-macos-modifiers '((ns-command-modifier . meta)
 ;;                                     (ns-option-modifier . super)
 ;;                                     (ns-right-option-modifier . meta)))
+
+;; Structural editing
+;; Which modes keep brackets balanced with Puni.  Some people want it in Lisp and
+;; nowhere else, and a mode here covers the modes derived from it.
+;; (setopt kittymacs-structural-editing-modes '(emacs-lisp-mode lisp-mode))
 
 ;; Language tooling
 ;; Eglot is available manually through SPC l e.  Automatic startup and

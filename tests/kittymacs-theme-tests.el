@@ -1,9 +1,9 @@
 ;;; kittymacs-theme-tests.el --- The look works without doom -*- lexical-binding: t; -*-
 ;; Run: KITTYMACS_TEST_PACKAGES=/path/to/var/elpa emacs -Q --batch -l tests/kittymacs-theme-tests.el -f ert-run-tests-batch-and-exit
 ;;
-;; Does what a gate on the `doom-look' feature will do: activates every package
-;; but that feature's, then evaluates lisp/kittymacs-ui.el without its
-;; declarations.  The verifier covers the same module with them.
+;; Activates every package but the `doom-look' feature's, chooses the minimal
+;; profile, which leaves that feature off, and loads lisp/kittymacs-ui.el.  The
+;; verifier covers the same module with the feature on.
 
 ;;; Code:
 (require 'ert)
@@ -35,23 +35,8 @@
 (add-to-list 'load-path (expand-file-name "lisp" kittymacs-theme-test-root))
 (require 'use-package)
 
-(defconst kittymacs-theme-test-module
-  (expand-file-name "lisp/kittymacs-ui.el" kittymacs-theme-test-root))
-
-(defun kittymacs-theme-test--load ()
-  "Evaluate the appearance module, leaving out the doom declarations."
-  (let ((load-file-name kittymacs-theme-test-module))
-    (with-temp-buffer
-      (insert-file-contents kittymacs-theme-test-module)
-      (condition-case nil
-          (while t
-            (let ((form (read (current-buffer))))
-              (unless (and (eq (car-safe form) 'use-package)
-                           (memq (cadr form) kittymacs-theme-test-doom))
-                (eval form t))))
-        (end-of-file nil)))))
-
-(kittymacs-theme-test--load)
+(setq kittymacs-profile 'minimal)
+(require 'kittymacs-ui)
 
 (ert-deftest kittymacs-theme-module-loads-without-doom ()
   (should (= 2 (length kittymacs-theme-test-doom)))

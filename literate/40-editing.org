@@ -12,6 +12,7 @@
 - Meow is an external package; this chapter configures it and hands =SPC= to [[id:e5942eb0-4389-447d-9317-d9178adcaaae][the leader]].
   + [[id:e5942eb0-4389-447d-9317-d9178adcaaae][The leader]] defines the groups under =SPC=; each package chapter binds its keys in them and defines its own =SPC m= menu next to the package.
   + [[file:../lisp/keybindings.org][The cheat sheet]] lists the keys on one page.
+- Meow itself is in the =minimal= profile; =syntax-things=, which adds selection by syntax, is behind a =when=.
 - Read [[*How Meow thinks]] first; every other keys chapter assumes it.
 
 * How Meow thinks :concept:
@@ -189,11 +190,12 @@
 - Without a grammar, these keys report that there is no parser.
 
 #+begin_src emacs-lisp
-(use-package meow-tree-sitter
-  :ensure t
-  :after meow
-  :config
-  (meow-tree-sitter-register-defaults))
+(when (kittymacs-feature-p 'syntax-things)
+  (use-package meow-tree-sitter
+    :ensure t
+    :after meow
+    :config
+    (meow-tree-sitter-register-defaults)))
 
 #+end_src
 

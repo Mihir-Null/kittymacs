@@ -8,6 +8,8 @@
 
 ;;; Code:
 
+(require 'kittymacs-features)
+
 (declare-function meow-normal-define-key "meow-helpers" (&rest keybinds))
 (declare-function meow-motion-define-key "meow-helpers" (&rest keybinds))
 
@@ -106,13 +108,26 @@ MODE defaults to the current major mode."
   (dolist (buffer (buffer-list))
     (with-current-buffer buffer (kittymacs--install-localleader))))
 
+(defun kittymacs--localleader-present (definitions)
+  "Return the KEY DEFINITION pairs of DEFINITIONS whose definition is not nil."
+  (let (present)
+    (while definitions
+      (let ((key (pop definitions)) (definition (pop definitions)))
+        (when definition
+          (setq present (append present (list key definition))))))
+    present))
+
 (defun kittymacs-define-localleader (mode &rest definitions)
   "Give MODE a localleader built from DEFINITIONS and refresh live buffers.
 DEFINITIONS are `define-keymap' arguments: KEY DEFINITION pairs, where a
-definition may be (cons \"label\" COMMAND) to label it for which-key.
+definition may be (cons \"label\" COMMAND) to label it for which-key, or nil
+to leave the key out.  With nothing left, MODE gets no menu at all.
 Calling this again for MODE replaces its map."
   (declare (indent 1))
-  (setf (alist-get mode kittymacs-localleader-alist) (apply #'define-keymap definitions))
+  (let ((present (kittymacs--localleader-present definitions)))
+    (if present
+        (setf (alist-get mode kittymacs-localleader-alist) (apply #'define-keymap present))
+      (setf (alist-get mode kittymacs-localleader-alist nil 'remove) nil)))
   (kittymacs-refresh-localleaders)
   mode)
 (defun kittymacs-describe-leader ()
@@ -135,6 +150,21 @@ Safe to call more than once."
   (add-to-list 'emulation-mode-map-alists 'kittymacs--localleader-alist)
   (add-hook 'after-change-major-mode-hook #'kittymacs--install-localleader)
   (kittymacs-refresh-localleaders))
+
+(defun kittymacs-leader-drop-empty-groups ()
+  "Take out of `kittymacs-leader-map' each group nothing bound a key in."
+  (let (empty)
+    (map-keymap
+     (lambda (event binding)
+       (pcase binding
+         (`(,(pred stringp) . ,(and map (pred keymapp)))
+          (when (and (null (cdr map))
+                     (not (and (eq map kittymacs-user-map)
+                               (eq (kittymacs-features-profile) 'full))))
+            (push event empty)))))
+     kittymacs-leader-map)
+    (dolist (event empty)
+      (define-key kittymacs-leader-map (vector event) nil t))))
 
 (provide 'kittymacs-leader)
 ;;; kittymacs-leader.el ends here

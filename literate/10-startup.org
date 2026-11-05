@@ -25,7 +25,7 @@
 2. Emacs reads =init.el=, which activates the installed packages, loads =use-package= and requires each generated module in dependency order:
    + defaults and platform first, then the look, then editing and the integrations, then the applications;
    + frames policy last, so nothing later can undo it.
-3. Packages install themselves as their chapters load ([[*Packages are declared where they are used]]).
+3. Host files and =private.el= choose the features, and the installer fetches what those need ([[id:5c1e7a94-8f30-4d26-b7a1-3e92d06f4c18][the features chapter]]), all before the chapters that use them load.
 4. =after-init-hook= runs once =init.el= has finished ([[*Machine-specific settings]]).
 
 * Packages are declared where they are used :decision:
@@ -34,7 +34,7 @@
 :END:
 
 - Each chapter declares its packages with =use-package … :ensure t=.
-  + A fresh clone installs them on first start; an existing =var/elpa= is used as is.
+  + A fresh clone installs what its features need on first start, through [[id:a9d3e1c7-52f8-4b06-8e14-6c07f2b1d945][the installer]]; an existing =var/elpa= is used as is.
   + With [[id:d25a5063-1439-4ae0-8fbe-b0162d05a0e0][the Nix module]], Nix has already installed nearly all of them, pinned by the flake's lock; =:ensure t= finds them installed and fetches nothing, and only what nixpkgs lacks comes from the archives.
 - Global modes are switched on one way throughout:
   + a built-in mode :: =(mode 1)= right after its settings;
@@ -215,7 +215,12 @@
   + [[id:86fcd506-34c8-476d-8903-acbef46275bf][EXWM]] comes just before the frames policy, which reads =kittymacs-exwm= for its default;
   + frames policy goes last.
 - Files from outside this repository are read along the way: [[*Host files][host files]] and then =private.el= right after the platform chapter, the Customize file at the end; [[*Machine-specific settings]] says why there.
+- =kittymacs-features-resolve= runs straight after them, so everything later asks a settled question, and =kittymacs-features-install= right after that ([[id:5c1e7a94-8f30-4d26-b7a1-3e92d06f4c18][the features chapter]]).
 - The archive index is fetched only when a package has to be installed, by =kittymacs-ensure-package= ([[*A stale archive index]]); a start that installs nothing touches no network.
+- A chapter that is one feature and nothing else loads only when that feature is on: Treemacs, the dashboard, Org extras, Org-roam, reading, notebooks, agents and suggestions.
+  + Mixed chapters always load, and put a =when= around each optional package and its keys.
+  + [[id:5c1e7a94-8f30-4d26-b7a1-3e92d06f4c18][The features chapter]] answers both.
+- A group under =SPC= that nothing bound a key in leaves the tree at the end of startup ([[id:e5942eb0-4389-447d-9317-d9178adcaaae][the leader]]).
 - From the UI on, each chapter is loaded with =kittymacs-require-module=, not a bare =require=:
   + an error while a chapter loads (most often a package that failed to install, so its variables do not exist) becomes a warning naming the chapter, and the chapters after it still load;
   + a bare =require= would end =init.el= there, leaving every later chapter, frames included, unloaded, for a failure in one;
@@ -249,23 +254,25 @@
 The `use-package-ensure-function' of kittymacs.  Before the session's
 first install it refreshes the cached archive index, whose tarballs may
 be gone; then `use-package-ensure-elpa' installs.  STATE and NO-REFRESH
-are passed through."
-  (unless (or kittymacs--archives-refreshed
-              (seq-every-p (lambda (ensure)
-                             (let ((package (if (eq ensure t) (use-package-as-symbol name) ensure)))
-                               (or (null package)
-                                   (package-installed-p (if (consp package) (car package) package)))))
-                           args))
-    (setq kittymacs--archives-refreshed t)
-    (condition-case-unless-debug err
-        (package-refresh-contents)
-      (error
-       (display-warning 'kittymacs
-                        (format "Could not refresh the package archives: %s
+are passed through.  A package the installer already failed on is left
+alone, since it warned once."
+  (unless (memq name (bound-and-true-p kittymacs-features--failed))
+    (unless (or kittymacs--archives-refreshed
+                (seq-every-p (lambda (ensure)
+                               (let ((package (if (eq ensure t) (use-package-as-symbol name) ensure)))
+                                 (or (null package)
+                                     (package-installed-p (if (consp package) (car package) package)))))
+                             args))
+      (setq kittymacs--archives-refreshed t)
+      (condition-case-unless-debug err
+          (package-refresh-contents)
+        (error
+         (display-warning 'kittymacs
+                          (format "Could not refresh the package archives: %s
 Installing from the cached index, which may name tarballs that are gone."
-                                (error-message-string err))
-                        :warning))))
-  (use-package-ensure-elpa name args state no-refresh))
+                                  (error-message-string err))
+                          :warning))))
+    (use-package-ensure-elpa name args state no-refresh)))
 
 (setopt use-package-ensure-function #'kittymacs-ensure-package)
 
@@ -328,25 +335,30 @@ Set before init.el loads to change them, because they are read during init.")
             (directory-files directory t "\\`[^.#].*\\.el\\'")))))
 
 ;; Foundation: the feature list, defaults, platform paths, host and machine
-;; overrides, then the look.
+;; overrides, what they selected, then the look.
 (require 'kittymacs-catalogue)
+(require 'kittymacs-features)
 (require 'kittymacs-defaults)
 (require 'kittymacs-platform)
 (kittymacs-load-host-files)
 (let ((private (expand-file-name "private.el" kittymacs-lisp-dir)))
   (when (file-exists-p private)
     (kittymacs-load-user-file private)))
+(kittymacs-features-resolve)
+(kittymacs-features-install)
 (kittymacs-platform-apply)
 (kittymacs-require-module 'kittymacs-basics)
 (kittymacs-require-module 'kittymacs-ui)
 (kittymacs-require-module 'kittymacs-literate)
-(kittymacs-require-module 'kittymacs-dashboard)
+(when (kittymacs-feature-p 'home-page)
+  (kittymacs-require-module 'kittymacs-dashboard))
 
 ;; Editing: completion, help, files, git, navigation, then Meow and the leader.
 (kittymacs-require-module 'kittymacs-completion)
 (kittymacs-require-module 'kittymacs-help)
 (kittymacs-require-module 'kittymacs-dired)
-(kittymacs-require-module 'kittymacs-treemacs)
+(when (kittymacs-feature-p 'file-tree)
+  (kittymacs-require-module 'kittymacs-treemacs))
 (kittymacs-require-module 'kittymacs-vc)
 (kittymacs-require-module 'kittymacs-navigation)
 (kittymacs-require-module 'kittymacs-meow)
@@ -360,14 +372,21 @@ Set before init.el loads to change them, because they are read during init.")
 (kittymacs-require-module 'kittymacs-languages)
 (kittymacs-require-module 'kittymacs-terminal)
 (kittymacs-require-module 'kittymacs-org)
-(kittymacs-require-module 'kittymacs-org-extras)
-(kittymacs-require-module 'kittymacs-org-roam)
-(kittymacs-require-module 'kittymacs-reading)
-(kittymacs-require-module 'kittymacs-notebooks)
-(kittymacs-require-module 'kittymacs-agents)
-(kittymacs-require-module 'kittymacs-suggestions)
+(when (kittymacs-feature-p 'org-extras)
+  (kittymacs-require-module 'kittymacs-org-extras))
+(when (kittymacs-feature-p 'linked-notes)
+  (kittymacs-require-module 'kittymacs-org-roam))
+(when (kittymacs-feature-p 'pdf-reading)
+  (kittymacs-require-module 'kittymacs-reading))
+(when (kittymacs-feature-p 'notebooks)
+  (kittymacs-require-module 'kittymacs-notebooks))
+(when (kittymacs-feature-p 'agents)
+  (kittymacs-require-module 'kittymacs-agents))
+(when (kittymacs-feature-p 'suggestions)
+  (kittymacs-require-module 'kittymacs-suggestions))
 (kittymacs-require-module 'kittymacs-exwm)
 (kittymacs-require-module 'kittymacs-frames)
+(kittymacs-after-init #'kittymacs-leader-drop-empty-groups 100)
 
 ;; Settings saved by M-x customize come last, so they override the chapters.
 (load custom-file 'noerror 'nomessage)

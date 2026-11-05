@@ -12,7 +12,7 @@
   + grouped agenda lists;
   + headings that export their contents but not their title;
   + Org drawn like a document.
-- This chapter is the =org-extras= feature of [[id:8b1f4d67-2a93-4c08-b6e1-5d70c2a9e384][the catalogue]], in one module of its own, so a later change can switch it off whole.
+- This chapter is the =org-extras= feature of [[id:8b1f4d67-2a93-4c08-b6e1-5d70c2a9e384][the catalogue]], in one module of its own, so [[id:40302e33-d2b2-4c0b-9bc3-1f9e121307e1][=init.el=]] can leave it out whole.
 - Leans on the Org chapter for =org-directory= and on [[id:e5942eb0-4389-447d-9317-d9178adcaaae][the leader]] for =SPC s=.
 - It knows nothing of [[id:f48e8f01-88da-4e33-8398-c00ab346b8bb][Org-roam]] or [[id:78b654e1-a93e-4e31-b0d8-f266215b5b12][reading]], and neither of them knows it; the lint tests check that.
 

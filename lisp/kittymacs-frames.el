@@ -13,21 +13,23 @@ under EXWM, where Emacs is the window manager.  Set it in `private.el',
 before this module is loaded, to override."
   :type 'boolean
   :group 'kittymacs)
-(use-package frames-only-mode
-  :ensure t
-  :commands frames-only-mode
-  :custom
-  (frames-only-mode-use-windows-for-completion t)
-  :config
-  (setopt frames-only-mode-configuration-variables
-          (cons '(popper-display-control nil)
-                (seq-remove (lambda (setting)
-                              (memq (car setting)
-                                    '(magit-commit-show-diff magit-bury-buffer-function)))
-                            frames-only-mode-configuration-variables)))
-  (frames-only-mode-remap-common-window-split-keybindings))
-(keymap-set kittymacs-toggle-map "f" (cons "frames-only mode" #'frames-only-mode))
-(when kittymacs-frames-only
+(when (kittymacs-feature-p 'frames)
+  (use-package frames-only-mode
+    :ensure t
+    :commands frames-only-mode
+    :custom
+    (frames-only-mode-use-windows-for-completion t)
+    :config
+    (setopt frames-only-mode-configuration-variables
+            (cons '(popper-display-control nil)
+                  (seq-remove (lambda (setting)
+                                (memq (car setting)
+                                      '(magit-commit-show-diff magit-bury-buffer-function)))
+                              frames-only-mode-configuration-variables)))
+    (frames-only-mode-remap-common-window-split-keybindings)))
+(when (kittymacs-feature-p 'frames)
+  (keymap-set kittymacs-toggle-map "f" (cons "frames-only mode" #'frames-only-mode)))
+(when (and kittymacs-frames-only (kittymacs-feature-p 'frames))
   (require 'frames-only-mode)
   ;; Re-evaluating this file must not overwrite the mode's saved defaults.
   (unless frames-only-mode

@@ -74,6 +74,7 @@ The Nix chapter's \"The Emacs packages\" says why each one.")
     (should-not (seq-intersection nix kittymacs-startup-test-archive-only))))
 
 (defvar kittymacs--archives-refreshed)
+(defvar kittymacs-features--failed)
 
 (defun kittymacs-startup-test--load-defun (name)
   "Define NAME from its `defun' in init.el, and nothing else from that file."
@@ -130,6 +131,23 @@ The Nix chapter's \"The Emacs packages\" says why each one.")
       (kittymacs-ensure-package 'second '((second . "melpa")) nil)
       (should (equal (reverse events)
                      '((ensure present) refresh (ensure first) (ensure second)))))))
+
+(ert-deftest kittymacs-startup-ensure-leaves-alone-what-the-installer-failed-on ()
+  "One warning per package, not one from the installer and one from `:ensure'."
+  (kittymacs-startup-test--load-defun 'kittymacs-ensure-package)
+  (let ((kittymacs--archives-refreshed nil)
+        (kittymacs-features--failed '(broken))
+        (ensured nil))
+    (cl-letf (((symbol-function 'use-package-as-symbol) #'identity)
+              ((symbol-function 'package-installed-p) #'ignore)
+              ((symbol-function 'package-refresh-contents) #'ignore)
+              ((symbol-function 'use-package-ensure-elpa)
+               (lambda (name &rest _) (push name ensured))))
+      (kittymacs-ensure-package 'broken '(t) nil)
+      (should-not ensured)
+      (should-not kittymacs--archives-refreshed)
+      (kittymacs-ensure-package 'other '(t) nil)
+      (should (equal ensured '(other))))))
 
 (ert-deftest kittymacs-startup-ensure-survives-offline ()
   "A refresh that fails warns once and the install still goes ahead."
@@ -245,6 +263,8 @@ The Nix chapter's \"The Emacs packages\" says why each one.")
                           "(require 'kittymacs-platform)"
                           "(kittymacs-load-host-files)"
                           "(kittymacs-load-user-file private)"
+                          "(kittymacs-features-resolve)"
+                          "(kittymacs-features-install)"
                           "(kittymacs-platform-apply)"
                           "(kittymacs-require-module 'kittymacs-basics)"
                           "(kittymacs-require-module 'kittymacs-ui)"))))

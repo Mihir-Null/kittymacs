@@ -446,7 +446,7 @@ until the language server for a mode is deliberately installed on each machine."
 
 ** Nix, Racket and Guile packages
 
-- Each package is requested only when its symbol is in =kittymacs-language-packages=:
+- Each package is requested only when its feature is on, through =kittymacs-features= or through its symbol in =kittymacs-language-packages=:
   + =nix= :: =nix-mode= for =.nix= files, and =nix-ts-mode=, its Tree-sitter version, [[*Registering a mode from a package][registered]] with the pinned Nix grammar;
   + =racket= :: =racket-mode= for =.rkt= files;
   + =guile= :: Geiser and its Guile adapter.
@@ -456,7 +456,7 @@ until the language server for a mode is deliberately installed on each machine."
 #+begin_src emacs-lisp
 ;; Keep non-built-in language modes deliberate.  Set
 ;; `kittymacs-language-packages' in private.el before startup to enable these.
-(when (memq 'nix kittymacs-language-packages)
+(when (kittymacs-feature-p 'lang-nix)
   (use-package nix-mode
     :ensure t
     :mode "\\.nix\\'")
@@ -465,11 +465,11 @@ until the language server for a mode is deliberately installed on each machine."
     :defer t
     :init
     (kittymacs-treesit-register-mode 'nix-mode 'nix-ts-mode 'nix)))
-(when (memq 'racket kittymacs-language-packages)
+(when (kittymacs-feature-p 'lang-racket)
   (use-package racket-mode
     :ensure t
     :mode "\\.rkt\\'"))
-(when (memq 'guile kittymacs-language-packages)
+(when (kittymacs-feature-p 'lang-guile)
   (use-package geiser
     :ensure t
     :defer t)

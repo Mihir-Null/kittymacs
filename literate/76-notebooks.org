@@ -8,6 +8,8 @@
 #+PROPERTY: header-args:emacs-lisp :tangle ../lisp/kittymacs-notebooks.el :eval never :comments no :padline no :mkdirp yes
 
 - A Jupyter notebook edited as what it really is underneath, a Python script: cells you move between and run, a real kernel, and the LaTeX of the Markdown cells drawn as equations.
+- This chapter is the =notebooks= feature: [[id:40302e33-d2b2-4c0b-9bc3-1f9e121307e1][=init.el=]] loads it only when that is on.
+  + emacs-jupyter is the separate =jupyter= feature, which stays off even under =full=.
 - Three packages, one job each:
 
 | Package       | Gives                                                                   | Needs                         |
@@ -142,7 +144,7 @@ t = np.linspace(0, 10, 500)
   + the Linux module is built for a conventional distribution, and on NixOS it cannot find the C++ runtime it was linked against.
 - So installing it unasked would put a question, or a compiler, in the middle of a first start, and in CI's =just install= there is no one to answer.
 - =kittymacs-notebooks-jupyter= is therefore off, like [[id:99006880-bab0-4757-bc07-1ceff2abd921][suggestions]]: with it off, emacs-jupyter is not even installed, and =SPC m n j= says how to turn it on.
-  + Set it in =private.el= before startup; the next start installs the package.
+  + Set it in =private.el= before startup, or select the =jupyter= feature, which turns it on; the next start installs the package.
   + code-cells and =run-python= work without it: a cell runs in Emacs's Python shell instead.
 - Rejected: emacs-jupyter without ZeroMQ (=jupyter-use-zmq= nil). It then starts a hidden =jupyter notebook= server and talks to kernels through it, which needs the classic =notebook= package and starts that server with no token and no password.
 
@@ -151,7 +153,7 @@ t = np.linspace(0, 10, 500)
   "Notebooks as Jupytext scripts."
   :group 'kittymacs)
 
-(defcustom kittymacs-notebooks-jupyter nil
+(defcustom kittymacs-notebooks-jupyter (kittymacs-feature-p 'jupyter)
   "Whether to install emacs-jupyter, for Jupyter kernels.
 It needs emacs-zmq's native module.  With Nix the module comes ready-built
 from the tool list; without, emacs-zmq downloads or builds one the first
@@ -207,13 +209,13 @@ subprocesses, which do not read this configuration."
 
 ** Installing emacs-jupyter
 
-- Both declarations sit inside =(when kittymacs-notebooks-jupyter ...)=, as the terminal does with ghostel: =:ensure= installs a package even when its =:if= is nil.
+- Both declarations sit inside =(when (kittymacs-feature-p 'jupyter) ...)=, as the terminal does with ghostel: =:ensure= installs a package even when its =:if= is nil.
 - Nothing loads at startup: the first =SPC m n j= or =J= loads emacs-jupyter, and with it zmq and the module.
 - The REPL starts in Insert state, like the other shells ([[*Meow and the notebook menu]]).
 - envrc sets =exec-path= in each buffer, but =jupyter-session-with-random-ports= runs =jupyter --paths= from a temporary buffer, which sees the global =PATH=; without =inheritenv-apply= the kernel cannot start ("Searching for program ... jupyter").
 
 #+begin_src emacs-lisp
-(when kittymacs-notebooks-jupyter
+(when (kittymacs-feature-p 'jupyter)
   (advice-add 'zmq-load :before #'kittymacs-notebooks--link-zmq-module)
   (use-package jupyter
     :ensure t

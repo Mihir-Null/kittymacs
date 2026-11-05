@@ -41,6 +41,8 @@
 | =install=         | Emacs, network     | start the configuration once in batch, installing its packages into =var/elpa= |
 | =compile=         | installed packages | byte-compile every module, to catch load errors                               |
 | =test-packages=   | installed packages | leader, Org-roam and theme tests, and the startup verifier                   |
+| =test-minimal=    | the minimal profile's packages | leader and theme tests, and the verifier, which also checks the directory holds exactly those |
+| =test-features=   | every feature's packages | one real start per feature, off in turn and on in turn                 |
 | =size=            | Emacs              | count the code and prose against =tests/budgets.eld=                         |
 | =bench=           | installed packages | start Emacs many times and report what startup costs                         |
 | =frames-test=     | a display          | the frame-policy tests, in a graphical Emacs                                 |
@@ -57,7 +59,7 @@
 
 ** Updating
 
-- =flake.lock= moves by itself: Dependabot opens a pull request each week, and CI's =merge-flake-bump= job merges it once the =tangle=, =startup= and =nix= jobs pass.
+- =flake.lock= moves by itself: Dependabot opens a pull request each week, and CI's =merge-flake-bump= job merges it once the =tangle=, =startup=, =features= and =nix= jobs pass.
   + That job merges directly, so it needs no branch rule or repository setting, and a failed job leaves the pull request open for a person.
   + =bench= is not among them, because it reports and never decides.
   + CI evaluates the flake and does not build it, so a bump can reach =main= that then fails to build on a machine: =git revert= it, and pin the input until upstream is fixed.
@@ -124,6 +126,7 @@
   + declared packages, in any gate, =:vc= included;
   + lines of prose across every =literate/*.org=, =ARCHITECTURE.md= and the README, so moving text between pages changes nothing.
 - =just bench= starts Emacs repeatedly from [[file:../tools/bench.el][tools/bench.el]], after =just install=:
+  + it warns when =lisp/private.el= or a host file exists, because either changes what it measures;
   + in a terminal it starts under its own pty, and in a frame too when =DISPLAY= is set (=xvfb-run= provides one);
   + a first run compiles what startup loads and waits for that queue to empty, so no later run pays for compilation;
   + each configuration throws away three runs and keeps twenty, or =KITTYMACS_BENCH_RUNS=; the table gives the median and the p90, by nearest rank.
@@ -178,12 +181,30 @@
 - [[file:../.github/workflows/ci.yml][The CI workflow]] runs the recipes above on every push and pull request; it never deploys anything.
   + =tangle= job :: =just check=: the chapters match the generated files, and the package-free tests pass.
   + =startup= job :: a fresh clone runs =just install=, =just compile= and =just test-packages= on Emacs 31.1 on Linux, plus informational macOS and Windows runs.
+    A second Linux run installs the minimal profile and runs =just test-minimal=: it has a package cache of its own that nothing older can seed, so leftovers cannot hide a removal, and the verifier fails on a package too many or too few.
+  + =features= job :: =just test-features= after installing every feature's packages: one real start per feature ([[*Testing a selection]]).
   + =nix= job :: =just nix-check= in =nix develop=, then the home-manager module's clone options read as a device would see them.
     =eval= checks the flake twice: on its own nixpkgs-unstable, and on the stable release in the justfile's =stable= variable, since a host that makes the flake follow its nixpkgs evaluates it there; move =stable= to each new release.
   + =bench= job :: a fresh clone with no package cache runs =just bench= in =nix develop= under =xvfb-run= and writes the tables to the job's summary ([[*Measuring]]); it is informational and cannot fail a pull request.
 - A weekly run repeats the fresh install without the package cache, so upstream breakage shows up even when nothing here changed.
 - =just frames-test= is the one suite CI cannot run: it needs a graphical session.
 - Dependabot proposes weekly updates to the workflow's actions, for a person to review, and to =flake.lock=, which merge themselves ([[*Updating]]).
+
+* Testing a selection
+:PROPERTIES:
+:ID: 3b7f2c94-e1a6-4d08-9c35-81f6d0a7b2e4
+:END:
+
+- =KITTYMACS_TEST_PROFILE= says what =just install= installs into this checkout's =var/elpa=: =minimal=, =full=, or =every=, which adds each optional feature.
+  + Unset, this machine's own settings decide, as on any start.
+  + Use a separate clone per value, so one profile's packages cannot help another's test.
+- =just test-minimal= is for a directory that holds the =minimal= profile and nothing else.
+  + The verifier then also fails on a package missing from it, or one nothing there needs.
+- =just test-features= starts Emacs once per selection, from [[file:../tests/kittymacs-feature-probes.el][the probes]]: each feature beyond =minimal= off in turn from =full=, and on in turn from =minimal=.
+  + Each start activates only what its selection needs, through =package-load-list=, so one directory with everything in it behaves like a separate one per selection.
+  + Each must start with no warning, every =SPC= key callable, no empty group, no key naming a package that is off, and Org not loaded.
+  + A feature that is on must also have loaded its chapter and bound the key its example quotes.
+- =KITTYMACS_PROBE_ONLY=, a regexp, narrows the probes to the names it matches.
 
 * Why the generated files are committed :decision:
 :PROPERTIES:
@@ -238,6 +259,14 @@
 ;; the `after-init-hook' function at the end of this file instead: the chapter
 ;; runs after this file and would replace a top-level value.
 
+;; Features
+;; Where this machine starts, and what it adds or leaves out; the names are in
+;; literate/20-catalogue.org.  Set these here or in a host file: Customize's
+;; file loads too late.  A feature's packages install on the next start.
+;; (setopt kittymacs-profile 'minimal)
+;; (setopt kittymacs-features '(jump lang-nix))
+;; (setopt kittymacs-features-excluded '(suggestions agents))
+
 ;; Identity
 ;; (setq user-full-name "Your Name"
 ;;       user-mail-address "you@example.com")
@@ -275,6 +304,11 @@
 ;; (setopt kittymacs-macos-modifiers '((ns-command-modifier . meta)
 ;;                                     (ns-option-modifier . super)
 ;;                                     (ns-right-option-modifier . meta)))
+
+;; Structural editing
+;; Which modes keep brackets balanced with Puni.  Some people want it in Lisp and
+;; nowhere else, and a mode here covers the modes derived from it.
+;; (setopt kittymacs-structural-editing-modes '(emacs-lisp-mode lisp-mode))
 
 ;; Language tooling
 ;; Eglot is available manually through SPC l e.  Automatic startup and

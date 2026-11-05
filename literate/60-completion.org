@@ -10,6 +10,7 @@
 - Two kinds of completion: in the /minibuffer/, whenever Emacs asks for a file, buffer, command or anything else; and /in the buffer/, as you type. Plus templates.
 - The packages are the "minad stack" by Daniel Mendler and Omar Antolín: each does one thing and uses Emacs's own completion machinery rather than replacing it.
 - Distilled from Lambda-Emacs by Colin McLear (=lem-setup-completion=).
+- The =completion= feature is in the =minimal= profile; =directory-switch=, =spelling= and =snippets= each sit behind a =when=, with their keys.
 - Leans on [[id:3fd783cd-deb8-48aa-bb44-0d9b16535365][the defaults chapter]] for its directories and on [[id:e5942eb0-4389-447d-9317-d9178adcaaae][the leader]] for the groups its keys go in; [[id:8545f3ea-11d0-420b-a823-22a344e56f1e][the help chapter]] is the other half of discovery.
 
 | Package                                | Does                                             | Reach it                        |
@@ -233,14 +234,15 @@
 (keymap-set kittymacs-leader-map "k" (cons "kill ring" #'consult-yank-from-kill-ring))
 (keymap-set kittymacs-help-map "s" (cons "search manuals" #'kittymacs-search-manuals))
 
-(use-package consult-dir
-  :ensure t
-  :bind (("C-x C-d" . consult-dir)
-         :map vertico-map
-         ("C-x C-d" . consult-dir)
-         ("C-x C-j" . consult-dir-jump-file)))
+(when (kittymacs-feature-p 'directory-switch)
+  (use-package consult-dir
+    :ensure t
+    :bind (("C-x C-d" . consult-dir)
+           :map vertico-map
+           ("C-x C-d" . consult-dir)
+           ("C-x C-j" . consult-dir-jump-file)))
 
-(keymap-set kittymacs-file-map "D" (cons "switch directory" #'consult-dir))
+  (keymap-set kittymacs-file-map "D" (cons "switch directory" #'consult-dir)))
 
 #+end_src
 
@@ -452,16 +454,17 @@
 - =SPC s p= lists every mistake in the buffer with preview, the same way =SPC s s= lists lines.
 
 #+begin_src emacs-lisp
-(use-package flyspell-correct
-  :ensure t
-  :after flyspell
-  :bind (:map flyspell-mode-map ("C-;" . flyspell-correct-wrapper)))
+(when (kittymacs-feature-p 'spelling)
+  (use-package flyspell-correct
+    :ensure t
+    :after flyspell
+    :bind (:map flyspell-mode-map ("C-;" . flyspell-correct-wrapper)))
 
-(use-package consult-flyspell
-  :ensure t
-  :commands consult-flyspell)
+  (use-package consult-flyspell
+    :ensure t
+    :commands consult-flyspell)
 
-(keymap-set kittymacs-search-map "p" (cons "spelling" #'consult-flyspell))
+  (keymap-set kittymacs-search-map "p" (cons "spelling" #'consult-flyspell)))
 
 #+end_src
 
@@ -486,25 +489,26 @@
   "Do not expand snippets inside Org source blocks."
   (setq-local yas-buffer-local-condition '(not (org-in-src-block-p t))))
 
-(use-package yasnippet
-  :ensure t
-  :defer 1
-  ;; No autoload cookies upstream: declare the two commands SPC i binds, so
-  ;; they work in the second before the deferred load has happened.
-  :commands (yas-insert-snippet yas-new-snippet)
-  :bind (:map yas-minor-mode-map
-         ("C-'" . yas-expand))
-  :custom
-  (yas-snippet-dirs (list kittymacs-snippets-dir))
-  :config
-  (make-directory kittymacs-snippets-dir t)
-  (add-hook 'org-mode-hook #'kittymacs--yas-not-in-org-src)
-  (with-eval-after-load 'warnings
-    (push '(yasnippet backquote-change) warning-suppress-types))
-  (yas-global-mode 1))
+(when (kittymacs-feature-p 'snippets)
+  (use-package yasnippet
+    :ensure t
+    :defer 1
+    ;; No autoload cookies upstream: declare the two commands SPC i binds, so
+    ;; they work in the second before the deferred load has happened.
+    :commands (yas-insert-snippet yas-new-snippet)
+    :bind (:map yas-minor-mode-map
+           ("C-'" . yas-expand))
+    :custom
+    (yas-snippet-dirs (list kittymacs-snippets-dir))
+    :config
+    (make-directory kittymacs-snippets-dir t)
+    (add-hook 'org-mode-hook #'kittymacs--yas-not-in-org-src)
+    (with-eval-after-load 'warnings
+      (push '(yasnippet backquote-change) warning-suppress-types))
+    (yas-global-mode 1))
 
-(keymap-set kittymacs-insert-map "s" (cons "snippet" #'yas-insert-snippet))
-(keymap-set kittymacs-insert-map "S" (cons "new snippet" #'yas-new-snippet))
+  (keymap-set kittymacs-insert-map "s" (cons "snippet" #'yas-insert-snippet))
+  (keymap-set kittymacs-insert-map "S" (cons "new snippet" #'yas-new-snippet)))
 
 (provide 'kittymacs-completion)
 ;;; kittymacs-completion.el ends here
