@@ -130,10 +130,11 @@
 | =SPC t m=               | work moved from startup to the first key                               |
 | ratio to =emacs -Q=     | a slow or busy machine: both sides run in the same job                 |
 
-- The counts of features, loaded files and activated packages come from a real start and repeat exactly, so they are what a budget can hold; times differ between machines and stay a report.
+- The counts of features, loaded files and activated packages come from a real start and repeat exactly on one machine, so they are what a budget can hold; times differ between machines and stay a report.
 - =tests/budgets.eld= holds the counts from the last =--write=, and every run prints how the checkout differs from them.
   + Nothing enforces them yet.
-  + They come from the dev shell's Emacs, as in CI; another build of Emacs loads a different number of features and files, so compare under =nix develop=.
+  + They come from CI's =bench= job, which runs the dev shell's Emacs.
+  + Another build of Emacs loads a different number of features and files, so compare under =nix develop=; even there a machine can differ from CI by a few.
 - =TERM= is =linux= under the pty: an xterm-like =TERM= makes Emacs wait up to =xterm-query-timeout= for a reply a bare pty never sends.
 - A =lisp/private.el= changes every number, so =just bench= warns when one exists.
 - =just bench= needs a pty, so it does not run on native Windows.

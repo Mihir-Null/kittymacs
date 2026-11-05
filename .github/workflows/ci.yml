@@ -131,9 +131,9 @@ jobs:
         run: just test-packages
 
   # The dev shell's Emacs, because it can open a frame and a laptop can run the
-  # same one, so the counts in tests/budgets.eld repeat there.  No package
-  # cache, so leftovers cannot count; shell: bash, so a failure of just
-  # survives the pipe into the summary.
+  # same one.  tests/budgets.eld holds this job's counts.  No package cache, so
+  # leftovers cannot count; shell: bash, so a failure of just survives the pipe
+  # into the summary.
   bench:
     name: What startup costs (report only)
     runs-on: ubuntu-latest
