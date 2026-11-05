@@ -1,0 +1,120 @@
+:PROPERTIES:
+:ID: b9e6e3ce-ecec-4178-933a-234c1349e7de
+:END:
+
+#+TITLE: Basics: small packages for undo, whitespace and windows
+#+FILETAGS: :core:
+#+STARTUP: overview
+#+PROPERTY: header-args:emacs-lisp :tangle ../lisp/kittymacs-basics.el :eval never :comments no :padline no :mkdirp yes
+
+- Five small packages that extend [[id:3fd783cd-deb8-48aa-bb44-0d9b16535365][the defaults]].
+- They live apart because the defaults load before =private.el= and host files, too early for anything to choose a package or leave it out.
+  + So this module loads right after them, and every package here can be a choice in [[id:3f8a6c02-9d14-4b7e-a2c5-1e7d90b64f31][the catalogue]].
+- Distilled from Lambda-Emacs by Colin McLear: its =lem-setup-windows= and =-colors= modules.
+- [[id:f1d045c2-e2dc-4514-ab17-dd982ed6be00][The frames chapter]] decides where popups appear.
+
+#+begin_src emacs-lisp
+;;; kittymacs-basics.el --- Small packages for undo, whitespace and windows -*- lexical-binding: t; -*-
+;; Generated from literate/26-basics.org; edit the Org source, then tangle.
+
+;;; Code:
+
+#+end_src
+
+* Whitespace
+
+- =ws-butler= keeps whitespace tidy: it removes trailing whitespace only on lines you changed, so a commit never touches lines you did not edit.
+
+#+begin_src emacs-lisp
+(use-package ws-butler
+  :ensure t
+  :hook ((text-mode prog-mode) . ws-butler-mode))
+
+#+end_src
+
+* The undo tree :meow:
+:PROPERTIES:
+:ID: 808d7464-14c2-42c5-865e-c08e17141ae2
+:END:
+
+- After undoing past a fork, =SPC b u= draws the history as a tree (Vundo).
+- Vundo's buffer starts in Motion state, so its own keys work; it has no =SPC m= menu.
+
+| Key        | In the tree                |
+|------------+----------------------------|
+| =f=, =b=   | move along it              |
+| =n=, =p=   | change branch              |
+| =RET=      | keep the state under point |
+
+#+begin_src emacs-lisp
+(use-package vundo
+  :ensure t
+  :commands vundo
+  :custom
+  (vundo-glyph-alist vundo-unicode-symbols)
+  (vundo-compact-display t)
+  :config
+  (with-eval-after-load 'meow
+    (add-to-list 'meow-mode-state-list '(vundo-mode . motion))))
+
+#+end_src
+
+* Windows and popups
+
+- =ace-window= jumps to a window by letter.
+- Popper collects transient buffers under one toggle key:
+  + =*Messages*=, =*Async Shell Command*=, any buffer ending in =Output*=, Help and compilation buffers;
+  + grouped by directory, twenty lines high.
+
+| Key     | Popper                              |
+|---------+-------------------------------------|
+| =M-`=   | show or hide the last popup         |
+| =C-`=   | cycle through popups                |
+| =C-M-`= | turn a buffer into a popup, or back |
+
+#+begin_src emacs-lisp
+(use-package ace-window
+  :ensure t
+  :commands (ace-window ace-swap-window aw-flip-window))
+
+(use-package popper
+  :ensure t
+  :demand t
+  :bind (("M-`" . popper-toggle)
+         ("C-`" . popper-cycle)
+         ("C-M-`" . popper-toggle-type))
+  :custom
+  (popper-window-height 20)
+  (popper-group-function #'popper-group-by-directory)
+  (popper-reference-buffers
+   '("\\*Messages\\*"
+     "Output\\*$"
+     "\\*Async Shell Command\\*"
+     help-mode
+     compilation-mode))
+  :config
+  (popper-mode 1)
+  (popper-echo-mode 1))
+
+#+end_src
+
+* Colour names
+
+- =rainbow-mode= colours colour names in place.
+
+#+begin_src emacs-lisp
+(use-package rainbow-mode
+  :ensure t
+  :commands rainbow-mode)
+
+(provide 'kittymacs-basics)
+;;; kittymacs-basics.el ends here
+#+end_src
+
+* Check
+
+- Add spaces to the end of a line you edited, wait to save: they are gone, and untouched lines keep theirs.
+- Undo a few edits, make a new one, then =SPC b u=: the tree shows the fork.
+- =SPC w w= with several windows in a frame: each gets a letter.
+- =M-`= toggles the last popup.
+- =SPC t r= in a buffer that names a colour: the name shows in that colour.

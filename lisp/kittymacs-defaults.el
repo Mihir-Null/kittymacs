@@ -65,9 +65,6 @@
 (prefer-coding-system 'utf-8)
 (global-subword-mode 1)
 (global-visual-line-mode 1)
-(use-package ws-butler
-  :ensure t
-  :hook ((text-mode prog-mode) . ws-butler-mode))
 (setopt use-short-answers t
         use-file-dialog nil
         use-dialog-box nil
@@ -119,44 +116,11 @@
 (setopt undo-limit 16777216
         undo-strong-limit 25165824
         undo-outer-limit 134217728)
-
-(use-package vundo
-  :ensure t
-  :commands vundo
-  :custom
-  (vundo-glyph-alist vundo-unicode-symbols)
-  (vundo-compact-display t)
-  :config
-  (with-eval-after-load 'meow
-    (add-to-list 'meow-mode-state-list '(vundo-mode . motion))))
 (winner-mode 1)
 (windmove-default-keybindings)
 (setopt window-divider-default-right-width 10
         window-divider-default-bottom-width 10)
 (window-divider-mode 1)
-
-(use-package ace-window
-  :ensure t
-  :commands (ace-window ace-swap-window aw-flip-window))
-
-(use-package popper
-  :ensure t
-  :demand t
-  :bind (("M-`" . popper-toggle)
-         ("C-`" . popper-cycle)
-         ("C-M-`" . popper-toggle-type))
-  :custom
-  (popper-window-height 20)
-  (popper-group-function #'popper-group-by-directory)
-  (popper-reference-buffers
-   '("\\*Messages\\*"
-     "Output\\*$"
-     "\\*Async Shell Command\\*"
-     help-mode
-     compilation-mode))
-  :config
-  (popper-mode 1)
-  (popper-echo-mode 1))
 (defcustom kittymacs-scratch-file (expand-file-name "scratch" kittymacs-cache-dir)
   "Where the *scratch* buffer's text is kept between sessions."
   :type 'file
@@ -208,10 +172,6 @@
         (message "%s" short)
         (kill-new short))
     (user-error "This buffer is not visiting a file")))
-
-(use-package rainbow-mode
-  :ensure t
-  :commands rainbow-mode)
 
 (provide 'kittymacs-defaults)
 ;;; kittymacs-defaults.el ends here

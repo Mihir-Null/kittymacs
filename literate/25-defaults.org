@@ -11,16 +11,18 @@
   + This chapter sets the defaults most people set, and adds a few small helpers the leader menus use.
   + Every chapter writes down only values that differ from Emacs's own: a setting that repeats a default would only make you wonder what it changes.
 - Distilled from Lambda-Emacs by Colin McLear: its =lem-setup-settings=, =-buffers=, =-windows=, =-scratch=, =-server= and =-colors= modules.
-- All built into Emacs except five small packages; nothing is specific to one machine or operating system.
-- Leans on [[id:40302e33-d2b2-4c0b-9bc3-1f9e121307e1][the startup chapter]] for the =var/= directories; [[id:f1d045c2-e2dc-4514-ab17-dd982ed6be00][the frames chapter]] decides where popups appear.
+- All built into Emacs, and it must stay that way: this module loads before =private.el= and host files, too early for anything to choose a package or leave it out.
+  + Small packages that extend these settings are in [[id:b9e6e3ce-ecec-4178-933a-234c1349e7de][the basics chapter]].
+- Nothing is specific to one machine or operating system.
+- Leans on [[id:40302e33-d2b2-4c0b-9bc3-1f9e121307e1][the startup chapter]] for the =var/= directories.
 
 | Area      | What you get                                                         |
 |-----------+----------------------------------------------------------------------|
 | Files     | saved while idle, backups and auto-saves out of sight, no lock files |
 | Text      | spaces not tabs, four wide, eighty columns, UTF-8                    |
 | Interface | =y= or =n=, no bell, no dialog boxes, smooth scrolling               |
-| Undo      | unlimited in practice, one edit per step, a visual tree              |
-| Windows   | undo layouts, jump by letter, popups under one key                   |
+| Undo      | about 16 MB per buffer, one edit per step                            |
+| Windows   | undo layouts, move with Shift and the arrow keys                     |
 | Scratch   | survives restarts                                                    |
 | Server    | =emacsclient= opens files in this Emacs                              |
 
@@ -166,15 +168,6 @@
 
 #+end_src
 
-- =ws-butler= keeps whitespace tidy: it removes trailing whitespace only on lines you changed, so a commit never touches lines you did not edit.
-
-#+begin_src emacs-lisp
-(use-package ws-butler
-  :ensure t
-  :hook ((text-mode prog-mode) . ws-butler-mode))
-
-#+end_src
-
 * The interface
 
 - Prompts take =y= or =n=, always in the minibuffer: even a command started from the mouse never opens an operating-system dialog box.
@@ -239,21 +232,10 @@
 
 #+end_src
 
-* Undo and its tree :meow:
-:PROPERTIES:
-:ID: 808d7464-14c2-42c5-865e-c08e17141ae2
-:END:
+* Undo
 
 - Undo keeps about 16 MB per buffer, because every buffer's history is scanned on each garbage collection, and no longer groups several edits into one step, which made undoing feel unpredictable.
 - Meow's =u= undoes; =U= undoes only inside the selection.
-- After undoing past a fork, =SPC b u= draws the history as a tree (Vundo).
-- Vundo's buffer starts in Motion state, so its own keys work; it has no =SPC m= menu.
-
-| Key        | In the tree                |
-|------------+----------------------------|
-| =f=, =b=   | move along it              |
-| =n=, =p=   | change branch              |
-| =RET=      | keep the state under point |
 
 #+begin_src emacs-lisp
 (fset 'undo-auto-amalgamate #'ignore)
@@ -261,33 +243,13 @@
         undo-strong-limit 25165824
         undo-outer-limit 134217728)
 
-(use-package vundo
-  :ensure t
-  :commands vundo
-  :custom
-  (vundo-glyph-alist vundo-unicode-symbols)
-  (vundo-compact-display t)
-  :config
-  (with-eval-after-load 'meow
-    (add-to-list 'meow-mode-state-list '(vundo-mode . motion))))
-
 #+end_src
 
 * Windows inside a frame
 
 - [[id:f1d045c2-e2dc-4514-ab17-dd982ed6be00][The frames chapter]] makes new editing surfaces separate OS windows; inside one frame you still sometimes split.
 - =winner-mode= undoes window arrangements.
-- =ace-window= jumps to a window by letter.
 - Shift-arrows move between windows; window dividers are ten pixels wide.
-- Popper collects transient buffers under one toggle key; the frames chapter decides where they appear.
-  + =*Messages*=, =*Async Shell Command*=, any buffer ending in =Output*=, Help and compilation buffers;
-  + grouped by directory, twenty lines high.
-
-| Key     | Popper                              |
-|---------+-------------------------------------|
-| =M-`=   | show or hide the last popup         |
-| =C-`=   | cycle through popups                |
-| =C-M-`= | turn a buffer into a popup, or back |
 
 #+begin_src emacs-lisp
 (winner-mode 1)
@@ -295,29 +257,6 @@
 (setopt window-divider-default-right-width 10
         window-divider-default-bottom-width 10)
 (window-divider-mode 1)
-
-(use-package ace-window
-  :ensure t
-  :commands (ace-window ace-swap-window aw-flip-window))
-
-(use-package popper
-  :ensure t
-  :demand t
-  :bind (("M-`" . popper-toggle)
-         ("C-`" . popper-cycle)
-         ("C-M-`" . popper-toggle-type))
-  :custom
-  (popper-window-height 20)
-  (popper-group-function #'popper-group-by-directory)
-  (popper-reference-buffers
-   '("\\*Messages\\*"
-     "Output\\*$"
-     "\\*Async Shell Command\\*"
-     help-mode
-     compilation-mode))
-  :config
-  (popper-mode 1)
-  (popper-echo-mode 1))
 
 #+end_src
 
@@ -390,7 +329,6 @@
 - Commands the leader menus use:
   + =kittymacs-new-buffer= :: an empty =untitled= buffer in the default major mode; with a prefix argument, in a new frame;
   + =kittymacs-copy-file-name= :: shows this buffer's file name and copies it to the kill ring.
-- =rainbow-mode= colours colour names in place.
 
 #+begin_src emacs-lisp
 (defun kittymacs-new-buffer (&optional frame)
@@ -412,10 +350,6 @@
         (kill-new short))
     (user-error "This buffer is not visiting a file")))
 
-(use-package rainbow-mode
-  :ensure t
-  :commands rainbow-mode)
-
 (provide 'kittymacs-defaults)
 ;;; kittymacs-defaults.el ends here
 #+end_src
@@ -425,7 +359,6 @@
 - Open a file, edit, wait five seconds: it is saved; =C-x C-s= is rarely needed.
 - =M-x customize-variable RET fill-column=, set and save: the value persists in =var/etc/custom.el=.
 - =M-x split-window-below= (=C-x 2= makes a frame while frames-only mode is on), then =C-c <left>=: winner brings the old layout back.
-- =M-`= toggles the last popup; =SPC [= and =SPC ]= cycle your own buffers, skipping =*Messages*=.
+- =SPC [= and =SPC ]= cycle your own buffers, skipping =*Messages*=.
 - Type in =*scratch*=, restart Emacs: the text is still there.
-- Undo a few edits, make a new one, then =SPC b u=: the tree shows the fork.
 - =just test-packages= runs the startup verifier, which loads this module with the rest and fails on any warning.

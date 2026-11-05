@@ -153,3 +153,99 @@ The Nix chapter's \"The Emacs packages\" says why each one.")
         (should (string-match-p "Could not refresh.*Offline" (car warnings)))))))
 
 ;;; kittymacs-startup-tests.el ends here
+
+(defvar kittymacs-host-directories nil)
+
+(defmacro kittymacs-startup-test-with-host-files (directories &rest body)
+  "Run BODY with the loaders defined and a temporary DIRECTORIES bound to two folders."
+  (declare (indent 1))
+  `(let* ((root (make-temp-file "kittymacs-host-" t))
+          (,directories (list (expand-file-name "system/" root)
+                              (expand-file-name "user/" root)))
+          (kittymacs-host-directories ,directories)
+          (debug-on-error nil)
+          (kittymacs-startup-test--loaded nil))
+     (kittymacs-startup-test--load-defun 'kittymacs-load-user-file)
+     (kittymacs-startup-test--load-defun 'kittymacs-load-host-files)
+     (mapc (lambda (directory) (make-directory directory t)) ,directories)
+     (unwind-protect (progn ,@body)
+       (delete-directory root t))))
+
+(defvar kittymacs-startup-test--loaded nil
+  "The host files a test has loaded, newest first.")
+
+(defun kittymacs-startup-test--host-file (directory name &optional body)
+  "Write NAME in DIRECTORY, a file that records its name, then runs BODY."
+  (with-temp-file (expand-file-name name directory)
+    (insert ";;; -*- lexical-binding: t; -*-\n"
+            (format "(push %S kittymacs-startup-test--loaded)\n" name)
+            (or body ""))))
+
+(ert-deftest kittymacs-startup-host-files-load-in-order ()
+  "Each directory in turn, by name, so a user's files follow the system's."
+  (kittymacs-startup-test-with-host-files directories
+    (kittymacs-startup-test--host-file (cadr directories) "10-user.el")
+    (kittymacs-startup-test--host-file (car directories) "90-system.el")
+    (kittymacs-startup-test--host-file (car directories) "20-system.el")
+    (kittymacs-load-host-files)
+    (should (equal (reverse kittymacs-startup-test--loaded)
+                   '("20-system.el" "90-system.el" "10-user.el")))))
+
+(ert-deftest kittymacs-startup-host-files-skip-what-is-not-configuration ()
+  "Editors leave lock and auto-save files beside the ones they edit."
+  (kittymacs-startup-test-with-host-files directories
+    (let ((directory (car directories)))
+      (kittymacs-startup-test--host-file directory "10-real.el")
+      (dolist (name '(".#10-real.el" "#10-real.el#" "#10-real.el" "10-real.el~" "notes.txt"))
+        (with-temp-file (expand-file-name name directory)
+          (insert "(error \"This must not load\")\n")))
+      (kittymacs-startup-test-with-warnings warnings
+        (kittymacs-load-host-files)
+        (should-not warnings))
+      (should (equal kittymacs-startup-test--loaded '("10-real.el"))))))
+
+(ert-deftest kittymacs-startup-host-directories-may-be-missing ()
+  "Almost no machine has both directories."
+  (kittymacs-startup-test-with-host-files directories
+    (let ((kittymacs-host-directories (list "/no/such/kittymacs/directory/" (car directories))))
+      (kittymacs-startup-test--host-file (car directories) "10-real.el")
+      (kittymacs-startup-test-with-warnings warnings
+        (kittymacs-load-host-files)
+        (should-not warnings))
+      (should (equal kittymacs-startup-test--loaded '("10-real.el"))))))
+
+(ert-deftest kittymacs-startup-a-broken-file-warns-and-the-rest-still-load ()
+  "A mistake in one file must not cost the editor needed to fix it."
+  (kittymacs-startup-test-with-host-files directories
+    (let ((directory (car directories)))
+      (kittymacs-startup-test--host-file directory "10-first.el")
+      (kittymacs-startup-test--host-file directory "20-broken.el" "(error \"Boom\")\n")
+      (with-temp-file (expand-file-name "30-unbalanced.el" directory)
+        (insert ";;; -*- lexical-binding: t; -*-\n(setq unbalanced 1"))
+      (kittymacs-startup-test--host-file directory "40-last.el")
+      (kittymacs-startup-test-with-warnings warnings
+        (kittymacs-load-host-files)
+        (should (= (length warnings) 2))
+        (should (seq-some (lambda (w) (string-match-p "20-broken.el did not finish loading: Boom" w))
+                          warnings))
+        (should (seq-some (lambda (w) (string-match-p "30-unbalanced.el did not finish" w))
+                          warnings)))
+      (should (member "40-last.el" kittymacs-startup-test--loaded)))))
+
+(ert-deftest kittymacs-startup-loads-outside-files-in-the-documented-order ()
+  "Host files, then private.el, while options can still affect the modules."
+  (let* ((text (with-temp-buffer
+                 (insert-file-contents (expand-file-name "init.el" kittymacs-startup-test-root))
+                 (buffer-string)))
+         (position (lambda (form)
+                     (or (string-search form text)
+                         (ert-fail (list "init.el no longer has" form)))))
+         (order (mapcar position
+                        '("(require 'kittymacs-defaults)"
+                          "(require 'kittymacs-platform)"
+                          "(kittymacs-load-host-files)"
+                          "(kittymacs-load-user-file private)"
+                          "(kittymacs-platform-apply)"
+                          "(kittymacs-require-module 'kittymacs-basics)"
+                          "(kittymacs-require-module 'kittymacs-ui)"))))
+    (should (equal order (sort (copy-sequence order) #'<)))))

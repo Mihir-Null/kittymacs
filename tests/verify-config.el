@@ -79,6 +79,19 @@ Group maps are walked too.  Autoloaded commands count as commands."
 (with-temp-buffer
   (insert "(setq kittymacs-org-roam-directory (expand-file-name \"test-roam/\" user-emacs-directory) kittymacs-org-roam-excluded-directories '(\"test-excluded\"))\n")
   (append-to-file (point-min) (point-max) (expand-file-name "lisp/private.el" user-emacs-directory)))
+;; Host files read in name order, before private.el, which must win over them.
+(defvar kittymacs-host-directories
+  (list (expand-file-name "host/" kittymacs-verify-root)))
+(make-directory (car kittymacs-host-directories) t)
+(with-temp-file (expand-file-name "20-second.el" (car kittymacs-host-directories))
+  (insert ";;; -*- lexical-binding: t; -*-\n"
+          "(unless (boundp 'kittymacs-project-directory) (error \"Host file loaded before platform\"))\n"
+          "(setq kittymacs-verify-host-order (cons 'second kittymacs-verify-host-order))\n"
+          "(setopt kittymacs-project-directory \"/host-must-lose/\")\n"))
+(with-temp-file (expand-file-name "10-first.el" (car kittymacs-host-directories))
+  (insert ";;; -*- lexical-binding: t; -*-\n"
+          "(setq kittymacs-verify-host-order (list 'first))\n"
+          "(when (boundp 'kittymacs-verify-private-loads) (error \"Host file loaded after private.el\"))\n"))
 (when (getenv "KITTYMACS_TEST_PACKAGES")
   (advice-add 'package-initialize :before
               (lambda (&rest _)
@@ -101,6 +114,8 @@ Group maps are walked too.  Autoloaded commands count as commands."
         (kittymacs-verify-check nil (format "Startup warning: %s" warning)))
       (require 'cus-edit)
       (kittymacs-verify-check (= kittymacs-verify-private-loads 1) "private.el must load once")
+      (kittymacs-verify-check (equal (bound-and-true-p kittymacs-verify-host-order) '(second first))
+                       "Host files did not load, or not in name order")
       (kittymacs-verify-check (equal kittymacs-project-directory
                               (expand-file-name "test-projects/" user-emacs-directory))
                        "Project override was overwritten")

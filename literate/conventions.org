@@ -121,6 +121,7 @@
   + no prose counts the packages, because the next change makes the number false;
   + =use-package= has no =:if=, =:when= or =:unless= beside =:ensure t=, which would not stop the install: a =when= around the form does;
   + a module adds to =after-init-hook= only through =kittymacs-after-init=, except the defaults, which other modules require while compiling, before =init.el= has defined it;
+  + nothing that loads before host files and =private.el= declares a package;
   + every option =lisp/private.example.el= offers is a real =defcustom=;
   + every generated file's header names the chapter that tangles it.
 - A key outside the leader, such as =C-c /=, is not checked: it may belong to a mode or to Emacs.
