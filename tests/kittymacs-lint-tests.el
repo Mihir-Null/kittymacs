@@ -232,15 +232,18 @@ with a backtick.  `SPC m' is left out: a major mode's map decides what follows."
     (should-not (string-match-p regexp "iedit-mode-extra"))
     (should-not (string-match-p regexp "my-iedit"))))
 
+(defun kittymacs-lint--shipped-files ()
+  "Every file a machine runs or a reader follows, besides the pages."
+  (append (kittymacs-lint--modules)
+          (directory-files (kittymacs-lint--path "nix") t "\\.nix\\'")
+          (list (kittymacs-lint--path "init.el")
+                (kittymacs-lint--path "early-init.el")
+                (kittymacs-lint--path "lisp/keybindings.org")
+                (kittymacs-lint--path "lisp/private.example.el"))))
+
 (ert-deftest kittymacs-lint-removed-packages-are-not-mentioned ()
   (let ((names (kittymacs-lint--removed-packages))
-        (files (append (kittymacs-lint--pages)
-                       (kittymacs-lint--modules)
-                       (directory-files (kittymacs-lint--path "nix") t "\\.nix\\'")
-                       (list (kittymacs-lint--path "init.el")
-                             (kittymacs-lint--path "early-init.el")
-                             (kittymacs-lint--path "lisp/keybindings.org")
-                             (kittymacs-lint--path "lisp/private.example.el"))))
+        (files (append (kittymacs-lint--pages) (kittymacs-lint--shipped-files)))
         found)
     (should (> (length names) 10))
     (dolist (name names)
@@ -250,6 +253,50 @@ with a backtick.  `SPC m' is left out: a major mode's map decides what follows."
           (unless (kittymacs-lint--history-line-p text)
             (push (format "%s:%d: %s" (file-name-nondirectory file) line name) found)))))
     (should-not (reverse found))))
+
+;;; Host names
+
+(defconst kittymacs-lint-host-name-regexp
+  (concat "\\b"
+          (regexp-opt '("EmptyNet" "NixNet" "cc-agentic-stack" "Sandia" "sandia"
+                        "McQueenix" "mcqueenix" "McMissile" "mcmissile"
+                        "Mack" "mack" "mmtalat")
+                      t)
+          "\\b")
+  "One person's machines and their configuration.  A host plugs in through
+`kittymacs-host-directories', so nothing shipped needs to name one.")
+
+(ert-deftest kittymacs-lint-host-name-regexp-matches-whole-names-only ()
+  (let ((case-fold-search nil))
+    (should (string-match-p kittymacs-lint-host-name-regexp "(on EmptyNet, Caps Lock)"))
+    (should (string-match-p kittymacs-lint-host-name-regexp "~/.local/share/cc-agentic-stack/"))
+    (should-not (string-match-p kittymacs-lint-host-name-regexp "a mackerel"))
+    (should-not (string-match-p kittymacs-lint-host-name-regexp "the Mac"))))
+
+(ert-deftest kittymacs-lint-nothing-shipped-names-a-host ()
+  "ARCHITECTURE.md is left out: it records why, and a host can be the reason."
+  (let ((files (append (remove (kittymacs-lint--path "ARCHITECTURE.md") (kittymacs-lint--pages))
+                       (kittymacs-lint--shipped-files)
+                       (list (kittymacs-lint--path "justfile")
+                             (kittymacs-lint--path "flake.nix"))))
+        found)
+    (should (> (length files) 50))
+    (dolist (file files)
+      (pcase-dolist (`(,line . ,text)
+                     (kittymacs-lint--lines-matching kittymacs-lint-host-name-regexp file))
+        (ignore text)
+        (push (format "%s:%d" (file-name-nondirectory file) line) found)))
+    (should-not (reverse found))))
+
+(ert-deftest kittymacs-lint-agent-mcp-servers-default-to-none ()
+  "A host chooses the servers, so a fresh install starts none of them."
+  (let (defaults)
+    (kittymacs-lint--walk-modules
+     (lambda (list _file)
+       (when (and (eq (car list) 'defcustom)
+                  (eq (cadr list) 'kittymacs-agent-mcp-servers))
+         (push (nth 2 list) defaults))))
+    (should (equal defaults '(nil)))))
 
 ;;; Prose that goes stale by itself
 

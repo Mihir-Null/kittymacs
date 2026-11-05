@@ -11,7 +11,7 @@ default: check
 # Batch Emacs with this checkout as its init directory, so early-init.el
 # puts packages, caches and grammars under ./var, as a real startup does.
 # The stable nixpkgs `eval` also checks the flake against: a host whose
-# flake has kittymacs follow its own nixpkgs (EmptyNet does) evaluates
+# flake has kittymacs follow its own nixpkgs evaluates
 # kittymacs on that release, which may lack attributes unstable has. Move it
 # to each new release.
 stable := "nixos-26.05"

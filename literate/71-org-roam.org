@@ -130,7 +130,7 @@ that ignores case, so every spelling of one directory shares one file."
 :ID: f70b8ad9-3c6c-4260-9b95-86b27ea8d985
 :END:
 
-- A repository becomes a graph of its own with a =.dir-locals.el= at its root. EmptyNet ships exactly this one:
+- A repository becomes a graph of its own with a =.dir-locals.el= at its root, such as this one:
 
 #+begin_src emacs-lisp :tangle no
 ((nil . ((kittymacs-org-roam-project . t)

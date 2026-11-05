@@ -76,7 +76,6 @@ The whole configuration is a literate wiki (thank you, Donald Knuth). Every chap
 | `math-preview` (the Nix module installs it) | drawing LaTeX (`SPC m n m`) | the command says how to install it with `npm` |
 | emacs-zmq's native module (the Nix module provides it) | Jupyter kernels, once `kittymacs-notebooks-jupyter` is on | emacs-zmq downloads or builds one, asking first |
 | `claude-agent-acp`, and a `claude` login | `SPC a`, the coding agent | the agent cannot start |
-| `context7-mcp`, `mcp-nixos` | the agent's documentation and Nix tools | those tools are missing from its sessions |
 | `copilot-language-server` (the Nix modules' `programs.kittymacs.suggestions.enable`; unfree), a GitHub Copilot plan and `M-x copilot-login` | suggestions (`SPC t a`) | suggestions stay off and say what is missing; `M-x copilot-install-server` installs the server with `npm` |
 | [Symbols Nerd Font Mono](https://www.nerdfonts.com/) | icons | icons are hidden |
 | Google Sans Code | the preferred editing font | the platform's default font |

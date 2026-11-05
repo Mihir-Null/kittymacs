@@ -91,6 +91,7 @@ Group maps are walked too.  Autoloaded commands count as commands."
 (with-temp-file (expand-file-name "10-first.el" (car kittymacs-host-directories))
   (insert ";;; -*- lexical-binding: t; -*-\n"
           "(setq kittymacs-verify-host-order (list 'first))\n"
+          "(setopt kittymacs-agent-mcp-servers '(((name . \"host-server\"))))\n"
           "(when (boundp 'kittymacs-verify-private-loads) (error \"Host file loaded after private.el\"))\n"))
 (when (getenv "KITTYMACS_TEST_PACKAGES")
   (advice-add 'package-initialize :before
@@ -116,6 +117,9 @@ Group maps are walked too.  Autoloaded commands count as commands."
       (kittymacs-verify-check (= kittymacs-verify-private-loads 1) "private.el must load once")
       (kittymacs-verify-check (equal (bound-and-true-p kittymacs-verify-host-order) '(second first))
                        "Host files did not load, or not in name order")
+      (kittymacs-verify-check (equal (bound-and-true-p agent-shell-mcp-servers)
+                                     '(((name . "host-server"))))
+                       "A host file's MCP servers did not reach agent-shell")
       (kittymacs-verify-check (equal kittymacs-project-directory
                               (expand-file-name "test-projects/" user-emacs-directory))
                        "Project override was overwritten")

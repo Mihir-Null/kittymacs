@@ -255,6 +255,12 @@
 ;;   ((nil . ((kittymacs-org-roam-project . t)
 ;;            (kittymacs-org-roam-excluded-directories . ("secrets")))))
 
+;; Agents
+;; The MCP servers each agent-shell session starts with; see
+;; literate/77-agents.org.
+;; (setopt kittymacs-agent-mcp-servers
+;;         '(((name . "docs") (command . "docs-mcp") (args . ()) (env . ()))))
+
 ;; Terminal
 ;; MSYS2's location, when it is not the normal C:/msys64/.
 ;; (setopt kittymacs-msys2-root "D:/Tools/msys64/")
