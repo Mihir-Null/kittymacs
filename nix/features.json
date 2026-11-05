@@ -14,7 +14,7 @@
     "packages": [
       "vundo"
     ],
-    "module": "kittymacs-defaults",
+    "module": "kittymacs-basics",
     "profile": "minimal",
     "summary": "Undo history drawn as a tree, so an undone change is never lost.",
     "example": "=SPC b u= shows the history, and the arrow keys walk through it."
@@ -68,7 +68,7 @@
     "packages": [
       "ws-butler"
     ],
-    "module": "kittymacs-defaults",
+    "module": "kittymacs-basics",
     "profile": "minimal",
     "summary": "Removes trailing whitespace from the lines you changed, and no others.",
     "example": "Saving leaves untouched lines out of the diff; =SPC c w= cleans a whole buffer."
@@ -139,7 +139,7 @@
     "packages": [
       "ace-window"
     ],
-    "module": "kittymacs-defaults",
+    "module": "kittymacs-basics",
     "profile": "full",
     "summary": "Picks a window by letter when a frame holds several.",
     "example": "=SPC w w= labels each window, and a letter jumps there."
@@ -272,7 +272,7 @@
     "packages": [
       "popper"
     ],
-    "module": "kittymacs-defaults",
+    "module": "kittymacs-basics",
     "profile": "full",
     "summary": "Keeps Help and compilation output in a window that one key dismisses.",
     "example": "=M-`= toggles the last popup."
@@ -282,7 +282,7 @@
     "packages": [
       "rainbow-mode"
     ],
-    "module": "kittymacs-defaults",
+    "module": "kittymacs-basics",
     "profile": "full",
     "summary": "Paints colour names and codes in their own colour.",
     "example": "=SPC t r= shows =#ff0000= on a red background."

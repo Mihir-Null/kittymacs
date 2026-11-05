@@ -261,6 +261,7 @@ In Normal state, Meow selects first and acts second: `w` selects a word, `x` a l
 
 - **Another package's option** that a chapter also sets must go in an `after-init-hook` function at the end of `private.el`, or the chapter will overwrite it; the example file shows how, and [the maintenance chapter](literate/80-maintenance.org) explains why.
 - **`M-x customize`** saves to `var/etc/custom.el`, which loads after everything else and always wins.
+- **A Nix module or dotfiles repository** can put `*.el` files in `~/.config/kittymacs/conf.d/`. They load in name order just before `private.el`, so your own settings still win.
 - **To change the configuration itself**, edit its chapter in `literate/`, then `SPC C t` to regenerate the Lisp and restart. See [Develop](#develop).
 
 ## Update

@@ -214,7 +214,7 @@
   + the terminal comes after the programming chapter, whose mode menu it extends;
   + [[id:86fcd506-34c8-476d-8903-acbef46275bf][EXWM]] comes just before the frames policy, which reads =kittymacs-exwm= for its default;
   + frames policy goes last.
-- Two files of your own are read along the way: =private.el= right after the platform chapter, the Customize file at the end; [[*Machine-specific settings]] says why there.
+- Files from outside this repository are read along the way: [[*Host files][host files]] and then =private.el= right after the platform chapter, the Customize file at the end; [[*Machine-specific settings]] says why there.
 - The archive index is fetched only when a package has to be installed, by =kittymacs-ensure-package= ([[*A stale archive index]]); a start that installs nothing touches no network.
 - From the UI on, each chapter is loaded with =kittymacs-require-module=, not a bare =require=:
   + an error while a chapter loads (most often a package that failed to install, so its variables do not exist) becomes a warning naming the chapter, and the chapters after it still load;
@@ -302,14 +302,42 @@ caught, so it shows a backtrace."
                                     :error)))))
             depth))
 
-;; Foundation: the feature list, defaults, platform paths, machine overrides, the look.
+(defun kittymacs-load-user-file (file)
+  "Load FILE, which a host or the user wrote; on an error, warn and carry on.
+Under `--debug-init' the error is not caught, so it shows a backtrace."
+  (condition-case-unless-debug err
+      (load file nil t t)
+    (error
+     (display-warning 'kittymacs
+                      (format "%s did not finish loading: %s
+The rest of kittymacs still loads; `--debug-init' shows the backtrace."
+                              file (error-message-string err))
+                      :error))))
+
+(defvar kittymacs-host-directories
+  (list "/etc/kittymacs/conf.d/"
+        (expand-file-name "kittymacs/conf.d/" (or (getenv "XDG_CONFIG_HOME") "~/.config")))
+  "Directories whose `*.el' files configure this machine, read in this order.
+Set before init.el loads to change them, because they are read during init.")
+
+(defun kittymacs-load-host-files ()
+  "Load every `*.el' file in `kittymacs-host-directories', in name order."
+  (dolist (directory kittymacs-host-directories)
+    (when (file-directory-p directory)
+      (mapc #'kittymacs-load-user-file
+            (directory-files directory t "\\`[^.#].*\\.el\\'")))))
+
+;; Foundation: the feature list, defaults, platform paths, host and machine
+;; overrides, then the look.
 (require 'kittymacs-catalogue)
 (require 'kittymacs-defaults)
 (require 'kittymacs-platform)
+(kittymacs-load-host-files)
 (let ((private (expand-file-name "private.el" kittymacs-lisp-dir)))
   (when (file-exists-p private)
-    (load private nil t)))
+    (kittymacs-load-user-file private)))
 (kittymacs-platform-apply)
+(kittymacs-require-module 'kittymacs-basics)
 (kittymacs-require-module 'kittymacs-ui)
 (kittymacs-require-module 'kittymacs-literate)
 (kittymacs-require-module 'kittymacs-dashboard)
@@ -378,6 +406,21 @@ caught, so it shows a backtrace."
   + the Customize file, =var/etc/custom.el=, is loaded on the last line of =init.el=, after every chapter, so its settings win over the chapters;
   + Customize is the right place for package options;
   + a =kittymacs-= option that a chapter reads while it loads still belongs in =private.el=: by the time the Customize file loads, that chapter has already decided.
+- An error in =private.el= becomes a warning, and the rest of kittymacs still starts, so a mistake there does not leave you without an editor to fix it in.
+
+** Host files :decision:
+:PROPERTIES:
+:ID: 2c7e91d4-5b08-4f3a-8e16-a4d09c37b5e2
+:END:
+
+- A machine's own configuration, such as a Nix module or a dotfiles repository, needs somewhere to put Elisp without editing this repository or a person's =private.el=.
+- Every =*.el= file in these directories loads in name order, just before =private.el=:
+  + =/etc/kittymacs/conf.d/=, for a whole system;
+  + =~/.config/kittymacs/conf.d/=, or under =XDG_CONFIG_HOME= when that is set, for one user.
+- The order decides who wins: the system, then the user's host files, then =private.el=, then Customize.
+- A host file follows the same two rules as =private.el= above, and a broken one warns without stopping the rest.
+- Names that start with =.= or =#= are skipped, because editors use them for lock and auto-save files.
+- =kittymacs-host-directories= names the directories; set it before =init.el= loads, as a test does.
 
 * Check
 

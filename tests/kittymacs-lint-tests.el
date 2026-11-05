@@ -277,6 +277,18 @@ with a backtick.  `SPC m' is left out: a major mode's map decides what follows."
 
 ;;; Rules the chapters state
 
+(ert-deftest kittymacs-lint-nothing-before-private-declares-a-package ()
+  "These load before host files and private.el, too early for them to choose."
+  (dolist (name '("kittymacs-catalogue" "kittymacs-defaults" "kittymacs-platform"))
+    (let (found)
+      (dolist (form (kittymacs-lint--forms (kittymacs-lint--path (format "lisp/%s.el" name))))
+        (kittymacs-lint--walk
+         form
+         (lambda (list)
+           (when (eq (car list) 'use-package)
+             (push (cadr list) found)))))
+      (should (equal (list name nil) (list name found))))))
+
 (ert-deftest kittymacs-lint-no-condition-beside-ensure ()
   "`use-package' installs before it reads `:if', so the condition guards nothing.
 Literate/44-exwm.org has the case that showed it; a `when' around the

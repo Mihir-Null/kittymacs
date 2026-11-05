@@ -71,14 +71,42 @@ caught, so it shows a backtrace."
                                     :error)))))
             depth))
 
-;; Foundation: the feature list, defaults, platform paths, machine overrides, the look.
+(defun kittymacs-load-user-file (file)
+  "Load FILE, which a host or the user wrote; on an error, warn and carry on.
+Under `--debug-init' the error is not caught, so it shows a backtrace."
+  (condition-case-unless-debug err
+      (load file nil t t)
+    (error
+     (display-warning 'kittymacs
+                      (format "%s did not finish loading: %s
+The rest of kittymacs still loads; `--debug-init' shows the backtrace."
+                              file (error-message-string err))
+                      :error))))
+
+(defvar kittymacs-host-directories
+  (list "/etc/kittymacs/conf.d/"
+        (expand-file-name "kittymacs/conf.d/" (or (getenv "XDG_CONFIG_HOME") "~/.config")))
+  "Directories whose `*.el' files configure this machine, read in this order.
+Set before init.el loads to change them, because they are read during init.")
+
+(defun kittymacs-load-host-files ()
+  "Load every `*.el' file in `kittymacs-host-directories', in name order."
+  (dolist (directory kittymacs-host-directories)
+    (when (file-directory-p directory)
+      (mapc #'kittymacs-load-user-file
+            (directory-files directory t "\\`[^.#].*\\.el\\'")))))
+
+;; Foundation: the feature list, defaults, platform paths, host and machine
+;; overrides, then the look.
 (require 'kittymacs-catalogue)
 (require 'kittymacs-defaults)
 (require 'kittymacs-platform)
+(kittymacs-load-host-files)
 (let ((private (expand-file-name "private.el" kittymacs-lisp-dir)))
   (when (file-exists-p private)
-    (load private nil t)))
+    (kittymacs-load-user-file private)))
 (kittymacs-platform-apply)
+(kittymacs-require-module 'kittymacs-basics)
 (kittymacs-require-module 'kittymacs-ui)
 (kittymacs-require-module 'kittymacs-literate)
 (kittymacs-require-module 'kittymacs-dashboard)

@@ -76,7 +76,7 @@ before this module is loaded, to override."
 - Its defaults put Org agenda and source editing in frames and clean up temporary frames when quitting their buffers.
 - Vertico's top side window, Transient menus and Corfu's child-frame suggestions stay attached to their editor (=frames-only-mode-use-windows-for-completion=).
   + They are temporary controls, not separate desktop editing windows.
-- Popper, from [[id:3fd783cd-deb8-48aa-bb44-0d9b16535365][the defaults chapter]], normally shows Help and compilation buffers in a window of its own inside the frame.
+- Popper, from [[id:b9e6e3ce-ecec-4178-933a-234c1349e7de][the basics chapter]], normally shows Help and compilation buffers in a window of its own inside the frame.
   + Only its display control (=popper-display-control=) is off while frame mode is active; popup tracking and cycling remain available.
   + Disabling frame mode restores its placement.
 - The split commands, =split-window-below= and =split-window-right=, are remapped to frame creation inside the minor mode map.

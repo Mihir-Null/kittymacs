@@ -189,6 +189,8 @@ Design decisions, with the reason:
 
 ### Features
 
+- **A host plugs in through a directory, not through hooks in this repository.** Every `*.el` file in `/etc/kittymacs/conf.d/`, then `~/.config/kittymacs/conf.d/`, loads in name order just before `private.el`, so a new integration needs no change here and the user still wins. A broken host file or `private.el` warns and startup carries on. (`literate/10-startup.org`)
+- **Nothing that loads before those files declares a package.** They load too early to choose otherwise, so the defaults are built-ins only and their small packages live in `kittymacs-basics`, which loads right after. (`literate/26-basics.org`)
 - **One catalogue says which packages make up which feature.** `lisp/kittymacs-catalogue.el` is a single `defconst`, so `emacs -Q` can read it before any package exists, and `tools/tangle.el` writes `nix/features.json` from it by reading, never evaluating, so Elisp, Nix and onboarding share one list. A profile of `minimal` is the coming default, `full` is what kittymacs ships today, and `optional` is what stays off even then. Tests hold the list to the code: each declared package appears once, in the feature of the module that declares it. Nothing gates on it yet. (`literate/20-catalogue.org`)
 
 ### CI

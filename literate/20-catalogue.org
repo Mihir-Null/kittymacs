@@ -49,7 +49,7 @@
      :summary "Selection-first modal editing, the grammar every key here builds on."
      :example "=w= marks a word, then =d= deletes it; you see the target before you act.")
     (undo-tree
-     :group editing :packages (vundo) :module kittymacs-defaults :profile minimal
+     :group editing :packages (vundo) :module kittymacs-basics :profile minimal
      :summary "Undo history drawn as a tree, so an undone change is never lost."
      :example "=SPC b u= shows the history, and the arrow keys walk through it.")
     (structural-editing
@@ -69,7 +69,7 @@
      :summary "Regexp replacement that shows each match and its result as you type."
      :example "=SPC s r= previews the replacement before you commit to it.")
     (whitespace-cleanup
-     :group editing :packages (ws-butler) :module kittymacs-defaults :profile minimal
+     :group editing :packages (ws-butler) :module kittymacs-basics :profile minimal
      :summary "Removes trailing whitespace from the lines you changed, and no others."
      :example "Saving leaves untouched lines out of the diff; =SPC c w= cleans a whole buffer.")
     (snippets
@@ -96,7 +96,7 @@
      :summary "Jumps anywhere on screen by typing a character and a letter."
      :example "=SPC j j= puts letters on each match, then you press one.")
     (window-picker
-     :group finding :packages (ace-window) :module kittymacs-defaults :profile full
+     :group finding :packages (ace-window) :module kittymacs-basics :profile full
      :summary "Picks a window by letter when a frame holds several."
      :example "=SPC w w= labels each window, and a letter jumps there.")
     (workspaces
@@ -145,11 +145,11 @@
      :summary "A start page with recent files and projects."
      :example "=SPC h h= returns to it.")
     (popups
-     :group look :packages (popper) :module kittymacs-defaults :profile full
+     :group look :packages (popper) :module kittymacs-basics :profile full
      :summary "Keeps Help and compilation output in a window that one key dismisses."
      :example "=M-`= toggles the last popup.")
     (color-names
-     :group look :packages (rainbow-mode) :module kittymacs-defaults :profile full
+     :group look :packages (rainbow-mode) :module kittymacs-basics :profile full
      :summary "Paints colour names and codes in their own colour."
      :example "=SPC t r= shows =#ff0000= on a red background.")
 
