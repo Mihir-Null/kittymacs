@@ -11,6 +11,7 @@
 /recentf.eld
 /tabsession.el
 /elfeed/
+/tree-sitter/
 *.elc
 /result
 /nix/example/flake.lock

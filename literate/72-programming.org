@@ -21,8 +21,7 @@
   + deleting never breaks a pair;
   + =C-)= and =C-(= slurp the next or previous expression into the current one; =C-}= and =C-{= barf it out.
 - Embrace adds, changes and removes surrounding pairs (=SPC c s=); Org and Markdown get their own pairs (=*=, =_=, =`=, =$= in Markdown).
-- =iedit= edits every occurrence of a symbol at once (=SPC s c=).
-- =prettify-symbols-mode= is on everywhere and shows the real text when point is on a symbol; =rainbow-identifiers= is available as a command.
+- =prettify-symbols-mode= is on everywhere and shows the real text when point is on a symbol.
 
 #+begin_src emacs-lisp
 ;;; kittymacs-programming.el --- What every programming buffer gets -*- lexical-binding: t; -*-
@@ -49,9 +48,6 @@
   :ensure t
   :hook (prog-mode . rainbow-delimiters-mode))
 
-(use-package rainbow-identifiers
-  :ensure t
-  :commands rainbow-identifiers-mode)
 
 (use-package puni
   :ensure t
@@ -75,10 +71,6 @@
   (add-hook 'markdown-mode-hook #'kittymacs--embrace-markdown)
   (add-hook 'markdown-ts-mode-hook #'kittymacs--embrace-markdown))
 
-(use-package iedit
-  :ensure t
-  :commands iedit-mode)
-
 #+end_src
 
 * Indentation: guides everywhere, re-indenting only in Lisp :decision:
@@ -86,7 +78,7 @@
 :ID: 2bbfeaaa-f982-4661-8e26-2c0aa1e92800
 :END:
 
-- Guides draw a thin =│= at each indentation level; the guide of the current level is highlighted.
+- Guides draw a thin =│= at each indentation level; the current level is not highlighted, because that recomputes after each command.
   + Graphical frames only: the package cannot derive its faces without a display.
 - In Lisp buffers =aggressive-indent= re-indents as you type, which is how Lisp is meant to feel.
   + In other languages it fights with formatters, so it stays off.
@@ -105,7 +97,7 @@ The package cannot derive its faces without a display."
   :custom
   (highlight-indent-guides-method 'character)
   (highlight-indent-guides-character ?│)
-  (highlight-indent-guides-responsive 'top)
+  (highlight-indent-guides-responsive nil)
   (highlight-indent-guides-auto-odd-face-perc 5)
   (highlight-indent-guides-auto-even-face-perc 5)
   (highlight-indent-guides-auto-character-face-perc 15))
@@ -124,14 +116,12 @@ The package cannot derive its faces without a display."
 
 - Flymake is built in and runs a checker for the current language when one is available:
   + Eglot provides one for any language server;
-  + =package-lint= checks Emacs Lisp packages;
   + =flymake-collection= adds checkers for common tools.
 - Problems show in the left fringe and as counters in the mode line (zero counts hidden); =SPC F= lists them.
 - Checks run on save, not on a timer after each change; next and previous stop at the last error instead of wrapping.
 - Flymake's own commands carry no autoload cookie:
   + until some buffer has switched =flymake-mode= on, =flymake-start= and its neighbours are not defined and the =SPC F= keys would fail;
   + =:commands= declares them as autoloads, so each key loads Flymake the first time it is pressed.
-- =savehist= keeps =package-archive-contents= once =package-lint= loads.
 
 #+begin_src emacs-lisp
 (use-package flymake
@@ -147,13 +137,6 @@ The package cannot derive its faces without a display."
   (flymake-wrap-around nil)
   (flymake-mode-line-counter-format '("" flymake-mode-line-error-counter flymake-mode-line-warning-counter flymake-mode-line-note-counter ""))
   (flymake-mode-line-format '(" " flymake-mode-line-exception flymake-mode-line-counters)))
-
-(use-package package-lint
-  :ensure t
-  :commands (package-lint-current-buffer package-lint-buffer)
-  :config
-  (with-eval-after-load 'savehist
-    (add-to-list 'savehist-additional-variables 'package-archive-contents)))
 
 (use-package flymake-collection
   :ensure t
@@ -182,17 +165,12 @@ The package cannot derive its faces without a display."
 
 - Documentation shows in the echo area at once (=eldoc-idle-delay= is 0).
 - Lisp buffers (Emacs Lisp, IELM, =*scratch*=) get:
-  + =elisp-def= for jumping to definitions;
   + trailing whitespace marked, so it never creeps into a commit.
 - =lambda= is drawn as =λ= by the global =prettify-symbols-mode= in [[*Delimiters and structure]], which switches itself on in every mode that defines symbols to prettify.
 - Shell scripts named like zsh files (=.zsh=, =zshrc=, =zshenv=, =zprofile=, =zlogin=, =zlogout=) open in =sh-mode=.
 
 #+begin_src emacs-lisp
 (setopt eldoc-idle-delay 0)
-
-(use-package elisp-def
-  :ensure t
-  :hook ((emacs-lisp-mode ielm-mode lisp-interaction-mode) . elisp-def-mode))
 
 (defun kittymacs--show-trailing-whitespace ()
   "Mark trailing whitespace in this buffer."
@@ -224,9 +202,9 @@ The package cannot derive its faces without a display."
 | =f= | format (=indent-region=)   |                                               |
 | =;= | comment                    |                                               |
 | =s= | surround (Embrace)         |                                               |
-| =i= | edit all occurrences       | IELM                                          |
+| =i= |                            | IELM                                          |
 | =d= | definition                 | eval defun                                    |
-| =D= | references                 | find definition (=elisp-def=)                 |
+| =D= | references                 |                                               |
 | =b= |                            | eval buffer                                   |
 | =x= |                            | eval expression                               |
 | =g= |                            | edebug defun                                  |
@@ -243,7 +221,6 @@ The package cannot derive its faces without a display."
   "f" (cons "format" #'indent-region)
   ";" (cons "comment" #'comment-dwim)
   "s" (cons "surround" #'embrace-commander)
-  "i" (cons "edit all occurrences" #'iedit-mode)
   "d" (cons "definition" #'xref-find-definitions)
   "D" (cons "references" #'xref-find-references))
 
@@ -256,9 +233,7 @@ The package cannot derive its faces without a display."
   "i" (cons "ielm" #'ielm)
   "g" (cons "edebug defun" #'edebug-defun)
   "c" (cons "byte compile" #'emacs-lisp-byte-compile)
-  "l" (cons "package lint" #'package-lint-current-buffer)
   "m" (cons "macroexpand" #'pp-macroexpand-last-sexp)
-  "D" (cons "find definition" #'elisp-def)
   "?" (cons "menu" #'casual-elisp-tmenu))
 
 (provide 'kittymacs-programming)

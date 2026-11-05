@@ -194,20 +194,6 @@ Use t for a terminal configured with a Nerd Font, or nil to disable icons."
         widget-image-enable nil
         pulse-delay 0.08)
 
-(use-package dimmer
-  :ensure t
-  :custom
-  (dimmer-fraction 0.3)
-  (dimmer-adjustment-mode :foreground)
-  (dimmer-watch-frame-focus-events nil)
-  (dimmer-prevent-dimming-predicates '(window-minibuffer-p))
-  :config
-  (dimmer-configure-which-key)
-  (dimmer-configure-magit)
-  (dimmer-configure-posframe)
-  (add-to-list 'dimmer-buffer-exclusion-regexps "^ \\*Vertico\\*$")
-  (dimmer-mode 1))
-
 (defun kittymacs--pulse-line (&rest _)
   "Briefly highlight the current line."
   (pulse-momentary-highlight-one-line (point)))

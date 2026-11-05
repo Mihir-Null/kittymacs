@@ -22,7 +22,7 @@
         vc-annotate-display-mode 'scale
         diff-refine 'navigation
         diff-font-lock-prettify t
-        diff-font-lock-syntax 'hunk-also
+        diff-font-lock-syntax nil
         ediff-window-setup-function #'ediff-setup-windows-plain)
 
 (with-eval-after-load 'smerge-mode
@@ -46,9 +46,7 @@
   (magit-log-margin '(t "%Y-%m-%d %H:%M " magit-log-margin-width nil 18))
   (magit-section-initial-visibility-alist '((stashes . hide) (untracked . hide) (unpushed . hide)))
   (magit-no-message '("Turning on magit-auto-revert-mode..."))
-  (git-commit-summary-max-length 50)
-  :config
-  (add-hook 'after-save-hook #'magit-after-save-refresh-status t))
+  (git-commit-summary-max-length 50))
 (defun kittymacs--repository-root (directory)
   "Return the top level of the Git repository containing DIRECTORY, or nil."
   (when (and directory (file-directory-p directory))
@@ -87,7 +85,6 @@ Falls back to `magit-status', which asks, when neither is a repository."
   (diff-hl-side 'left)
   (diff-hl-update-async t)
   :config
-  (diff-hl-flydiff-mode 1)
   (unless (display-graphic-p) (diff-hl-margin-mode 1))
   (with-eval-after-load 'magit
     (add-hook 'magit-pre-refresh-hook #'diff-hl-magit-pre-refresh)

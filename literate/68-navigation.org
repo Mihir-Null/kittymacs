@@ -12,7 +12,7 @@
   + a /project/ is any Git repository or directory with a marker file; =SPC p= finds files, buffers and text inside one;
   + a /workspace/ is a tab with its own set of buffers, usually one per project, under =SPC W=;
   + searches use ripgrep when it is installed.
-- Most of it is built into Emacs (=project.el=, =recentf=, =saveplace=, bookmarks, the tab bar); packages add jumping (Avy), a ripgrep buffer (=deadgrep=), live replacement (=visual-regexp=) and workspaces (Tabspaces).
+- Most of it is built into Emacs (=project.el=, =recentf=, =saveplace=, bookmarks, the tab bar); packages add jumping (Avy), live replacement (=visual-regexp=) and workspaces (Tabspaces).
 - Leans on [[id:42b02bb4-ea68-4981-b427-35705bf162f4][the completion chapter]] for Consult, [[id:3fd783cd-deb8-48aa-bb44-0d9b16535365][the defaults chapter]] for the cache directory and [[id:afa6b7fd-742a-4c15-86a6-32e3e8027b0e][the platform chapter]]; [[id:53ad53ed-155f-47dc-973d-7be18de2893c][the keys chapter]] binds the commands.
 - Distilled from Lambda-Emacs by Colin McLear (=lem-setup-navigation=, =-projects=, =-search=, =-tabs=).
 
@@ -21,10 +21,7 @@
 - =save-place-mode= reopens every file where you left it, and keeps the place of a file it cannot read right now.
 - =recentf= keeps the last 500 files, for =SPC f r= and the home page.
 - Places, recent files and bookmarks are saved under the cache directory.
-- =C-"= jumps to the last change in the buffer.
 - URLs and e-mail addresses are clickable in compilation, shell, Eshell and text buffers, and in the comments and strings of code.
-- The outline sidebar (=SPC t o=) lists the buffer's headings or definitions in a side window on the right of the same frame, and follows point.
-  + It registers its side-window placement, so frames-only mode never gives it a frame.
 - =SPC b j= jumps to a heading or definition with completion: Org headings in Org, the outline elsewhere.
 
 #+begin_src emacs-lisp
@@ -51,25 +48,10 @@
 
 (setopt bookmark-default-file (expand-file-name "bookmarks" kittymacs-cache-dir))
 
-(use-package goto-last-change
-  :ensure t
-  :bind (("C-\"" . goto-last-change)))
 
 (dolist (hook '(compilation-mode-hook eshell-mode-hook shell-mode-hook text-mode-hook))
   (add-hook hook #'goto-address-mode))
 (add-hook 'prog-mode-hook #'goto-address-prog-mode)
-
-(use-package imenu-list
-  :ensure t
-  :commands (imenu-list-smart-toggle imenu-list-minor-mode)
-  :custom
-  (imenu-list-position 'right)
-  (imenu-list-auto-resize t)
-  (imenu-list-focus-after-activation t)
-  :config
-  ;; Register its side-window placement so frames-only mode never gives it a frame.
-  (when (fboundp 'imenu-list-install-display-buffer)
-    (imenu-list-install-display-buffer)))
 
 (defun kittymacs-jump-in-buffer ()
   "Jump to a heading or definition in this buffer with completion."
@@ -141,18 +123,13 @@
 
 * Searching files
 
-- Consult's ripgrep (=SPC s d=) is the everyday search.
-- =deadgrep= (=SPC s D=) gives a results buffer you can keep and revisit.
+- Consult's ripgrep (=SPC s d=) is the everyday search; =embark-export= turns its results into a buffer you can keep and revisit.
 - =visual-regexp= (=SPC s r=) shows replacements live before you commit to them.
 
 #+begin_src emacs-lisp
-(use-package deadgrep :ensure t :commands deadgrep)
 (use-package visual-regexp
   :ensure t
   :commands (vr/query-replace vr/replace))
-(use-package visual-regexp-steroids
-  :ensure t
-  :after visual-regexp)
 
 #+end_src
 
@@ -240,6 +217,5 @@
 - =SPC s d= then a word: ripgrep across the project, with live preview.
 - =SPC f r= for recent files; reopen one and you are where you left off.
 - =SPC j j= then a character: letters appear on every match in the frame.
-- =SPC t o=: the outline sidebar opens on the right and follows point.
 - =C-h v tabspaces-mode=: =t= once started, after the =private.el= function has run.
 - =just test-packages=: the startup verifier replays a real startup, after-init hooks included, and fails on any warning.

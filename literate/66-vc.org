@@ -23,7 +23,7 @@
 - Diffs:
   + =vc= diffs carry a =--patch-with-stat= summary;
   + changes are refined word by word as you move to a hunk;
-  + file headers are prettified and hunks keep their language's syntax highlighting.
+  + file headers are prettified, and hunks use diff colours only, because highlighting each hunk as its language costs too much on a large diff.
 - =vc-annotate= colours lines on a scale by age; Ediff keeps its control panel in the same frame.
 - When a merge leaves conflict markers in a file, =smerge-mode= offers to keep one side or the other.
   + Its commands live under =C-c v= here as well as the default =C-c ^=: =C-c v n= next conflict, =C-c v u= keep upper, =C-c v l= keep lower.
@@ -55,7 +55,7 @@
         vc-annotate-display-mode 'scale
         diff-refine 'navigation
         diff-font-lock-prettify t
-        diff-font-lock-syntax 'hunk-also
+        diff-font-lock-syntax nil
         ediff-window-setup-function #'ediff-setup-windows-plain)
 
 (with-eval-after-load 'smerge-mode
@@ -70,7 +70,7 @@
   + Magit selects whatever window it gets back, and a =nil= there is an error rather than a fallback.
 - Hunks are refined word by word; the log margin shows the date and time, not the author.
 - Commit summaries are kept to 50 characters.
-- The status buffer refreshes when you save a file.
+- The status buffer refreshes on =g= and after Magit's own commands, not on every save: =auto-save-visited-mode= saves often, and each refresh runs Git synchronously.
 - Stashes, untracked files and unpushed commits start folded.
 
 #+begin_src emacs-lisp
@@ -93,9 +93,7 @@
   (magit-log-margin '(t "%Y-%m-%d %H:%M " magit-log-margin-width nil 18))
   (magit-section-initial-visibility-alist '((stashes . hide) (untracked . hide) (unpushed . hide)))
   (magit-no-message '("Turning on magit-auto-revert-mode..."))
-  (git-commit-summary-max-length 50)
-  :config
-  (add-hook 'after-save-hook #'magit-after-save-refresh-status t))
+  (git-commit-summary-max-length 50))
 
 #+end_src
 
@@ -182,7 +180,8 @@ Falls back to `magit-status', which asks, when neither is a repository."
 
 * Changes in the gutter
 
-- =diff-hl= marks added, changed and deleted lines in the left fringe as you edit, in programming and text buffers.
+- =diff-hl= marks added, changed and deleted lines in the left fringe each time a file is saved, in programming and text buffers.
+  + =auto-save-visited-mode= saves after 15 idle seconds, so the gutter can lag the buffer by that long; =diff-hl-flydiff-mode= would close the gap by running a diff process while you type.
   + It updates asynchronously, and refreshes after Magit operations.
 - It uses the margin instead when there is no fringe (a terminal).
 - =SPC t g= toggles it in a buffer.
@@ -195,7 +194,6 @@ Falls back to `magit-status', which asks, when neither is a repository."
   (diff-hl-side 'left)
   (diff-hl-update-async t)
   :config
-  (diff-hl-flydiff-mode 1)
   (unless (display-graphic-p) (diff-hl-margin-mode 1))
   (with-eval-after-load 'magit
     (add-hook 'magit-pre-refresh-hook #'diff-hl-magit-pre-refresh)

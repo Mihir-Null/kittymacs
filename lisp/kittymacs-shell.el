@@ -37,6 +37,8 @@ They go at the end of `exec-path' and of the PATH that subprocesses see."
 (use-package envrc
   :ensure t
   :commands (envrc-allow envrc-deny envrc-reload envrc-show-log)
+  :custom
+  (envrc-async 1)
   :init
   (kittymacs-after-init #'envrc-global-mode 90))
 (defcustom kittymacs-eshell-dir (expand-file-name "eshell/" kittymacs-etc-dir)
@@ -95,7 +97,6 @@ They go at the end of `exec-path' and of the PATH that subprocesses see."
     ("fr" "consult-recent-file")
     ("bb" "consult-buffer")
     ("pp" "project-switch-project")
-    ("up" "eshell-up $1")
     ("q" "exit")
     ("x" "exit"))
   "Eshell aliases defined in Lisp.")
@@ -142,21 +143,6 @@ With REGEXP, go to the most recent directory matching it."
   :after eshell
   :config
   (eshell-syntax-highlighting-global-mode 1))
-
-(use-package eshell-up
-  :ensure t
-  :commands eshell-up
-  :config
-  (defalias 'eshell/up #'eshell-up))
-
-(use-package esh-help
-  :ensure t
-  :after eshell
-  :config
-  (setup-esh-help-eldoc))
-
-(use-package pcmpl-args :ensure t :after eshell)
-(use-package pcomplete-extension :ensure t :after eshell)
 (setopt tramp-persistency-file-name (expand-file-name "tramp" kittymacs-cache-dir)
         tramp-default-method "ssh"
         tramp-copy-size-limit nil

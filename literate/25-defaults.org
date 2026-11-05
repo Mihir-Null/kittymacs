@@ -69,11 +69,36 @@
 
 #+end_src
 
+* Responsiveness
+
+- Emacs runs Lisp and redraws on one thread, so anything slow here freezes typing.
+- Redisplay favours input:
+  + it skips fontifying while keys are waiting, and scrolling does not fontify text it passes over;
+  + paragraphs are always left to right, which saves the bidirectional scan (right-to-left text displays with less accurate ordering);
+  + font caches are not compacted during garbage collection, which matters with icon fonts;
+  + the region shows only in the selected window (=highlight-nonselected-windows=).
+- =read-process-output-max= reads 1 MB at a time, so an agent or language server needs fewer trips through the process filter.
+  + =process-adaptive-read-buffering= is off, so Emacs does not delay reads from a process that sends small chunks.
+- Auto-revert relies on file notifications: =auto-revert-avoid-polling= stops the stat of every buffer on each tick, and the interval only serves buffers without a watch.
+  + A file on a network mount that another machine changes may revert late or not at all.
+
+#+begin_src emacs-lisp
+(setopt read-process-output-max (* 1024 1024)
+        fast-but-imprecise-scrolling t
+        redisplay-skip-fontification-on-input t
+        highlight-nonselected-windows nil)
+(setq process-adaptive-read-buffering nil
+      inhibit-compacting-font-caches t
+      bidi-inhibit-bpa t)
+(setq-default bidi-paragraph-direction 'left-to-right)
+
+#+end_src
+
 * Files, saving and backups
 
 - Backups and auto-save files go under the cache, not beside your files.
   + Backups are numbered copies, the newest ten kept, files under version control included.
-- =auto-save-visited-mode= saves the file itself after a few idle seconds: crashes lose little, and you rarely think about saving.
+- =auto-save-visited-mode= saves the file itself after 15 idle seconds: crashes lose little, and you rarely think about saving.
 - Lock files are off: they confuse tools that watch a directory, and this is a single-user setup.
 - =savehist= remembers minibuffer history across sessions.
 - =so-long= keeps Emacs responsive when a file has enormous lines.
@@ -105,6 +130,7 @@
         kept-old-versions 0
         vc-make-backup-files t
         create-lockfiles nil)
+(setopt auto-save-visited-interval 15)
 (auto-save-visited-mode 1)
 
 (setopt savehist-file (expand-file-name "savehist" kittymacs-cache-dir))
@@ -192,7 +218,8 @@
         uniquify-ignore-buffers-re "^\\*")
 
 (setopt auto-revert-verbose nil
-        auto-revert-interval 0.5
+        auto-revert-interval 5
+        auto-revert-avoid-polling t
         revert-without-query '(".*")
         global-auto-revert-non-file-buffers t)
 (global-auto-revert-mode 1)
@@ -217,7 +244,7 @@
 :ID: 808d7464-14c2-42c5-865e-c08e17141ae2
 :END:
 
-- Undo is unlimited in practice, and no longer groups several edits into one step, which made undoing feel unpredictable.
+- Undo keeps about 16 MB per buffer, because every buffer's history is scanned on each garbage collection, and no longer groups several edits into one step, which made undoing feel unpredictable.
 - Meow's =u= undoes; =U= undoes only inside the selection.
 - After undoing past a fork, =SPC b u= draws the history as a tree (Vundo).
 - Vundo's buffer starts in Motion state, so its own keys work; it has no =SPC m= menu.
@@ -230,9 +257,9 @@
 
 #+begin_src emacs-lisp
 (fset 'undo-auto-amalgamate #'ignore)
-(setopt undo-limit 67108864
-        undo-strong-limit 100663296
-        undo-outer-limit 1006632960)
+(setopt undo-limit 16777216
+        undo-strong-limit 25165824
+        undo-outer-limit 134217728)
 
 (use-package vundo
   :ensure t

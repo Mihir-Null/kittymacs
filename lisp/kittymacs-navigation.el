@@ -17,25 +17,10 @@
 
 (setopt bookmark-default-file (expand-file-name "bookmarks" kittymacs-cache-dir))
 
-(use-package goto-last-change
-  :ensure t
-  :bind (("C-\"" . goto-last-change)))
 
 (dolist (hook '(compilation-mode-hook eshell-mode-hook shell-mode-hook text-mode-hook))
   (add-hook hook #'goto-address-mode))
 (add-hook 'prog-mode-hook #'goto-address-prog-mode)
-
-(use-package imenu-list
-  :ensure t
-  :commands (imenu-list-smart-toggle imenu-list-minor-mode)
-  :custom
-  (imenu-list-position 'right)
-  (imenu-list-auto-resize t)
-  (imenu-list-focus-after-activation t)
-  :config
-  ;; Register its side-window placement so frames-only mode never gives it a frame.
-  (when (fboundp 'imenu-list-install-display-buffer)
-    (imenu-list-install-display-buffer)))
 
 (defun kittymacs-jump-in-buffer ()
   "Jump to a heading or definition in this buffer with completion."
@@ -70,13 +55,9 @@
   (when (executable-find "rg")
     (setopt xref-search-program 'ripgrep))
   (project-forget-zombie-projects))
-(use-package deadgrep :ensure t :commands deadgrep)
 (use-package visual-regexp
   :ensure t
   :commands (vr/query-replace vr/replace))
-(use-package visual-regexp-steroids
-  :ensure t
-  :after visual-regexp)
 (setopt tab-bar-tab-hints t
         tab-bar-new-tab-choice "*scratch*"
         tab-bar-new-tab-to 'rightmost

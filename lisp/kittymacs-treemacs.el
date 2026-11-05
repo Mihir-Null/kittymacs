@@ -26,7 +26,7 @@
   (treemacs-display-in-side-window t)
   (treemacs-is-never-other-window t)
   (treemacs-follow-after-init t)
-  (treemacs-file-follow-delay 0.2)
+  (treemacs-file-follow-delay 1)
   (treemacs-project-follow-cleanup t)
   (treemacs-collapse-dirs (if (executable-find "python3") 3 0))
   (treemacs-indent-guide-style 'line)
@@ -55,12 +55,7 @@
     ('(t . t) (treemacs-git-mode 'deferred))
     ('(t . nil) (treemacs-git-mode 'simple)))
   ;; Show files that Git ignores, too.
-  (treemacs-hide-gitignored-files-mode -1)
-
-  ;; The sidebar is a panel that serves the buffer beside it; dimming it as
-  ;; an "inactive window" only makes the tree harder to read.
-  (with-eval-after-load 'dimmer
-    (add-to-list 'dimmer-buffer-exclusion-regexps "\\*Treemacs")))
+  (treemacs-hide-gitignored-files-mode -1))
 (use-package treemacs-nerd-icons
   :ensure t
   :after treemacs

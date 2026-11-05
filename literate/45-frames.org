@@ -112,7 +112,7 @@ before this module is loaded, to override."
 :END:
 
 - Only *full buffers* go to frames.
-- Panels that ask for a side window keep it: the file-tree and outline sidebars (=SPC t d=, =SPC t o=), Vertico's candidate list, which-key, Transient menus and Corfu.
+- Panels that ask for a side window keep it: the file-tree sidebar (=SPC t d=), Vertico's candidate list, which-key, Transient menus and Corfu.
 - The mode line, the fringe gutters and the minibuffer are per frame anyway.
 - The rule of thumb when adding a package:
   + a buffer you read or edit gets a frame;

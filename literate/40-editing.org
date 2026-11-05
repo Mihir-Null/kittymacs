@@ -53,6 +53,12 @@
 | Act    | =a= =A= =i= =I= insert, =c= change, =d= =D= delete, =s= kill, =r= replace, =R= overwrite, =m= join, =p= yank, =y= copy, =u= =U= undo, =z= pop selection, =q= quit, ='= repeat, =&= =%= query-replace |
 | Grab   | ~=~ grab, =X= swap, =Y= sync: keep a second selection in sync (see =meow-tutor=)            |
 
+- To edit every occurrence of a symbol in part of a buffer, use Beacon state:
+  + select the part to change, such as a block with =o= or lines with =x=, and press ~=~ to grab it;
+  + move to one occurrence and press =W= (=w= for a word), and every match inside the grab gets a cursor; point starts at the end of the grab, and the mode line leaves =BEACON= if you move outside it;
+  + press =c=, type the new text and press =ESC=, and Meow repeats the edit at each cursor;
+  + press ~=~ again to release the grab.
+
 #+begin_src emacs-lisp
 ;;; kittymacs-meow.el --- Selection-first editing -*- lexical-binding: t; -*-
 ;; Generated from literate/40-editing.org; edit the Org source, then tangle.
@@ -202,6 +208,7 @@
 - =w= on a word, then =d=: the word is selected, then deleted.
 - =x=, then =3=: the line is selected, then grows to the hint numbered 3; the hints are coloured, not plain text.
 - =i=, type, =ESC=: Insert state and back to Normal.
+- =o=, ~=~, =W= on a repeated symbol, =c=, type, =ESC=, ~=~: every occurrence in the block changes.
 - =, <= inside =<...>=: the text between the angle brackets is selected.
 - =, f= in a Tree-sitter buffer: the inside of the current function is selected.
 - =SPC= in Normal state opens the leader; =C-h k SPC f f= describes the real command.

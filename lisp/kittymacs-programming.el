@@ -18,9 +18,6 @@
   :ensure t
   :hook (prog-mode . rainbow-delimiters-mode))
 
-(use-package rainbow-identifiers
-  :ensure t
-  :commands rainbow-identifiers-mode)
 
 (use-package puni
   :ensure t
@@ -43,10 +40,6 @@
   :config
   (add-hook 'markdown-mode-hook #'kittymacs--embrace-markdown)
   (add-hook 'markdown-ts-mode-hook #'kittymacs--embrace-markdown))
-
-(use-package iedit
-  :ensure t
-  :commands iedit-mode)
 (defun kittymacs--indent-guides ()
   "Show indent guides in graphical frames.
 The package cannot derive its faces without a display."
@@ -59,7 +52,7 @@ The package cannot derive its faces without a display."
   :custom
   (highlight-indent-guides-method 'character)
   (highlight-indent-guides-character ?│)
-  (highlight-indent-guides-responsive 'top)
+  (highlight-indent-guides-responsive nil)
   (highlight-indent-guides-auto-odd-face-perc 5)
   (highlight-indent-guides-auto-even-face-perc 5)
   (highlight-indent-guides-auto-character-face-perc 15))
@@ -85,13 +78,6 @@ The package cannot derive its faces without a display."
   (flymake-mode-line-counter-format '("" flymake-mode-line-error-counter flymake-mode-line-warning-counter flymake-mode-line-note-counter ""))
   (flymake-mode-line-format '(" " flymake-mode-line-exception flymake-mode-line-counters)))
 
-(use-package package-lint
-  :ensure t
-  :commands (package-lint-current-buffer package-lint-buffer)
-  :config
-  (with-eval-after-load 'savehist
-    (add-to-list 'savehist-additional-variables 'package-archive-contents)))
-
 (use-package flymake-collection
   :ensure t
   :demand t
@@ -103,10 +89,6 @@ The package cannot derive its faces without a display."
 (with-eval-after-load 'compile
   (add-hook 'compilation-filter-hook #'comint-truncate-buffer))
 (setopt eldoc-idle-delay 0)
-
-(use-package elisp-def
-  :ensure t
-  :hook ((emacs-lisp-mode ielm-mode lisp-interaction-mode) . elisp-def-mode))
 
 (defun kittymacs--show-trailing-whitespace ()
   "Mark trailing whitespace in this buffer."
@@ -124,7 +106,6 @@ The package cannot derive its faces without a display."
   "f" (cons "format" #'indent-region)
   ";" (cons "comment" #'comment-dwim)
   "s" (cons "surround" #'embrace-commander)
-  "i" (cons "edit all occurrences" #'iedit-mode)
   "d" (cons "definition" #'xref-find-definitions)
   "D" (cons "references" #'xref-find-references))
 
@@ -137,9 +118,7 @@ The package cannot derive its faces without a display."
   "i" (cons "ielm" #'ielm)
   "g" (cons "edebug defun" #'edebug-defun)
   "c" (cons "byte compile" #'emacs-lisp-byte-compile)
-  "l" (cons "package lint" #'package-lint-current-buffer)
   "m" (cons "macroexpand" #'pp-macroexpand-last-sexp)
-  "D" (cons "find definition" #'elisp-def)
   "?" (cons "menu" #'casual-elisp-tmenu))
 
 (provide 'kittymacs-programming)

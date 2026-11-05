@@ -166,7 +166,7 @@
     with pkgs;
     [
       git # version control chapter (Magit)
-      ripgrep # navigation chapter (consult-ripgrep, deadgrep)
+      ripgrep # navigation chapter (consult-ripgrep)
       fd # navigation chapter (consult-fd)
       gnupg # startup chapter: GNU ELPA's signed index
       (hunspell.withDicts (d: [ d.en_US ])) # platform chapter: spelling
@@ -276,23 +276,18 @@ emacs.pkgs.withPackages (
     consult-flyspell
     corfu
     dashboard
-    deadgrep
     diff-hl
-    dimmer
     diredfl
     dired-narrow
     dired-ranger
     doom-modeline
     doom-themes
-    elisp-def
     elisp-demos
     embark
     embark-consult
     embrace
     envrc
     eshell-syntax-highlighting
-    eshell-up
-    esh-help
     exec-path-from-shell
     exwm
     flymake-collection
@@ -302,14 +297,11 @@ emacs.pkgs.withPackages (
     geiser-guile
     ghostel
     goggles
-    goto-last-change
     helpful
     hide-mode-line
     highlight-indent-guides
     highlight-numbers
     hl-todo
-    iedit
-    imenu-list
     info-colors
     jupyter
     keycast
@@ -335,15 +327,11 @@ emacs.pkgs.withPackages (
     org-roam
     org-super-agenda
     outline-minor-faces
-    package-lint
-    pcmpl-args
-    pcomplete-extension
     pdf-tools
     popper
     puni
     racket-mode
     rainbow-delimiters
-    rainbow-identifiers
     rainbow-mode
     spacious-padding
     tabspaces
@@ -353,7 +341,6 @@ emacs.pkgs.withPackages (
     treemacs-tab-bar
     vertico
     visual-regexp
-    visual-regexp-steroids
     vundo
     writeroom-mode
     ws-butler

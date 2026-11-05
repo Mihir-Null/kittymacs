@@ -27,11 +27,11 @@
 - Single-child directories collapse into one line, so a deep package path does not cost five rows.
   + This needs Python 3; without it the tree shows every level.
 - Always on: filesystem watching, a fringe mark on the current file, indent guides, and following the project you are in and only that project.
+  + The tree waits one second before following the current file, so a run of quick buffer switches costs one update.
 - Git status colours:
   + with Python 3, the /deferred/ variant: directories as well as files, the status parsed asynchronously, and the tree drawn first and coloured a moment later, which feels quicker on a large repository;
   + without Python 3, the /simple/ variant colours files only;
   + without =git=, no colours.
-- The sidebar is a panel that serves the buffer beside it, so =dimmer= leaves it alone: dimming it as an "inactive window" only makes the tree harder to read.
 - PNG icons are off in a text terminal.
 
 #+begin_src emacs-lisp
@@ -67,7 +67,7 @@
   (treemacs-display-in-side-window t)
   (treemacs-is-never-other-window t)
   (treemacs-follow-after-init t)
-  (treemacs-file-follow-delay 0.2)
+  (treemacs-file-follow-delay 1)
   (treemacs-project-follow-cleanup t)
   (treemacs-collapse-dirs (if (executable-find "python3") 3 0))
   (treemacs-indent-guide-style 'line)
@@ -96,12 +96,7 @@
     ('(t . t) (treemacs-git-mode 'deferred))
     ('(t . nil) (treemacs-git-mode 'simple)))
   ;; Show files that Git ignores, too.
-  (treemacs-hide-gitignored-files-mode -1)
-
-  ;; The sidebar is a panel that serves the buffer beside it; dimming it as
-  ;; an "inactive window" only makes the tree harder to read.
-  (with-eval-after-load 'dimmer
-    (add-to-list 'dimmer-buffer-exclusion-regexps "\\*Treemacs")))
+  (treemacs-hide-gitignored-files-mode -1))
 
 #+end_src
 

@@ -107,6 +107,9 @@ They go at the end of `exec-path' and of the PATH that subprocesses see."
 - Where =direnv= is not on =exec-path= (native Windows, a machine without it) envrc enables itself in no buffer, so it costs nothing.
   + =direnv= comes from [[id:d25a5063-1439-4ae0-8fbe-b0162d05a0e0][the tool list]] on a Nix machine.
   + nix-direnv is the /shell's/ configuration (=programs.direnv.nix-direnv.enable= in Home Manager), not Emacs's; envrc runs the same =direnv= and finds it there.
+- =envrc-async= is 1: a cached shell usually arrives within that second, and a long Nix evaluation finishes in the background.
+  + Each buffer opened during the evaluation waits up to that second, so opening many of them adds up.
+  + A mode hook that outruns direnv, such as Eglot's start, can then see the global environment; =SPC p E r= and =M-x eglot-reconnect= correct it.
 - The mode line shows =envrc= in green when a buffer has its project's environment, yellow when the =.envrc= waits to be allowed, red when it failed.
 - The commands are on =SPC p E= ([[id:53ad53ed-155f-47dc-973d-7be18de2893c][the keys chapter]]): =a= allow, =d= deny, =r= reload after editing a flake, =l= the log of the last =direnv= run.
 
@@ -114,6 +117,8 @@ They go at the end of `exec-path' and of the PATH that subprocesses see."
 (use-package envrc
   :ensure t
   :commands (envrc-allow envrc-deny envrc-reload envrc-show-log)
+  :custom
+  (envrc-async 1)
   :init
   (kittymacs-after-init #'envrc-global-mode 90))
 
@@ -188,14 +193,13 @@ They go at the end of `exec-path' and of the PATH that subprocesses see."
 | =gd=, =gl=       | coloured diff, last 20 commits   |
 | =l=, =la=, =ll=  | =ls=, =ls -la=, =ls -lah=        |
 | =fr=, =bb=, =pp= | recent files, buffers, projects  |
-| =up=             | a parent directory (=eshell-up=) |
 | =q=, =x=         | =exit=                           |
 
 - =z= jumps to any directory you have visited, with completion; =z REGEXP= goes to the most recent match.
 - =SPC o s= opens an Eshell named =*eshell: PROJECT*= at the project root, or in this directory outside a project.
   + [[id:bd2638bc-735d-4849-bafe-3dab5e8e30b7][The terminal]] falls back to it for =SPC o p= where ghostel is off.
 - In every Eshell buffer =C-l= clears it, =imenu= lists the prompts, lines wrap visually and the current line is not highlighted.
-- Small packages add syntax highlighting, the =up= command, Eldoc help for commands (=esh-help=) and richer argument completion (=pcmpl-args=, =pcomplete-extension=).
+- =eshell-syntax-highlighting= colours the command line as you type.
 
 #+begin_src emacs-lisp
 (defvar kittymacs-eshell-aliases
@@ -212,7 +216,6 @@ They go at the end of `exec-path' and of the PATH that subprocesses see."
     ("fr" "consult-recent-file")
     ("bb" "consult-buffer")
     ("pp" "project-switch-project")
-    ("up" "eshell-up $1")
     ("q" "exit")
     ("x" "exit"))
   "Eshell aliases defined in Lisp.")
@@ -259,21 +262,6 @@ With REGEXP, go to the most recent directory matching it."
   :after eshell
   :config
   (eshell-syntax-highlighting-global-mode 1))
-
-(use-package eshell-up
-  :ensure t
-  :commands eshell-up
-  :config
-  (defalias 'eshell/up #'eshell-up))
-
-(use-package esh-help
-  :ensure t
-  :after eshell
-  :config
-  (setup-esh-help-eldoc))
-
-(use-package pcmpl-args :ensure t :after eshell)
-(use-package pcomplete-extension :ensure t :after eshell)
 
 #+end_src
 

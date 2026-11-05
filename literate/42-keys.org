@@ -111,9 +111,7 @@
   "S" (cons "lines in all buffers" #'consult-line-multi)
   "." (cons "symbol at point" #'kittymacs-search-symbol-at-point)
   "d" (cons "ripgrep" #'consult-ripgrep)
-  "D" (cons "ripgrep buffer" #'deadgrep)
   "r" (cons "replace (visual)" #'vr/query-replace)
-  "c" (cons "edit occurrences" #'iedit-mode)
   "i" (cons "imenu" #'consult-imenu)
   "o" (cons "outline" #'consult-outline)
   "h" (cons "org heading" #'consult-org-heading)
@@ -240,7 +238,7 @@
 | =SPC c= | code            | =c= comment          | =d= duplicate, =s= surround, =f= indent region, =p= complete with |
 | =SPC e= | eval            | =e= last sexp        | =d= defun, =b= buffer, =r= region, =i= ielm                    |
 | =SPC l= | language server | (=e= start or manage) | =a= code actions, =R= rename, =f= format, =d= / =r= definition / references |
-| =SPC F= | diagnostics     | (=n= next)           | =p= previous, =d= / =D= list buffer / project, =P= package lint |
+| =SPC F= | diagnostics     | (=n= next)           | =p= previous, =d= / =D= list buffer / project |
 | =SPC i= | insert          | (=s= snippet)        | =y= from kill ring, =c= character, =e= emoji, =d= date        |
 
 - =SPC l= is the language-server menu; the servers are opt-in in [[id:560fcdca-6cb8-49d9-bf27-eb78f32b9285][the languages chapter]].
@@ -304,8 +302,7 @@
   "d" (cons "list buffer" #'flymake-show-buffer-diagnostics)
   "D" (cons "list project" #'flymake-show-project-diagnostics)
   "c" (cons "choose" #'consult-flymake)
-  "s" (cons "start check" #'flymake-start)
-  "P" (cons "package lint" #'package-lint-current-buffer))
+  "s" (cons "start check" #'flymake-start))
 
 (defun kittymacs-insert-date ()
   "Insert today's date as YYYY-MM-DD."
@@ -399,13 +396,10 @@
   "s" (cons "spell check" #'flyspell-mode)
   "F" (cons "flymake" #'flymake-mode)
   "r" (cons "colour names" #'rainbow-mode)
-  "R" (cons "rainbow identifiers" #'rainbow-identifiers-mode)
   "f" (cons "frames-only mode" #'frames-only-mode)
   "d" (cons "file tree sidebar" #'treemacs)
   "a" (cons "suggestions (Copilot)" #'kittymacs-suggestions-toggle)
-  "o" (cons "outline sidebar" #'imenu-list-smart-toggle)
   "g" (cons "git gutter" #'diff-hl-mode)
-  "D" (cons "dim other windows" #'dimmer-mode)
   "k" (cons "show keys (keycast)" #'keycast-header-line-mode)
   "K" (cons "log keys" #'keycast-log-mode)
   "m" (cons "menu bar" #'menu-bar-mode)
