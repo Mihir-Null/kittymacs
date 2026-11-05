@@ -302,7 +302,8 @@ caught, so it shows a backtrace."
                                     :error)))))
             depth))
 
-;; Foundation: defaults, platform paths, machine overrides, the look.
+;; Foundation: the feature list, defaults, platform paths, machine overrides, the look.
+(require 'kittymacs-catalogue)
 (require 'kittymacs-defaults)
 (require 'kittymacs-platform)
 (let ((private (expand-file-name "private.el" kittymacs-lisp-dir)))

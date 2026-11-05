@@ -2,6 +2,7 @@
 *.org text eol=lf
 *.el  text eol=lf
 *.nix text eol=lf
+*.json text eol=lf
 *.yml text eol=lf
 justfile text eol=lf
 # These files are tangled from the chapters in literate/.  GitHub folds them

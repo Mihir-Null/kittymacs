@@ -1,0 +1,223 @@
+;;; kittymacs-catalogue.el --- Every optional feature and its packages -*- lexical-binding: t; -*-
+;; Generated from literate/20-catalogue.org; edit the Org source, then tangle.
+
+;;; Code:
+
+(defconst kittymacs-catalogue
+  '(;; Editing
+    (meow
+     :group editing :packages (meow) :module kittymacs-meow :profile minimal
+     :summary "Selection-first modal editing, the grammar every key here builds on."
+     :example "=w= marks a word, then =d= deletes it; you see the target before you act.")
+    (undo-tree
+     :group editing :packages (vundo) :module kittymacs-defaults :profile minimal
+     :summary "Undo history drawn as a tree, so an undone change is never lost."
+     :example "=SPC b u= shows the history, and the arrow keys walk through it.")
+    (structural-editing
+     :group editing :packages (puni aggressive-indent) :module kittymacs-programming :profile full
+     :summary "Keeps brackets balanced as you edit, and re-indents Lisp as you type."
+     :example "Deleting never breaks a pair, and =C-)= pulls the next expression inside.")
+    (surround
+     :group editing :packages (embrace) :module kittymacs-programming :profile full
+     :summary "Adds, changes and removes the pair around a selection."
+     :example "=SPC c s= wraps the selection in quotes or brackets.")
+    (syntax-things
+     :group editing :packages (meow-tree-sitter) :module kittymacs-meow :profile full :deps (meow)
+     :summary "Meow selects by syntax: functions, classes and parameters."
+     :example "=, f= selects inside the current function in a Tree-sitter buffer.")
+    (visual-replace
+     :group editing :packages (visual-regexp) :module kittymacs-navigation :profile full
+     :summary "Regexp replacement that shows each match and its result as you type."
+     :example "=SPC s r= previews the replacement before you commit to it.")
+    (whitespace-cleanup
+     :group editing :packages (ws-butler) :module kittymacs-defaults :profile minimal
+     :summary "Removes trailing whitespace from the lines you changed, and no others."
+     :example "Saving leaves untouched lines out of the diff; =SPC c w= cleans a whole buffer.")
+    (snippets
+     :group editing :packages (yasnippet) :module kittymacs-completion :profile full
+     :summary "Expands short templates that you keep in your own folder."
+     :example "=SPC i s= picks a snippet for this kind of file.")
+    (spelling
+     :group editing :packages (flyspell-correct consult-flyspell) :module kittymacs-completion :profile full
+     :summary "Corrects spelling through the completion list."
+     :example "=SPC s p= lists the errors in this buffer.")
+
+    ;; Finding things
+    (completion
+     :group finding :module kittymacs-completion :profile minimal
+     :packages (vertico orderless marginalia consult embark embark-consult corfu cape)
+     :summary "Filterable lists for every prompt, and completion as you type."
+     :example "=SPC b b= switches buffer, and =SPC s d= searches a project.")
+    (directory-switch
+     :group finding :packages (consult-dir) :module kittymacs-completion :profile full :deps (completion)
+     :summary "Offers recent and project directories at any file prompt."
+     :example "=SPC f D= goes to a directory you used before.")
+    (jump
+     :group finding :packages (avy) :module kittymacs-navigation :profile full
+     :summary "Jumps anywhere on screen by typing a character and a letter."
+     :example "=SPC j j= puts letters on each match, then you press one.")
+    (window-picker
+     :group finding :packages (ace-window) :module kittymacs-defaults :profile full
+     :summary "Picks a window by letter when a frame holds several."
+     :example "=SPC w w= labels each window, and a letter jumps there.")
+    (workspaces
+     :group finding :packages (tabspaces) :module kittymacs-navigation :profile full
+     :summary "One tab per project, each listing only its own buffers."
+     :example "=SPC p p= opens a project in a workspace of its own.")
+    (file-tree
+     :group finding :module kittymacs-treemacs :profile full :deps (icons version-control)
+     :packages (treemacs treemacs-nerd-icons treemacs-tab-bar treemacs-magit)
+     :summary "A project tree in a sidebar that follows the file you are in."
+     :example "=SPC t d= opens the tree, and =SPC f t= finds this file in it.")
+    (dired-extras
+     :group finding :packages (diredfl dired-narrow dired-ranger async) :module kittymacs-dired :profile full
+     :summary "Colours, filtering and copy-and-paste in the file manager."
+     :example "=SPC d= opens the directory, with file types in colour.")
+
+    ;; How it looks
+    (doom-look
+     :group look :packages (doom-themes doom-modeline) :module kittymacs-ui :profile full :deps (icons)
+     :summary "The Sonokai theme and an informative mode line, instead of the built-in look."
+     :example "=SPC t t= flips between dark and light themes.")
+    (icons
+     :group look :module kittymacs-ui :profile full
+     :packages (nerd-icons nerd-icons-completion nerd-icons-corfu nerd-icons-dired)
+     :summary "File and symbol icons in lists and in the file manager."
+     :example "=SPC f f= shows an icon beside each file; it needs a Nerd Font.")
+    (code-display
+     :group look :packages (rainbow-delimiters highlight-indent-guides) :module kittymacs-programming :profile full
+     :summary "Colours brackets by depth and draws a guide at each indentation level."
+     :example "Matching brackets share a colour in code.")
+    (ui-polish
+     :group look :module kittymacs-ui :profile full
+     :packages (spacious-padding hl-todo highlight-numbers goggles outline-minor-faces)
+     :summary "Frame padding, highlighted TODOs and numbers, and a flash on each edit."
+     :example "=TODO= stands out in code, and pasted text flashes briefly.")
+    (focus-mode
+     :group look :packages (writeroom-mode hide-mode-line) :module kittymacs-ui :profile full
+     :summary "A centred, distraction-free view for writing."
+     :example "=SPC t w= centres the buffer and hides the mode line.")
+    (frames
+     :group look :packages (frames-only-mode) :module kittymacs-frames :profile full
+     :summary "Opens each new editing surface as an OS window, for tiling window managers."
+     :example "=SPC w n= makes a window, and =SPC t f= turns the policy off for a session.")
+    (home-page
+     :group look :packages (dashboard) :module kittymacs-dashboard :profile full
+     :summary "A start page with recent files and projects."
+     :example "=SPC h h= returns to it.")
+    (popups
+     :group look :packages (popper) :module kittymacs-defaults :profile full
+     :summary "Keeps Help and compilation output in a window that one key dismisses."
+     :example "=M-`= toggles the last popup.")
+    (color-names
+     :group look :packages (rainbow-mode) :module kittymacs-defaults :profile full
+     :summary "Paints colour names and codes in their own colour."
+     :example "=SPC t r= shows =#ff0000= on a red background.")
+
+    ;; Help
+    (help-extras
+     :group help :packages (helpful elisp-demos info-colors) :module kittymacs-help :profile full
+     :summary "Richer help pages, with source, usage examples and coloured manuals."
+     :example "=C-h f= shows a function's source and its callers.")
+    (command-menus
+     :group help :packages (casual) :module kittymacs-help :profile full
+     :summary "Menus that list the commands of the built-in tools."
+     :example "=SPC c m= opens a menu of editing commands.")
+    (key-display
+     :group help :packages (keycast) :module kittymacs-help :profile full
+     :summary "Shows each key and its command as you press it."
+     :example "=SPC t k= shows keys in the header line, which helps when teaching.")
+
+    ;; Version control
+    (version-control
+     :group git :packages (magit) :module kittymacs-vc :profile minimal
+     :summary "Magit, a complete interface to Git."
+     :example "=SPC v s= shows the status; =s= stages and =c c= commits.")
+    (diff-hl
+     :group git :packages (diff-hl) :module kittymacs-vc :profile minimal
+     :summary "Marks changed lines in the fringe each time you save."
+     :example "=SPC t g= turns the marks on or off in this buffer.")
+
+    ;; Shells and environments
+    (project-environment
+     :group shells :packages (envrc) :module kittymacs-shell :profile minimal
+     :summary "Gives each buffer its project's direnv environment."
+     :example "=SPC p E r= reloads it after you edit a flake.")
+    (shell-path
+     :group shells :packages (exec-path-from-shell) :module kittymacs-shell :profile minimal
+     :not-on (windows-nt android)
+     :summary "Copies your shell's PATH, so an app launched from a menu finds your tools."
+     :example "An Emacs from the Dock runs the same =git= as your terminal.")
+    (terminal
+     :group shells :packages (ghostel consult-ghostel) :module kittymacs-terminal :profile full
+     :not-on (android)
+     :summary "A fast, real terminal inside Emacs."
+     :example "=SPC o e= opens one that full-screen programs such as =htop= run in.")
+    (eshell-highlight
+     :group shells :packages (eshell-syntax-highlighting) :module kittymacs-shell :profile full
+     :summary "Colours the Eshell command line as you type."
+     :example "=SPC o s= opens Eshell, where a misspelled command shows in red.")
+
+    ;; Notes
+    (org-extras
+     :group notes :module kittymacs-org :profile full
+     :packages (org-ql org-super-agenda org-contrib org-modern org-appear org-modern-indent)
+     :summary "A tidier Org display, grouped agendas and searches across your notes."
+     :example "=SPC s q= finds headings by tag or state in every Org file.")
+    (linked-notes
+     :group notes :packages (org-roam) :module kittymacs-org-roam :profile full
+     :summary "Linked notes with backlinks, for personal and project graphs."
+     :example "=SPC n f= finds or creates a note.")
+    (pdf-reading
+     :group notes :module kittymacs-reading :profile full :deps (linked-notes)
+     :packages (pdf-tools org-noter org-pdftools org-noter-pdftools pdf-text)
+     :summary "Reads PDFs in Emacs and keeps notes beside each page."
+     :example "Opening a PDF renders it in a buffer, where you can search and annotate.")
+
+    ;; Programming
+    (more-checkers
+     :group programming :packages (flymake-collection) :module kittymacs-programming :profile full
+     :summary "Adds Flymake checkers for common tools such as linters."
+     :example "=SPC F d= lists what those tools found in this buffer.")
+    (notebooks
+     :group programming :packages (code-cells math-preview) :module kittymacs-notebooks :profile full
+     :summary "Works on Jupytext scripts as cells, with rendered maths."
+     :example "A =# %%= line starts a cell that you can run and step through.")
+    (jupyter
+     :group programming :packages (jupyter) :module kittymacs-notebooks :profile optional :deps (notebooks)
+     :summary "Runs notebook cells in a live Jupyter kernel; it needs a native module."
+     :example "Set =kittymacs-notebooks-jupyter= to run a cell and see its output inline.")
+    (lang-nix
+     :group programming :packages (nix-mode nix-ts-mode) :module kittymacs-languages :profile optional
+     :summary "Editing modes for the Nix language."
+     :example "Opening a =.nix= file gives highlighting and indentation.")
+    (lang-racket
+     :group programming :packages (racket-mode) :module kittymacs-languages :profile optional
+     :summary "Editing and a REPL for Racket."
+     :example "Opening a =.rkt= file offers a REPL beside it.")
+    (lang-guile
+     :group programming :packages (geiser geiser-guile) :module kittymacs-languages :profile optional
+     :summary "Editing and a REPL for Guile Scheme."
+     :example "Opening a =.scm= file offers a Guile REPL beside it.")
+
+    ;; Assistants
+    (agents
+     :group assistants :packages (agent-shell agent-shell-attention) :module kittymacs-agents :profile full
+     :summary "Runs a coding agent such as Claude Code in a buffer."
+     :example "=SPC a a= starts an agent in this project.")
+    (suggestions
+     :group assistants :packages (copilot) :module kittymacs-suggestions :profile full
+     :summary "Copilot's ghost text, offered as you type once you turn it on."
+     :example "=SPC t a= turns suggestions on, and needs a GitHub account.")
+
+    ;; Window manager
+    (window-manager
+     :group desktop :packages (exwm) :module kittymacs-exwm :profile optional
+     :not-on (windows-nt darwin android)
+     :summary "Makes Emacs the X window manager, with programs as buffers."
+     :example "A session that sets =KITTYMACS_EXWM=1= shows Chrome as a buffer."))
+  "Every optional feature: its name, then a property list.
+The chapter that writes this file explains the properties.")
+
+(provide 'kittymacs-catalogue)
+;;; kittymacs-catalogue.el ends here
