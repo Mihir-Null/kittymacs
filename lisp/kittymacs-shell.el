@@ -24,16 +24,16 @@ They go at the end of `exec-path' and of the PATH that subprocesses see."
       (setq exec-path (append exec-path (list directory)))
       (setenv "PATH" (concat (getenv "PATH") path-separator directory)))))
 
-(use-package exec-path-from-shell
-  :ensure t
-  :if (not (memq system-type '(windows-nt android)))
-  :custom
-  (exec-path-from-shell-variables '("PATH" "MANPATH" "LANG" "NIX_PATH" "NIX_PROFILES"))
-  (exec-path-from-shell-arguments (and (eq system-type 'darwin) '("-l")))
-  :config
-  (when (or window-system (daemonp))
-    (exec-path-from-shell-initialize)
-    (kittymacs--restore-launcher-path)))
+(unless (memq system-type '(windows-nt android))
+  (use-package exec-path-from-shell
+    :ensure t
+    :custom
+    (exec-path-from-shell-variables '("PATH" "MANPATH" "LANG" "NIX_PATH" "NIX_PROFILES"))
+    (exec-path-from-shell-arguments (and (eq system-type 'darwin) '("-l")))
+    :config
+    (when (or window-system (daemonp))
+      (exec-path-from-shell-initialize)
+      (kittymacs--restore-launcher-path))))
 (use-package envrc
   :ensure t
   :commands (envrc-allow envrc-deny envrc-reload envrc-show-log)
