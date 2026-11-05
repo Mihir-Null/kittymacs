@@ -6,7 +6,7 @@
 (when (< emacs-major-version 31)
   (error "kittymacs needs Emacs 31.1 or later; this is Emacs %s" emacs-version))
 (add-to-list 'load-path kittymacs-lisp-dir)
-(package-initialize)
+(kittymacs-activate-packages)
 (require 'use-package)
 (setopt use-package-enable-imenu-support t)
 
@@ -19,23 +19,32 @@ The `use-package-ensure-function' of kittymacs.  Before the session's
 first install it refreshes the cached archive index, whose tarballs may
 be gone; then `use-package-ensure-elpa' installs.  STATE and NO-REFRESH
 are passed through.  A package the installer already failed on is left
-alone, since it warned once."
+alone, since it warned once.  A start from the quickstart file knows only
+what that file activated, so it reads the package directories before it
+believes that a package is missing."
   (unless (memq name (bound-and-true-p kittymacs-features--failed))
-    (unless (or kittymacs--archives-refreshed
-                (seq-every-p (lambda (ensure)
-                               (let ((package (if (eq ensure t) (use-package-as-symbol name) ensure)))
-                                 (or (null package)
-                                     (package-installed-p (if (consp package) (car package) package)))))
-                             args))
-      (setq kittymacs--archives-refreshed t)
-      (condition-case-unless-debug err
-          (package-refresh-contents)
-        (error
-         (display-warning 'kittymacs
-                          (format "Could not refresh the package archives: %s
+    (let ((installed-p
+           (lambda ()
+             (seq-every-p (lambda (ensure)
+                            (let ((package (if (eq ensure t) (use-package-as-symbol name) ensure)))
+                              (or (null package)
+                                  (package-installed-p (if (consp package) (car package) package)))))
+                          args))))
+      (unless (or kittymacs--archives-refreshed
+                  (funcall installed-p)
+                  (and (bound-and-true-p kittymacs-quickstart-loaded)
+                       (not (bound-and-true-p package--initialized))
+                       (progn (package-initialize t)
+                              (funcall installed-p))))
+        (setq kittymacs--archives-refreshed t)
+        (condition-case-unless-debug err
+            (package-refresh-contents)
+          (error
+           (display-warning 'kittymacs
+                            (format "Could not refresh the package archives: %s
 Installing from the cached index, which may name tarballs that are gone."
-                                  (error-message-string err))
-                          :warning))))
+                                    (error-message-string err))
+                            :warning)))))
     (use-package-ensure-elpa name args state no-refresh)))
 
 (setopt use-package-ensure-function #'kittymacs-ensure-package)
@@ -72,6 +81,9 @@ caught, so it shows a backtrace."
                                             function (error-message-string err))
                                     :error)))))
             depth))
+
+(when (kittymacs-quickstart--written)
+  (kittymacs-after-init #'kittymacs-quickstart--keep-current 99))
 
 (defun kittymacs-load-user-file (file)
   "Load FILE, which a host or the user wrote; on an error, warn and carry on.

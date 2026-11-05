@@ -44,6 +44,7 @@
 
 (defvar kittymacs-lisp-dir)
 (defvar package-alist)
+(defvar package-activated-list)
 
 (defconst kittymacs-default-profile 'full
   "The profile of a machine that chose none.")
@@ -80,7 +81,8 @@ Set it where `kittymacs-profile' is set, for the same reason."
 - A machine that has run kittymacs and has chosen no profile stays on =full=, and a warning says how to choose.
   + =kittymacs-default-profile= is =full= today, so nothing warns yet: the rule gives the answer the default already gives.
   + Once that default moves to =minimal=, pulling that change must not take packages away from anyone unannounced.
-- The sign of a machine in use is a =private.el=, or any package =package.el= has found.
+- The sign of a machine in use is a =private.el=, or any package =package.el= has found or activated.
+  + Both lists count because a start from [[id:7b4e2f19-6d03-4a58-9c21-e8f05d7a3c64][the quickstart file]] leaves =package-alist= empty.
 - A value that is neither =minimal= nor =full= warns and counts as no choice, because a typo in a setting must not cost the editor.
 
 #+begin_src emacs-lisp
@@ -91,6 +93,7 @@ Set it where `kittymacs-profile' is set, for the same reason."
 (defun kittymacs-features--in-use-p ()
   "Return non-nil on a machine that has run kittymacs before."
   (or (bound-and-true-p package-alist)
+      (bound-and-true-p package-activated-list)
       (and (boundp 'kittymacs-lisp-dir)
            (file-exists-p (expand-file-name "private.el" kittymacs-lisp-dir)))))
 

@@ -74,7 +74,7 @@ A requirement that is not installed is Emacs's own."
       (let ((name (pop names)))
         (unless (memq name closure)
           (push name closure)
-          (when-let* ((desc (cadr (assq name package-alist))))
+          (when-let* ((desc (cadr (assq name (package--alist)))))
             (setq names (append (mapcar #'car (package-desc-reqs desc)) names))))))
     closure))
 
@@ -89,7 +89,7 @@ A requirement that is not installed is Emacs's own."
 Return a list of texts: the packages missing, then those nothing needs."
   (let* ((wanted (kittymacs-check-packages-on))
          (needed (kittymacs-check--closure wanted))
-         (installed (mapcar #'car package-alist)))
+         (installed (mapcar #'car (package--alist))))
     (append (mapcar (lambda (name) (format "%s is missing" name))
                     (seq-difference wanted installed))
             (mapcar (lambda (name) (format "%s is installed, and nothing here needs it" name))

@@ -2,6 +2,7 @@
 ;; Run: emacs -Q --batch -l tests/verify-config.el
 ;; Set KITTYMACS_TEST_PACKAGES to an existing var/elpa directory.
 ;; No packages are installed, refreshed or upgraded by this check.
+;; Set KITTYMACS_TEST_QUICKSTART as well to start from a quickstart file.
 (require 'cl-lib)
 (require 'package)
 (require 'warnings)
@@ -95,9 +96,28 @@ Types the configuration deliberately silences are left out."
           "(setopt kittymacs-agent-mcp-servers '(((name . \"host-server\"))))\n"
           "(when (boundp 'kittymacs-verify-private-loads) (error \"Host file loaded after private.el\"))\n"))
 (when (getenv "KITTYMACS_TEST_PACKAGES")
-  (advice-add 'package-initialize :before
+  (advice-add 'kittymacs-activate-packages :before
               (lambda (&rest _)
                 (setq package-user-dir (getenv "KITTYMACS_TEST_PACKAGES")))))
+(defvar kittymacs-verify-quickstart (getenv "KITTYMACS_TEST_QUICKSTART")
+  "Non-nil to write a quickstart file first, and to fail unless the start uses it.")
+(defvar kittymacs-verify-alist-after-activation nil
+  "What `package-alist' held once the packages had activated.")
+(when kittymacs-verify-quickstart
+  (unless (getenv "KITTYMACS_TEST_PACKAGES")
+    (error "KITTYMACS_TEST_QUICKSTART needs KITTYMACS_TEST_PACKAGES"))
+  ;; Another process, so this one's package.el stays as a real start finds it.
+  (let ((status (call-process
+                 (expand-file-name invocation-name invocation-directory) nil nil nil
+                 "-Q" "--batch"
+                 "--eval" (format "(setq user-emacs-directory %S)" user-emacs-directory)
+                 "-l" (expand-file-name "early-init.el" user-emacs-directory)
+                 "--eval" (format "(setq package-user-dir %S)" (getenv "KITTYMACS_TEST_PACKAGES"))
+                 "-f" "kittymacs-quickstart-write")))
+    (kittymacs-verify-check (eql status 0) (format "Writing the quickstart file exited %S" status)))
+  (advice-add 'kittymacs-activate-packages :after
+              (lambda (&rest _)
+                (setq kittymacs-verify-alist-after-activation package-alist))))
 (condition-case err
     (progn
       ;; Replay the order of a real startup (see `command-line' in
@@ -118,6 +138,17 @@ Types the configuration deliberately silences are left out."
       ;; its first use, and the checks below load it themselves.
       (dolist (failure (kittymacs-check-start))
         (kittymacs-verify-check nil failure))
+      ;; Only a start from the file leaves the list empty; every package a scan
+      ;; would activate must be active all the same.
+      (when kittymacs-verify-quickstart
+        (kittymacs-verify-check (and kittymacs-quickstart-loaded
+                                     (null kittymacs-verify-alist-after-activation))
+                                "The quickstart file was ignored")
+        (dolist (entry (package--alist))
+          (kittymacs-verify-check
+           (or (memq (car entry) package-activated-list)
+               (package-built-in-p (car entry) (package-desc-version (cadr entry))))
+           (format "%s is installed, and the quickstart file did not activate it" (car entry)))))
       (when (kittymacs-feature-p 'home-page)
         (save-window-excursion (dashboard-open))
         (kittymacs-verify-check (null (kittymacs-check-org-features))
@@ -161,7 +192,7 @@ Types the configuration deliberately silences are left out."
       ;; by an older :vc install as installed, so name one if it is there.
       (when kittymacs-terminal-ghostel
         (dolist (name '(ghostel consult-ghostel))
-          (let ((desc (cadr (assq name package-alist))))
+          (let ((desc (cadr (assq name (package--alist)))))
             (kittymacs-verify-check
              (and desc (not (package-vc-p desc)))
              (if desc

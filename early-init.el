@@ -85,5 +85,67 @@
 (when (eq system-type 'windows-nt)
   (setq w32-get-true-file-attributes nil
         inhibit-compacting-font-caches t))
+(defvar kittymacs-quickstart-loaded nil
+  "Non-nil when this start activated its packages from the quickstart file.")
+
+(defun kittymacs-quickstart-file ()
+  "Return the quickstart file's name for this Emacs and these package directories."
+  (expand-file-name
+   (format "package-quickstart-%s.el"
+           (sha1 (prin1-to-string
+                  (cons emacs-version
+                        (mapcar #'file-truename
+                                (cons package-user-dir package-directory-list))))))
+   kittymacs-cache-dir))
+
+(defun kittymacs-quickstart--written ()
+  "Return every quickstart file here, whatever directories it was written for."
+  (and (file-directory-p kittymacs-cache-dir)
+       (directory-files kittymacs-cache-dir t "\\`package-quickstart-[0-9a-f]+\\.elc?\\'")))
+
+(defun kittymacs-quickstart--current-p (file)
+  "Return non-nil when FILE is compiled, and newer than every package directory."
+  (let ((compiled (concat file "c")))
+    (not (memq nil (mapcar (lambda (directory) (file-newer-than-file-p compiled directory))
+                           (cons package-user-dir package-directory-list))))))
+
+(defun kittymacs-activate-packages ()
+  "Activate the installed packages, from the quickstart file when it is current.
+With no such file, `package-initialize' does what it always did."
+  (let ((file (kittymacs-quickstart-file)))
+    (if (not (kittymacs-quickstart--current-p file))
+        (package-initialize)
+      (setq kittymacs-quickstart-loaded t)
+      (let ((package-quickstart-file file))
+        (package-activate-all))
+      ;; Only a scan fills this: the file did not load, so have it written again.
+      (when package-alist
+        (delete-file (concat file "c"))))))
+
+(defun kittymacs-quickstart-remove ()
+  "Delete every quickstart file, so that the next start scans the package directories."
+  (interactive)
+  (setq package-quickstart nil)
+  (mapc #'delete-file (kittymacs-quickstart--written)))
+
+(defun kittymacs-quickstart-write ()
+  "Write the quickstart file for this Emacs and these package directories.
+Having it is what turns it on; see the startup chapter."
+  (interactive)
+  (require 'package)
+  (kittymacs-quickstart-remove)
+  (make-directory kittymacs-cache-dir t)
+  (setq package-quickstart-file (kittymacs-quickstart-file)
+        package-quickstart t)
+  ;; An autoloads file may name a function only its package defines.
+  (let ((warning-suppress-types (cons '(bytecomp) warning-suppress-types)))
+    (package-quickstart-refresh)))
+
+(defun kittymacs-quickstart--keep-current ()
+  "Keep this machine's quickstart file right from now on; it has written one before."
+  (setq package-quickstart-file (kittymacs-quickstart-file)
+        package-quickstart t)
+  (unless (kittymacs-quickstart--current-p package-quickstart-file)
+    (kittymacs-quickstart-write)))
 
 ;;; early-init.el ends here

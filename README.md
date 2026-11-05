@@ -279,6 +279,7 @@ In Normal state, Meow selects first and acts second: `w` selects a word, `x` a l
 - **Another package's option** that a chapter also sets must go in an `after-init-hook` function at the end of `private.el`, or the chapter will overwrite it; the example file shows how, and [the maintenance chapter](literate/80-maintenance.org) explains why.
 - **`M-x customize`** saves to `var/etc/custom.el`, which loads after everything else and always wins.
 - **A Nix module or dotfiles repository** can put `*.el` files in `~/.config/kittymacs/conf.d/`. They load in name order just before `private.el`, so your own settings still win.
+- **To start faster**, `just quickstart` or `M-x kittymacs-quickstart-write` writes one file that activates every package, so a start need not scan them. Nothing changes until a machine does this, and `just quickstart-remove` undoes it; [the startup chapter](literate/10-startup.org) has the details.
 - **To change the configuration itself**, edit its chapter in `literate/`, then `SPC C t` to regenerate the Lisp and restart. See [Develop](#develop).
 
 ## Update
@@ -355,7 +356,7 @@ The loop:
 | Recipe | Needs | Checks |
 |---|---|---|
 | `just check` | Emacs | chapters match generated files; pages follow the conventions; builder, platform and Tree-sitter tests |
-| `just install`, `just compile`, `just test-packages` | network, then installed packages | a fresh install byte-compiles, and the leader, Org-roam, theme and startup-verifier tests pass |
+| `just install`, `just compile`, `just test-packages`, `just test-quickstart` | network, then installed packages | a fresh install byte-compiles, and the leader, Org-roam, theme and startup-verifier tests pass, the last also from a quickstart file |
 | `just frames-test` | a display | the frame policy |
 | `just nix-check` | Nix | the generated Nix lints, the flake and both example hosts evaluate, and the selection options reach a real start |
 
