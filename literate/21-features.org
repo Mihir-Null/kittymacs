@@ -18,6 +18,7 @@
 :END:
 
 - A machine says what it wants in a host file or =private.el=, with =setopt=.
+  + A Nix host can use [[id:b7e4d1a6-20c9-4f3e-8a57-c61f09d3e248][options instead]], which write such a host file.
 
 | Option                       | Says                                                                  |
 |------------------------------+-----------------------------------------------------------------------|

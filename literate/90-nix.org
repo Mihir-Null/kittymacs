@@ -225,7 +225,7 @@
 :header-args:nix: :tangle ../nix/packages.nix :eval never :comments no :padline no :mkdirp yes
 :END:
 
-- Every package a chapter declares with =:ensure t=, built by Nix into the Emacs the modules install when =packagesFromNix= is on; it is off by default.
+- Every package a chapter declares with =:ensure t=, keyed by [[id:3f8a6c02-9d14-4b7e-a2c5-1e7d90b64f31][the catalogue]]'s features, and built by Nix into the Emacs the modules install when =packagesFromNix= is on; it is off by default.
 - Why Nix installs them, when the configuration could install them itself:
   + the flake's lock pins them, so a machine starts with the versions the lock names rather than whatever MELPA built last night;
   + they are in the store before Emacs starts, so startup needs no network and cannot fail on an archive that is down or out of date;
@@ -234,7 +234,7 @@
   + A package nixpkgs lacks still comes from the archives into =var/elpa=, as on a machine without Nix.
   + So the clone stays the configuration and stays writable; Nix only supplies what it loads.
 - Why it is off by default: no binary cache carries these packages.
-  + Hydra does not build nixpkgs' Emacs package sets, so the first switch after each =nix flake update= fetches every package's source and compiles all ninety of them on the machine.
+  + Hydra does not build nixpkgs' Emacs package sets, so the first switch after each =nix flake update= fetches every package's source and compiles all of them on the machine.
   + Any one source host being down then stops the whole switch, where the archives would have failed one package at startup.
   + Turn it on for a machine that should start without network, and accept the build.
 - The Emacs is built from =emacs.pkgs=, the package set of the Emacs's own nixpkgs, not the host's =emacsPackagesFor=, so a host whose Emacs comes from a second nixpkgs (unstable on a stable system, say) still gets packages built against it.
@@ -246,13 +246,26 @@
   + =copilot= :: nixpkgs marks it unfree with its server, and an unfree package here would make every user of the flake allow it ([[id:9e0c1f52-7a43-4d0e-b1a8-63c2f5d48e17][the server's opt-in]] has the same reasoning);
   + =consult-ghostel= :: not in nixpkgs.
 - Upgrading: =nix flake update= (=just update-flake=) moves these with nixpkgs; =package-upgrade-all= leaves them alone, since they are not in =var/elpa=.
-- A package added to a chapter goes in this list too; the test fails until it does.
+- The list is keyed by feature, so a host that chose its features builds only those ([[id:b7e4d1a6-20c9-4f3e-8a57-c61f09d3e248][Choosing features]]).
+  + =features= is a list of the catalogue's names; null, the default, builds every feature, as the flake's =with-packages= does.
+  + A host that chose nothing passes null too, so it builds what it always did.
+  + A feature that =private.el= adds beyond this list still installs from the archives.
+- A package added to a chapter goes under its feature here too; the test fails until it does, and until each key holds its catalogue entry's packages.
+  + The catalogue's =:vc= packages are not in nixpkgs' sets, so they stay out too.
+- The result is sorted by name with hyphens ignored, because the order is part of the derivation.
+  + That is the order this list had before it was keyed, so a host that chose nothing keeps its store path and rebuilds nothing.
+- =extraPackages= goes after the list, unsorted: a host's own packages, handed the same package set.
 
 #+begin_src nix
 # Generated from literate/90-nix.org; edit the Org source, then tangle.
-# EMACS with every package the chapters declare with `:ensure t`, except
-# copilot (unfree) and consult-ghostel (not in nixpkgs).
-{ emacs }:
+# EMACS with the packages of FEATURES, or of every feature when FEATURES is
+# null, then EXTRAPACKAGES.  copilot (unfree), consult-ghostel (not in nixpkgs)
+# and the catalogue's Git packages stay out.
+{
+  emacs,
+  features ? null,
+  extraPackages ? null,
+}:
 
 emacs.pkgs.withPackages (
   epkgs:
@@ -260,93 +273,373 @@ emacs.pkgs.withPackages (
     # MELPA builds ws-butler from a clone of Savannah's whole NonGNU ELPA
     # repository; NonGNU ELPA's own release is one small tarball.
     inherit (epkgs.nongnuPackages) ws-butler;
+    keyed = with epkgs; {
+      meow = [ meow ];
+      undo-tree = [ vundo ];
+      structural-editing = [
+        puni
+        aggressive-indent
+      ];
+      surround = [ embrace ];
+      syntax-things = [ meow-tree-sitter ];
+      visual-replace = [ visual-regexp ];
+      whitespace-cleanup = [ ws-butler ];
+      snippets = [ yasnippet ];
+      spelling = [
+        flyspell-correct
+        consult-flyspell
+      ];
+      completion = [
+        vertico
+        orderless
+        marginalia
+        consult
+        embark
+        embark-consult
+        corfu
+        cape
+      ];
+      directory-switch = [ consult-dir ];
+      jump = [ avy ];
+      window-picker = [ ace-window ];
+      workspaces = [ tabspaces ];
+      file-tree = [
+        treemacs
+        treemacs-nerd-icons
+        treemacs-tab-bar
+        treemacs-magit
+      ];
+      dired-extras = [
+        diredfl
+        dired-narrow
+        dired-ranger
+        async
+      ];
+      doom-look = [
+        doom-themes
+        doom-modeline
+      ];
+      icons = [
+        nerd-icons
+        nerd-icons-completion
+        nerd-icons-corfu
+        nerd-icons-dired
+      ];
+      code-display = [
+        rainbow-delimiters
+        highlight-indent-guides
+      ];
+      ui-polish = [
+        spacious-padding
+        hl-todo
+        highlight-numbers
+        goggles
+        outline-minor-faces
+      ];
+      focus-mode = [
+        writeroom-mode
+        hide-mode-line
+      ];
+      frames = [ frames-only-mode ];
+      home-page = [ dashboard ];
+      popups = [ popper ];
+      color-names = [ rainbow-mode ];
+      help-extras = [
+        helpful
+        elisp-demos
+        info-colors
+      ];
+      command-menus = [ casual ];
+      key-display = [ keycast ];
+      version-control = [ magit ];
+      diff-hl = [ diff-hl ];
+      project-environment = [ envrc ];
+      shell-path = [ exec-path-from-shell ];
+      terminal = [ ghostel ];
+      eshell-highlight = [ eshell-syntax-highlighting ];
+      org-extras = [
+        org-ql
+        org-super-agenda
+        org-contrib
+        org-modern
+        org-appear
+      ];
+      linked-notes = [ org-roam ];
+      pdf-reading = [
+        pdf-tools
+        org-noter
+        org-pdftools
+        org-noter-pdftools
+      ];
+      more-checkers = [ flymake-collection ];
+      notebooks = [
+        code-cells
+        math-preview
+      ];
+      jupyter = [ jupyter ];
+      lang-nix = [
+        nix-mode
+        nix-ts-mode
+      ];
+      lang-racket = [ racket-mode ];
+      lang-guile = [
+        geiser
+        geiser-guile
+      ];
+      agents = [ agent-shell ];
+      suggestions = [ ];
+      window-manager = [ exwm ];
+    };
+    chosen = if features == null then builtins.attrNames keyed else features;
+    rank = package: builtins.replaceStrings [ "-" ] [ "" ] package.pname;
   in
-  with epkgs;
-  [
-    ace-window
-    agent-shell
-    aggressive-indent
-    async
-    avy
-    cape
-    casual
-    code-cells
-    consult
-    consult-dir
-    consult-flyspell
-    corfu
-    dashboard
-    diff-hl
-    diredfl
-    dired-narrow
-    dired-ranger
-    doom-modeline
-    doom-themes
-    elisp-demos
-    embark
-    embark-consult
-    embrace
-    envrc
-    eshell-syntax-highlighting
-    exec-path-from-shell
-    exwm
-    flymake-collection
-    flyspell-correct
-    frames-only-mode
-    geiser
-    geiser-guile
-    ghostel
-    goggles
-    helpful
-    hide-mode-line
-    highlight-indent-guides
-    highlight-numbers
-    hl-todo
-    info-colors
-    jupyter
-    keycast
-    magit
-    marginalia
-    math-preview
-    meow
-    meow-tree-sitter
-    nerd-icons
-    nerd-icons-completion
-    nerd-icons-corfu
-    nerd-icons-dired
-    nix-mode
-    nix-ts-mode
-    orderless
-    org-appear
-    org-contrib
-    org-modern
-    org-noter
-    org-noter-pdftools
-    org-pdftools
-    org-ql
-    org-roam
-    org-super-agenda
-    outline-minor-faces
-    pdf-tools
-    popper
-    puni
-    racket-mode
-    rainbow-delimiters
-    rainbow-mode
-    spacious-padding
-    tabspaces
-    treemacs
-    treemacs-magit
-    treemacs-nerd-icons
-    treemacs-tab-bar
-    vertico
-    visual-regexp
-    vundo
-    writeroom-mode
-    ws-butler
-    yasnippet
-  ]
+  builtins.sort (a: b: rank a < rank b) (builtins.concatMap (feature: keyed.${feature}) chosen)
+  ++ (if extraPackages == null then [ ] else extraPackages epkgs)
 )
+#+end_src
+
+* Choosing features :decision:
+:PROPERTIES:
+:ID: b7e4d1a6-20c9-4f3e-8a57-c61f09d3e248
+:header-args:nix: :tangle ../nix/selection.nix :eval never :comments no :padline no :mkdirp yes
+:END:
+
+- A Nix user picks features with options rather than hand-written Elisp, and the options become [[id:7d20c8f1-46ab-4e93-a15c-9b3f7e60d214][the three Elisp options]].
+- The Home Manager module imports this file, which holds what a system module could also use.
+
+| Option                 | Says                                                                            |
+|------------------------+---------------------------------------------------------------------------------|
+| =profile=              | =minimal= or =full=; null leaves it to the configuration                        |
+| =features.<name>.enable= | =true= selects it, =false= excludes it, null leaves it to the profile         |
+| =settings=             | more options to set, by name: Nix values rendered as Elisp                      |
+| =hostFiles.<name>=     | a host-layer file of your own, as text                                          |
+| =extraPackages=        | a function from the Emacs package set to more packages to build in              |
+
+#+begin_src nix :tangle no
+programs.kittymacs = {
+  profile = "full";
+  features.lang-nix.enable = true;   # beyond the profile
+  features.jump.enable = false;      # out of it
+  settings.kittymacs-frames-only = false;
+};
+#+end_src
+
+- With none of these set, the module writes no file and no package changes, so a host that ignores them stays exactly as it was.
+- Only the Home Manager module has these options so far: a system module would write to =/etc/kittymacs/conf.d/=, and none does yet.
+  + On a Mac with both modules, set them on the Home Manager side; =packagesFromNix= in the nix-darwin module still builds every feature.
+- =features= is generated from =nix/features.json=, which the builder reads from the catalogue, so each feature's summary is its option's description.
+- A name the catalogue lacks fails at evaluation, with the module system's message naming the option: a typo costs least there.
+  + Elisp only warns about such a name, because a checkout can drift from the flake that wrote the file.
+  + =enable= has three values, because "no opinion" must stay different from "off": a =false= default would exclude every feature.
+
+#+begin_src nix
+# Generated from literate/90-nix.org; edit the Org source, then tangle.
+{ lib }:
+
+let
+  catalogue = builtins.fromJSON (builtins.readFile ./features.json);
+  names = builtins.attrNames catalogue;
+  depsOf = name: catalogue.${name}.deps or [ ];
+  answered = cfg: value: lib.filter (name: cfg.features.${name}.enable == value) names;
+
+  settingType =
+    let
+      value =
+        lib.types.nullOr (
+          lib.types.oneOf [
+            lib.types.bool
+            lib.types.int
+            lib.types.float
+            lib.types.str
+            (lib.types.listOf value)
+            (lib.types.submodule {
+              options.elisp = lib.mkOption {
+                type = lib.types.str;
+                description = "Elisp to write as it stands, such as `'modus-vivendi`.";
+              };
+            })
+          ]
+        )
+        // {
+          description = "Elisp value";
+        };
+    in
+    value;
+
+  renderValue =
+    value:
+    if value == null || value == false then
+      "nil"
+    else if value == true then
+      "t"
+    else if builtins.isString value then
+      builtins.toJSON value
+    else if builtins.isList value then
+      if value == [ ] then "nil" else "(list ${lib.concatMapStringsSep " " renderValue value})"
+    else if builtins.isAttrs value then
+      value.elisp
+    else
+      toString value;
+#+end_src
+
+** The options
+
+#+begin_src nix :padline yes
+in
+{
+  options = {
+    profile = lib.mkOption {
+      type = lib.types.nullOr (
+        lib.types.enum [
+          "minimal"
+          "full"
+        ]
+      );
+      default = null;
+      example = "minimal";
+      description = ''
+        Where this machine's features start: `kittymacs-profile`.  `full`
+        leaves out the features the catalogue marks optional.  Null writes
+        nothing, so the configuration decides.
+      '';
+    };
+
+    features = lib.mapAttrs (_: entry: {
+      enable = lib.mkOption {
+        type = lib.types.nullOr lib.types.bool;
+        default = null;
+        example = true;
+        description = ''
+          ${entry.summary}  True adds it to `kittymacs-features`, false to
+          `kittymacs-features-excluded`, and null leaves it to `profile`.
+        '';
+      };
+    }) catalogue;
+
+    settings = lib.mkOption {
+      type = lib.types.attrsOf settingType;
+      default = { };
+      example = lib.literalExpression ''
+        {
+          kittymacs-frames-only = false;
+          kittymacs-theme.elisp = "'modus-vivendi";
+        }
+      '';
+      description = ''
+        More options to set with `setopt`, in the generated host file.  Use
+        them for what the chapters read as they load, the `kittymacs-` options:
+        a chapter that sets a package's option runs later and replaces it.
+        True is `t`, false and null are `nil`, a list is a list, and
+        `{ elisp = "..."; }` is written as it stands, which is how to give a
+        symbol.
+      '';
+    };
+
+    hostFiles = lib.mkOption {
+      type = lib.types.attrsOf lib.types.lines;
+      default = { };
+      example = lib.literalExpression ''
+        { "50-mail" = "(add-hook 'after-init-hook #'my-mail-setup 90)"; }
+      '';
+      description = ''
+        Host-layer files, by name without `.el`, as their text.  They load in
+        name order, before `private.el`.  `10-nix` is the generated file's.
+      '';
+    };
+
+    extraPackages = lib.mkOption {
+      type = lib.types.nullOr (lib.types.functionTo (lib.types.listOf lib.types.package));
+      default = null;
+      example = lib.literalExpression "epkgs: [ epkgs.vterm ]";
+      description = ''
+        More Emacs packages for Nix to build into the Emacs, chosen from its
+        package set.  This works with `packagesFromNix` off too.
+      '';
+    };
+  };
+#+end_src
+
+** From the options to the features
+
+- =enabled= answers which features are on, so the module can build their packages, and takes the same four steps as [[id:0fb86d27-93c1-4ea5-b2d8-6a1e47c3f9d0][From the options to the answer]].
+  + =just nix-selection= holds the two answers equal on real starts.
+- It answers null for a host that chose nothing, which builds every package as it always did.
+- With no =profile= it starts from =full=, whatever the configuration's default is.
+  + Nix cannot see the rule that decides for a machine with no choice, and too many packages cost only build time.
+- It sees only what these options say, because =private.el= is outside the store.
+  + What =private.el= adds installs from the archives, as on a machine without Nix.
+
+#+begin_src nix :padline yes
+
+  # The features that are on for SYSTEMTYPE, Emacs's name for the system, or
+  # null when the options chose nothing.
+  enabled =
+    systemType: cfg:
+    let
+      selected = answered cfg true;
+      excluded = answered cfg false;
+      inProfile = profile: lib.filter (name: catalogue.${name}.profile == profile) names;
+      floor = inProfile "minimal";
+      withDeps =
+        features:
+        let
+          grown = lib.unique (features ++ lib.concatMap depsOf features);
+        in
+        if lib.length grown == lib.length features then features else withDeps grown;
+      dropUnmet =
+        features:
+        let
+          kept = lib.filter (name: lib.all (dep: lib.elem dep features) (depsOf name)) features;
+        in
+        if lib.length kept == lib.length features then features else dropUnmet kept;
+      removed = lib.subtractLists floor excluded;
+      wanted = lib.unique (
+        floor ++ lib.optionals (cfg.profile != "minimal") (inProfile "full") ++ withDeps selected
+      );
+      applies = name: !(lib.elem systemType (catalogue.${name}.not-on or [ ]));
+    in
+    if cfg.profile == null && selected == [ ] && excluded == [ ] then
+      null
+    else
+      dropUnmet (lib.filter (name: !(lib.elem name removed) && applies name) wanted);
+#+end_src
+
+** The generated host file
+
+- The module writes this text to =~/.config/kittymacs/conf.d/10-nix.el=, in [[id:40302e33-d2b2-4c0b-9bc3-1f9e121307e1][the host layer]], which loads before =private.el=.
+  + So =private.el= still wins, and a person can overrule a Nix host without touching Nix.
+  + The name =10-= leaves room on both sides for a host's own files.
+- It is null when no option asks for anything, and each =setopt= appears only when its option was set.
+- The file is a link into the store, and holds only these settings; the configuration stays a writable checkout.
+- A list renders as a =list= call rather than a quoted list, so an =elisp= value inside one is still evaluated.
+- =builtins.toJSON= writes a string: its escapes are all ones Elisp reads the same way.
+
+#+begin_src nix :padline yes
+
+  # The text of 10-nix.el, or null when the options ask for nothing.
+  hostFile =
+    cfg:
+    let
+      setFeatures =
+        option: features:
+        lib.optional (features != [ ]) "(setopt ${option} '(${lib.concatStringsSep " " features}))";
+      lines =
+        lib.optional (cfg.profile != null) "(setopt kittymacs-profile '${cfg.profile})"
+        ++ setFeatures "kittymacs-features" (answered cfg true)
+        ++ setFeatures "kittymacs-features-excluded" (answered cfg false)
+        ++ lib.mapAttrsToList (name: value: "(setopt ${name} ${renderValue value})") cfg.settings;
+    in
+    if lines == [ ] then
+      null
+    else
+      lib.concatLines (
+        [
+          ";;; 10-nix.el --- What programs.kittymacs chose -*- lexical-binding: t; -*-"
+          ";; Generated by the kittymacs Home Manager module; change its options instead."
+        ]
+        ++ lines
+      );
+}
 #+end_src
 
 * nix-darwin :macos:
@@ -504,16 +797,30 @@ home-manager.users.me = {
 
 let
   cfg = config.programs.kittymacs;
+  selection = import ./selection.nix { inherit lib; };
+  hostFile = selection.hostFile cfg;
   tools = import ./tools.nix {
     inherit pkgs;
     emacs = cfg.package;
   };
-  emacs = if cfg.packagesFromNix then import ./packages.nix { emacs = cfg.package; } else cfg.package;
+  emacs =
+    if cfg.packagesFromNix then
+      import ./packages.nix {
+        emacs = cfg.package;
+        features = selection.enabled (
+          if pkgs.stdenv.hostPlatform.isDarwin then "darwin" else "gnu/linux"
+        ) cfg;
+        inherit (cfg) extraPackages;
+      }
+    else if cfg.extraPackages != null then
+      cfg.package.pkgs.withPackages cfg.extraPackages
+    else
+      cfg.package;
   git = "${pkgs.git}/bin/git";
   coreutils = "${pkgs.coreutils}/bin";
 in
 {
-  options.programs.kittymacs = {
+  options.programs.kittymacs = selection.options // {
     enable = lib.mkEnableOption "kittymacs, linked into ~/.config/emacs";
 #+end_src
 
@@ -710,9 +1017,19 @@ in
 
 - =home.packages= gets Emacs (with its packages, under =packagesFromNix=) and the tools (with Copilot's server when =suggestions.enable= is on), then the fonts, each behind its option; fontconfig is turned on, as a default, with the fonts.
 - =xdg.configFile."emacs"= is an out-of-store symlink: =~/.config/emacs= points at the checkout itself, not a copy.
+- The rest of =xdg.configFile= is the host layer ([[id:b7e4d1a6-20c9-4f3e-8a57-c61f09d3e248][Choosing features]]): =10-nix.el= when the options ask for something, and one file per =hostFiles= entry.
+  + Each host file starts with the =lexical-binding= cookie, since Emacs warns about a Lisp file without one.
+  + =10-nix= is refused as a =hostFiles= name, because one file would silently replace the other.
 
 #+begin_src nix :padline yes
   config = lib.mkIf cfg.enable {
+    assertions = [
+      {
+        assertion = !(cfg.hostFiles ? "10-nix");
+        message = ''programs.kittymacs.hostFiles."10-nix" is the file the selection options write; choose another name.'';
+      }
+    ];
+
     home.packages =
       (lib.optionals cfg.installPackages (
         [ emacs ] ++ tools.programs ++ lib.optional cfg.suggestions.enable cfg.suggestions.package
@@ -720,9 +1037,21 @@ in
       ++ (lib.optionals cfg.installFonts tools.fonts);
     fonts.fontconfig.enable = lib.mkIf cfg.installFonts (lib.mkDefault true);
 
-    xdg.configFile."emacs" = lib.mkIf (cfg.source != null) {
-      source = config.lib.file.mkOutOfStoreSymlink cfg.source;
-    };
+    xdg.configFile = {
+      emacs = lib.mkIf (cfg.source != null) {
+        source = config.lib.file.mkOutOfStoreSymlink cfg.source;
+      };
+      "kittymacs/conf.d/10-nix.el" = lib.mkIf (hostFile != null) { text = hostFile; };
+    }
+    // lib.mapAttrs' (
+      name: text:
+      lib.nameValuePair "kittymacs/conf.d/${name}.el" {
+        text = ''
+          ;;; -*- lexical-binding: t; -*-
+          ${text}
+        '';
+      }
+    ) cfg.hostFiles;
 #+end_src
 
 ** Cloning the checkout on first activation :decision:
@@ -1045,6 +1374,139 @@ in
   3. Android 10 and later forbid executing anything in another application's data directory.
 - Pair the Android port with Termux instead ([[id:afa6b7fd-742a-4c15-86a6-32e3e8027b0e][the platform chapter]]); the two paths are alternatives, not layers.
 
+* The selection check
+:PROPERTIES:
+:ID: 1c9a5e37-d482-4b06-97f1-e3a80c6b42d5
+:header-args:nix: :tangle ../nix/selection-check/flake.nix :eval never :comments no :padline no :mkdirp yes
+:END:
+
+- What =just nix-selection= evaluates: real Home Manager hosts, each with its options, and a report of what each one produced.
+- A flake of its own, as the examples are, so Home Manager stays out of this repository's inputs.
+- [[file:../tests/kittymacs-nix-selection.el][The test]] writes each host's files where a real start reads them, starts Emacs once per host, and compares the answers with the report.
+  + =plain= sets no new option, and must write no file.
+  + =full= selects, excludes and settles a cascade of dependencies.
+  + =minimal= also builds its packages, with one extra.
+  + =noProfile= sets features alone, and =extraOnly= builds in one package with =packagesFromNix= off.
+  + =typo= and =reserved= must fail evaluation, each with a message naming the option.
+- The check's starts have no packages in CI, because Elisp settles the selection before any package loads.
+
+#+begin_src nix
+# Generated from literate/90-nix.org (the kittymacs repository).
+# Hosts for `just nix-selection`, each with a report of what it produced.
+{
+  description = "Home Manager hosts that exercise kittymacs's selection options";
+
+  inputs = {
+    nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
+    home-manager.url = "github:nix-community/home-manager";
+    home-manager.inputs.nixpkgs.follows = "nixpkgs";
+    kittymacs.url = "github:Mihir-Null/kittymacs";
+    kittymacs.inputs.nixpkgs.follows = "nixpkgs";
+  };
+
+  outputs =
+    {
+      nixpkgs,
+      home-manager,
+      kittymacs,
+      ...
+    }:
+    let
+      inherit (nixpkgs) lib;
+      selection = import "${kittymacs}/nix/selection.nix" { inherit lib; };
+      host =
+        settings:
+        home-manager.lib.homeManagerConfiguration {
+          pkgs = nixpkgs.legacyPackages.x86_64-linux;
+          modules = [
+            kittymacs.homeManagerModules.default
+            {
+              home = {
+                username = "me";
+                homeDirectory = "/home/me";
+                stateVersion = "24.11";
+              };
+              programs.kittymacs = {
+                enable = true;
+                source = "/home/me/src/kittymacs";
+              }
+              // settings;
+            }
+          ];
+        };
+      report =
+        settings:
+        let
+          inherit (host settings) config;
+          cfg = config.programs.kittymacs;
+        in
+        {
+          files = lib.mapAttrs' (name: file: lib.nameValuePair (baseNameOf name) file.text) (
+            lib.filterAttrs (name: _: lib.hasPrefix "kittymacs/" name) config.xdg.configFile
+          );
+          said = {
+            inherit (cfg) profile;
+            features = lib.filterAttrs (_: enable: enable != null) (
+              lib.mapAttrs (_: feature: feature.enable) cfg.features
+            );
+          };
+          enabled = selection.enabled "gnu/linux" cfg;
+          built =
+            if cfg.daemon then
+              map (package: package.pname) config.services.emacs.package.deps.explicitRequires
+            else
+              null;
+        };
+    in
+    {
+      hosts = lib.mapAttrs (_: report) {
+        plain = { };
+        full = {
+          profile = "full";
+          features = {
+            lang-nix.enable = true;
+            jump.enable = false;
+            icons.enable = false;
+          };
+          settings = {
+            kittymacs-nix-check-true = true;
+            kittymacs-nix-check-false = false;
+            kittymacs-nix-check-null = null;
+            kittymacs-nix-check-number = 3;
+            kittymacs-nix-check-string = "a \"quoted\" line\n";
+            kittymacs-nix-check-list = [
+              "one"
+              2
+              { elisp = "'three"; }
+            ];
+            kittymacs-nix-check-symbol.elisp = "'chosen";
+          };
+          hostFiles."50-check" = "(setq kittymacs-nix-check-host-file t)";
+        };
+        minimal = {
+          profile = "minimal";
+          features = {
+            file-tree.enable = true;
+            jupyter.enable = true;
+          };
+          packagesFromNix = true;
+          extraPackages = epkgs: [ epkgs.avy ];
+          daemon = true;
+        };
+        noProfile.features.jump.enable = false;
+        extraOnly = {
+          extraPackages = epkgs: [ epkgs.vundo ];
+          daemon = true;
+        };
+      };
+
+      # These two must fail evaluation.
+      typo = report { features.no-such-feature.enable = true; };
+      reserved = report { hostFiles."10-nix" = ""; };
+    };
+}
+#+end_src
+
 * Without a module
 
 - The Emacs and the tools, into your profile:
@@ -1058,6 +1520,7 @@ nix profile install github:Mihir-Null/kittymacs#default github:Mihir-Null/kittym
 * Check
 
 - =just nix-check= lints the generated Nix and evaluates the flake on every system, then both example hosts against this checkout; nothing is built.
+- =just nix-selection=, part of =nix-check=, starts Emacs once per host in [[id:1c9a5e37-d482-4b06-97f1-e3a80c6b42d5][the selection check]], and fails if =kittymacs-feature-p= disagrees with the options.
 - =nix develop= then =just --list=: the shell has every recipe's tools.
 - CI also reads the clone options as a device would see them. It overrides the input with =git+file=, not =path:=, because a =path:= input has no revision, and without one the module defines no clone step:
 
