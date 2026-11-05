@@ -169,10 +169,17 @@ whether to apply them, and neither side should get a project's settings."
     (copy-file (kittymacs-bench--path "literate/25-defaults.org") org)
     (cons el org)))
 
+(defun kittymacs-bench--output-tail (text)
+  "Return the end of TEXT, the last thing a run printed, on one line."
+  (let ((plain (replace-regexp-in-string "[^[:print:]]+" " " text)))
+    (substring plain (max 0 (- (length plain) 300)))))
+
 (defun kittymacs-bench--run (arguments &rest options)
   "Start Emacs with ARGUMENTS under a pty, and return the plist its probe wrote.
-OPTIONS are the keywords :settle, :drain and :timeout."
+OPTIONS are the keywords :settle, :drain and :timeout.  Signal an error naming
+the exit status and the last output when a run reports nothing."
   (let* ((out (make-temp-file "kittymacs-bench-"))
+         (output "")
          (timeout (or (plist-get options :timeout) kittymacs-bench-run-timeout))
          (process-environment
           (append
@@ -198,7 +205,8 @@ OPTIONS are the keywords :settle, :drain and :timeout."
                                     (list "-l" (kittymacs-bench--path "tools/bench-probe.el")))
                    :connection-type 'pty
                    :noquery t
-                   :filter #'ignore
+                   :filter (lambda (_process text)
+                             (setq output (kittymacs-bench--output-tail (concat output text))))
                    :sentinel #'ignore))
          (deadline (+ (float-time) timeout)))
     (set-process-window-size process 40 120)
@@ -213,7 +221,21 @@ OPTIONS are the keywords :settle, :drain and :timeout."
                     (delete-file out)
                     (goto-char (point-min))
                     (condition-case nil (read (current-buffer)) (error nil)))))
-      (or report (error "Emacs %S exited without a report" arguments)))))
+      (or report
+          (error "Emacs %S exited with status %s and no report; it last printed: %s"
+                 arguments (process-exit-status process) output)))))
+
+(defvar kittymacs-bench--failures nil
+  "Why runs produced no report, newest first.")
+
+(defun kittymacs-bench--attempt (arguments &rest options)
+  "Return the report of a run with ARGUMENTS and OPTIONS, or nil if it failed.
+A failed run is noted, not fatal: one Emacs dying among dozens is itself a
+result, and it must not throw away what the others measured."
+  (condition-case err
+      (apply #'kittymacs-bench--run arguments options)
+    (error (push (error-message-string err) kittymacs-bench--failures)
+           nil)))
 
 (defun kittymacs-bench--display-mismatch-p (display report)
   "Return non-nil if REPORT comes from a terminal when DISPLAY asked for a frame.
@@ -228,9 +250,11 @@ DISPLAY is the extra arguments of the run: empty asks for a frame."
 (defun kittymacs-bench--measure (arguments settle)
   "Return the kept reports of Emacs started with ARGUMENTS, waiting SETTLE seconds."
   (dotimes (_ kittymacs-bench-discarded)
-    (kittymacs-bench--run arguments :settle settle))
-  (cl-loop repeat (kittymacs-bench--runs)
-           collect (kittymacs-bench--run arguments :settle settle)))
+    (kittymacs-bench--attempt arguments :settle settle))
+  (or (delq nil (cl-loop repeat (kittymacs-bench--runs)
+                         collect (kittymacs-bench--attempt arguments :settle settle)))
+      (error "Every run of Emacs %S failed; the last: %s"
+             arguments (car kittymacs-bench--failures))))
 
 (defun kittymacs-bench--values (reports key)
   "Return the numbers REPORTS hold under KEY, skipping runs without one."
@@ -340,8 +364,10 @@ They are exact and repeat from run to run, unlike the times."
     (unwind-protect
         (pcase-dolist (`(,name . ,display) displays)
           (let* ((config (append (list (format "--init-directory=%s" kittymacs-bench-root)) display))
-                 (warm-up (kittymacs-bench--run config :settle kittymacs-bench-settle
-                                                :drain t :timeout kittymacs-bench-drain-timeout)))
+                 (warm-up (or (kittymacs-bench--attempt config :settle kittymacs-bench-settle
+                                                        :drain t :timeout kittymacs-bench-drain-timeout)
+                              (kittymacs-bench--run config :settle kittymacs-bench-settle
+                                                    :drain t :timeout kittymacs-bench-drain-timeout))))
             ;; Built without a toolkit, Emacs ignores DISPLAY and starts in the
             ;; terminal; those numbers must not carry the word "graphical".
             (if (kittymacs-bench--display-mismatch-p display warm-up)
@@ -354,6 +380,10 @@ They are exact and repeat from run to run, unlike the times."
       (delete-directory directory t))
     (unless (getenv "DISPLAY")
       (princ "\nNo DISPLAY, so no graphical run.\n"))
+    (when kittymacs-bench--failures
+      (princ (format "\n## Runs that failed: %d\n\n" (length kittymacs-bench--failures)))
+      (dolist (failure (reverse kittymacs-bench--failures))
+        (princ (format "- %s\n" failure))))
     (cons (cons 'dependency-closure (length closure)) counts)))
 
 (when (and noninteractive (not kittymacs-bench-library-only))

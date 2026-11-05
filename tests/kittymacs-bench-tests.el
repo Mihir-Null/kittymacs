@@ -71,6 +71,29 @@
   (should-not (seq-some (lambda (file) (string-suffix-p "/private.el" file))
                         (kittymacs-bench--elisp-files))))
 
+(ert-deftest kittymacs-bench-a-failed-run-is-noted-and-does-not-stop-the-rest ()
+  (let ((kittymacs-bench--failures nil))
+    (cl-letf (((symbol-function 'kittymacs-bench--run)
+               (lambda (&rest _) (error "Exited with status 139"))))
+      (should-not (kittymacs-bench--attempt '("-Q")))
+      (should (equal kittymacs-bench--failures '("Exited with status 139")))
+      (should-error (kittymacs-bench--measure '("-Q") 0)))))
+
+(ert-deftest kittymacs-bench-keeps-the-reports-of-the-runs-that-worked ()
+  (let ((kittymacs-bench--failures nil)
+        (calls 0)
+        (process-environment (cons "KITTYMACS_BENCH_RUNS=2" process-environment)))
+    (cl-letf (((symbol-function 'kittymacs-bench--run)
+               (lambda (&rest _)
+                 (setq calls (1+ calls))
+                 (if (= calls 4) (error "Died") '(:first-idle 1.0)))))
+      (should (equal (kittymacs-bench--measure '("-Q") 0) '((:first-idle 1.0))))
+      (should (equal kittymacs-bench--failures '("Died"))))))
+
+(ert-deftest kittymacs-bench-output-tail-is-short-and-printable ()
+  (should (equal (kittymacs-bench--output-tail "a\e[2Jb\n") "a [2Jb "))
+  (should (= (length (kittymacs-bench--output-tail (make-string 1000 ?x))) 300)))
+
 (ert-deftest kittymacs-bench-terminal-numbers-are-never-called-graphical ()
   "An Emacs without a toolkit ignores DISPLAY and starts in the terminal."
   (should (kittymacs-bench--display-mismatch-p nil '(:graphic nil)))
