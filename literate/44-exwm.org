@@ -11,7 +11,7 @@
 - The keys are LeopardWM's, the tiler on Windows: one modifier (Hyper here), the same letters, the nearest EXWM action.
   + The key table is data, separate from what each action does, so a Wayland compositor such as EWM can bind the same table later.
 - Leans on nothing in kittymacs; [[id:f1d045c2-e2dc-4514-ab17-dd982ed6be00][the frames chapter]] reads =kittymacs-exwm=, so this chapter loads just before it.
-- Does not know how Hyper is made: the session maps a key to it (on EmptyNet, Caps Lock and F13).
+- Does not know how Hyper is made: the session maps a key to it, such as Caps Lock or F13.
 
 * Only when the session asks :decision:
 :PROPERTIES:
@@ -26,7 +26,7 @@
   + the session stops the daemon before starting it, so [[id:3fd783cd-deb8-48aa-bb44-0d9b16535365][the defaults]], which start a server only if none runs, start one here, under the daemon's name;
   + =emacsclient=, from a shell in the session or over SSH, then reaches this Emacs and its buffers: one Emacs, not two;
   + when the session ends, the session starts the daemon again.
-- How the daemon is stopped and started belongs to whatever starts the session (on EmptyNet, its EXWM module), not to this chapter.
+- How the daemon is stopped and started belongs to whatever starts the session, not to this chapter.
 
 #+begin_src emacs-lisp
 ;;; kittymacs-exwm.el --- Emacs as the X window manager -*- lexical-binding: t; -*-

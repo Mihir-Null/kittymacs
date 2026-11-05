@@ -140,7 +140,7 @@
                    '(("cached") ("legacy") ("p") ("secrets") ("var"))))))
 
 (ert-deftest kittymacs-roam-project-flag-names-root-database-and-exclusions ()
-  "The .dir-locals.el that EmptyNet ships makes its folder a graph of its own."
+  "The .dir-locals.el in the chapter makes its folder a graph of its own."
   (should (safe-local-variable-p 'kittymacs-org-roam-project t))
   (should (safe-local-variable-p 'kittymacs-org-roam-excluded-directories '("secrets")))
   (should-not (safe-local-variable-p 'kittymacs-org-roam-excluded-directories '(secrets)))

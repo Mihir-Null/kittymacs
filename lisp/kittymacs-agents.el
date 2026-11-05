@@ -5,7 +5,6 @@
 
 (require 'kittymacs-leader)
 
-(declare-function auth-source-pick-first-password "auth-source" (&rest spec))
 (declare-function notifications-notify "notifications" (&rest params))
 (use-package agent-shell
   :ensure t
@@ -20,34 +19,15 @@
   :config
   (setopt agent-shell-anthropic-claude-environment
           (agent-shell-make-environment-variables :inherit-env t)))
-(defun kittymacs-agent-alphaxiv-headers ()
-  "Return an Authorization header for alphaXiv's MCP server, or nil.
-The key is the password `auth-source' holds for host api.alphaxiv.org."
-  (require 'auth-source)
-  (when-let* ((key (auth-source-pick-first-password :host "api.alphaxiv.org")))
-    `(((name . "Authorization") (value . ,(concat "Bearer " key))))))
+(defcustom kittymacs-agent-mcp-servers nil
+  "MCP servers every agent-shell session starts with.
+Each element has the shape `agent-shell-mcp-servers' documents.  Set this
+before this module loads, in `private.el' or a host file."
+  :type '(repeat sexp)
+  :group 'kittymacs)
 
-(setopt agent-shell-mcp-servers
-        `(((name . "context7")
-           (command . "context7-mcp")
-           (args . ())
-           (env . ()))
-          ((name . "nixos")
-           (command . "mcp-nixos")
-           (args . ())
-           (env . ()))
-          ((name . "alphaxiv")
-           (type . "http")
-           (url . "https://api.alphaxiv.org/mcp/v1")
-           (headers . ,(lambda () (kittymacs-agent-alphaxiv-headers))))))
-(defconst kittymacs-agent-org-mcp-directory
-  (expand-file-name "~/.local/share/cc-agentic-stack/elisp/")
-  "Where EmptyNet's Claude stack links org-mcp's Emacs files.")
-
-(when (file-directory-p kittymacs-agent-org-mcp-directory)
-  (add-to-list 'load-path kittymacs-agent-org-mcp-directory)
-  (with-eval-after-load 'org-roam
-    (require 'org-mcp-babel nil t)))
+(when kittymacs-agent-mcp-servers
+  (setopt agent-shell-mcp-servers kittymacs-agent-mcp-servers))
 (defun kittymacs-agent-notify (_buffer title body)
   "Show a desktop notification with TITLE and BODY.
 The value of `agent-shell-attention-notify-function'."
