@@ -4,3 +4,11 @@ updates:
     directory: /
     schedule:
       interval: weekly
+  # The flake's nixpkgs.  The merge-flake-bump job in workflows/ci.yml merges
+  # these once CI passes.
+  - package-ecosystem: nix
+    directory: /
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: "(chore)"

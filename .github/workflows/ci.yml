@@ -179,3 +179,25 @@ jobs:
           # The daemon must name the link, not leave the directory to
           # whatever the home holds; `source' is set there, so it is not null.
           test "$(jq -r '.initDirectory | endswith("/.config/emacs")' <<<"$options")" = true
+
+  # Dependabot's weekly flake.lock bump merges itself once these jobs pass.
+  # Only Nix bumps: an action's new version still waits for a person.  It checks
+  # out nothing, and write access lives here alone.  Elsewhere this job shows as
+  # skipped.  "Updating" in literate/80-maintenance.org explains the choice.
+  merge-flake-bump:
+    name: Merge the flake lock bump
+    needs: [tangle, startup, nix]
+    if: >-
+      success()
+      && github.event_name == 'pull_request'
+      && github.event.pull_request.user.login == 'dependabot[bot]'
+      && startsWith(github.event.pull_request.head.ref, 'dependabot/nix/')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - run: gh pr merge --merge "$PR_URL"
+        env:
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

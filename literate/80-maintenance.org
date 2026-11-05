@@ -57,7 +57,11 @@
 
 ** Updating
 
-- =just update= runs three recipes; each also works alone:
+- =flake.lock= moves by itself: Dependabot opens a pull request each week, and CI's =merge-flake-bump= job merges it once the =tangle=, =startup= and =nix= jobs pass.
+  + That job merges directly, so it needs no branch rule or repository setting, and a failed job leaves the pull request open for a person.
+  + =bench= is not among them, because it reports and never decides.
+  + CI evaluates the flake and does not build it, so a bump can reach =main= that then fails to build on a machine: =git revert= it, and pin the input until upstream is fixed.
+- =just update= is for a machine: it runs three recipes, and each also works alone:
   + =update-flake= :: =nix flake update=: moves nixpkgs, and so the Emacs, its packages and the tools the Nix modules install. Commit =flake.lock=.
   + =update-packages= :: a batch Emacs refreshes the archives and upgrades every package in =var/elpa=, without loading the configuration; packages Nix installed are not in =var/elpa= and move with =update-flake= instead.
   + =update-grammars= :: rebuilds every Tree-sitter grammar at the revision [[id:560fcdca-6cb8-49d9-bf27-eb78f32b9285][the languages chapter]] pins; needs =git= and a C compiler.
@@ -178,7 +182,7 @@
   + =bench= job :: a fresh clone with no package cache runs =just bench= in =nix develop= under =xvfb-run= and writes the tables to the job's summary ([[*Measuring]]); it is informational and cannot fail a pull request.
 - A weekly run repeats the fresh install without the package cache, so upstream breakage shows up even when nothing here changed.
 - =just frames-test= is the one suite CI cannot run: it needs a graphical session.
-- Dependabot proposes weekly updates to the workflow's actions.
+- Dependabot proposes weekly updates to the workflow's actions, for a person to review, and to =flake.lock=, which merge themselves ([[*Updating]]).
 
 * Why the generated files are committed :decision:
 :PROPERTIES:
