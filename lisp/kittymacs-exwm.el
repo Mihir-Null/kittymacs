@@ -213,23 +213,25 @@ A command, or a function taking the key's ARGS."
                     (cons (kbd (car entry))
                           (kittymacs-exwm--command (cadr entry) (cddr entry))))
                   kittymacs-wm-keys)))
-(use-package exwm
-  :ensure t
-  :if kittymacs-exwm
-  :demand t
-  :custom
-  (exwm-workspace-number 4)
-  :config
-  (kittymacs-exwm-apply-keys)
-  (add-hook 'exwm-update-class-hook
-            (lambda () (exwm-workspace-rename-buffer exwm-class-name)))
-  (add-hook 'exwm-update-title-hook
-            (lambda ()
-              (exwm-workspace-rename-buffer
-               (format "%s: %s" exwm-class-name exwm-title))))
-  (require 'exwm-randr)
-  (exwm-randr-mode 1)
-  (exwm-wm-mode 1))
+;; `when' rather than `:if': `use-package' installs before it reads `:if', so
+;; every machine would download a window manager it cannot use.
+(when kittymacs-exwm
+  (use-package exwm
+    :ensure t
+    :demand t
+    :custom
+    (exwm-workspace-number 4)
+    :config
+    (kittymacs-exwm-apply-keys)
+    (add-hook 'exwm-update-class-hook
+              (lambda () (exwm-workspace-rename-buffer exwm-class-name)))
+    (add-hook 'exwm-update-title-hook
+              (lambda ()
+                (exwm-workspace-rename-buffer
+                 (format "%s: %s" exwm-class-name exwm-title))))
+    (require 'exwm-randr)
+    (exwm-randr-mode 1)
+    (exwm-wm-mode 1)))
 (defvar meow-mode-state-list)
 (with-eval-after-load 'meow
   (add-to-list 'meow-mode-state-list '(exwm-mode . insert)))
