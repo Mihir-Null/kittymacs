@@ -27,7 +27,7 @@
   "Notebooks as Jupytext scripts."
   :group 'kittymacs)
 
-(defcustom kittymacs-notebooks-jupyter nil
+(defcustom kittymacs-notebooks-jupyter (kittymacs-feature-p 'jupyter)
   "Whether to install emacs-jupyter, for Jupyter kernels.
 It needs emacs-zmq's native module.  With Nix the module comes ready-built
 from the tool list; without, emacs-zmq downloads or builds one the first
@@ -55,7 +55,7 @@ subprocesses, which do not read this configuration."
           (file-error
            (message "Could not link the ZeroMQ module beside zmq.el: %s"
                     (error-message-string err))))))))
-(when kittymacs-notebooks-jupyter
+(when (kittymacs-feature-p 'jupyter)
   (advice-add 'zmq-load :before #'kittymacs-notebooks--link-zmq-module)
   (use-package jupyter
     :ensure t

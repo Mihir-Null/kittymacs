@@ -41,25 +41,26 @@
 (keymap-set kittymacs-leader-map "d" (cons "directory" #'dired-jump))
 (keymap-set kittymacs-file-map "d" (cons "directory" #'dired-jump))
 (keymap-set kittymacs-open-map "d" (cons "dired" #'dired))
-(use-package diredfl
-  :ensure t
-  :hook (dired-mode . diredfl-mode))
+(when (kittymacs-feature-p 'dired-extras)
+  (use-package diredfl
+    :ensure t
+    :hook (dired-mode . diredfl-mode))
 
-(use-package dired-narrow
-  :ensure t
-  :bind (:map dired-mode-map
-         ("/" . dired-narrow)))
+  (use-package dired-narrow
+    :ensure t
+    :bind (:map dired-mode-map
+           ("/" . dired-narrow)))
 
-(use-package dired-ranger
-  :ensure t
-  :after dired
-  :commands (dired-ranger-copy dired-ranger-move dired-ranger-paste))
+  (use-package dired-ranger
+    :ensure t
+    :after dired
+    :commands (dired-ranger-copy dired-ranger-move dired-ranger-paste))
 
-(use-package async
-  :ensure t
-  :after dired
-  :config
-  (dired-async-mode 1))
+  (use-package async
+    :ensure t
+    :after dired
+    :config
+    (dired-async-mode 1)))
 (with-eval-after-load 'meow
   (add-to-list 'meow-mode-state-list '(dired-mode . motion)))
 
@@ -73,17 +74,17 @@
   "t" (cons "toggle marks" #'dired-toggle-marks)
   "+" (cons "new directory" #'dired-create-directory)
   "n" (cons "new file" #'dired-create-empty-file)
-  "/" (cons "narrow" #'dired-narrow)
+  "/" (and (kittymacs-feature-p 'dired-extras) (cons "narrow" #'dired-narrow))
   "w" (cons "edit names (wdired)" #'wdired-change-to-wdired-mode)
-  "y" (cons "copy to clipboard" #'dired-ranger-copy)
-  "p" (cons "paste" #'dired-ranger-paste)
-  "P" (cons "move here" #'dired-ranger-move)
+  "y" (and (kittymacs-feature-p 'dired-extras) (cons "copy to clipboard" #'dired-ranger-copy))
+  "p" (and (kittymacs-feature-p 'dired-extras) (cons "paste" #'dired-ranger-paste))
+  "P" (and (kittymacs-feature-p 'dired-extras) (cons "move here" #'dired-ranger-move))
   "s" (cons "sort" #'dired-sort-toggle-or-edit)
   "!" (cons "shell command" #'dired-do-shell-command)
   "z" (cons "compress" #'dired-do-compress-to)
   "(" (cons "toggle details" #'dired-hide-details-mode)
   "g" (cons "refresh" #'revert-buffer)
-  "?" (cons "menu" #'casual-dired-tmenu))
+  "?" (and (kittymacs-feature-p 'command-menus) (cons "menu" #'casual-dired-tmenu)))
 
 (provide 'kittymacs-dired)
 ;;; kittymacs-dired.el ends here

@@ -24,7 +24,7 @@ They go at the end of `exec-path' and of the PATH that subprocesses see."
       (setq exec-path (append exec-path (list directory)))
       (setenv "PATH" (concat (getenv "PATH") path-separator directory)))))
 
-(unless (memq system-type '(windows-nt android))
+(when (kittymacs-feature-p 'shell-path)
   (use-package exec-path-from-shell
     :ensure t
     :custom
@@ -144,11 +144,12 @@ With REGEXP, go to the most recent directory matching it."
   (visual-line-mode 1))
 (add-hook 'eshell-mode-hook #'kittymacs--eshell-setup)
 
-(use-package eshell-syntax-highlighting
-  :ensure t
-  :after eshell
-  :config
-  (eshell-syntax-highlighting-global-mode 1))
+(when (kittymacs-feature-p 'eshell-highlight)
+  (use-package eshell-syntax-highlighting
+    :ensure t
+    :after eshell
+    :config
+    (eshell-syntax-highlighting-global-mode 1)))
 
 (keymap-set kittymacs-open-map "s" (cons "eshell (project)" #'kittymacs-eshell-project))
 (keymap-set kittymacs-open-map "S" (cons "eshell" #'eshell))
@@ -165,11 +166,11 @@ With REGEXP, go to the most recent directory matching it."
 (kittymacs-define-localleader 'eshell-mode
   "c" (cons "clear" #'kittymacs-eshell-clear)
   "h" (cons "history" #'consult-history)
-  "d" (cons "directory" #'consult-dir)
+  "d" (and (kittymacs-feature-p 'directory-switch) (cons "directory" #'consult-dir))
   "p" (cons "previous prompt" #'eshell-previous-prompt)
   "n" (cons "next prompt" #'eshell-next-prompt)
   "i" (cons "insert" #'meow-insert)
-  "?" (cons "menu" #'casual-eshell-tmenu))
+  "?" (and (kittymacs-feature-p 'command-menus) (cons "menu" #'casual-eshell-tmenu)))
 
 (provide 'kittymacs-shell)
 ;;; kittymacs-shell.el ends here

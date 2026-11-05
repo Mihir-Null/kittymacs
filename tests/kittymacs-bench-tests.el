@@ -12,6 +12,23 @@
                         (file-name-directory (or load-file-name buffer-file-name)))
       nil t)
 
+(ert-deftest kittymacs-bench-host-files-are-what-init-would-load ()
+  "A host file changes the measurement, so the report has to name it."
+  (let ((root (make-temp-file "kittymacs-bench-host-" t)))
+    (unwind-protect
+        (let ((host (expand-file-name "10-host.el" root)))
+          (should-not (kittymacs-bench--host-files (list root "/no/such/directory/")))
+          (with-temp-file host (insert ";; A host.\n"))
+          (with-temp-file (expand-file-name ".#10-host.el" root) (insert ""))
+          (with-temp-file (expand-file-name "notes.txt" root) (insert ""))
+          (should (equal (kittymacs-bench--host-files (list root "/no/such/directory/"))
+                         (list host))))
+      (delete-directory root t))))
+
+(ert-deftest kittymacs-bench-host-directories-come-from-init ()
+  (let ((process-environment (cons "XDG_CONFIG_HOME=/no/such/config" process-environment)))
+    (should (listp (kittymacs-bench--host-files)))))
+
 (ert-deftest kittymacs-bench-median-handles-odd-and-even-counts ()
   (should (= (kittymacs-bench--median '(3 1 2)) 2.0))
   (should (= (kittymacs-bench--median '(4 1 3 2)) 2.5))

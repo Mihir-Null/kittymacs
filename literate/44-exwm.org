@@ -21,6 +21,9 @@
 - EXWM is on only when the program that starts Emacs sets =KITTYMACS_EXWM=1= and the first frame is on X.
   + An Emacs started any other way (the daemon, a WSLg window, a Wayland session) loads none of this, and EXWM is never installed into it.
   + An environment variable, not a command-line switch: the session script sets it, and =init.el= can read it before any chapter loads.
+- Selecting the =window-manager= feature installs EXWM for such a session, and turns on nothing by itself.
+  + =KITTYMACS_EXWM=1= on X selects the feature too, and =kittymacs-exwm-session-p= in [[id:5c1e7a94-8f30-4d26-b7a1-3e92d06f4c18][the features chapter]] is the one place that asks: the installer needs the answer before this chapter loads.
+  + This chapter always loads, because =kittymacs-wm-keys= and the other options are public, and a host may set them on any machine.
 - The first frame is already on X when =init.el= runs, so =window-system= is =x= by then; a daemon has no frame yet, which is why the daemon can never be the window manager here.
 - The session's Emacs takes over from the daemon while the session lasts:
   + the session stops the daemon before starting it, so [[id:3fd783cd-deb8-48aa-bb44-0d9b16535365][the defaults]], which start a server only if none runs, start one here, under the daemon's name;
@@ -35,9 +38,10 @@
 ;;; Code:
 
 (require 'seq)
+(require 'kittymacs-features)
 
 (defcustom kittymacs-exwm
-  (and (eq window-system 'x) (equal (getenv "KITTYMACS_EXWM") "1"))
+  (kittymacs-exwm-session-p)
   "Whether this Emacs is the X session's window manager, through EXWM.
 On when the program starting Emacs sets KITTYMACS_EXWM=1 and the first
 frame is on X.  Frames-only mode is off by default while it is on."
@@ -329,7 +333,7 @@ A command, or a function taking the key's ARGS."
 
 ;; `when' rather than `:if': `use-package' installs before it reads `:if', so
 ;; every machine would download a window manager it cannot use.
-(when kittymacs-exwm
+(when (and kittymacs-exwm (kittymacs-feature-p 'window-manager))
   (use-package exwm
     :ensure t
     :demand t

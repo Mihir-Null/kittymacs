@@ -9,6 +9,7 @@
 
 - The smallest and most important module: =SPC= becomes an ordinary prefix keymap in Meow's Normal and Motion states, and every major mode gets its own menu under =SPC m=.
 - Names the groups under =SPC= and binds no command, so it knows nothing about other packages or this machine.
+  + It requires [[id:5c1e7a94-8f30-4d26-b7a1-3e92d06f4c18][the features chapter]], so every chapter that requires this one can ask =kittymacs-feature-p=.
   + Each chapter binds its own keys in those groups, and adds its =SPC m= menu with one form; [[id:53ad53ed-155f-47dc-973d-7be18de2893c][the keys chapter]] binds what no feature owns.
 - Read [[id:a1607a41-b741-428a-9de3-c16e7c8d3ecc][the editing chapter]] first: Meow's states decide when the leader is live.
 
@@ -41,6 +42,8 @@
 ;; keymap, so C-h k, C-h b, which-key and Marginalia see the real keys.
 
 ;;; Code:
+
+(require 'kittymacs-features)
 
 (declare-function meow-normal-define-key "meow-helpers" (&rest keybinds))
 (declare-function meow-motion-define-key "meow-helpers" (&rest keybinds))
@@ -190,19 +193,34 @@ MODE defaults to the current major mode."
   (dolist (buffer (buffer-list))
     (with-current-buffer buffer (kittymacs--install-localleader))))
 
+(defun kittymacs--localleader-present (definitions)
+  "Return the KEY DEFINITION pairs of DEFINITIONS whose definition is not nil."
+  (let (present)
+    (while definitions
+      (let ((key (pop definitions)) (definition (pop definitions)))
+        (when definition
+          (setq present (append present (list key definition))))))
+    present))
+
 (defun kittymacs-define-localleader (mode &rest definitions)
   "Give MODE a localleader built from DEFINITIONS and refresh live buffers.
 DEFINITIONS are `define-keymap' arguments: KEY DEFINITION pairs, where a
-definition may be (cons \"label\" COMMAND) to label it for which-key.
+definition may be (cons \"label\" COMMAND) to label it for which-key, or nil
+to leave the key out.  With nothing left, MODE gets no menu at all.
 Calling this again for MODE replaces its map."
   (declare (indent 1))
-  (setf (alist-get mode kittymacs-localleader-alist) (apply #'define-keymap definitions))
+  (let ((present (kittymacs--localleader-present definitions)))
+    (if present
+        (setf (alist-get mode kittymacs-localleader-alist) (apply #'define-keymap present))
+      (setf (alist-get mode kittymacs-localleader-alist nil 'remove) nil)))
   (kittymacs-refresh-localleaders)
   mode)
 
 #+end_src
 
 - Defining a localleader is one form per mode, written next to its package: [[id:f6ccd2da-4b3f-4392-b439-3966fc9d3db8][version control]] defines Magit's menu, [[id:8ff7e58e-c155-4513-99ae-3b2c3a6ab729][Org]] Org's.
+- A nil definition leaves its key out, so a menu can name an optional feature's command in place, as =(and (kittymacs-feature-p 'command-menus) (cons "menu" #'casual-dired-tmenu))=.
+  + The key stays beside its neighbours in the source, and a feature that is off shows no dead key.
 
 #+begin_src emacs-lisp :tangle no
 (kittymacs-define-localleader 'emacs-lisp-mode
@@ -217,6 +235,11 @@ Calling this again for MODE replaces its map."
   + Chapters that load later fill the same keymaps, so their keys need no second call.
 - =kittymacs-describe-leader= opens Emacs's help view for the leader plus this buffer's localleader.
 - =C-h k SPC f f= and which-key need no help from this module.
+- =kittymacs-leader-drop-empty-groups= takes out of the tree each group that nothing bound a key in, so a feature that is off shows no empty group.
+  + The groups keep their order, because each one is attached here first and only an empty one leaves; a full tree stays as it was.
+  + =init.el= runs it at depth 100 of =after-init-hook=, after =private.el='s functions at 90, so a key bound there keeps its group.
+  + A group left out this way does not come back when something binds into it later in the session: use =keymap-set= on =kittymacs-leader-map= itself for that.
+  + =SPC u= stays under =full=, empty or not, because that profile's tree must not change; elsewhere it goes like any other.
 
 #+begin_src emacs-lisp
 (defun kittymacs-describe-leader ()
@@ -240,6 +263,21 @@ Safe to call more than once."
   (add-hook 'after-change-major-mode-hook #'kittymacs--install-localleader)
   (kittymacs-refresh-localleaders))
 
+(defun kittymacs-leader-drop-empty-groups ()
+  "Take out of `kittymacs-leader-map' each group nothing bound a key in."
+  (let (empty)
+    (map-keymap
+     (lambda (event binding)
+       (pcase binding
+         (`(,(pred stringp) . ,(and map (pred keymapp)))
+          (when (and (null (cdr map))
+                     (not (and (eq map kittymacs-user-map)
+                               (eq (kittymacs-features-profile) 'full))))
+            (push event empty)))))
+     kittymacs-leader-map)
+    (dolist (event empty)
+      (define-key kittymacs-leader-map (vector event) nil t))))
+
 (provide 'kittymacs-leader)
 ;;; kittymacs-leader.el ends here
 #+end_src
@@ -254,7 +292,8 @@ Safe to call more than once."
   + =SPC= is a prefix in Normal and Motion, and a space in Insert;
   + localleaders override and inherit along the mode lineage, and other buffers see nothing;
   + the keypad is unbound unless =kittymacs-keypad-key= is set;
-  + every group exists with no other chapter loaded, and =SPC p= inherits Emacs's project keys.
+  + every group exists with no other chapter loaded, and =SPC p= inherits Emacs's project keys;
+  + a nil definition leaves a key out, and an empty group leaves the tree.
 
 #+begin_src sh :tangle no
 just test-packages      # the leader tests, with the Org-roam tests and the verifier

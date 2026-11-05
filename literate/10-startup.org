@@ -217,6 +217,10 @@
 - Files from outside this repository are read along the way: [[*Host files][host files]] and then =private.el= right after the platform chapter, the Customize file at the end; [[*Machine-specific settings]] says why there.
 - =kittymacs-features-resolve= runs straight after them, so everything later asks a settled question, and =kittymacs-features-install= right after that ([[id:5c1e7a94-8f30-4d26-b7a1-3e92d06f4c18][the features chapter]]).
 - The archive index is fetched only when a package has to be installed, by =kittymacs-ensure-package= ([[*A stale archive index]]); a start that installs nothing touches no network.
+- A chapter that is one feature and nothing else loads only when that feature is on: Treemacs, the dashboard, Org extras, Org-roam, reading, notebooks, agents and suggestions.
+  + Mixed chapters always load, and put a =when= around each optional package and its keys.
+  + [[id:5c1e7a94-8f30-4d26-b7a1-3e92d06f4c18][The features chapter]] answers both.
+- A group under =SPC= that nothing bound a key in leaves the tree at the end of startup ([[id:e5942eb0-4389-447d-9317-d9178adcaaae][the leader]]).
 - From the UI on, each chapter is loaded with =kittymacs-require-module=, not a bare =require=:
   + an error while a chapter loads (most often a package that failed to install, so its variables do not exist) becomes a warning naming the chapter, and the chapters after it still load;
   + a bare =require= would end =init.el= there, leaving every later chapter, frames included, unloaded, for a failure in one;
@@ -346,13 +350,15 @@ Set before init.el loads to change them, because they are read during init.")
 (kittymacs-require-module 'kittymacs-basics)
 (kittymacs-require-module 'kittymacs-ui)
 (kittymacs-require-module 'kittymacs-literate)
-(kittymacs-require-module 'kittymacs-dashboard)
+(when (kittymacs-feature-p 'home-page)
+  (kittymacs-require-module 'kittymacs-dashboard))
 
 ;; Editing: completion, help, files, git, navigation, then Meow and the leader.
 (kittymacs-require-module 'kittymacs-completion)
 (kittymacs-require-module 'kittymacs-help)
 (kittymacs-require-module 'kittymacs-dired)
-(kittymacs-require-module 'kittymacs-treemacs)
+(when (kittymacs-feature-p 'file-tree)
+  (kittymacs-require-module 'kittymacs-treemacs))
 (kittymacs-require-module 'kittymacs-vc)
 (kittymacs-require-module 'kittymacs-navigation)
 (kittymacs-require-module 'kittymacs-meow)
@@ -366,14 +372,21 @@ Set before init.el loads to change them, because they are read during init.")
 (kittymacs-require-module 'kittymacs-languages)
 (kittymacs-require-module 'kittymacs-terminal)
 (kittymacs-require-module 'kittymacs-org)
-(kittymacs-require-module 'kittymacs-org-extras)
-(kittymacs-require-module 'kittymacs-org-roam)
-(kittymacs-require-module 'kittymacs-reading)
-(kittymacs-require-module 'kittymacs-notebooks)
-(kittymacs-require-module 'kittymacs-agents)
-(kittymacs-require-module 'kittymacs-suggestions)
+(when (kittymacs-feature-p 'org-extras)
+  (kittymacs-require-module 'kittymacs-org-extras))
+(when (kittymacs-feature-p 'linked-notes)
+  (kittymacs-require-module 'kittymacs-org-roam))
+(when (kittymacs-feature-p 'pdf-reading)
+  (kittymacs-require-module 'kittymacs-reading))
+(when (kittymacs-feature-p 'notebooks)
+  (kittymacs-require-module 'kittymacs-notebooks))
+(when (kittymacs-feature-p 'agents)
+  (kittymacs-require-module 'kittymacs-agents))
+(when (kittymacs-feature-p 'suggestions)
+  (kittymacs-require-module 'kittymacs-suggestions))
 (kittymacs-require-module 'kittymacs-exwm)
 (kittymacs-require-module 'kittymacs-frames)
+(kittymacs-after-init #'kittymacs-leader-drop-empty-groups 100)
 
 ;; Settings saved by M-x customize come last, so they override the chapters.
 (load custom-file 'noerror 'nomessage)

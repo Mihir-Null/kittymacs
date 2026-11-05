@@ -22,6 +22,9 @@ emacs := "emacs -Q --batch --eval '(setq user-emacs-directory (file-name-as-dire
 # var/elpa of a checkout that has started once (`just install` makes one).
 packages := env_var_or_default("KITTYMACS_TEST_PACKAGES", justfile_directory() / "var" / "elpa")
 
+# KITTYMACS_TEST_PROFILE chooses what `just install` installs: minimal, full, or
+# every, which adds each optional feature. Unset, this machine's settings decide.
+
 # 1. Org -> code. Every literate/NN-name.org chapter writes the files its
 #    :tangle headers name: early-init.el, init.el and lisp/*.el from the
 #    Emacs chapters, flake.nix and nix/ from the Nix chapter. The builder
@@ -62,8 +65,9 @@ check: tangle-check doc-test test
 # var/elpa. A fresh clone does the same on its first graphical start.
 install:
     {{emacs}} --eval '(setq native-comp-jit-compilation nil package-native-compile nil)' \
+      -l tests/kittymacs-test-selection.el \
       -l early-init.el --eval '(package-refresh-contents)' -l init.el \
-      --eval '(require (quote org-roam))' \
+      --eval '(when (kittymacs-feature-p (quote linked-notes)) (require (quote org-roam)))' \
       --eval '(princ (format "%d packages active\n" (length package-activated-list)))'
 
 # Byte-compile every module, to catch errors a load would hit. The .elc
@@ -82,6 +86,19 @@ test-packages:
     KITTYMACS_TEST_PACKAGES={{quote(packages)}} emacs -Q --batch -l tests/kittymacs-org-roam-tests.el -f ert-run-tests-batch-and-exit
     KITTYMACS_TEST_PACKAGES={{quote(packages)}} emacs -Q --batch -l tests/kittymacs-theme-tests.el -f ert-run-tests-batch-and-exit
     KITTYMACS_TEST_PACKAGES={{quote(packages)}} emacs -Q --batch -l tests/verify-config.el
+
+# What runs against a package directory holding the minimal profile and nothing
+# else: `KITTYMACS_TEST_PROFILE=minimal just install` makes one. The verifier
+# then also checks that the directory holds exactly what that profile needs.
+test-minimal:
+    KITTYMACS_TEST_PROFILE=minimal KITTYMACS_TEST_PACKAGES={{quote(packages)}} emacs -Q --batch -l tests/kittymacs-leader-tests.el -f ert-run-tests-batch-and-exit
+    KITTYMACS_TEST_PROFILE=minimal KITTYMACS_TEST_PACKAGES={{quote(packages)}} emacs -Q --batch -l tests/kittymacs-theme-tests.el -f ert-run-tests-batch-and-exit
+    KITTYMACS_TEST_PROFILE=minimal KITTYMACS_TEST_PACKAGES={{quote(packages)}} emacs -Q --batch -l tests/verify-config.el
+
+# Start once per feature, off in turn from full and on in turn from minimal. Needs
+# every feature's packages: `KITTYMACS_TEST_PROFILE=every just install`.
+test-features:
+    KITTYMACS_TEST_PACKAGES={{quote(packages)}} emacs -Q --batch -l tests/kittymacs-feature-probes.el
 
 # Count what the code and prose cost, against tests/budgets.eld. Needs no
 # packages. Reports only; FLAGS may be --write. "Measuring" in

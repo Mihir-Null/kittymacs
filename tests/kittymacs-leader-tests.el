@@ -61,6 +61,52 @@
       (should-not (key-binding (kbd "SPC m")))
       (should-not kittymacs--localleader-alist))))
 
+(ert-deftest kittymacs-localleader-leaves-out-a-nil-definition ()
+  "A menu names an optional command in place, and a feature that is off shows nothing."
+  (let ((kittymacs-localleader-alist nil))
+    (kittymacs-define-localleader 'prog-mode "c" #'compile "r" nil "e" (cons "eval" #'eval-buffer))
+    (kittymacs-test-with-mode #'emacs-lisp-mode 'normal
+      (should (eq (key-binding (kbd "SPC m c")) #'compile))
+      (should (eq (key-binding (kbd "SPC m e")) #'eval-buffer))
+      (should-not (key-binding (kbd "SPC m r"))))))
+
+(ert-deftest kittymacs-localleader-with-nothing-left-is-no-menu ()
+  (let ((kittymacs-localleader-alist nil))
+    (kittymacs-define-localleader 'prog-mode "c" #'compile)
+    (kittymacs-define-localleader 'prog-mode "c" nil)
+    (should-not (assq 'prog-mode kittymacs-localleader-alist))
+    (kittymacs-test-with-mode #'emacs-lisp-mode 'normal
+      (should-not (key-binding (kbd "SPC m"))))))
+
+(ert-deftest kittymacs-leader-drops-a-group-nothing-bound-a-key-in ()
+  "An empty group would show in which-key and lead nowhere."
+  (let* ((kittymacs-leader-map (make-sparse-keymap))
+         (kept (make-sparse-keymap))
+         (dropped (make-sparse-keymap))
+         (kittymacs-features--enabled '(meow))
+         (kittymacs-features--profile 'minimal))
+    (keymap-set kept "x" #'ignore)
+    (keymap-set kittymacs-leader-map "k" (cons "kept" kept))
+    (keymap-set kittymacs-leader-map "d" (cons "dropped" dropped))
+    (keymap-set kittymacs-leader-map "u" (cons "user" kittymacs-user-map))
+    (keymap-set kittymacs-leader-map "p" (cons "project" kittymacs-project-map))
+    (keymap-set kittymacs-leader-map "c" #'ignore)
+    (kittymacs-leader-drop-empty-groups)
+    (should (keymap-lookup kittymacs-leader-map "k x"))
+    (should (keymap-lookup kittymacs-leader-map "p f"))
+    (should (eq (keymap-lookup kittymacs-leader-map "c") #'ignore))
+    (should-not (keymap-lookup kittymacs-leader-map "d"))
+    (should-not (keymap-lookup kittymacs-leader-map "u"))))
+
+(ert-deftest kittymacs-leader-keeps-your-own-group-under-the-full-profile ()
+  "`SPC u' has always been there under full, which must not change."
+  (let* ((kittymacs-leader-map (make-sparse-keymap))
+         (kittymacs-features--enabled '(meow))
+         (kittymacs-features--profile 'full))
+    (keymap-set kittymacs-leader-map "u" (cons "user" kittymacs-user-map))
+    (kittymacs-leader-drop-empty-groups)
+    (should (keymap-lookup kittymacs-leader-map "u"))))
+
 (ert-deftest kittymacs-localleader-is-gone-in-insert-state ()
   (let ((kittymacs-localleader-alist nil))
     (kittymacs-define-localleader 'prog-mode "c" #'compile)

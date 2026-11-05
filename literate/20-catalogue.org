@@ -36,6 +36,7 @@
 - The builder writes =nix/features.json= from this list, by reading it and never evaluating it ([[id:d702f35a-3b2f-4cb5-9b4c-c176f0711db0][the builder]]).
 - [[file:../tests/kittymacs-catalogue-tests.el][The catalogue tests]] hold it to the code: every declared package appears once, in the feature of the module that declares it.
   + A package added without an entry fails =just test=, which is the point.
+  + So does one that its feature's gate does not stop, and a gate that names a feature this list lacks.
 
 #+begin_src emacs-lisp
 ;;; kittymacs-catalogue.el --- Every optional feature and its packages -*- lexical-binding: t; -*-

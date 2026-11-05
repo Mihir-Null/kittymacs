@@ -12,6 +12,7 @@
 - Org itself is enough underneath: the rest of [[id:8ff7e58e-c155-4513-99ae-3b2c3a6ab729][the Org chapter]], [[id:c41f7a2e-6d38-4f15-9b07-2e8d3a6c1f94][Org extras]] and [[id:78b654e1-a93e-4e31-b0d8-f266215b5b12][reading]] can be absent, and none of them needs this chapter.
 - The inbox and agenda of [[id:8ff7e58e-c155-4513-99ae-3b2c3a6ab729][the Org chapter]] are unaffected: they keep their own files and templates.
 - kittymacs' own chapters are a project graph: [[id:7edccfdc-3c38-489a-bc9e-4c002b432ab4][the conventions]] show it in use.
+- This chapter is the =linked-notes= feature: [[id:40302e33-d2b2-4c0b-9bc3-1f9e121307e1][=init.el=]] loads it only when that is on, and =SPC n= leaves the tree with it.
 - Read [[*One graph at a time]] first; the rest follows from it.
 
 * One graph at a time :concept:
@@ -144,7 +145,7 @@ that ignores case, so every spelling of one directory shares one file."
   + Emacs already knows that folder: applying directory locals, it records them in =dir-local-variables-alist=, and =dir-locals-find-file= returns the folder whose =.dir-locals.el= it read.
   + The database is the cache path for that root; add =org-roam-db-location= to the same file to choose another.
 - =kittymacs-org-roam-excluded-directories= replaces the default exclusions for this graph only.
-- Both are declared safe for their types (a boolean, a list of strings): Emacs applies them without asking, and nothing in the file is evaluated.
+- Both are declared safe for their types (a boolean, a list of strings), in [[id:5c1e7a94-8f30-4d26-b7a1-3e92d06f4c18][the features chapter]] so it holds when this chapter is off: Emacs applies them without asking, and nothing in the file is evaluated.
   + An Emacs without kittymacs does not know them: the first time it opens a file there it asks whether to apply them; =i= ignores them for good. They do nothing in that Emacs either way.
 - Emacs reads only the nearest =.dir-locals.el= above a file.
   + A subfolder with its own hides the root's: its files leave the project graph unless that file repeats the flag, which makes the subfolder a graph of its own.
@@ -175,14 +176,12 @@ that ignores case, so every spelling of one directory shares one file."
 (defcustom kittymacs-org-roam-project nil
   "Non-nil in a directory's .dir-locals.el to make that directory a graph root."
   :type 'boolean
-  :safe #'booleanp
   :group 'kittymacs-org-roam)
 
 (defcustom kittymacs-org-roam-excluded-directories '(".git" ".cache" "cache" "caches")
   "Folder names whose contents are never notes, at any depth of a graph.
 A project graph sets its own list in its .dir-locals.el."
   :type '(repeat string)
-  :safe #'list-of-strings-p
   :group 'kittymacs-org-roam)
 
 (defvar org-roam-file-exclude-regexp)

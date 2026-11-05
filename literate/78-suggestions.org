@@ -12,6 +12,7 @@
 - One package, [[https://github.com/copilot-emacs/copilot.el][copilot.el]], talking to GitHub's own language server; a GitHub Copilot plan (the student plan works) and a login.
 - Leans on [[id:a1607a41-b741-428a-9de3-c16e7c8d3ecc][the editing chapter]] for Meow's states, [[id:a210c7c3-84da-4560-9346-156f5d28e253][Corfu]] for the popup it makes room for, and [[id:e5942eb0-4389-447d-9317-d9178adcaaae][the leader]] for the groups =SPC t a= and =SPC a c= go in.
 - The conversation with an agent is [[id:94d55283-5011-4f98-a7f0-8c6bcb51aab9][the agents chapter]]; this one never opens a chat.
+- This chapter is the =suggestions= feature: [[id:40302e33-d2b2-4c0b-9bc3-1f9e121307e1][=init.el=]] loads it only when that is on.
 - Read [[*Three kinds of help]] first.
 
 #+begin_src emacs-lisp

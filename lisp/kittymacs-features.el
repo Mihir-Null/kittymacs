@@ -207,5 +207,8 @@ A package that cannot be installed warns, and the rest carry on."
                                    package (error-message-string err))))
       (unless (package-installed-p package)
         (push package kittymacs-features--failed)))))
+(put 'kittymacs-org-roam-project 'safe-local-variable #'booleanp)
+(put 'kittymacs-org-roam-excluded-directories 'safe-local-variable #'list-of-strings-p)
+
 (provide 'kittymacs-features)
 ;;; kittymacs-features.el ends here

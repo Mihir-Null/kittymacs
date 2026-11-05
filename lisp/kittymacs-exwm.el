@@ -4,9 +4,10 @@
 ;;; Code:
 
 (require 'seq)
+(require 'kittymacs-features)
 
 (defcustom kittymacs-exwm
-  (and (eq window-system 'x) (equal (getenv "KITTYMACS_EXWM") "1"))
+  (kittymacs-exwm-session-p)
   "Whether this Emacs is the X session's window manager, through EXWM.
 On when the program starting Emacs sets KITTYMACS_EXWM=1 and the first
 frame is on X.  Frames-only mode is off by default while it is on."
@@ -215,7 +216,7 @@ A command, or a function taking the key's ARGS."
                   kittymacs-wm-keys)))
 ;; `when' rather than `:if': `use-package' installs before it reads `:if', so
 ;; every machine would download a window manager it cannot use.
-(when kittymacs-exwm
+(when (and kittymacs-exwm (kittymacs-feature-p 'window-manager))
   (use-package exwm
     :ensure t
     :demand t

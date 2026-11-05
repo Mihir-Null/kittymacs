@@ -14,60 +14,78 @@
 (global-prettify-symbols-mode 1)
 (electric-pair-mode 1)
 
-(use-package rainbow-delimiters
-  :ensure t
-  :hook (prog-mode . rainbow-delimiters-mode))
+(when (kittymacs-feature-p 'code-display)
+  (use-package rainbow-delimiters
+    :ensure t
+    :hook (prog-mode . rainbow-delimiters-mode)))
 
 
-(use-package puni
-  :ensure t
-  :hook ((prog-mode tex-mode org-mode markdown-mode markdown-ts-mode eval-expression-minibuffer-setup) . puni-mode)
-  :bind (:map puni-mode-map
-         ("C-(" . puni-slurp-backward)
-         ("C-)" . puni-slurp-forward)
-         ("C-{" . puni-barf-backward)
-         ("C-}" . puni-barf-forward)))
+(defcustom kittymacs-structural-editing-modes
+  '(prog-mode tex-mode org-mode markdown-mode markdown-ts-mode
+    eval-expression-minibuffer-setup)
+  "Where Puni keeps brackets balanced.
+Each name is a mode, or anything else with a hook called NAME-hook, and a
+mode here covers the modes derived from it.  Set it in private.el before
+this chapter loads."
+  :type '(repeat symbol)
+  :group 'kittymacs)
 
-(keymap-set kittymacs-toggle-map "p" (cons "structural editing" #'puni-mode))
+(when (kittymacs-feature-p 'structural-editing)
+  (use-package puni
+    :ensure t
+    :commands puni-mode
+    :init
+    (dolist (mode kittymacs-structural-editing-modes)
+      (add-hook (intern (format "%s-hook" mode)) #'puni-mode))
+    :bind (:map puni-mode-map
+           ("C-(" . puni-slurp-backward)
+           ("C-)" . puni-slurp-forward)
+           ("C-{" . puni-barf-backward)
+           ("C-}" . puni-barf-forward)))
+
+  (keymap-set kittymacs-toggle-map "p" (cons "structural editing" #'puni-mode)))
 
 (defun kittymacs--embrace-markdown ()
   "Markdown pairs for Embrace."
   (dolist (pair '((?* "*" . "*") (?_ "_" . "_") (?` "`" . "`") (?$ "$" . "$")))
     (embrace-add-pair (car pair) (cadr pair) (cddr pair))))
 
-(use-package embrace
-  :ensure t
-  :commands (embrace-commander embrace-add embrace-change embrace-delete)
-  :hook (org-mode . embrace-org-mode-hook)
-  :config
-  (add-hook 'markdown-mode-hook #'kittymacs--embrace-markdown)
-  (add-hook 'markdown-ts-mode-hook #'kittymacs--embrace-markdown))
+(when (kittymacs-feature-p 'surround)
+  (use-package embrace
+    :ensure t
+    :commands (embrace-commander embrace-add embrace-change embrace-delete)
+    :hook (org-mode . embrace-org-mode-hook)
+    :config
+    (add-hook 'markdown-mode-hook #'kittymacs--embrace-markdown)
+    (add-hook 'markdown-ts-mode-hook #'kittymacs--embrace-markdown))
 
-(keymap-set kittymacs-code-map "s" (cons "surround" #'embrace-commander))
+  (keymap-set kittymacs-code-map "s" (cons "surround" #'embrace-commander)))
 (defun kittymacs--indent-guides ()
   "Show indent guides in graphical frames.
 The package cannot derive its faces without a display."
   (when (display-graphic-p)
     (highlight-indent-guides-mode 1)))
 
-(use-package highlight-indent-guides
-  :ensure t
-  :hook (prog-mode . kittymacs--indent-guides)
-  :custom
-  (highlight-indent-guides-method 'character)
-  (highlight-indent-guides-character ?│)
-  (highlight-indent-guides-responsive nil)
-  (highlight-indent-guides-auto-odd-face-perc 5)
-  (highlight-indent-guides-auto-even-face-perc 5)
-  (highlight-indent-guides-auto-character-face-perc 15))
+(when (kittymacs-feature-p 'code-display)
+  (use-package highlight-indent-guides
+    :ensure t
+    :hook (prog-mode . kittymacs--indent-guides)
+    :custom
+    (highlight-indent-guides-method 'character)
+    (highlight-indent-guides-character ?│)
+    (highlight-indent-guides-responsive nil)
+    (highlight-indent-guides-auto-odd-face-perc 5)
+    (highlight-indent-guides-auto-even-face-perc 5)
+    (highlight-indent-guides-auto-character-face-perc 15)))
 
-(use-package aggressive-indent
-  :ensure t
-  :hook ((emacs-lisp-mode lisp-interaction-mode lisp-mode) . aggressive-indent-mode)
-  :custom
-  (aggressive-indent-comments-too nil)
-  :config
-  (add-to-list 'aggressive-indent-protected-commands 'comment-dwim))
+(when (kittymacs-feature-p 'structural-editing)
+  (use-package aggressive-indent
+    :ensure t
+    :hook ((emacs-lisp-mode lisp-interaction-mode lisp-mode) . aggressive-indent-mode)
+    :custom
+    (aggressive-indent-comments-too nil)
+    :config
+    (add-to-list 'aggressive-indent-protected-commands 'comment-dwim)))
 (use-package flymake
   :ensure nil
   :hook (prog-mode . flymake-mode)
@@ -90,11 +108,12 @@ The package cannot derive its faces without a display."
 (keymap-set kittymacs-diagnostics-map "s" (cons "start check" #'flymake-start))
 (keymap-set kittymacs-toggle-map "F" (cons "flymake" #'flymake-mode))
 
-(use-package flymake-collection
-  :ensure t
-  :demand t
-  :config
-  (flymake-collection-hook-setup))
+(when (kittymacs-feature-p 'more-checkers)
+  (use-package flymake-collection
+    :ensure t
+    :demand t
+    :config
+    (flymake-collection-hook-setup)))
 (setopt compilation-always-kill t
         compilation-ask-about-save nil
         compilation-scroll-output 'first-error)
@@ -119,7 +138,7 @@ The package cannot derive its faces without a display."
   "E" (cons "error list" #'flymake-show-buffer-diagnostics)
   "f" (cons "format" #'indent-region)
   ";" (cons "comment" #'comment-dwim)
-  "s" (cons "surround" #'embrace-commander)
+  "s" (and (kittymacs-feature-p 'surround) (cons "surround" #'embrace-commander))
   "d" (cons "definition" #'xref-find-definitions)
   "D" (cons "references" #'xref-find-references))
 
@@ -133,7 +152,7 @@ The package cannot derive its faces without a display."
   "g" (cons "edebug defun" #'edebug-defun)
   "c" (cons "byte compile" #'emacs-lisp-byte-compile)
   "m" (cons "macroexpand" #'pp-macroexpand-last-sexp)
-  "?" (cons "menu" #'casual-elisp-tmenu))
+  "?" (and (kittymacs-feature-p 'command-menus) (cons "menu" #'casual-elisp-tmenu)))
 
 (provide 'kittymacs-programming)
 ;;; kittymacs-programming.el ends here

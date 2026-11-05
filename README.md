@@ -253,6 +253,8 @@ In Normal state, Meow selects first and acts second: `w` selects a word, `x` a l
 | `kittymacs-font-family`, `kittymacs-font-size`, `kittymacs-prose-font-family`, `kittymacs-nerd-font`, `kittymacs-icons` | fonts and icons |
 | `kittymacs-org-prose` | whether Org sets prose in the proportional font (`SPC t P` per buffer) |
 | `kittymacs-org-directory`, `kittymacs-org-roam-directory`, `kittymacs-project-directory` | where notes and projects live |
+| `kittymacs-profile`, `kittymacs-features`, `kittymacs-features-excluded` | where this machine starts (`minimal` or `full`, the default), and which features of [the catalogue](literate/20-catalogue.org) to add or leave out; the next start installs what they need |
+| `kittymacs-structural-editing-modes` | the modes where Puni keeps brackets balanced |
 | `kittymacs-eglot-auto-start-modes`, `kittymacs-language-packages` | language servers started automatically; extra language packages (`nix`, `racket`, `guile`) |
 | `kittymacs-frames-only` | whether new surfaces become OS windows |
 | `kittymacs-macos-modifiers`, `kittymacs-msys2-root`, `kittymacs-termux-root` | per-platform keys and paths |

@@ -64,7 +64,7 @@ until the language server for a mode is deliberately installed on each machine."
 (kittymacs-eglot-apply-auto-start-modes)
 ;; Keep non-built-in language modes deliberate.  Set
 ;; `kittymacs-language-packages' in private.el before startup to enable these.
-(when (memq 'nix kittymacs-language-packages)
+(when (kittymacs-feature-p 'lang-nix)
   (use-package nix-mode
     :ensure t
     :mode "\\.nix\\'")
@@ -73,11 +73,11 @@ until the language server for a mode is deliberately installed on each machine."
     :defer t
     :init
     (kittymacs-treesit-register-mode 'nix-mode 'nix-ts-mode 'nix)))
-(when (memq 'racket kittymacs-language-packages)
+(when (kittymacs-feature-p 'lang-racket)
   (use-package racket-mode
     :ensure t
     :mode "\\.rkt\\'"))
-(when (memq 'guile kittymacs-language-packages)
+(when (kittymacs-feature-p 'lang-guile)
   (use-package geiser
     :ensure t
     :defer t)

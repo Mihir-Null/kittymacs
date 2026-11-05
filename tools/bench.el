@@ -348,12 +348,30 @@ They are exact and repeat from run to run, unlike the times."
       (org-loaded-at-start . ,(if (plist-get report :org-loaded) 1 0))
       (magit-loaded-at-start . ,(if (plist-get report :magit-loaded) 1 0)))))
 
+(defun kittymacs-bench--host-files (&optional directories)
+  "Return the host files a start here would load, from DIRECTORIES.
+They default to what init.el names, read rather than repeated here."
+  (let ((directories
+         (or directories
+             (eval (nth 2 (seq-find (lambda (form)
+                                      (and (eq (car-safe form) 'defvar)
+                                           (eq (cadr form) 'kittymacs-host-directories)))
+                                    (kittymacs-bench--forms (kittymacs-bench--path "init.el"))))
+                   t))))
+    (seq-mapcat (lambda (directory)
+                  (and (file-directory-p directory)
+                       (directory-files directory t "\\`[^.#].*\\.el\\'")))
+                directories)))
+
 (defun kittymacs-bench-startup ()
   "Start Emacs repeatedly, print the times, and return the counts as metrics."
   (unless (file-directory-p (kittymacs-bench--path "var/elpa"))
     (error "No var/elpa here; run `just install' first"))
   (when (file-exists-p (kittymacs-bench--path "lisp/private.el"))
     (princ "**Warning:** lisp/private.el exists, so these numbers include it.\n\n"))
+  (when-let* ((files (kittymacs-bench--host-files)))
+    (princ (format "**Warning:** host files exist, so these numbers include them: %s.\n\n"
+                   (string-join files ", "))))
   (let* ((closure (kittymacs-bench--closure (kittymacs-bench--declared-packages)
                                             (kittymacs-bench--installed-alist)))
          (displays `(("terminal" "-nw")

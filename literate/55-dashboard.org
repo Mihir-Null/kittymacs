@@ -10,6 +10,7 @@
 - A home page, =*home*=: the dashboard package presenting Emacs's own recent files, =project.el= projects and bookmarks.
 - kittymacs adds the banner and layout, buttons to the landing pages (the cheat sheet, the reading guide, the leader tree, Meow's tutor), a guide to the first keys, font-aware centring and the literate Config button.
 - No second project or workspace database: the lists come from what Emacs already keeps.
+- This chapter is the =home-page= feature: [[id:40302e33-d2b2-4c0b-9bc3-1f9e121307e1][=init.el=]] loads it only when that is on, and the keys it binds, =SPC h h=, =SPC o h= and =SPC h ?=, go with it.
 - Leans on [[id:0286f652-e861-4e61-9ca6-91e225c8939d][the appearance chapter]] for fonts and icons and on [[id:53ad53ed-155f-47dc-973d-7be18de2893c][the keys chapter]] for the =SPC= keys it advertises.
 
 * The cheat sheet, offline

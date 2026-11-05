@@ -138,14 +138,15 @@
 (keymap-set kittymacs-leader-map "k" (cons "kill ring" #'consult-yank-from-kill-ring))
 (keymap-set kittymacs-help-map "s" (cons "search manuals" #'kittymacs-search-manuals))
 
-(use-package consult-dir
-  :ensure t
-  :bind (("C-x C-d" . consult-dir)
-         :map vertico-map
-         ("C-x C-d" . consult-dir)
-         ("C-x C-j" . consult-dir-jump-file)))
+(when (kittymacs-feature-p 'directory-switch)
+  (use-package consult-dir
+    :ensure t
+    :bind (("C-x C-d" . consult-dir)
+           :map vertico-map
+           ("C-x C-d" . consult-dir)
+           ("C-x C-j" . consult-dir-jump-file)))
 
-(keymap-set kittymacs-file-map "D" (cons "switch directory" #'consult-dir))
+  (keymap-set kittymacs-file-map "D" (cons "switch directory" #'consult-dir)))
 ;; Embark's variable, bound dynamically below even before Embark has loaded.
 (defvar embark-indicators)
 
@@ -278,16 +279,17 @@
   "e" (cons "Emacs Lisp symbol" #'cape-elisp-symbol))
 
 (keymap-set kittymacs-code-map "p" (cons "complete with" kittymacs-cape-map))
-(use-package flyspell-correct
-  :ensure t
-  :after flyspell
-  :bind (:map flyspell-mode-map ("C-;" . flyspell-correct-wrapper)))
+(when (kittymacs-feature-p 'spelling)
+  (use-package flyspell-correct
+    :ensure t
+    :after flyspell
+    :bind (:map flyspell-mode-map ("C-;" . flyspell-correct-wrapper)))
 
-(use-package consult-flyspell
-  :ensure t
-  :commands consult-flyspell)
+  (use-package consult-flyspell
+    :ensure t
+    :commands consult-flyspell)
 
-(keymap-set kittymacs-search-map "p" (cons "spelling" #'consult-flyspell))
+  (keymap-set kittymacs-search-map "p" (cons "spelling" #'consult-flyspell)))
 (defcustom kittymacs-snippets-dir (expand-file-name "snippets/" kittymacs-etc-dir)
   "Directory of personal snippets, one subdirectory per major mode."
   :type 'directory
@@ -297,25 +299,26 @@
   "Do not expand snippets inside Org source blocks."
   (setq-local yas-buffer-local-condition '(not (org-in-src-block-p t))))
 
-(use-package yasnippet
-  :ensure t
-  :defer 1
-  ;; No autoload cookies upstream: declare the two commands SPC i binds, so
-  ;; they work in the second before the deferred load has happened.
-  :commands (yas-insert-snippet yas-new-snippet)
-  :bind (:map yas-minor-mode-map
-         ("C-'" . yas-expand))
-  :custom
-  (yas-snippet-dirs (list kittymacs-snippets-dir))
-  :config
-  (make-directory kittymacs-snippets-dir t)
-  (add-hook 'org-mode-hook #'kittymacs--yas-not-in-org-src)
-  (with-eval-after-load 'warnings
-    (push '(yasnippet backquote-change) warning-suppress-types))
-  (yas-global-mode 1))
+(when (kittymacs-feature-p 'snippets)
+  (use-package yasnippet
+    :ensure t
+    :defer 1
+    ;; No autoload cookies upstream: declare the two commands SPC i binds, so
+    ;; they work in the second before the deferred load has happened.
+    :commands (yas-insert-snippet yas-new-snippet)
+    :bind (:map yas-minor-mode-map
+           ("C-'" . yas-expand))
+    :custom
+    (yas-snippet-dirs (list kittymacs-snippets-dir))
+    :config
+    (make-directory kittymacs-snippets-dir t)
+    (add-hook 'org-mode-hook #'kittymacs--yas-not-in-org-src)
+    (with-eval-after-load 'warnings
+      (push '(yasnippet backquote-change) warning-suppress-types))
+    (yas-global-mode 1))
 
-(keymap-set kittymacs-insert-map "s" (cons "snippet" #'yas-insert-snippet))
-(keymap-set kittymacs-insert-map "S" (cons "new snippet" #'yas-new-snippet))
+  (keymap-set kittymacs-insert-map "s" (cons "snippet" #'yas-insert-snippet))
+  (keymap-set kittymacs-insert-map "S" (cons "new snippet" #'yas-new-snippet)))
 
 (provide 'kittymacs-completion)
 ;;; kittymacs-completion.el ends here

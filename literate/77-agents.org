@@ -13,6 +13,7 @@
   + [[https://github.com/ultronozm/agent-shell-attention.el][agent-shell-attention]], the doorbell: a count in the mode line, and a desktop notification, when a shell is waiting for you.
 - What the agent itself is allowed to do lives outside Emacs, in =~/.claude/settings.json=, so the command line and this buffer share it ([[*What lives in Emacs, and what does not]]).
 - Leans on [[id:e5942eb0-4389-447d-9317-d9178adcaaae][the leader]] for =SPC m= and the =SPC a= group, and on [[id:d2e0bc37-0bd4-4b28-a8ee-04f94ac451f8][the shells chapter]] for the login environment.
+- This chapter is the =agents= feature: [[id:40302e33-d2b2-4c0b-9bc3-1f9e121307e1][=init.el=]] loads it only when that is on.
 - Read [[*How agent-shell talks to Claude]] first.
 
 #+begin_src emacs-lisp

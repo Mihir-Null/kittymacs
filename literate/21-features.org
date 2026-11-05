@@ -325,7 +325,16 @@ A package that cannot be installed warns, and the rest carry on."
 
 #+end_src
 
+* A directory can name an option of a chapter that is off
+
+- A project's =.dir-locals.el= can set two Org-roam options, and this repository's own does.
+- Those two are declared safe here rather than in [[id:f48e8f01-88da-4e33-8398-c00ab346b8bb][the Org-roam chapter]], which may not load.
+  + Otherwise a machine without linked notes would be asked about them on every file in such a project.
+
 #+begin_src emacs-lisp
+(put 'kittymacs-org-roam-project 'safe-local-variable #'booleanp)
+(put 'kittymacs-org-roam-excluded-directories 'safe-local-variable #'list-of-strings-p)
+
 (provide 'kittymacs-features)
 ;;; kittymacs-features.el ends here
 #+end_src
