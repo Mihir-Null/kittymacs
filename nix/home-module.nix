@@ -9,16 +9,30 @@
 
 let
   cfg = config.programs.kittymacs;
+  selection = import ./selection.nix { inherit lib; };
+  hostFile = selection.hostFile cfg;
   tools = import ./tools.nix {
     inherit pkgs;
     emacs = cfg.package;
   };
-  emacs = if cfg.packagesFromNix then import ./packages.nix { emacs = cfg.package; } else cfg.package;
+  emacs =
+    if cfg.packagesFromNix then
+      import ./packages.nix {
+        emacs = cfg.package;
+        features = selection.enabled (
+          if pkgs.stdenv.hostPlatform.isDarwin then "darwin" else "gnu/linux"
+        ) cfg;
+        inherit (cfg) extraPackages;
+      }
+    else if cfg.extraPackages != null then
+      cfg.package.pkgs.withPackages cfg.extraPackages
+    else
+      cfg.package;
   git = "${pkgs.git}/bin/git";
   coreutils = "${pkgs.coreutils}/bin";
 in
 {
-  options.programs.kittymacs = {
+  options.programs.kittymacs = selection.options // {
     enable = lib.mkEnableOption "kittymacs, linked into ~/.config/emacs";
 
     source = lib.mkOption {
@@ -156,6 +170,13 @@ in
   };
 
   config = lib.mkIf cfg.enable {
+    assertions = [
+      {
+        assertion = !(cfg.hostFiles ? "10-nix");
+        message = ''programs.kittymacs.hostFiles."10-nix" is the file the selection options write; choose another name.'';
+      }
+    ];
+
     home.packages =
       (lib.optionals cfg.installPackages (
         [ emacs ] ++ tools.programs ++ lib.optional cfg.suggestions.enable cfg.suggestions.package
@@ -163,9 +184,21 @@ in
       ++ (lib.optionals cfg.installFonts tools.fonts);
     fonts.fontconfig.enable = lib.mkIf cfg.installFonts (lib.mkDefault true);
 
-    xdg.configFile."emacs" = lib.mkIf (cfg.source != null) {
-      source = config.lib.file.mkOutOfStoreSymlink cfg.source;
-    };
+    xdg.configFile = {
+      emacs = lib.mkIf (cfg.source != null) {
+        source = config.lib.file.mkOutOfStoreSymlink cfg.source;
+      };
+      "kittymacs/conf.d/10-nix.el" = lib.mkIf (hostFile != null) { text = hostFile; };
+    }
+    // lib.mapAttrs' (
+      name: text:
+      lib.nameValuePair "kittymacs/conf.d/${name}.el" {
+        text = ''
+          ;;; -*- lexical-binding: t; -*-
+          ${text}
+        '';
+      }
+    ) cfg.hostFiles;
 
     home.activation = {
       cloneKittymacs = lib.mkIf (cfg.source != null && cfg.revision != null) (

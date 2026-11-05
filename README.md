@@ -204,6 +204,22 @@ The flake installs everything the configuration uses (Emacs, the tools and the e
 - **Home Manager** (any Linux, macOS, nix-on-droid): import `kittymacs.homeManagerModules.default` and set `programs.kittymacs.source` to where the clone should live. The first switch clones it, at the revision your `flake.lock` pins, and links it to `~/.config/emacs`; after that the checkout is yours.
 - **Without a module:** `nix profile install github:Mihir-Null/kittymacs#default github:Mihir-Null/kittymacs#tools`.
 
+**Choosing features.** With the Home Manager module, options choose [the catalogue](literate/20-catalogue.org)'s features, so no Elisp is needed:
+
+```nix
+programs.kittymacs = {
+  profile = "full";                  # or "minimal"
+  features.lang-nix.enable = true;   # beyond the profile
+  features.jump.enable = false;      # out of it
+  settings.kittymacs-frames-only = false;
+};
+```
+
+- The module writes these to `~/.config/kittymacs/conf.d/10-nix.el`, which loads before `private.el`, so your own settings still win. With none of them set, it writes nothing.
+- A feature name the catalogue lacks fails at evaluation, naming the option.
+- With `packagesFromNix`, Nix builds only what the chosen features need. A feature `private.el` adds still installs from the archives.
+- `settings` sets other options by name, `hostFiles.<name>` adds a host file of your own, and `extraPackages` builds more Emacs packages in.
+
 [The Nix chapter](literate/90-nix.org) documents every option, the daemon, and both example hosts.
 
 ### First start
@@ -341,7 +357,7 @@ The loop:
 | `just check` | Emacs | chapters match generated files; pages follow the conventions; builder, platform and Tree-sitter tests |
 | `just install`, `just compile`, `just test-packages` | network, then installed packages | a fresh install byte-compiles, and the leader, Org-roam, theme and startup-verifier tests pass |
 | `just frames-test` | a display | the frame policy |
-| `just nix-check` | Nix | the generated Nix lints, and the flake and both example hosts evaluate |
+| `just nix-check` | Nix | the generated Nix lints, the flake and both example hosts evaluate, and the selection options reach a real start |
 
 [The maintenance chapter](literate/80-maintenance.org) explains each recipe and the builder; [the conventions](literate/conventions.org) say how a chapter is written; [ARCHITECTURE.md](ARCHITECTURE.md) records the design and every decision behind it. `nix develop` gives a shell with Emacs, `just` and the Nix linters. [CI](.github/workflows/ci.yml) runs the recipes on every push, on Emacs 31.1, on Linux, macOS and Windows.
 

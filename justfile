@@ -147,8 +147,24 @@ sources *FLAGS:
     nix derivation show -r --no-write-lock-file {{FLAGS}} .#packages.x86_64-linux.with-packages > "${TMPDIR:-/tmp}/kittymacs-derivations.json"
     ! grep -o 'savannah[.]gnu[.]org/git/elpa[^"]*' "${TMPDIR:-/tmp}/kittymacs-derivations.json"
 
+# Evaluate real Home Manager hosts against this checkout, then start Emacs once
+# per host with what each generated, and fail if Elisp's answer is not what the
+# options said. A feature the catalogue lacks and a reserved host file name must
+# fail evaluation, naming the option. "The selection check" in
+# literate/90-nix.org explains it.
+nix-selection:
+    nix eval --no-write-lock-file --override-input kittymacs "path:$PWD" \
+      --json ./nix/selection-check#hosts > "${TMPDIR:-/tmp}/kittymacs-selection.json"
+    KITTYMACS_NIX_REPORT="${TMPDIR:-/tmp}/kittymacs-selection.json" emacs -Q --batch -l tests/kittymacs-nix-selection.el
+    ! nix eval --no-write-lock-file --override-input kittymacs "path:$PWD" \
+      --json ./nix/selection-check#typo 2> "${TMPDIR:-/tmp}/kittymacs-typo.txt"
+    grep -F 'programs.kittymacs.features.no-such-feature' "${TMPDIR:-/tmp}/kittymacs-typo.txt"
+    ! nix eval --no-write-lock-file --override-input kittymacs "path:$PWD" \
+      --json ./nix/selection-check#reserved 2> "${TMPDIR:-/tmp}/kittymacs-reserved.txt"
+    grep -F 'programs.kittymacs.hostFiles."10-nix"' "${TMPDIR:-/tmp}/kittymacs-reserved.txt"
+
 # Everything that needs Nix.
-nix-check: lint eval
+nix-check: lint eval nix-selection
 
 # Everything CI runs on Linux, in order.
 all: check nix-check install compile test-packages
