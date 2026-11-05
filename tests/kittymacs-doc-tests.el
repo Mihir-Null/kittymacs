@@ -90,8 +90,9 @@
 (ert-deftest kittymacs-doc-every-page-has-id-title-and-one-kind ()
   (dolist (file (kittymacs-doc-pages))
     (kittymacs-doc-with-page file
-      (should (cons file (kittymacs-doc-file-id)))
-      (should (cons file (assoc "TITLE" (org-collect-keywords '("TITLE")))))
+      (should (equal (list file t) (list file (and (kittymacs-doc-file-id) t))))
+      (should (equal (list file t)
+                     (list file (and (assoc "TITLE" (org-collect-keywords '("TITLE"))) t))))
       (let ((kinds (seq-filter (lambda (tag) (eq (kittymacs-doc-tag-type tag) 'kind))
                                (kittymacs-doc-file-tags))))
         (should (equal (list file 1) (list file (length kinds))))))))

@@ -13,8 +13,7 @@ before this module is loaded, to override."
   :group 'kittymacs)
 (use-package frames-only-mode
   :ensure t
-  :if kittymacs-frames-only
-  :demand t
+  :commands frames-only-mode
   :custom
   (frames-only-mode-use-windows-for-completion t)
   :config
@@ -24,7 +23,9 @@ before this module is loaded, to override."
                               (memq (car setting)
                                     '(magit-commit-show-diff magit-bury-buffer-function)))
                             frames-only-mode-configuration-variables)))
-  (frames-only-mode-remap-common-window-split-keybindings)
+  (frames-only-mode-remap-common-window-split-keybindings))
+(when kittymacs-frames-only
+  (require 'frames-only-mode)
   ;; Re-evaluating this file must not overwrite the mode's saved defaults.
   (unless frames-only-mode
     (frames-only-mode 1)))

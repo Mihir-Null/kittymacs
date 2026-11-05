@@ -402,7 +402,7 @@ Point stays where it was, in or out of a table."
 |-------------+--------------------+--------------------------------------------------|
 | =C-c / m=   | this buffer        | the outline, folded to the matching headings     |
 | =SPC s h=   | this buffer        | a jump list in which each heading shows its tags |
-| =SPC o A m= | the agenda files   | an agenda list of the matching headings          |
+| =SPC o A=, =m= | the agenda files | an agenda list of the matching headings        |
 | =SPC s q=   | the Org files here | a jump list that follows an Org QL query         |
 | =SPC s Q=   | the Org files here | an agenda-style list, grouped by file            |
 
@@ -420,7 +420,7 @@ Point stays where it was, in or out of a table."
 
 ** Org's match syntax
 
-- =C-c / m= and =SPC o A m= read it:
+- =C-c / m=, and =SPC o A= then =m=, read it:
   + =decision+nixos=: both tags;
   + =machine|module=: either tag;
   + =nixos-assignment=: the first tag without the second.
@@ -749,7 +749,7 @@ Headings are semi-bold.  The faces are remapped in this buffer only."
 
 * Check
 
-- =SPC o c t= from anywhere captures a task into the inbox.
+- =SPC o c=, then =t=, from anywhere captures a task into the inbox.
 - A table with a cookie row, such as =| <10> | <10> |= under its header rule, and a long cell wraps that cell onto rows of at most ten columns when the file is saved; edit any of those rows, save, and the cell flows again.
   + =just test= runs [[file:../tests/kittymacs-org-table-tests.el][the table tests]], which check the wrapping, its idempotence and the tables it must leave alone.
 - In =inbox.org=, =SPC m t= cycles its state; =SPC m s= schedules it.

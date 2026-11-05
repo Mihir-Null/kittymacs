@@ -151,14 +151,15 @@
   1. Press =C-g= once, and note whether Emacs recovers: code that checks for quit is interruptible, and a C loop is not.
   2. Sample the native stack, which works even if Lisp never runs again: on macOS =sample Emacs 10 -file ~/emacs-stall.txt=, elsewhere =gdb -p PID -batch -ex bt=.
   3. Ask for a Lisp backtrace with =pkill -USR2 -x Emacs= (=emacs= outside macOS): =debug-on-event= opens =*Backtrace*= at the next point that checks for quit.
-- The top of the native stack says where to look next:
+- The main thread's stack, in the =sample= call graph, says where to look next:
 
-| Near the top                      | Look at                                       |
-|-----------------------------------+-----------------------------------------------|
-| =garbage_collect=, =mark_object=  | garbage collection, and undo in large buffers |
-| =redisplay_internal=, face code   | redisplay, faces, the mode line               |
-| =wait_reading_process_output=     | a process Emacs is waiting for                |
-| =exec_byte_code=, =eval_sub=      | Lisp: the backtrace from the third step names it |
+| On the main thread's stack          | Means                                            |
+|-------------------------------------+--------------------------------------------------|
+| =read_char= down to =ns_select_1= and =mach_msg=, in every sample | idle, waiting for input: Emacs is healthy |
+| =garbage_collect=, =mark_object=    | garbage collection, and undo in large buffers    |
+| =redisplay_internal=, face code     | redisplay, faces, the mode line                  |
+| =wait_reading_process_output= below Lisp frames | Lisp waiting for a process, such as =accept-process-output= |
+| =exec_byte_code=, =eval_sub=        | Lisp: the backtrace from the third step names it |
 
 - After a recovery, =M-: (list gcs-done gc-elapsed)= shows how much time garbage collection has taken in this session.
 - For a slowdown rather than a freeze, =M-x profiler-start=, repeat the slow action, then =M-x profiler-report=.

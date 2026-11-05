@@ -36,9 +36,11 @@ tangle-check:
 
 # Every page has an ID, a title and one kind tag from the vocabulary; every
 # id:, file: and heading link resolves; the index lists every chapter; every
-# chapter ends with a Check. See literate/conventions.org.
+# chapter ends with a Check; prose names only keys and packages that exist, and
+# code follows the rules the chapters state. See literate/conventions.org.
 doc-test:
     emacs -Q --batch -l tests/kittymacs-doc-tests.el -f ert-run-tests-batch-and-exit
+    emacs -Q --batch -l tests/kittymacs-lint-tests.el -f ert-run-tests-batch-and-exit
 
 # The tests that need no packages: the builder; the startup guards and the
 # Nix package list; each operating system's platform branch (on any

@@ -53,7 +53,7 @@
   + =use-package-ensure-elpa= refreshes only when a package is /missing/ from the index, never when the version it names is stale.
 - =kittymacs-ensure-package= is =use-package-ensure-function=: before the /first/ install of a session it refreshes the index, then hands the install to =use-package-ensure-elpa=.
   + Nothing is refreshed while every declared package is installed, so a normal start, and every start under the Nix module, stays off the network.
-  + One refresh per session at most: a fresh clone installing ninety packages fetches the index once, not ninety times.
+  + One refresh per session at most: a fresh clone fetches the index once, not once per package.
   + Refreshing first, rather than retrying after a failure, means no install is ever tried against a stale index, so no "Failed to install" warning appears for a failure that a retry then mends.
   + Offline, the refresh fails with a warning and the install goes ahead from the cached index; a package it lists may still be there.
 - =init.el= no longer refreshes an empty index up front for the same reason: under Nix nothing needs it.
@@ -74,7 +74,7 @@
   + [[id:d2e0bc37-0bd4-4b28-a8ee-04f94ac451f8][The shells chapter]] later imports the full login environment, for =git= and the language servers too.
 - Without a native =gpg= (always on Windows without Gpg4win) the check is skipped rather than silently losing the archives.
 - No mirror of the archives, even where the official hosts are hard to reach (*decided* 2026-10-15):
-  + A mirror copies a tarball once and keeps it under the same name, while GNU ELPA re-signs its tarballs when its key changes; a mirrored =spinner-1.7.4.tar= still carried a signature by the key that expired in 2024, so Emacs refused it, and =deadgrep=, which needs =spinner=, failed to install on every machine.
+  + A mirror copies a tarball once and keeps it under the same name, while GNU ELPA re-signs its tarballs when its key changes; a mirrored =spinner-1.7.4.tar= still carried a signature by the key that expired in 2024, so Emacs refused it, and the package that needed =spinner= failed to install on every machine.
   + Behind a proxy that inspects TLS, give Emacs the proxy and the certificate bundle instead (=https_proxy=, which =url.el= reads, and the trust store nixpkgs' GnuTLS reads from =NIX_SSL_CERT_FILE=); the machine's configuration sets both.
 
 * early-init.el: before the first frame
