@@ -110,7 +110,7 @@ Only `minimal' builds the features that are on, and it adds Avy of its own."
            (extra (seq-difference names wanted)))
       (append (and missing (list (format "not built: %S" missing)))
               (and (not (equal extra '(avy)))
-                   (list (format "built, and neither a feature nor extraPackages wants it: %S"
+                   (list (format "built beyond the features: %S, and extraPackages says (avy)"
                                  extra)))))))
 
 (defun kittymacs-nix--check-settings (name)
