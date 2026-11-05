@@ -4,9 +4,9 @@
 ;;
 ;; A real start for each host, in a process of its own, reading that host's
 ;; generated files from the host layer.  Nothing is installed.  The packages are
-;; optional, because the selection is settled before any of them loads: a start
-;; without them warns about each one, and only warnings about the selection or a
-;; host file count here.  KITTYMACS_TEST_PACKAGES names a directory to use.
+;; optional, because Elisp settles the selection before any of them loads: a
+;; start without them warns about each one, and only warnings about the selection
+;; or a host file count here.  KITTYMACS_TEST_PACKAGES names a directory to use.
 
 ;;; Code:
 (require 'cl-lib)
@@ -96,9 +96,10 @@ With no profile, Nix answers from `full', so it need only cover what is on."
               (and too-many (alist-get 'profile said)
                    (list (format "in Nix's answer, and off here: %S" too-many)))))))
 
-(defun kittymacs-nix--check-built (built)
-  "Return what is wrong with the packages Nix BUILT for the features that are on."
-  (when built
+(defun kittymacs-nix--check-built (name built)
+  "Return what is wrong with the packages Nix BUILT for the host NAME.
+Only `minimal' builds the features that are on, and it adds Avy of its own."
+  (when (eq name 'minimal)
     (let* ((names (mapcar #'intern built))
            (wanted (seq-mapcat
                     (lambda (feature)
@@ -108,7 +109,9 @@ With no profile, Nix answers from `full', so it need only cover what is on."
            (missing (seq-difference (seq-difference wanted names) kittymacs-nix-archive-only))
            (extra (seq-difference names wanted)))
       (append (and missing (list (format "not built: %S" missing)))
-              (and extra (list (format "built, and no feature wants it: %S" extra)))))))
+              (and (not (equal extra '(avy)))
+                   (list (format "built, and neither a feature nor extraPackages wants it: %S"
+                                 extra)))))))
 
 (defun kittymacs-nix--check-settings (name)
   "Return what is wrong with the settings the host NAME asked for."
@@ -162,7 +165,7 @@ With no profile, Nix answers from `full', so it need only cover what is on."
                 (append (kittymacs-nix--check-said (alist-get 'said entry))
                         (kittymacs-nix--check-enabled (alist-get 'said entry)
                                                       (alist-get 'enabled entry))
-                        (kittymacs-nix--check-built (alist-get 'built entry))
+                        (kittymacs-nix--check-built name (alist-get 'built entry))
                         (kittymacs-nix--check-settings name)
                         (kittymacs-nix--selection-warnings))))
       (error (push (format "Startup error: %S" err) failures)))
@@ -194,7 +197,9 @@ With no profile, Nix answers from `full', so it need only cover what is on."
    (and (alist-get 'enabled (alist-get 'plain report))
         (list "plain chose features"))
    (and (null (alist-get 'plain report))
-        (list "the report has no plain host"))))
+        (list "the report has no plain host"))
+   (and (not (equal (alist-get 'built (alist-get 'extraOnly report)) '("vundo")))
+        (list (format "extraOnly built %S" (alist-get 'built (alist-get 'extraOnly report)))))))
 
 (defun kittymacs-nix-all ()
   "Check the report, start each host in it, print a table and exit."

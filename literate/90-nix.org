@@ -251,7 +251,7 @@
   + A host that chose nothing passes null too, so it builds what it always did.
   + A feature that =private.el= adds beyond this list still installs from the archives.
 - A package added to a chapter goes under its feature here too; the test fails until it does, and until each key holds its catalogue entry's packages.
-  + The catalogue's =:vc= packages are not in nixpkgs' sets, so they stay out with the two above.
+  + The catalogue's =:vc= packages are not in nixpkgs' sets, so they stay out too.
 - The result is sorted by name with hyphens ignored, because the order is part of the derivation.
   + That is the order this list had before it was keyed, so a host that chose nothing keeps its store path and rebuilds nothing.
 - =extraPackages= goes after the list, unsorted: a host's own packages, handed the same package set.
@@ -424,8 +424,8 @@ programs.kittymacs = {
 };
 #+end_src
 
-- With none of these set, no file is written and no package changes, so a host that ignores them stays exactly as it was.
-- Only the Home Manager module has these options, because a system module has no home to write to.
+- With none of these set, the module writes no file and no package changes, so a host that ignores them stays exactly as it was.
+- Only the Home Manager module has these options so far: a system module would write to =/etc/kittymacs/conf.d/=, and none does yet.
   + On a Mac with both modules, set them on the Home Manager side; =packagesFromNix= in the nix-darwin module still builds every feature.
 - =features= is generated from =nix/features.json=, which the builder reads from the catalogue, so each feature's summary is its option's description.
 - A name the catalogue lacks fails at evaluation, with the module system's message naming the option: a typo costs least there.
@@ -1384,9 +1384,11 @@ in
 - A flake of its own, as the examples are, so Home Manager stays out of this repository's inputs.
 - [[file:../tests/kittymacs-nix-selection.el][The test]] writes each host's files where a real start reads them, starts Emacs once per host, and compares the answers with the report.
   + =plain= sets no new option, and must write no file.
-  + =full= selects, excludes and settles a cascade of dependencies; =minimal= also builds its packages; =noProfile= sets features alone.
+  + =full= selects, excludes and settles a cascade of dependencies.
+  + =minimal= also builds its packages, with one extra.
+  + =noProfile= sets features alone, and =extraOnly= builds in one package with =packagesFromNix= off.
   + =typo= and =reserved= must fail evaluation, each with a message naming the option.
-- The check's starts have no packages in CI, because the selection is settled before any package loads.
+- The check's starts have no packages in CI, because Elisp settles the selection before any package loads.
 
 #+begin_src nix
 # Generated from literate/90-nix.org (the kittymacs repository).
@@ -1450,7 +1452,7 @@ in
           };
           enabled = selection.enabled "gnu/linux" cfg;
           built =
-            if cfg.packagesFromNix then
+            if cfg.daemon then
               map (package: package.pname) config.services.emacs.package.deps.explicitRequires
             else
               null;
@@ -1488,9 +1490,14 @@ in
             jupyter.enable = true;
           };
           packagesFromNix = true;
+          extraPackages = epkgs: [ epkgs.avy ];
           daemon = true;
         };
         noProfile.features.jump.enable = false;
+        extraOnly = {
+          extraPackages = epkgs: [ epkgs.vundo ];
+          daemon = true;
+        };
       };
 
       # These two must fail evaluation.

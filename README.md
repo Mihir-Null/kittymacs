@@ -204,7 +204,7 @@ The flake installs everything the configuration uses (Emacs, the tools and the e
 - **Home Manager** (any Linux, macOS, nix-on-droid): import `kittymacs.homeManagerModules.default` and set `programs.kittymacs.source` to where the clone should live. The first switch clones it, at the revision your `flake.lock` pins, and links it to `~/.config/emacs`; after that the checkout is yours.
 - **Without a module:** `nix profile install github:Mihir-Null/kittymacs#default github:Mihir-Null/kittymacs#tools`.
 
-**Choosing features.** With the Home Manager module, options choose [the catalogue](literate/20-catalogue.org)'s features, so no Elisp is needed:
+**Choosing features.** With the Home Manager module, options choose [the catalogue](literate/20-catalogue.org)'s features, so you write no Elisp:
 
 ```nix
 programs.kittymacs = {

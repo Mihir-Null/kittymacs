@@ -59,7 +59,7 @@
           };
           enabled = selection.enabled "gnu/linux" cfg;
           built =
-            if cfg.packagesFromNix then
+            if cfg.daemon then
               map (package: package.pname) config.services.emacs.package.deps.explicitRequires
             else
               null;
@@ -97,9 +97,14 @@
             jupyter.enable = true;
           };
           packagesFromNix = true;
+          extraPackages = epkgs: [ epkgs.avy ];
           daemon = true;
         };
         noProfile.features.jump.enable = false;
+        extraOnly = {
+          extraPackages = epkgs: [ epkgs.vundo ];
+          daemon = true;
+        };
       };
 
       # These two must fail evaluation.
