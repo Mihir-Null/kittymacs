@@ -16,7 +16,6 @@
   (agent-shell-preferred-agent-config 'claude-code)
   (agent-shell-activity-group-expand-by-default nil)
   (agent-shell-highlight-blocks nil)
-  (agent-shell-show-busy-indicator nil)
   (agent-shell-header-style 'text)
   :config
   (setopt agent-shell-anthropic-claude-environment

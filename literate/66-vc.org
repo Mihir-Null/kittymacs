@@ -23,7 +23,7 @@
 - Diffs:
   + =vc= diffs carry a =--patch-with-stat= summary;
   + changes are refined word by word as you move to a hunk;
-  + file headers are prettified and hunks keep their language's syntax highlighting.
+  + file headers are prettified, and hunks use diff colours only, because highlighting each hunk as its language costs too much on a large diff.
 - =vc-annotate= colours lines on a scale by age; Ediff keeps its control panel in the same frame.
 - When a merge leaves conflict markers in a file, =smerge-mode= offers to keep one side or the other.
   + Its commands live under =C-c v= here as well as the default =C-c ^=: =C-c v n= next conflict, =C-c v u= keep upper, =C-c v l= keep lower.
@@ -180,7 +180,8 @@ Falls back to `magit-status', which asks, when neither is a repository."
 
 * Changes in the gutter
 
-- =diff-hl= marks added, changed and deleted lines in the left fringe each time a file is saved, in programming and text buffers; =auto-save-visited-mode= saves after a few idle seconds, so =diff-hl-flydiff-mode= would only add diff processes.
+- =diff-hl= marks added, changed and deleted lines in the left fringe each time a file is saved, in programming and text buffers.
+  + =auto-save-visited-mode= saves after 15 idle seconds, so the gutter can lag the buffer by that long; =diff-hl-flydiff-mode= would close the gap by running a diff process while you type.
   + It updates asynchronously, and refreshes after Magit operations.
 - It uses the margin instead when there is no fringe (a terminal).
 - =SPC t g= toggles it in a buffer.

@@ -75,8 +75,10 @@
 - Redisplay favours input:
   + it skips fontifying while keys are waiting, and scrolling does not fontify text it passes over;
   + paragraphs are always left to right, which saves the bidirectional scan (right-to-left text displays with less accurate ordering);
-  + font caches are not compacted during garbage collection, which matters with icon fonts.
+  + font caches are not compacted during garbage collection, which matters with icon fonts;
+  + the region shows only in the selected window (=highlight-nonselected-windows=).
 - =read-process-output-max= reads 1 MB at a time, so an agent or language server needs fewer trips through the process filter.
+  + =process-adaptive-read-buffering= is off, so Emacs does not delay reads from a process that sends small chunks.
 - Auto-revert relies on file notifications: =auto-revert-avoid-polling= stops the stat of every buffer on each tick, and the interval only serves buffers without a watch.
   + A file on a network mount that another machine changes may revert late or not at all.
 

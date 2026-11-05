@@ -57,7 +57,8 @@
   + =agent-shell-anthropic-claude-acp-command= is =("claude-agent-acp")=, found on =exec-path=.
   + Log in once in a terminal (=claude=, then =/login=); on macOS the token lives in the Keychain.
 - Agent output is kept cheap, because a reply streams into one buffer on the main thread:
-  + activity groups start collapsed, source blocks are not highlighted, the busy animation is off, and the header is text rather than an SVG.
+  + activity groups start collapsed, source blocks are not highlighted, and the header is text rather than an SVG;
+  + the busy animation stays on: it is the only sign in the buffer that an agent is still working.
 - Two more settings differ from the defaults:
   + =agent-shell-preferred-agent-config= is =claude-code=, so =SPC a a= starts Claude without asking which agent;
   + the adapter inherits Emacs's environment.
@@ -77,7 +78,6 @@
   (agent-shell-preferred-agent-config 'claude-code)
   (agent-shell-activity-group-expand-by-default nil)
   (agent-shell-highlight-blocks nil)
-  (agent-shell-show-busy-indicator nil)
   (agent-shell-header-style 'text)
   :config
   (setopt agent-shell-anthropic-claude-environment

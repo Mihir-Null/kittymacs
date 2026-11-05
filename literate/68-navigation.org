@@ -21,9 +21,7 @@
 - =save-place-mode= reopens every file where you left it, and keeps the place of a file it cannot read right now.
 - =recentf= keeps the last 500 files, for =SPC f r= and the home page.
 - Places, recent files and bookmarks are saved under the cache directory.
-- =C-"= jumps to the last change in the buffer.
 - URLs and e-mail addresses are clickable in compilation, shell, Eshell and text buffers, and in the comments and strings of code.
-  + It registers its side-window placement, so frames-only mode never gives it a frame.
 - =SPC b j= jumps to a heading or definition with completion: Org headings in Org, the outline elsewhere.
 
 #+begin_src emacs-lisp
