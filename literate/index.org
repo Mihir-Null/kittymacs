@@ -49,7 +49,8 @@
 | [[id:55f0b75c-d867-4474-a26e-019215b8e492][Treemacs]]        | apps      | the project tree in a sidebar                                                      |
 | [[id:f6ccd2da-4b3f-4392-b439-3966fc9d3db8][Version control]] | apps      | Magit and VC                                                                       |
 | [[id:e4d65984-892d-4046-b718-d4265ab74215][Navigation]]      | apps      | recent files, places, projects, search tools, workspaces                           |
-| [[id:8ff7e58e-c155-4513-99ae-3b2c3a6ab729][Org]]             | notes     | notes, tasks, the agenda, searches by tag and by query                             |
+| [[id:8ff7e58e-c155-4513-99ae-3b2c3a6ab729][Org]]             | notes     | notes, tasks, the agenda, searches by tag                                          |
+| [[id:c41f7a2e-6d38-4f15-9b07-2e8d3a6c1f94][Org extras]]      | notes     | queries across files, grouped lists, Org drawn like a document                     |
 | [[id:f48e8f01-88da-4e33-8398-c00ab346b8bb][Org-roam]]        | notes     | linked notes: personal and project graphs, capture, backlinks, tags                |
 | [[id:97c04bd3-1404-4b0a-8018-20d77bc671bc][Programming]]     | code      | delimiters, structural editing, linting, compiling, Emacs Lisp                     |
 | [[id:560fcdca-6cb8-49d9-bf27-eb78f32b9285][Languages]]       | code      | Tree-sitter grammars and opt-in language servers                                   |

@@ -409,4 +409,246 @@ has defined `kittymacs-after-init', so a call at its top level would fail.")
                                  (kittymacs-lint--path chapter))
                                 t)))))))
 
+;;; Modules a later change gates apart
+
+(defconst kittymacs-lint-separable-modules
+  '((kittymacs-org)
+    (kittymacs-org-extras kittymacs-org)
+    (kittymacs-org-roam)
+    (kittymacs-reading))
+  "Each module and the others of this list it may lean on.
+A later change decides per feature whether each of them loads, so one must not
+need another that may be off.  `bound-and-true-p' and its like ask first, which
+is allowed; so does waiting for the other with `with-eval-after-load'.")
+
+(defconst kittymacs-lint-definers
+  '(defun defmacro defcustom defconst defvar defvar-local defvar-keymap
+          define-minor-mode defgroup defface)
+  "What makes a name belong to the module that writes it.")
+
+(defun kittymacs-lint--symbols (form skip)
+  "Return the symbols in FORM, leaving out each list SKIP returns non-nil for."
+  (cond ((symbolp form) (and form (list form)))
+        ((and (consp form) (not (funcall skip form)))
+         (let (symbols)
+           (while (consp form)
+             (setq symbols (nconc (kittymacs-lint--symbols (car form) skip) symbols)
+                   form (cdr form)))
+           (nconc (kittymacs-lint--symbols form skip) symbols)))))
+
+(defun kittymacs-lint--defined-names (forms)
+  "Return the names FORMS define; a `defvar' without a value only declares."
+  (let (names)
+    (dolist (form forms)
+      (kittymacs-lint--walk
+       form
+       (lambda (list)
+         (when (and (memq (car list) kittymacs-lint-definers)
+                    (symbolp (cadr list))
+                    (or (not (eq (car list) 'defvar)) (cddr list)))
+           (push (cadr list) names)))))
+    names))
+
+(defun kittymacs-lint--foreign-uses (forms foreign)
+  "Return the names of the list FOREIGN that FORMS use without asking first."
+  (seq-uniq
+   (seq-filter
+    (lambda (symbol) (memq symbol foreign))
+    (seq-mapcat
+     (lambda (form)
+       (kittymacs-lint--symbols
+        form
+        (lambda (list)
+          (pcase list
+            (`(,(or 'bound-and-true-p 'boundp 'fboundp 'featurep 'declare-function) . ,_) t)
+            (`(defvar ,_) t)
+            (`(with-eval-after-load ',feature . ,_) (memq feature foreign))))))
+     forms))))
+
+(defun kittymacs-lint--catalogue ()
+  "Return the catalogue, read but not evaluated."
+  (let ((definition (car (kittymacs-lint--forms (kittymacs-lint--path "lisp/kittymacs-catalogue.el")))))
+    (cadr (nth 2 definition))))
+
+(defun kittymacs-lint--module-names (module)
+  "Return what belongs to MODULE: the module, its names and its packages."
+  (cons module
+        (append (kittymacs-lint--defined-names
+                 (kittymacs-lint--forms (kittymacs-lint--path (format "lisp/%s.el" module))))
+                (seq-mapcat (lambda (entry)
+                              (when (eq (plist-get (cdr entry) :module) module)
+                                (plist-get (cdr entry) :packages)))
+                            (kittymacs-lint--catalogue)))))
+
+(ert-deftest kittymacs-lint-foreign-uses-tells-asking-from-using ()
+  (let ((foreign '(other-fn other-var other-module)))
+    (should (equal (kittymacs-lint--foreign-uses '((require 'other-module)) foreign)
+                   '(other-module)))
+    (should (equal (kittymacs-lint--foreign-uses '((defun mine () (other-fn))) foreign)
+                   '(other-fn)))
+    (should (equal (kittymacs-lint--foreign-uses '((keymap-set m "a" (cons "a" #'other-fn))) foreign)
+                   '(other-fn)))
+    (should (equal (kittymacs-lint--foreign-uses '((setq a (cons 1 other-var))) foreign)
+                   '(other-var)))
+    (should-not (kittymacs-lint--foreign-uses
+                 '((defvar other-var)
+                   (declare-function other-fn "other")
+                   (when (fboundp 'other-fn) (ignore))
+                   (setq a (bound-and-true-p other-var))
+                   (with-eval-after-load 'other-module (other-fn)))
+                 foreign))))
+
+(ert-deftest kittymacs-lint-defined-names-leave-out-declarations ()
+  (should (equal (sort (kittymacs-lint--defined-names
+                        '((defvar declared)
+                          (defvar defined nil)
+                          (defun my-fn ())
+                          (when gate (defcustom my-option t "Doc."))))
+                       #'string<)
+                 '(defined my-fn my-option))))
+
+(ert-deftest kittymacs-lint-separable-modules-do-not-need-each-other ()
+  (pcase-dolist (`(,module . ,allowed) kittymacs-lint-separable-modules)
+    (let* ((others (seq-remove (lambda (other) (or (eq other module) (memq other allowed)))
+                               (mapcar #'car kittymacs-lint-separable-modules)))
+           (foreign (seq-mapcat #'kittymacs-lint--module-names others))
+           (forms (kittymacs-lint--forms (kittymacs-lint--path (format "lisp/%s.el" module)))))
+      (should (> (length foreign) 10))
+      (should (equal (list module nil)
+                     (list module (kittymacs-lint--foreign-uses forms foreign)))))))
+
+(ert-deftest kittymacs-lint-catalogue-says-the-separable-features-stand-alone ()
+  (let ((features (seq-filter
+                   (lambda (entry)
+                     (assq (plist-get (cdr entry) :module) kittymacs-lint-separable-modules))
+                   (kittymacs-lint--catalogue))))
+    (should (>= (length features) 3))
+    (dolist (entry features)
+      (should (equal (list (car entry) nil)
+                     (list (car entry)
+                           (seq-filter (lambda (dep) (assq dep features))
+                                       (plist-get (cdr entry) :deps))))))))
+
+;;; Org waits for its first use
+
+(defconst kittymacs-lint-org-library-regexp "\\`\\(?:org\\|ol\\|ox\\)\\(?:-\\|\\'\\)"
+  "Names of Org's libraries and of the packages that load them.")
+
+(defconst kittymacs-lint-later-forms
+  '(defun defmacro lambda function define-minor-mode define-derived-mode
+          with-eval-after-load eval-after-load use-package)
+  "Forms whose body does not run as the module loads.
+`eval-when-compile' is not one of them: a module that loads as source, as these
+do, runs its body at once.")
+
+(defun kittymacs-lint--eager-org-requires (form)
+  "Return the Org libraries FORM requires as it is evaluated."
+  (let (found)
+    (kittymacs-lint--symbols
+     form
+     (lambda (list)
+       (pcase list
+         (`(require ',(and library (pred symbolp)) . ,_)
+          (when (string-match-p kittymacs-lint-org-library-regexp (symbol-name library))
+            (push library found))
+          t)
+         (`(,(pred (lambda (head) (memq head kittymacs-lint-later-forms))) . ,_) t))))
+    found))
+
+(defun kittymacs-lint--org-package-loads-at-once-p (form)
+  "Return non-nil if the `use-package' FORM names Org's world and would load it."
+  (pcase form
+    (`(use-package ,(and name (pred symbolp)) . ,body)
+     (and (string-match-p kittymacs-lint-org-library-regexp (symbol-name name))
+          (if (memq :demand body)
+              (not (memq :after body))
+            (not (seq-some (lambda (keyword) (memq keyword body))
+                           '(:after :defer :hook :commands))))))))
+
+(ert-deftest kittymacs-lint-org-rules-tell-waiting-from-loading ()
+  (should (equal (kittymacs-lint--eager-org-requires '(require 'org)) '(org)))
+  (should (equal (kittymacs-lint--eager-org-requires '(eval-when-compile (require 'org-id)))
+                 '(org-id)))
+  (should (equal (kittymacs-lint--eager-org-requires '(when gate (require 'ox-html))) '(ox-html)))
+  (should-not (kittymacs-lint--eager-org-requires '(defun f () (require 'org))))
+  (should-not (kittymacs-lint--eager-org-requires '(with-eval-after-load 'x (require 'org))))
+  (should-not (kittymacs-lint--eager-org-requires '(require 'organic)))
+  (should (kittymacs-lint--org-package-loads-at-once-p '(use-package org-x :ensure t)))
+  (should (kittymacs-lint--org-package-loads-at-once-p '(use-package org-x :demand t)))
+  (should-not (kittymacs-lint--org-package-loads-at-once-p '(use-package org-x :after org :demand t)))
+  (should-not (kittymacs-lint--org-package-loads-at-once-p '(use-package org-x :hook (a . b))))
+  (should-not (kittymacs-lint--org-package-loads-at-once-p '(use-package meow :ensure t))))
+
+(ert-deftest kittymacs-lint-no-module-loads-org-as-it-loads ()
+  (let (found)
+    (dolist (file (kittymacs-lint--modules))
+      (dolist (form (kittymacs-lint--forms file))
+        (when-let* ((libraries (kittymacs-lint--eager-org-requires form)))
+          (push (format "%s: %S" (file-name-nondirectory file) libraries) found))
+        (kittymacs-lint--walk
+         form
+         (lambda (list)
+           (when (kittymacs-lint--org-package-loads-at-once-p list)
+             (push (format "%s: %s" (file-name-nondirectory file) (cadr list)) found))))))
+    (should-not (reverse found))))
+
+(ert-deftest kittymacs-lint-setopt-does-not-load-org ()
+  "`setopt' calls `custom-load-symbol', which loads what Customize's index lists.
+For these names that is an Org library, so `setq' sets them instead."
+  (require 'cus-load)
+  (let (found checked)
+    (kittymacs-lint--walk-modules
+     (lambda (list file)
+       (when (eq (car list) 'setopt)
+         (let ((rest (cdr list)))
+           (while (consp rest)
+             (when (and (symbolp (car rest))
+                        (string-match-p kittymacs-lint-org-library-regexp
+                                        (symbol-name (car rest))))
+               (push (car rest) checked)
+               (when (get (car rest) 'custom-loads)
+                 (push (format "%s: %s" (file-name-nondirectory file) (car rest)) found)))
+             (setq rest (cddr rest)))))))
+    (should (> (length checked) 20))
+    (should-not (reverse found))))
+
+;;; The look without doom
+
+(defun kittymacs-lint--doom-names (forms)
+  "Return the doom names in FORMS that a gate on the declarations would leave."
+  (seq-filter
+   (lambda (symbol) (string-prefix-p "doom-" (symbol-name symbol)))
+   (seq-mapcat
+    (lambda (form)
+      (kittymacs-lint--symbols
+       form
+       (lambda (list)
+         (pcase list
+           ;; A theme's name is data; only a package can make it work.
+           (`(defcustom . ,_) t)
+           (`(featurep . ,_) t)
+           (`(when (featurep . ,_) . ,_) t)
+           (`(use-package ,(and name (pred symbolp)) . ,_)
+            (string-prefix-p "doom-" (symbol-name name)))))))
+    forms)))
+
+(ert-deftest kittymacs-lint-doom-names-tell-a-guard-from-a-use ()
+  (should (equal (kittymacs-lint--doom-names '((defun f () (doom-themes-org-config))))
+                 '(doom-themes-org-config)))
+  (should (equal (kittymacs-lint--doom-names '((use-package nerd-icons :config (doom-modeline-mode 1))))
+                 '(doom-modeline-mode)))
+  (should-not (kittymacs-lint--doom-names
+               '((defcustom my-theme 'doom-one "Doc.")
+                 (when (featurep 'doom-themes) (doom-themes-org-config))
+                 (use-package doom-modeline :config (doom-modeline-mode 1))))))
+
+(ert-deftest kittymacs-lint-only-the-doom-declarations-name-doom ()
+  "A later change gates doom-themes and doom-modeline by their declarations alone."
+  (let (found)
+    (dolist (file (remove (kittymacs-lint--path "lisp/kittymacs-catalogue.el")
+                          (kittymacs-lint--modules)))
+      (when-let* ((names (kittymacs-lint--doom-names (kittymacs-lint--forms file))))
+        (push (format "%s: %S" (file-name-nondirectory file) (seq-uniq names)) found)))
+    (should-not (reverse found))))
+
 ;;; kittymacs-lint-tests.el ends here

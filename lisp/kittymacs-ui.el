@@ -106,19 +106,34 @@ Use t for a terminal configured with a Nerd Font, or nil to disable icons."
 (add-to-list 'custom-theme-load-path
              (expand-file-name "themes/" (file-name-directory (or load-file-name buffer-file-name))))
 
+(defun kittymacs--theme-or-builtin (theme builtin)
+  "Return THEME, or BUILTIN when THEME needs doom-themes and that is not loaded."
+  (if (and (string-prefix-p "doom-" (symbol-name theme))
+           (not (featurep 'doom-themes)))
+      builtin
+    theme))
+
+(defun kittymacs--default-theme ()
+  "Return the theme to use for `kittymacs-theme'."
+  (kittymacs--theme-or-builtin kittymacs-theme 'modus-vivendi))
+
+(defun kittymacs--other-theme ()
+  "Return the theme to use for `kittymacs-light-theme'."
+  (kittymacs--theme-or-builtin kittymacs-light-theme 'modus-operandi))
+
 (defun kittymacs-load-theme (theme)
   "Disable active themes and load THEME."
   (mapc #'disable-theme custom-enabled-themes)
   (load-theme theme t)
-  (when (fboundp 'doom-themes-org-config)
+  (when (featurep 'doom-themes)
     (doom-themes-org-config)))
 
 (defun kittymacs-toggle-theme ()
   "Toggle between `kittymacs-theme' and `kittymacs-light-theme'."
   (interactive)
-  (kittymacs-load-theme (if (memq kittymacs-theme custom-enabled-themes)
-                          kittymacs-light-theme
-                        kittymacs-theme)))
+  (kittymacs-load-theme (if (memq (kittymacs--default-theme) custom-enabled-themes)
+                            (kittymacs--other-theme)
+                          (kittymacs--default-theme))))
 
 (keymap-set kittymacs-toggle-map "t" (cons "light/dark theme" #'kittymacs-toggle-theme))
 (keymap-set kittymacs-toggle-map "T" (cons "choose theme" #'load-theme))
@@ -127,9 +142,15 @@ Use t for a terminal configured with a Nerd Font, or nil to disable icons."
   :ensure t
   :custom
   (doom-themes-enable-bold t)
-  (doom-themes-enable-italic t)
-  :config
-  (kittymacs-load-theme kittymacs-theme))
+  (doom-themes-enable-italic t))
+
+(condition-case-unless-debug err
+    (kittymacs-load-theme (kittymacs--default-theme))
+  (error
+   (display-warning 'kittymacs
+                    (format "Theme %s did not load: %s"
+                            (kittymacs--default-theme) (error-message-string err))
+                    :error)))
 (use-package doom-modeline
   :ensure t
   :custom

@@ -160,7 +160,7 @@
 
     ;; Notes
     (org-extras
-     :group notes :module kittymacs-org :profile full
+     :group notes :module kittymacs-org-extras :profile full
      :packages (org-ql org-super-agenda org-contrib org-modern org-appear org-modern-indent)
      :summary "A tidier Org display, grouped agendas and searches across your notes."
      :example "=SPC s q= finds headings by tag or state in every Org file.")
@@ -169,7 +169,7 @@
      :summary "Linked notes with backlinks, for personal and project graphs."
      :example "=SPC n f= finds or creates a note.")
     (pdf-reading
-     :group notes :module kittymacs-reading :profile full :deps (linked-notes)
+     :group notes :module kittymacs-reading :profile full
      :packages (pdf-tools org-noter org-pdftools org-noter-pdftools pdf-text)
      :summary "Reads PDFs in Emacs and keeps notes beside each page."
      :example "Opening a PDF renders it in a buffer, where you can search and annotate.")

@@ -40,6 +40,28 @@ Group maps are walked too.  Autoloaded commands count as commands."
                       uncallable)))))
      map)
     uncallable))
+(defun kittymacs-verify-org-features ()
+  "Return the loaded features that are Org or one of its add-ons."
+  (seq-filter (lambda (feature)
+                (let ((name (symbol-name feature)))
+                  (and (string-match-p "\\`\\(?:org\\|ol\\|ox\\)\\(?:-\\|\\'\\)" name)
+                       (not (string-suffix-p "-autoloads" name)))))
+              features))
+(defun kittymacs-verify-org-options ()
+  "Return the options that lisp/kittymacs-org.el sets at its top level."
+  (with-temp-buffer
+    (insert-file-contents (expand-file-name "lisp/kittymacs-org.el" kittymacs-verify-source))
+    (let (options)
+      (condition-case nil
+          (while t
+            (let ((form (read (current-buffer))))
+              (when (memq (car-safe form) '(setopt setq))
+                (setq form (cdr form))
+                (while form
+                  (push (car form) options)
+                  (setq form (cddr form))))))
+        (end-of-file nil))
+      options)))
 (defun kittymacs-verify-block-install (&rest args)
   (push (format "Unexpected package installation: %S" args) kittymacs-verify-failures)
   (error "Package installation disabled during verification"))
@@ -64,8 +86,8 @@ Group maps are walked too.  Autoloaded commands count as commands."
   (insert ";;; -*- lexical-binding: t; -*-\n"
           "(setq kittymacs-verify-custom-loaded t)\n"
           ;; The completion chapter sets this to 25 (Corfu's default is 15);
-          ;; Customize must win.
-          "(custom-set-variables '(corfu-min-width 20))\n"))
+          ;; Customize must win, also over an Org option set before Org loads.
+          "(custom-set-variables '(corfu-min-width 20) '(org-tags-column 7))\n"))
 (with-temp-file (expand-file-name "lisp/private.el" user-emacs-directory)
   (insert ";;; -*- lexical-binding: t; -*-\n"
           "(unless (boundp 'kittymacs-project-directory) (error \"Private loaded before platform\"))\n"
@@ -75,7 +97,7 @@ Group maps are walked too.  Autoloaded commands count as commands."
           ;; default is 2) and the navigation chapter turns filtered buffers
           ;; on; the late override must win, including over an option that
           ;; tabspaces-mode reads only as it turns on.
-          "(add-hook 'after-init-hook (lambda () (setopt corfu-scroll-margin 3 tabspaces-use-filtered-buffers-as-default nil)) 90)\n"))
+          "(add-hook 'after-init-hook (lambda () (setopt corfu-scroll-margin 3 tabspaces-use-filtered-buffers-as-default nil org-ellipsis \"!\")) 90)\n"))
 (with-temp-buffer
   (insert "(setq kittymacs-org-roam-directory (expand-file-name \"test-roam/\" user-emacs-directory) kittymacs-org-roam-excluded-directories '(\"test-excluded\"))\n")
   (append-to-file (point-min) (point-max) (expand-file-name "lisp/private.el" user-emacs-directory)))
@@ -113,6 +135,13 @@ Group maps are walked too.  Autoloaded commands count as commands."
       (advice-remove 'display-warning #'kittymacs-verify-record-warning)
       (dolist (warning (reverse kittymacs-verify-warnings))
         (kittymacs-verify-check nil (format "Startup warning: %s" warning)))
+      ;; Org waits for its first use.  First of all, because the checks below
+      ;; load it themselves, and with the home page drawn, as a plain start does.
+      (kittymacs-verify-check (null (kittymacs-verify-org-features))
+                              (format "Startup loaded Org: %S" (kittymacs-verify-org-features)))
+      (save-window-excursion (dashboard-open))
+      (kittymacs-verify-check (null (kittymacs-verify-org-features))
+                              (format "The home page loaded Org: %S" (kittymacs-verify-org-features)))
       (require 'cus-edit)
       (kittymacs-verify-check (= kittymacs-verify-private-loads 1) "private.el must load once")
       (kittymacs-verify-check (equal (bound-and-true-p kittymacs-verify-host-order) '(second first))
@@ -170,10 +199,33 @@ Group maps are walked too.  Autoloaded commands count as commands."
                        "Upstream root does not reflect personal graph override")
       (kittymacs-verify-check (not (file-exists-p kittymacs-org-roam-directory))
                        "Startup created the graph root")
+      ;; A SPC n command loads Org-roam itself, and Org with it.  This one stops
+      ;; at the root, which does not exist.
+      (condition-case nil (kittymacs--org-roam-scope) (user-error nil))
+      (kittymacs-verify-check (and (featurep 'org) (featurep 'org-roam)
+                                   (memq 'kittymacs--org-roam-restore hack-local-variables-hook))
+                              "A SPC n command did not load Org-roam")
+      (kittymacs-verify-check (and (eql org-tags-column 7) (equal org-ellipsis "!"))
+                              "Org's loading overwrote a value from Customize or private.el")
       (kittymacs-verify-check (not org-roam-db-autosync-mode) "Org-roam must not rebuild at startup")
       (kittymacs-verify-check (= (hash-table-count org-roam-db--connection) 0) "Startup opened a graph database")
       (kittymacs-verify-check (string-match-p "\\${tags" org-roam-node-display-template)
                        "SPC n f does not show the notes' tags")
+      ;; The Org chapter runs before these libraries load: `setopt' warns only
+      ;; when one does, long after the warnings above, and `setq' never does.
+      ;; ox-odt cannot load after a `setopt' on its output format: the check
+      ;; calls a function defined later in that file.
+      (dolist (library '(calendar org-agenda org-archive org-capture org-id org-refile
+                                  org-table ox ox-html))
+        (require library))
+      (let ((options (remq 'org-odt-preferred-output-format (kittymacs-verify-org-options))))
+        (kittymacs-verify-check (> (length options) 50) "The Org chapter's options were not found")
+        (dolist (option options)
+          (let ((type (get (indirect-variable option) 'custom-type)))
+            (kittymacs-verify-check
+             (and type (widget-apply (widget-convert type) :match (default-value option)))
+             (format "The Org chapter sets %s to a value its type refuses, or it is no option"
+                     option)))))
       ;; SPC s Q parses a plain query, lists its headings grouped by file,
       ;; refreshes through Org QL, and a group header keeps Meow's keys and
       ;; the leader.  An error here must not skip the checks after it.

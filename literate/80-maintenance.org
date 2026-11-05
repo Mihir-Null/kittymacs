@@ -40,7 +40,7 @@
 | =check=           | Emacs              | the three above; the default recipe                                          |
 | =install=         | Emacs, network     | start the configuration once in batch, installing its packages into =var/elpa= |
 | =compile=         | installed packages | byte-compile every module, to catch load errors                               |
-| =test-packages=   | installed packages | leader and Org-roam tests, and the startup verifier                          |
+| =test-packages=   | installed packages | leader, Org-roam and theme tests, and the startup verifier                   |
 | =size=            | Emacs              | count the code and prose against =tests/budgets.eld=                         |
 | =bench=           | installed packages | start Emacs many times and report what startup costs                         |
 | =frames-test=     | a display          | the frame-policy tests, in a graphical Emacs                                 |

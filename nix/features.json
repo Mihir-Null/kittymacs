@@ -389,7 +389,7 @@
   },
   "org-extras": {
     "group": "notes",
-    "module": "kittymacs-org",
+    "module": "kittymacs-org-extras",
     "profile": "full",
     "packages": [
       "org-ql",
@@ -416,9 +416,6 @@
     "group": "notes",
     "module": "kittymacs-reading",
     "profile": "full",
-    "deps": [
-      "linked-notes"
-    ],
     "packages": [
       "pdf-tools",
       "org-noter",

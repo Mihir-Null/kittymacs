@@ -259,6 +259,13 @@ Point stays where it was, in or out of a table."
   (add-hook 'before-save-hook #'kittymacs--org-table-wrap-before-save nil t))
 
 (add-hook 'org-mode-hook #'kittymacs--org-table-wrap-setup)
+(declare-function org-agenda-redo "org-agenda")
+(declare-function org-ql-view-refresh "org-ql-view")
+(defvar org-agenda-custom-commands)
+(defvar org-agenda-time-grid)
+(defvar org-default-notes-file)
+(defvar org-ql-view-buffers-files)
+
 (setopt org-todo-keywords '((sequence "TODO(t)" "NEXT(n)" "WAITING(w@/!)" "|" "DONE(d)" "CANCELED(c@)"))
         org-use-fast-todo-selection 'expert
         org-enforce-todo-dependencies t
@@ -273,21 +280,24 @@ Point stays where it was, in or out of a table."
         org-agenda-skip-timestamp-if-done t
         org-agenda-todo-ignore-scheduled 'future
         org-agenda-todo-ignore-deadlines 'far
-        org-agenda-time-grid '((daily today require-timed)
-                               (800 1000 1200 1400 1600 1800 2000)
-                               " ┄┄┄┄┄ " "┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄")
         org-agenda-current-time-string "–––––––––––––– Now"
         org-agenda-prefix-format '((agenda . " %-18c%?-10t ")
                                    (todo . " ")
                                    (tags . " ")
                                    (search . " %i %-12:c"))
-        calendar-week-start-day 1
-        org-agenda-custom-commands
-        '(("d" "Dashboard"
-           ((agenda "" ((org-agenda-span 'day)))
-            (tags-todo "DEADLINE<\"<+5d>\"" ((org-agenda-overriding-header "Due soon")))
-            (todo "NEXT" ((org-agenda-overriding-header "Next actions")))))
-          ("n" "Next actions" ((todo "NEXT")))))
+        calendar-week-start-day 1)
+
+;; Not `setopt': Customize's index lists a library for these names, so `setopt'
+;; would load org-agenda, and Org with it.  See "Org loads on first use".
+(setq org-agenda-time-grid '((daily today require-timed)
+                             (800 1000 1200 1400 1600 1800 2000)
+                             " ┄┄┄┄┄ " "┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄")
+      org-agenda-custom-commands
+      '(("d" "Dashboard"
+         ((agenda "" ((org-agenda-span 'day)))
+          (tags-todo "DEADLINE<\"<+5d>\"" ((org-agenda-overriding-header "Due soon")))
+          (todo "NEXT" ((org-agenda-overriding-header "Next actions")))))
+        ("n" "Next actions" ((todo "NEXT")))))
 
 (setopt org-refile-targets '((nil :maxlevel . 9) (org-agenda-files :maxlevel . 8))
         org-refile-use-cache t
@@ -300,6 +310,13 @@ Point stays where it was, in or out of a table."
   (interactive)
   (org-agenda nil "d"))
 
+(defun kittymacs-org-agenda-refresh ()
+  "Run this agenda buffer's search again, whether Org or Org QL made it."
+  (interactive)
+  (if (bound-and-true-p org-ql-view-buffers-files)
+      (org-ql-view-refresh)
+    (org-agenda-redo)))
+
 (keymap-set kittymacs-open-map "a" (cons "agenda dashboard" #'kittymacs-org-dashboard))
 (keymap-set kittymacs-open-map "A" (cons "agenda" #'org-agenda))
 
@@ -310,72 +327,6 @@ Point stays where it was, in or out of a table."
 (add-hook 'org-capture-after-finalize-hook #'kittymacs--org-agenda-refresh)
 (keymap-set kittymacs-search-map "h" (cons "org heading" #'consult-org-heading))
 (keymap-set kittymacs-search-map "a" (cons "org agenda" #'consult-org-agenda))
-(declare-function org-ql-find "org-ql-find")
-(declare-function org-ql-search "org-ql-search")
-(declare-function project-files "project")
-
-(use-package org-ql
-  :ensure t
-  :defer t)
-
-(defun kittymacs--org-files-here ()
-  "Return the Org files that a search started in this buffer covers.
-In a project, the project's Org files; anywhere else, every Org file
-under `org-directory'."
-  (or (if-let* ((project (project-current)))
-          (seq-filter (lambda (file) (string-suffix-p ".org" file))
-                      (project-files project))
-        (directory-files-recursively org-directory "\\.org\\'"))
-      (user-error "No Org files here")))
-
-(defvar kittymacs--org-ql-history nil
-  "Queries given to `kittymacs-org-ql-search'.")
-
-(defun kittymacs-org-ql-find ()
-  "Jump to a heading in the Org files here, found with an Org QL query.
-The files are the project's, or your notes' outside a project.  The
-results follow the query as you type it: tags:decision, todo:NEXT, words."
-  (interactive)
-  (org-ql-find (kittymacs--org-files-here) :prompt "Org QL: "))
-
-(defun kittymacs-org-ql-search (query)
-  "List the headings in the Org files here that match QUERY, grouped by file.
-In the list, RET visits a heading, g runs the search again, and v changes
-the query, the files, the order or the grouping."
-  (interactive (list (read-string "Org QL query: " nil 'kittymacs--org-ql-history)))
-  (org-ql-search (kittymacs--org-files-here) query
-    :super-groups '((:auto-category t))
-    :title query))
-
-(keymap-set kittymacs-search-map "q" (cons "org query, jump" #'kittymacs-org-ql-find))
-(keymap-set kittymacs-search-map "Q" (cons "org query, list" #'kittymacs-org-ql-search))
-(declare-function org-ql-view-refresh "org-ql-view")
-(defvar org-ql-view-buffers-files)
-
-(use-package org-super-agenda
-  :ensure t
-  :after org-agenda
-  :custom
-  (org-super-agenda-show-message nil)
-  :config
-  (setq org-super-agenda-header-map nil)
-  (org-super-agenda-mode 1))
-
-(defun kittymacs-org-agenda-refresh ()
-  "Run this agenda buffer's search again, whether Org or Org QL made it."
-  (interactive)
-  (if (bound-and-true-p org-ql-view-buffers-files)
-      (org-ql-view-refresh)
-    (org-agenda-redo)))
-(defun kittymacs--peg-rules-lexically (expand &rest args)
-  "Expand `with-peg-rules' ARGS with EXPAND, under lexical binding.
-Code that is already lexical expands as before."
-  (if lexical-binding
-      (apply expand args)
-    `(eval '(with-peg-rules ,@args) t)))
-
-(with-eval-after-load 'peg
-  (advice-add 'with-peg-rules :around #'kittymacs--peg-rules-lexically))
 (setopt org-export-with-smart-quotes t
         org-export-with-broken-links t
         org-html-postamble nil
@@ -385,41 +336,6 @@ Code that is already lexical expands as before."
                         ("\\.x?html?\\'" . default)
                         ("\\.pdf\\'" . emacs)
                         (auto-mode . emacs)))
-
-(use-package org-contrib
-  :ensure t
-  :after org
-  :config
-  (require 'ox-extra)
-  (ox-extras-activate '(ignore-headlines)))
-(use-package org-modern
-  :ensure t
-  :hook ((org-mode . org-modern-mode)
-         (org-agenda-finalize . org-modern-agenda))
-  :custom
-  (org-modern-star 'replace)
-  (org-modern-list '((?- . "•") (?+ . "◦") (?* . "▹"))))
-
-(use-package org-appear
-  :ensure t
-  :hook (org-mode . org-appear-mode)
-  :custom
-  (org-appear-autoemphasis t)
-  (org-appear-autolinks t)
-  (org-appear-autosubmarkers t)
-  (org-appear-autoentities t))
-(condition-case err
-    (use-package org-modern-indent
-      :vc (:url "https://github.com/jdtsmith/org-modern-indent"
-           :rev "86bd83ee1ad95f123810eb3b116beb543db1960a")
-      :init
-      (add-hook 'org-mode-hook #'org-modern-indent-mode 90))
-  (error
-   (display-warning 'kittymacs
-                    (format "org-modern-indent was not installed: %s
-Check that `git clone https://github.com/jdtsmith/org-modern-indent' works from a terminal, and which git Emacs runs: %s"
-                            (error-message-string err) (executable-find "git"))
-                    :warning)))
 (defcustom kittymacs-org-prose t
   "Whether Org buffers set prose in `variable-pitch'.
 See `kittymacs-org-prose-mode'."
@@ -460,6 +376,34 @@ Headings are semi-bold.  The faces are remapped in this buffer only."
 (add-hook 'org-mode-hook #'kittymacs--org-prose-maybe)
 
 (keymap-set kittymacs-toggle-map "P" (cons "prose font" #'kittymacs-org-prose-mode))
+(declare-function org-agenda-deadline "org-agenda")
+(declare-function org-agenda-filter-by-tag "org-agenda")
+(declare-function org-agenda-quit "org-agenda")
+(declare-function org-agenda-refile "org-agenda")
+(declare-function org-agenda-schedule "org-agenda")
+(declare-function org-agenda-todo "org-agenda")
+(declare-function org-agenda-view-mode-dispatch "org-agenda")
+(declare-function org-archive-subtree "org-archive")
+(declare-function org-babel-execute-src-block "ob-core")
+(declare-function org-deadline "org")
+(declare-function org-edit-special "org")
+(declare-function org-export-dispatch "ox")
+(declare-function org-insert-heading-respect-content "org")
+(declare-function org-insert-link "ol")
+(declare-function org-insert-structure-template "org")
+(declare-function org-open-at-point "org")
+(declare-function org-priority "org")
+(declare-function org-refile "org-refile")
+(declare-function org-schedule "org")
+(declare-function org-set-property "org")
+(declare-function org-set-tags-command "org")
+(declare-function org-store-link "ol")
+(declare-function org-time-stamp "org")
+(declare-function org-todo "org")
+(declare-function org-toggle-checkbox "org-list")
+(declare-function org-toggle-narrow-to-subtree "org")
+(defvar org-mode-syntax-table)
+
 (with-eval-after-load 'meow
   (add-to-list 'meow-mode-state-list '(org-agenda-mode . motion)))
 (with-eval-after-load 'org
