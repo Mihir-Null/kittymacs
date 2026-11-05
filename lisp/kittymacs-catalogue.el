@@ -14,10 +14,13 @@
      :summary "Undo history drawn as a tree, so an undone change is never lost."
      :example "=SPC b u= shows the history, and the arrow keys walk through it.")
     (structural-editing
-     :group editing :packages (rainbow-delimiters puni embrace highlight-indent-guides aggressive-indent flymake-collection)
-     :module kittymacs-programming :profile full
-     :summary "Balanced brackets, surround commands, indent guides and more checkers."
-     :example "=SPC c s= surrounds the selection, and deleting never breaks a pair.")
+     :group editing :packages (puni aggressive-indent) :module kittymacs-programming :profile full
+     :summary "Keeps brackets balanced as you edit, and re-indents Lisp as you type."
+     :example "Deleting never breaks a pair, and =C-)= pulls the next expression inside.")
+    (surround
+     :group editing :packages (embrace) :module kittymacs-programming :profile full
+     :summary "Adds, changes and removes the pair around a selection."
+     :example "=SPC c s= wraps the selection in quotes or brackets.")
     (syntax-things
      :group editing :packages (meow-tree-sitter) :module kittymacs-meow :profile full :deps (meow)
      :summary "Meow selects by syntax: functions, classes and parameters."
@@ -27,9 +30,9 @@
      :summary "Regexp replacement that shows each match and its result as you type."
      :example "=SPC s r= previews the replacement before you commit to it.")
     (whitespace-cleanup
-     :group editing :packages (ws-butler) :module kittymacs-defaults :profile full
+     :group editing :packages (ws-butler) :module kittymacs-defaults :profile minimal
      :summary "Removes trailing whitespace from the lines you changed, and no others."
-     :example "Saving a file leaves untouched lines out of the diff.")
+     :example "Saving leaves untouched lines out of the diff; =SPC c w= cleans a whole buffer.")
     (snippets
      :group editing :packages (yasnippet) :module kittymacs-completion :profile full
      :summary "Expands short templates that you keep in your own folder."
@@ -81,6 +84,10 @@
      :packages (nerd-icons nerd-icons-completion nerd-icons-corfu nerd-icons-dired)
      :summary "File and symbol icons in lists and in the file manager."
      :example "=SPC f f= shows an icon beside each file; it needs a Nerd Font.")
+    (code-display
+     :group look :packages (rainbow-delimiters highlight-indent-guides) :module kittymacs-programming :profile full
+     :summary "Colours brackets by depth and draws a guide at each indentation level."
+     :example "Matching brackets share a colour in code.")
     (ui-polish
      :group look :module kittymacs-ui :profile full
      :packages (spacious-padding hl-todo highlight-numbers goggles outline-minor-faces)
@@ -126,8 +133,8 @@
      :group git :packages (magit) :module kittymacs-vc :profile minimal
      :summary "Magit, a complete interface to Git."
      :example "=SPC v s= shows the status; =s= stages and =c c= commits.")
-    (git-gutter
-     :group git :packages (diff-hl) :module kittymacs-vc :profile full
+    (diff-hl
+     :group git :packages (diff-hl) :module kittymacs-vc :profile minimal
      :summary "Marks changed lines in the fringe each time you save."
      :example "=SPC t g= turns the marks on or off in this buffer.")
 
@@ -168,6 +175,10 @@
      :example "Opening a PDF renders it in a buffer, where you can search and annotate.")
 
     ;; Programming
+    (more-checkers
+     :group programming :packages (flymake-collection) :module kittymacs-programming :profile full
+     :summary "Adds Flymake checkers for common tools such as linters."
+     :example "=SPC F d= lists what those tools found in this buffer.")
     (notebooks
      :group programming :packages (code-cells math-preview) :module kittymacs-notebooks :profile full
      :summary "Works on Jupytext scripts as cells, with rendered maths."

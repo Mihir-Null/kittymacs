@@ -138,6 +138,7 @@
   + They come from CI's =bench= job, which runs the dev shell's Emacs.
   + Another build of Emacs loads a different number of features and files, so compare under =nix develop=; even there a machine can differ from CI by a few.
 - =TERM= is =linux= under the pty: an xterm-like =TERM= makes Emacs wait up to =xterm-query-timeout= for a reply a bare pty never sends.
+- A run that dies is listed with its exit status and last output, and the rest carry on, because one Emacs failing among dozens is itself a result.
 - A =lisp/private.el= changes every number, so =just bench= warns when one exists.
 - =just bench= needs a pty, so it does not run on native Windows.
 
