@@ -73,5 +73,5 @@
  (module-lines/private.example . 83)
  (org-loaded-at-start . 1)
  (packages-activated . 107)
- (prose-lines . 11793)
+ (prose-lines . 11794)
 )

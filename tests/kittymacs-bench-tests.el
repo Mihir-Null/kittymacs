@@ -71,6 +71,12 @@
   (should-not (seq-some (lambda (file) (string-suffix-p "/private.el" file))
                         (kittymacs-bench--elisp-files))))
 
+(ert-deftest kittymacs-bench-terminal-numbers-are-never-called-graphical ()
+  "An Emacs without a toolkit ignores DISPLAY and starts in the terminal."
+  (should (kittymacs-bench--display-mismatch-p nil '(:graphic nil)))
+  (should-not (kittymacs-bench--display-mismatch-p nil '(:graphic t)))
+  (should-not (kittymacs-bench--display-mismatch-p '("-nw") '(:graphic nil))))
+
 (ert-deftest kittymacs-bench-samples-are-outside-the-checkout ()
   "Inside it, `.dir-locals.el' makes `emacs -Q' wait for an answer forever."
   (let ((directory (make-temp-file "kittymacs-bench-test-" t)))

@@ -130,27 +130,26 @@ jobs:
       - name: Leader and Org-roam tests, and the startup verifier
         run: just test-packages
 
-  # No package cache, so leftovers cannot count; shell: bash, so a failure of
-  # just survives the pipe into the summary.
+  # The dev shell's Emacs, because it can open a frame and a laptop can run the
+  # same one, so the counts in tests/budgets.eld repeat there.  No package
+  # cache, so leftovers cannot count; shell: bash, so a failure of just
+  # survives the pipe into the summary.
   bench:
     name: What startup costs (report only)
     runs-on: ubuntu-latest
     continue-on-error: true
     steps:
       - uses: actions/checkout@v7
-      - uses: purcell/setup-emacs@34c6ded44899fd1bf74d2889558befd1750e61a7 # master as of 2026-09-24
+      - uses: cachix/install-nix-action@v31
         with:
-          version: "31.1"
-      - uses: taiki-e/install-action@v2
-        with:
-          tool: just
-      - name: Install a display server for the graphical runs
-        run: sudo apt-get install -y xvfb
+          extra_nix_config: "experimental-features = nix-command flakes"
       - name: Install packages by starting the configuration
-        run: just install
+        run: nix develop --command just install
       - name: Measure
         shell: bash
-        run: xvfb-run -a just bench | tee -a "$GITHUB_STEP_SUMMARY"
+        run: >-
+          nix develop --command nix shell --inputs-from . nixpkgs#xvfb-run
+          --command xvfb-run -a just bench | tee -a "$GITHUB_STEP_SUMMARY"
 
   nix:
     name: Flake evaluates, with its example hosts

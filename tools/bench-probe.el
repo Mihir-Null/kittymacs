@@ -93,6 +93,7 @@ Several, because a file that has just loaded queues its compilation late."
  (lambda ()
    (kittymacs-bench-probe--note
     :first-idle (- (float-time) kittymacs-bench-probe-start))
+   (kittymacs-bench-probe--note :graphic (and (display-graphic-p) t))
    ;; A plain timer, not an idle one: deferred timers run during the wait, and
    ;; the CPU they use is what `:cpu-settled' exists to catch.
    (run-with-timer (kittymacs-bench-probe--env "KITTYMACS_BENCH_SETTLE") nil

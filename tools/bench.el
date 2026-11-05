@@ -215,6 +215,11 @@ OPTIONS are the keywords :settle, :drain and :timeout."
                     (condition-case nil (read (current-buffer)) (error nil)))))
       (or report (error "Emacs %S exited without a report" arguments)))))
 
+(defun kittymacs-bench--display-mismatch-p (display report)
+  "Return non-nil if REPORT comes from a terminal when DISPLAY asked for a frame.
+DISPLAY is the extra arguments of the run: empty asks for a frame."
+  (and (null display) (not (plist-get report :graphic))))
+
 (defun kittymacs-bench--runs ()
   "Return the number of runs to keep in each configuration."
   (let ((runs (string-to-number (or (getenv "KITTYMACS_BENCH_RUNS") "20"))))
@@ -334,14 +339,18 @@ They are exact and repeat from run to run, unlike the times."
          counts)
     (unwind-protect
         (pcase-dolist (`(,name . ,display) displays)
-          (let ((config (append (list (format "--init-directory=%s" kittymacs-bench-root)) display)))
-            (kittymacs-bench--run config :settle kittymacs-bench-settle
-                                  :drain t :timeout kittymacs-bench-drain-timeout)
-            (let ((baseline (kittymacs-bench--measure (cons "-Q" display) 0))
-                  (reports (kittymacs-bench--measure config kittymacs-bench-settle)))
-              (kittymacs-bench--report-startup name baseline reports)
-              (unless counts
-                (setq counts (kittymacs-bench--startup-counts reports))))))
+          (let* ((config (append (list (format "--init-directory=%s" kittymacs-bench-root)) display))
+                 (warm-up (kittymacs-bench--run config :settle kittymacs-bench-settle
+                                                :drain t :timeout kittymacs-bench-drain-timeout)))
+            ;; Built without a toolkit, Emacs ignores DISPLAY and starts in the
+            ;; terminal; those numbers must not carry the word "graphical".
+            (if (kittymacs-bench--display-mismatch-p display warm-up)
+                (princ (format "\nThis Emacs did not open a frame, so no %s run.\n" name))
+              (let ((baseline (kittymacs-bench--measure (cons "-Q" display) 0))
+                    (reports (kittymacs-bench--measure config kittymacs-bench-settle)))
+                (kittymacs-bench--report-startup name baseline reports)
+                (unless counts
+                  (setq counts (kittymacs-bench--startup-counts reports)))))))
       (delete-directory directory t))
     (unless (getenv "DISPLAY")
       (princ "\nNo DISPLAY, so no graphical run.\n"))

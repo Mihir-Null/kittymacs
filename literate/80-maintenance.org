@@ -133,6 +133,7 @@
 - The counts of features, loaded files and activated packages come from a real start and repeat exactly, so they are what a budget can hold; times differ between machines and stay a report.
 - =tests/budgets.eld= holds the counts from the last =--write=, and every run prints how the checkout differs from them.
   + Nothing enforces them yet.
+  + They come from the dev shell's Emacs, as in CI; another build of Emacs loads a different number of features and files, so compare under =nix develop=.
 - =TERM= is =linux= under the pty: an xterm-like =TERM= makes Emacs wait up to =xterm-query-timeout= for a reply a bare pty never sends.
 - A =lisp/private.el= changes every number, so =just bench= warns when one exists.
 - =just bench= needs a pty, so it does not run on native Windows.
@@ -169,7 +170,7 @@
   + =startup= job :: a fresh clone runs =just install=, =just compile= and =just test-packages= on Emacs 31.1 on Linux, plus informational macOS and Windows runs.
   + =nix= job :: =just nix-check= in =nix develop=, then the home-manager module's clone options read as a device would see them.
     =eval= checks the flake twice: on its own nixpkgs-unstable, and on the stable release in the justfile's =stable= variable, since a host that makes the flake follow its nixpkgs evaluates it there; move =stable= to each new release.
-  + =bench= job :: a fresh clone with no package cache runs =just bench= under =xvfb-run= and writes the tables to the job's summary ([[*Measuring]]); it is informational and cannot fail a pull request.
+  + =bench= job :: a fresh clone with no package cache runs =just bench= in =nix develop= under =xvfb-run= and writes the tables to the job's summary ([[*Measuring]]); it is informational and cannot fail a pull request.
 - A weekly run repeats the fresh install without the package cache, so upstream breakage shows up even when nothing here changed.
 - =just frames-test= is the one suite CI cannot run: it needs a graphical session.
 - Dependabot proposes weekly updates to the workflow's actions.
