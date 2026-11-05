@@ -122,7 +122,7 @@
   + =use-package= has no =:if=, =:when= or =:unless= beside =:ensure t=, which would not stop the install: a =when= around the form does;
   + a module adds to =after-init-hook= only through =kittymacs-after-init=, except the defaults, which other modules require while compiling, before =init.el= has defined it;
   + nothing that loads before host files and =private.el= declares a package;
-  + nothing shipped names a host, so a machine's reasons stay in that machine's configuration: =ARCHITECTURE.md= alone may, as the record of why;
+  + nothing in the repository names a host, so a machine's reasons stay in that machine's configuration: one =ARCHITECTURE.md= entry records the sibling repository, and the test that holds the names is the only other exception;
   + =kittymacs-agent-mcp-servers= defaults to nil, because a host chooses the servers;
   + every option =lisp/private.example.el= offers is a real =defcustom=;
   + every generated file's header names the chapter that tangles it.
