@@ -492,13 +492,13 @@
 
 (defun kittymacs-roam-test-tagged-graph (root)
   "Write three notes in ROOT: two tagged pages, and headings with tags of their own.
-Mack's headings inherit its file tags; one adds decision.  Loop has no file
+Server's headings inherit its file tags; one adds decision.  Loop has no file
 tags, and one heading carries decision and concept."
   (kittymacs-roam-test-note
-   root "mack.org" "mack" "Mack"
+   root "server.org" "server" "Server"
    (concat "#+filetags: :machine:nixos:\n"
-           "* Services :decision:\n:PROPERTIES:\n:ID: mack-services\n:END:\n"
-           "* Hardware\n:PROPERTIES:\n:ID: mack-hardware\n:END:"))
+           "* Services :decision:\n:PROPERTIES:\n:ID: server-services\n:END:\n"
+           "* Hardware\n:PROPERTIES:\n:ID: server-hardware\n:END:"))
   (kittymacs-roam-test-note root "flake.org" "flake" "Flake" "#+filetags: :nixos:")
   (kittymacs-roam-test-note
    root "loop.org" "loop" "Loop"
@@ -569,15 +569,15 @@ tags, and one heading carries decision and concept."
               (let ((text (buffer-substring-no-properties (point-min) (point-max))))
                 (dolist (expected
                          '("* concept (1)\n- [[id:loop-why][Why a loop]] · loop.org\n"
-                           "* decision (2)\n- [[id:loop-why][Why a loop]] · loop.org\n- [[id:mack-services][Services]] · mack.org\n"
-                           "* machine (1)\n- [[id:mack][Mack]] · mack.org\n"
-                           "* nixos (2)\n- [[id:flake][Flake]] · flake.org\n- [[id:mack][Mack]] · mack.org\n"))
+                           "* decision (2)\n- [[id:loop-why][Why a loop]] · loop.org\n- [[id:server-services][Services]] · server.org\n"
+                           "* machine (1)\n- [[id:server][Server]] · server.org\n"
+                           "* nixos (2)\n- [[id:flake][Flake]] · flake.org\n- [[id:server][Server]] · server.org\n"))
                   (should (string-search expected text))))
               (should (file-equal-p org-roam-directory personal))
               ;; The buffer has the graph, so its links resolve there.
               (goto-char (point-min))
-              (search-forward "[[id:mack-services]")
+              (search-forward "[[id:server-services]")
               (org-open-at-point))
             (set-buffer (window-buffer))
-            (should (equal (org-entry-get nil "ID") "mack-services")))
+            (should (equal (org-entry-get nil "ID") "server-services")))
         (when (get-buffer name) (kill-buffer name))))))
