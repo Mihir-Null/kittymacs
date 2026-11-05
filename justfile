@@ -49,6 +49,7 @@ test:
     emacs -Q --batch -l tests/kittymacs-platform-tests.el -f ert-run-tests-batch-and-exit
     emacs -Q --batch -l tests/kittymacs-treesit-tests.el -f ert-run-tests-batch-and-exit
     emacs -Q --batch -l tests/kittymacs-org-table-tests.el -f ert-run-tests-batch-and-exit
+    emacs -Q --batch -l tests/kittymacs-bench-tests.el -f ert-run-tests-batch-and-exit
 
 # 3. Everything that needs only Emacs. Run before every commit.
 check: tangle-check doc-test test
@@ -76,6 +77,17 @@ test-packages:
     KITTYMACS_TEST_PACKAGES={{quote(packages)}} emacs -Q --batch -l tests/kittymacs-leader-tests.el -f ert-run-tests-batch-and-exit
     KITTYMACS_TEST_PACKAGES={{quote(packages)}} emacs -Q --batch -l tests/kittymacs-org-roam-tests.el -f ert-run-tests-batch-and-exit
     KITTYMACS_TEST_PACKAGES={{quote(packages)}} emacs -Q --batch -l tests/verify-config.el
+
+# Count what the code and prose cost, against tests/budgets.eld. Needs no
+# packages. Reports only; FLAGS may be --write. "Measuring" in
+# literate/80-maintenance.org explains the numbers.
+size *FLAGS:
+    emacs -Q --batch -l tools/bench.el -- --size {{FLAGS}}
+
+# Start Emacs many times and report what startup costs, in a terminal and, with
+# a DISPLAY, in a frame. Needs installed packages; takes minutes. Reports only.
+bench *FLAGS:
+    emacs -Q --batch -l tools/bench.el -- --startup {{FLAGS}}
 
 # Frame policy needs a graphical session: this opens one, runs the frame
 # tests and leaves the results on screen.
