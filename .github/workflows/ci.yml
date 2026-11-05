@@ -7,8 +7,11 @@ name: CI
 #                                                     (tangle: just check)
 #   2. Does a fresh clone install its packages, byte-compile and start, on
 #      Emacs 31.1, the oldest it supports?  And on macOS, and on Windows,
-#      the machine this is written on?
-#                      (startup: just install, compile, test-packages)
+#      the machine this is written on?  And does the minimal profile, on Linux,
+#      install exactly what it needs and start?
+#                      (startup: just install, compile, test-packages or test-minimal)
+#      Does Emacs still start with each feature off, and with each on?
+#                                               (features: just test-features)
 #   3. Does the Nix flake still evaluate, on unstable and on the stable
 #      release a host may make it follow, with its nix-darwin and
 #      nix-on-droid examples and the home-manager module's clone step?
@@ -56,7 +59,7 @@ jobs:
         run: just test
 
   startup:
-    name: Fresh install and startup (${{ matrix.system }}, Emacs ${{ matrix.emacs }})
+    name: Fresh install and startup (${{ matrix.system }}, ${{ matrix.profile }}, Emacs ${{ matrix.emacs }})
     runs-on: ${{ matrix.os }}
     # The macOS and Windows runs are informational until their runners have
     # proven stable here; the platform tests above already exercise those
@@ -68,14 +71,22 @@ jobs:
         include:
           - os: ubuntu-latest
             system: Linux
+            profile: full
+            emacs: "31.1"
+            informational: false
+          - os: ubuntu-latest
+            system: Linux
+            profile: minimal
             emacs: "31.1"
             informational: false
           - os: macos-latest
             system: macOS
+            profile: full
             emacs: "31.1"
             informational: true
           - os: windows-latest
             system: Windows
+            profile: full
             emacs: "31.1"
             informational: true
     # Git Bash on Windows, so every step is written once.
@@ -84,6 +95,7 @@ jobs:
         shell: bash
     env:
       KITTYMACS_TEST_PACKAGES: ${{ github.workspace }}/var/elpa
+      KITTYMACS_TEST_PROFILE: ${{ matrix.profile }}
     steps:
       - uses: actions/checkout@v7
       - if: runner.os != 'Windows'
@@ -110,13 +122,16 @@ jobs:
       # A restored directory keeps every package it holds, so a package that
       # moves to another source (a Git checkout to an archive, say) is only
       # tested once the cache starts over: raise the number after "elpa-".
+      # Each profile has its own cache.  Minimal has no restore-keys, so it
+      # always starts empty or from its own exact copy: leftovers from an older
+      # cache could hide a removal, and the verifier checks what it holds.
       - name: Restore the package directory
         if: github.event_name != 'schedule'
         uses: actions/cache@v6
         with:
           path: var/elpa
-          key: elpa-2-${{ runner.os }}-${{ matrix.emacs }}-${{ hashFiles('lisp/*.el', 'early-init.el', 'init.el') }}
-          restore-keys: elpa-2-${{ runner.os }}-${{ matrix.emacs }}-
+          key: elpa-3-${{ matrix.profile }}-${{ runner.os }}-${{ matrix.emacs }}-${{ hashFiles('lisp/*.el', 'early-init.el', 'init.el') }}
+          restore-keys: ${{ matrix.profile == 'full' && format('elpa-3-full-{0}-{1}-', runner.os, matrix.emacs) || '' }}
       - name: Install packages by starting the configuration
         run: just install
       # Errors fail the step; warnings are printed and do not, because most
@@ -124,11 +139,47 @@ jobs:
       # another module, that it does not load while compiling.  Installing
       # is switched off: the step above already did it, and a package that
       # a module declares with :if nil on this system should stay
-      # uninstalled.
+      # uninstalled.  Full alone: it is the same code, and byte-compiling
+      # runs a `:vc' declaration whatever gate surrounds it, which would
+      # clone a package into minimal's directory.
       - name: Byte-compile the modules
+        if: matrix.profile == 'full'
         run: just compile
       - name: Leader and Org-roam tests, and the startup verifier
+        if: matrix.profile == 'full'
         run: just test-packages
+      - name: Leader and theme tests, and the verifier on exactly these packages
+        if: matrix.profile == 'minimal'
+        run: just test-minimal
+
+  # One real start per feature: off in turn from full, on in turn from minimal.
+  # Each start activates only what its selection needs, so leftovers in this
+  # directory do no harm, and the cache may restore an older one.
+  features:
+    name: Each feature turns off and on
+    runs-on: ubuntu-latest
+    env:
+      KITTYMACS_TEST_PACKAGES: ${{ github.workspace }}/var/elpa
+      KITTYMACS_TEST_PROFILE: every
+    steps:
+      - uses: actions/checkout@v7
+      - uses: purcell/setup-emacs@34c6ded44899fd1bf74d2889558befd1750e61a7 # master as of 2026-09-24
+        with:
+          version: "31.1"
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: just
+      - name: Restore the package directory
+        if: github.event_name != 'schedule'
+        uses: actions/cache@v6
+        with:
+          path: var/elpa
+          key: elpa-3-every-${{ hashFiles('lisp/*.el', 'early-init.el', 'init.el') }}
+          restore-keys: elpa-3-every-
+      - name: Install every feature's packages
+        run: just install
+      - name: Start once per feature
+        run: just test-features
 
   # The dev shell's Emacs, because it can open a frame and a laptop can run the
   # same one.  tests/budgets.eld holds this job's counts.  No package cache, so
@@ -186,7 +237,7 @@ jobs:
   # skipped.  "Updating" in literate/80-maintenance.org explains the choice.
   merge-flake-bump:
     name: Merge the flake lock bump
-    needs: [tangle, startup, nix]
+    needs: [tangle, startup, features, nix]
     if: >-
       success()
       && github.event_name == 'pull_request'
