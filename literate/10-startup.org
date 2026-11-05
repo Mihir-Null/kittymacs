@@ -25,7 +25,7 @@
 2. Emacs reads =init.el=, which activates the installed packages, loads =use-package= and requires each generated module in dependency order:
    + defaults and platform first, then the look, then editing and the integrations, then the applications;
    + frames policy last, so nothing later can undo it.
-3. Packages install themselves as their chapters load ([[*Packages are declared where they are used]]).
+3. Host files and =private.el= choose the features, and the installer fetches what those need ([[id:5c1e7a94-8f30-4d26-b7a1-3e92d06f4c18][the features chapter]]), all before the chapters that use them load.
 4. =after-init-hook= runs once =init.el= has finished ([[*Machine-specific settings]]).
 
 * Packages are declared where they are used :decision:
@@ -34,7 +34,7 @@
 :END:
 
 - Each chapter declares its packages with =use-package … :ensure t=.
-  + A fresh clone installs them on first start; an existing =var/elpa= is used as is.
+  + A fresh clone installs what its features need on first start, through [[id:a9d3e1c7-52f8-4b06-8e14-6c07f2b1d945][the installer]]; an existing =var/elpa= is used as is.
   + With [[id:d25a5063-1439-4ae0-8fbe-b0162d05a0e0][the Nix module]], Nix has already installed nearly all of them, pinned by the flake's lock; =:ensure t= finds them installed and fetches nothing, and only what nixpkgs lacks comes from the archives.
 - Global modes are switched on one way throughout:
   + a built-in mode :: =(mode 1)= right after its settings;
@@ -215,7 +215,7 @@
   + [[id:86fcd506-34c8-476d-8903-acbef46275bf][EXWM]] comes just before the frames policy, which reads =kittymacs-exwm= for its default;
   + frames policy goes last.
 - Files from outside this repository are read along the way: [[*Host files][host files]] and then =private.el= right after the platform chapter, the Customize file at the end; [[*Machine-specific settings]] says why there.
-- =kittymacs-features-resolve= runs straight after them, so everything later asks a settled question ([[id:5c1e7a94-8f30-4d26-b7a1-3e92d06f4c18][the features chapter]]).
+- =kittymacs-features-resolve= runs straight after them, so everything later asks a settled question, and =kittymacs-features-install= right after that ([[id:5c1e7a94-8f30-4d26-b7a1-3e92d06f4c18][the features chapter]]).
 - The archive index is fetched only when a package has to be installed, by =kittymacs-ensure-package= ([[*A stale archive index]]); a start that installs nothing touches no network.
 - From the UI on, each chapter is loaded with =kittymacs-require-module=, not a bare =require=:
   + an error while a chapter loads (most often a package that failed to install, so its variables do not exist) becomes a warning naming the chapter, and the chapters after it still load;
@@ -250,23 +250,25 @@
 The `use-package-ensure-function' of kittymacs.  Before the session's
 first install it refreshes the cached archive index, whose tarballs may
 be gone; then `use-package-ensure-elpa' installs.  STATE and NO-REFRESH
-are passed through."
-  (unless (or kittymacs--archives-refreshed
-              (seq-every-p (lambda (ensure)
-                             (let ((package (if (eq ensure t) (use-package-as-symbol name) ensure)))
-                               (or (null package)
-                                   (package-installed-p (if (consp package) (car package) package)))))
-                           args))
-    (setq kittymacs--archives-refreshed t)
-    (condition-case-unless-debug err
-        (package-refresh-contents)
-      (error
-       (display-warning 'kittymacs
-                        (format "Could not refresh the package archives: %s
+are passed through.  A package the installer already failed on is left
+alone, since it warned once."
+  (unless (memq name (bound-and-true-p kittymacs-features--failed))
+    (unless (or kittymacs--archives-refreshed
+                (seq-every-p (lambda (ensure)
+                               (let ((package (if (eq ensure t) (use-package-as-symbol name) ensure)))
+                                 (or (null package)
+                                     (package-installed-p (if (consp package) (car package) package)))))
+                             args))
+      (setq kittymacs--archives-refreshed t)
+      (condition-case-unless-debug err
+          (package-refresh-contents)
+        (error
+         (display-warning 'kittymacs
+                          (format "Could not refresh the package archives: %s
 Installing from the cached index, which may name tarballs that are gone."
-                                (error-message-string err))
-                        :warning))))
-  (use-package-ensure-elpa name args state no-refresh))
+                                  (error-message-string err))
+                          :warning))))
+    (use-package-ensure-elpa name args state no-refresh)))
 
 (setopt use-package-ensure-function #'kittymacs-ensure-package)
 
@@ -339,6 +341,7 @@ Set before init.el loads to change them, because they are read during init.")
   (when (file-exists-p private)
     (kittymacs-load-user-file private)))
 (kittymacs-features-resolve)
+(kittymacs-features-install)
 (kittymacs-platform-apply)
 (kittymacs-require-module 'kittymacs-basics)
 (kittymacs-require-module 'kittymacs-ui)

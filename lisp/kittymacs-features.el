@@ -182,5 +182,30 @@ names what was asked for and cannot be had."
 (defun kittymacs-feature-p (feature)
   "Return non-nil if FEATURE, a name in the catalogue, is on."
   (and (memq feature (kittymacs-features-enabled)) t))
+(defvar use-package-ensure-function)
+(declare-function package-installed-p "package" (package &optional min-version))
+
+(defvar kittymacs-features--failed nil
+  "Packages the installer could not install in this session.")
+
+(defun kittymacs-features-packages ()
+  "Return the packages the features that are on install from an archive."
+  (seq-mapcat (lambda (feature)
+                (seq-difference (kittymacs-features--property feature :packages)
+                                (kittymacs-features--property feature :vc)))
+              (kittymacs-features-enabled)))
+
+(defun kittymacs-features-install ()
+  "Install what the features that are on need and this machine lacks.
+A package that cannot be installed warns, and the rest carry on."
+  (dolist (package (kittymacs-features-packages))
+    (unless (package-installed-p package)
+      (condition-case-unless-debug err
+          (funcall use-package-ensure-function package '(t) nil)
+        (error
+         (kittymacs-features--warn "Could not install %s: %s"
+                                   package (error-message-string err))))
+      (unless (package-installed-p package)
+        (push package kittymacs-features--failed)))))
 (provide 'kittymacs-features)
 ;;; kittymacs-features.el ends here

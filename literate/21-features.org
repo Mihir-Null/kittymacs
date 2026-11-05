@@ -10,7 +10,7 @@
 - Turns [[id:3f8a6c02-9d14-4b7e-a2c5-1e7d90b64f31][the catalogue]] and three options into one answer: which features are on here.
   + Every gate in every chapter asks =kittymacs-feature-p=, so one function decides, and no chapter knows why.
 - Leans on the catalogue alone, so a test or a later onboarding script can load it under =emacs -Q=.
-- =init.el= calls it after host files and =private.el=: [[id:40302e33-d2b2-4c0b-9bc3-1f9e121307e1][the startup chapter]] has the order.
+- =init.el= calls it after host files and =private.el=, and before the modules: [[id:40302e33-d2b2-4c0b-9bc3-1f9e121307e1][the startup chapter]] has the order.
 
 * The three options :decision:
 :PROPERTIES:
@@ -279,6 +279,52 @@ names what was asked for and cannot be had."
 
 #+end_src
 
+* The installer :decision:
+:PROPERTIES:
+:ID: a9d3e1c7-52f8-4b06-8e14-6c07f2b1d945
+:END:
+
+- A step before the modules load installs every package the features that are on need, from the catalogue.
+- A declaration's =:ensure= cannot do this job alone.
+  + =use-package-handler/:ensure= runs the install while it compiles a file, and leaves nothing to run later.
+  + A compiled module would therefore never install a feature selected after it compiled.
+- =:ensure t= stays on each declaration, because a module loaded from source still reads it, and =nix/packages.nix= is checked against those declarations.
+  + By then this step has installed the package, so =:ensure= finds it there and does nothing.
+- It installs through =use-package-ensure-function=, so a first install refreshes a stale index as any other does ([[id:8d3b6e0f-5a41-4c2e-9f7a-2b6c1e4d9a53][A stale archive index]]), and a start that installs nothing touches no network.
+- The packages in a feature's =:vc= are left to their declarations, which clone them as those modules load, with the warning each chapter writes when that fails.
+- A failed install is a warning, because the rest of the editor still works without one package.
+  + =kittymacs-features--failed= remembers it, so the declaration that follows does not try again and warn a second time.
+- A package left behind by a feature now off stays installed: =M-x package-delete= removes it, and leftover files do nothing.
+
+#+begin_src emacs-lisp
+(defvar use-package-ensure-function)
+(declare-function package-installed-p "package" (package &optional min-version))
+
+(defvar kittymacs-features--failed nil
+  "Packages the installer could not install in this session.")
+
+(defun kittymacs-features-packages ()
+  "Return the packages the features that are on install from an archive."
+  (seq-mapcat (lambda (feature)
+                (seq-difference (kittymacs-features--property feature :packages)
+                                (kittymacs-features--property feature :vc)))
+              (kittymacs-features-enabled)))
+
+(defun kittymacs-features-install ()
+  "Install what the features that are on need and this machine lacks.
+A package that cannot be installed warns, and the rest carry on."
+  (dolist (package (kittymacs-features-packages))
+    (unless (package-installed-p package)
+      (condition-case-unless-debug err
+          (funcall use-package-ensure-function package '(t) nil)
+        (error
+         (kittymacs-features--warn "Could not install %s: %s"
+                                   package (error-message-string err))))
+      (unless (package-installed-p package)
+        (push package kittymacs-features--failed)))))
+
+#+end_src
+
 #+begin_src emacs-lisp
 (provide 'kittymacs-features)
 ;;; kittymacs-features.el ends here
@@ -289,4 +335,5 @@ names what was asked for and cannot be had."
 - =M-: (kittymacs-features-profile)= names the profile, and =M-: (kittymacs-features-enabled)= lists what is on.
 - =M-: (kittymacs-feature-p 'jump)=: =t= here means =SPC j j= exists.
 - Add =(setopt kittymacs-features '(no-such-feature))= to =private.el= and restart: a warning names it, and everything else starts.
+- =(setopt kittymacs-features '(jump))= on a machine without Avy: the next start installs it, and =SPC j j= works.
 - =just test= runs [[file:../tests/kittymacs-features-tests.el][the features tests]], which need no packages.

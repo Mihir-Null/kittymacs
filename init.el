@@ -18,23 +18,25 @@
 The `use-package-ensure-function' of kittymacs.  Before the session's
 first install it refreshes the cached archive index, whose tarballs may
 be gone; then `use-package-ensure-elpa' installs.  STATE and NO-REFRESH
-are passed through."
-  (unless (or kittymacs--archives-refreshed
-              (seq-every-p (lambda (ensure)
-                             (let ((package (if (eq ensure t) (use-package-as-symbol name) ensure)))
-                               (or (null package)
-                                   (package-installed-p (if (consp package) (car package) package)))))
-                           args))
-    (setq kittymacs--archives-refreshed t)
-    (condition-case-unless-debug err
-        (package-refresh-contents)
-      (error
-       (display-warning 'kittymacs
-                        (format "Could not refresh the package archives: %s
+are passed through.  A package the installer already failed on is left
+alone, since it warned once."
+  (unless (memq name (bound-and-true-p kittymacs-features--failed))
+    (unless (or kittymacs--archives-refreshed
+                (seq-every-p (lambda (ensure)
+                               (let ((package (if (eq ensure t) (use-package-as-symbol name) ensure)))
+                                 (or (null package)
+                                     (package-installed-p (if (consp package) (car package) package)))))
+                             args))
+      (setq kittymacs--archives-refreshed t)
+      (condition-case-unless-debug err
+          (package-refresh-contents)
+        (error
+         (display-warning 'kittymacs
+                          (format "Could not refresh the package archives: %s
 Installing from the cached index, which may name tarballs that are gone."
-                                (error-message-string err))
-                        :warning))))
-  (use-package-ensure-elpa name args state no-refresh))
+                                  (error-message-string err))
+                          :warning))))
+    (use-package-ensure-elpa name args state no-refresh)))
 
 (setopt use-package-ensure-function #'kittymacs-ensure-package)
 
@@ -107,6 +109,7 @@ Set before init.el loads to change them, because they are read during init.")
   (when (file-exists-p private)
     (kittymacs-load-user-file private)))
 (kittymacs-features-resolve)
+(kittymacs-features-install)
 (kittymacs-platform-apply)
 (kittymacs-require-module 'kittymacs-basics)
 (kittymacs-require-module 'kittymacs-ui)

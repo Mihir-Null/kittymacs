@@ -234,4 +234,80 @@ Nothing the older options set is bound, and no machine has run kittymacs yet."
     (kittymacs-features-resolve)
     (should (= (length warnings) 2))))
 
+;;; The installer
+
+(defvar use-package-ensure-function nil)
+
+(defmacro kittymacs-features-test-installing (installed attempts &rest body)
+  "Run BODY as if only INSTALLED were installed, collecting requests in ATTEMPTS.
+A request installs the package it names."
+  (declare (indent 2))
+  `(let* ((,attempts nil)
+          (kittymacs-features--failed nil)
+          (use-package-ensure-function
+           (lambda (name args _state)
+             (should (equal args '(t)))
+             (push name ,attempts)
+             (push name ,installed))))
+     (cl-letf (((symbol-function 'package-installed-p)
+                (lambda (package &rest _) (memq package ,installed))))
+       ,@body)))
+
+(ert-deftest kittymacs-features-installer-fetches-what-is-missing-and-nothing-else ()
+  "A later opt-in installs on the next start, without a declaration's help."
+  (kittymacs-features-test-with ((kittymacs-profile 'minimal)
+                                 (kittymacs-features '(jump)))
+      warnings
+    (let ((installed (copy-sequence (kittymacs-features-packages))))
+      (setq installed (delq 'avy installed))
+      (kittymacs-features-test-installing installed attempts
+        (kittymacs-features-install)
+        (should (equal attempts '(avy)))
+        (should-not kittymacs-features--failed)))
+    (should-not warnings)))
+
+(ert-deftest kittymacs-features-installer-touches-nothing-when-all-is-there ()
+  (kittymacs-features-test-with () _warnings
+    (let ((installed (copy-sequence (kittymacs-features-packages))))
+      (kittymacs-features-test-installing installed attempts
+        (kittymacs-features-install)
+        (should-not attempts)))))
+
+(ert-deftest kittymacs-features-installer-leaves-out-features-that-are-off ()
+  (kittymacs-features-test-with ((kittymacs-profile 'minimal)) _warnings
+    (let ((packages (kittymacs-features-packages)))
+      (should (memq 'meow packages))
+      (should (memq 'magit packages))
+      (dolist (package '(avy org-roam doom-themes nerd-icons exwm))
+        (should-not (memq package packages))))))
+
+(ert-deftest kittymacs-features-installer-leaves-git-packages-to-their-declarations ()
+  "`:vc' packages install as they always have: from their chapters' declarations."
+  (kittymacs-features-test-with ((kittymacs-features '(pdf-reading agents org-extras))) _warnings
+    (let ((packages (kittymacs-features-packages)))
+      (should (memq 'pdf-tools packages))
+      (dolist (package '(pdf-text agent-shell-attention org-modern-indent))
+        (should-not (memq package packages))))))
+
+(ert-deftest kittymacs-features-installer-carries-on-past-a-failure ()
+  (let ((debug-on-error nil))
+    (kittymacs-features-test-with ((kittymacs-profile 'minimal)
+                                   (kittymacs-features '(jump visual-replace)))
+        warnings
+      (let* ((kittymacs-features--failed nil)
+             (missing (list 'avy 'visual-regexp))
+             (attempts nil)
+             (use-package-ensure-function
+              (lambda (name &rest _)
+                (push name attempts)
+                (when (eq name 'avy) (error "Offline"))
+                (setq missing (delq name missing)))))
+        (cl-letf (((symbol-function 'package-installed-p)
+                   (lambda (package &rest _) (not (memq package missing)))))
+          (kittymacs-features-install)
+          (should (equal (sort attempts #'string<) '(avy visual-regexp)))
+          (should (equal kittymacs-features--failed '(avy)))
+          (should (= (length warnings) 1))
+          (should (string-match-p "Could not install avy: Offline" (car warnings))))))))
+
 ;;; kittymacs-features-tests.el ends here
