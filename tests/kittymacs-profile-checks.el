@@ -161,6 +161,9 @@ A menu under `SPC m' may name a command of a library that is not loaded yet, so
    (mapcar (lambda (mode) (format "%s has an empty menu under SPC m" mode))
            (kittymacs-check-empty-localleaders))
    (when-let* ((org (kittymacs-check-org-features)))
-     (list (format "Startup loaded Org: %S" org)))))
+     (list (format "Startup loaded Org: %S" org)))
+   ;; Only a key or `just onboard' loads it: no start pays for its size.
+   (when (featurep 'kittymacs-onboard)
+     (list "Startup loaded the onboarding module"))))
 
 ;;; kittymacs-profile-checks.el ends here

@@ -181,6 +181,8 @@ jobs:
         run: just install
       - name: Start once per feature
         run: just test-features
+      - name: Start on what the onboarding screens write
+        run: just test-onboard-start
 
   # The dev shell's Emacs, because it can open a frame and a laptop can run the
   # same one.  tests/budgets.eld holds this job's counts.  No package cache, so

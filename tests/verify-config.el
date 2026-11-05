@@ -12,6 +12,11 @@
 (load (expand-file-name "tests/kittymacs-profile-checks.el" kittymacs-verify-source) nil t)
 (defvar kittymacs-verify-profile (getenv "KITTYMACS_TEST_PROFILE")
   "The profile to check, or nil for what the configuration chooses by itself.")
+(defvar kittymacs-verify-private (getenv "KITTYMACS_TEST_PRIVATE")
+  "A file to start private.el with, as onboarding wrote it, or nil.")
+(defvar kittymacs-verify-expected
+  (car (read-from-string (or (getenv "KITTYMACS_TEST_EXPECT") "nil")))
+  "An alist of features and whether `kittymacs-feature-p' must say they are on.")
 (defvar kittymacs-verify-failures nil)
 (defun kittymacs-verify-check (predicate description)
   (unless predicate (push description kittymacs-verify-failures)))
@@ -65,7 +70,11 @@ Types the configuration deliberately silences are left out."
           ;; Customize must win, also over an Org option set before Org loads.
           "(custom-set-variables '(corfu-min-width 20) '(org-tags-column 7))\n"))
 (with-temp-file (expand-file-name "lisp/private.el" user-emacs-directory)
-  (insert ";;; -*- lexical-binding: t; -*-\n"
+  (insert (if kittymacs-verify-private
+              (with-temp-buffer
+                (insert-file-contents kittymacs-verify-private)
+                (buffer-string))
+            ";;; -*- lexical-binding: t; -*-\n")
           (if kittymacs-verify-profile
               (format "(setopt kittymacs-profile '%s)\n" kittymacs-verify-profile)
             "")
@@ -118,6 +127,35 @@ Types the configuration deliberately silences are left out."
       ;; its first use, and the checks below load it themselves.
       (dolist (failure (kittymacs-check-start))
         (kittymacs-verify-check nil failure))
+      (pcase-dolist (`(,feature . ,on) kittymacs-verify-expected)
+        (kittymacs-verify-check (eq (kittymacs-feature-p feature) on)
+                                (format "kittymacs-feature-p says %s is %s"
+                                        feature (if on "off" "on"))))
+      ;; The key loads onboarding when pressed, and the hint only speaks.
+      (kittymacs-verify-check (eq (lookup-key kittymacs-leader-map (kbd "C o")) #'kittymacs-onboard)
+                              "SPC C o is not onboarding")
+      (kittymacs-verify-check (autoloadp (symbol-function 'kittymacs-onboard))
+                              "Onboarding is loaded, not waiting for its key")
+      (kittymacs-verify-check (memq 'kittymacs-onboard-hint emacs-startup-hook)
+                              "The first-start hint is not on the startup hook")
+      (let* ((noninteractive nil)
+             (said nil)
+             (hint (lambda ()
+                     (setq said nil)
+                     (cl-letf (((symbol-function 'message)
+                                (lambda (format-string &rest args)
+                                  (setq said (apply #'format format-string args)))))
+                       (kittymacs-onboard-hint))
+                     said)))
+        (let ((kittymacs-profile nil) (kittymacs-features nil) (kittymacs-features-excluded nil))
+          (kittymacs-verify-check (and (funcall hint) (string-search "SPC C o" said))
+                                  "No selection, and the hint said nothing"))
+        (dolist (chosen '(kittymacs-profile kittymacs-features kittymacs-features-excluded))
+          (cl-progv '(kittymacs-profile kittymacs-features kittymacs-features-excluded)
+              '(nil nil nil)
+            (set chosen '(chosen))
+            (kittymacs-verify-check (null (funcall hint))
+                                    (format "%s is set, and the hint still spoke" chosen)))))
       (when (kittymacs-feature-p 'home-page)
         (save-window-excursion (dashboard-open))
         (kittymacs-verify-check (null (kittymacs-check-org-features))
@@ -155,7 +193,9 @@ Types the configuration deliberately silences are left out."
                                      nil "\\`kittymacs-.*\\.el\\'"))
         (let* ((module (intern (file-name-sans-extension file)))
                (chapter-feature (car (rassq module kittymacs-check-chapter-features))))
-          (when (or (null chapter-feature) (kittymacs-feature-p chapter-feature))
+          ;; Onboarding is the one module a start never loads.
+          (when (and (not (eq module 'kittymacs-onboard))
+                     (or (null chapter-feature) (kittymacs-feature-p chapter-feature)))
             (kittymacs-verify-check (featurep module) (format "Missing feature %s" module)))))
       ;; The terminal comes from MELPA.  package.el keeps a Git checkout left
       ;; by an older :vc install as installed, so name one if it is there.

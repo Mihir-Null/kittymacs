@@ -401,6 +401,7 @@ Set before init.el loads to change them, because they are read during init.")
 
 - =lisp/private.el=, next to the generated modules, is loaded once: after the platform variables exist, before anything reads them.
   + Git ignores it; copy =lisp/private.example.el= to start one, or press =SPC C p=.
+  + [[id:c8e2f1a7-4b60-49d3-8a15-7d3e96b0c421][The onboarding screens]] write a marked block in it, and leave the rest alone.
 - Loading it early is deliberate, with one consequence:
   + many chapters read a =kittymacs-= option /while they load/, so it must already have your value: the languages chapter reads =kittymacs-language-packages= to decide which packages to install, the appearance chapter loads =kittymacs-theme=;
   + but chapters loading afterwards also set options of the packages they configure (=setopt=, =use-package … :custom=), and a later setting replaces an earlier one;
