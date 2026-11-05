@@ -9,7 +9,7 @@
 
 - Turns [[id:3f8a6c02-9d14-4b7e-a2c5-1e7d90b64f31][the catalogue]] and three options into one answer: which features are on here.
   + Every gate in every chapter asks =kittymacs-feature-p=, so one function decides, and no chapter knows why.
-- Leans on the catalogue alone, so a test or a later onboarding script can load it under =emacs -Q=.
+- Leans on the catalogue alone, so a test or [[id:c8e2f1a7-4b60-49d3-8a15-7d3e96b0c421][the onboarding screens]] can load it under =emacs -Q=.
 - =init.el= calls it after host files and =private.el=, and before the modules: [[id:40302e33-d2b2-4c0b-9bc3-1f9e121307e1][the startup chapter]] has the order.
 
 * The three options :decision:

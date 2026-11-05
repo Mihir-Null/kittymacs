@@ -206,6 +206,9 @@
   + Each must start with no warning, every =SPC= key callable, no empty group, no key naming a package that is off, and Org not loaded.
   + A feature that is on must also have loaded its chapter and bound the key its example quotes.
 - =KITTYMACS_PROBE_ONLY=, a regexp, narrows the probes to the names it matches.
+- =just test-onboard-start= answers [[id:c8e2f1a7-4b60-49d3-8a15-7d3e96b0c421][the onboarding screens]] with scripted keys for several selections, and starts the verifier on each =private.el= they wrote.
+  + =KITTYMACS_TEST_PRIVATE= names a file for the verifier to start its =private.el= with, and =KITTYMACS_TEST_EXPECT= an alist of what =kittymacs-feature-p= must answer.
+  + It needs the same directory as the probes, and runs after them in CI's =features= job.
 
 * Why the generated files are committed :decision:
 :PROPERTIES:
@@ -380,6 +383,7 @@
 | =SPC C f= | =kittymacs-find-config-file= | find a chapter by name                                 |
 | =SPC C s= | =kittymacs-search-config=    | search every chapter with ripgrep                      |
 | =SPC C p= | =kittymacs-open-private-file= | open =private.el=, creating it from the example first |
+| =SPC C o= | =kittymacs-onboard=           | choose features, with [[id:c8e2f1a7-4b60-49d3-8a15-7d3e96b0c421][the onboarding screens]]           |
 | =SPC C t= | =kittymacs-literate-tangle=  | =just tangle=, in a clean Emacs                        |
 | =SPC C k= | =kittymacs-literate-check=   | =just tangle-check=, in a clean Emacs                  |
 | =SPC C u= | =kittymacs-open-custom-file= | open the Customize file                                |
@@ -387,6 +391,13 @@
 | =SPC C r= | =restart-emacs=              | restart Emacs                                          |
 
 - Every path is relative to =user-emacs-directory=, so the commands work from any buffer.
+- This chapter binds =SPC C o= and says when to press it, because the onboarding module must not load at startup.
+  + =autoload= gives the key a command to call, and loads the module on the first press.
+- =kittymacs-onboard-hint= points at the key, on a machine with no selection in a host file or =private.el=.
+  + It runs from =emacs-startup-hook=, after Emacs's own startup message, which would otherwise replace it.
+  + A =message= and not a warning: nothing has gone wrong, and the verifier fails on any warning.
+  + It only speaks: starting something a person did not ask for is how a first start stops being understandable.
+  + A daemon has no echo area, and neither does batch Emacs.
 
 #+begin_src emacs-lisp
 ;;; kittymacs-literate.el --- Edit and build the literate source -*- lexical-binding: t; -*-
@@ -396,7 +407,19 @@
 ;;; Code:
 
 (require 'kittymacs-defaults)
+(require 'kittymacs-features)
 (require 'kittymacs-leader)
+
+(autoload 'kittymacs-onboard "kittymacs-onboard"
+  "Choose what kittymacs installs, and write it to `private.el'." t)
+
+(defun kittymacs-onboard-hint ()
+  "Say where to choose features, on a machine that has chosen none."
+  (unless (or noninteractive (daemonp)
+              kittymacs-profile kittymacs-features kittymacs-features-excluded)
+    (message "kittymacs: no features chosen yet.  SPC C o chooses them, or `just onboard' in a terminal.")))
+
+(add-hook 'emacs-startup-hook #'kittymacs-onboard-hint 90)
 
 (defun kittymacs-literate-open (&rest _)
   "Open the literate configuration's reading guide."
@@ -476,6 +499,7 @@
 (keymap-set kittymacs-config-map "t" (cons "tangle" #'kittymacs-literate-tangle))
 (keymap-set kittymacs-config-map "k" (cons "check tangle" #'kittymacs-literate-check))
 (keymap-set kittymacs-config-map "p" (cons "private.el" #'kittymacs-open-private-file))
+(keymap-set kittymacs-config-map "o" (cons "onboarding" #'kittymacs-onboard))
 (keymap-set kittymacs-config-map "u" (cons "custom.el" #'kittymacs-open-custom-file))
 (keymap-set kittymacs-config-map "a" (cons "architecture" #'kittymacs-open-architecture))
 (keymap-set kittymacs-config-map "r" (cons "restart Emacs" #'restart-emacs))
@@ -488,6 +512,7 @@
 
 - =SPC C k=: =*kittymacs literate build*= ends with =LITERATE CHECK PASS=.
 - =SPC C p= on a fresh clone: =private.el= opens, a copy of the example.
+- A start with no selection: the echo area names =SPC C o=, and =*Messages*= keeps the line.
 - =just size=: a table of counts, and how they differ from =tests/budgets.eld=.
 - =KITTYMACS_BENCH_RUNS=3 just bench=: a table of times against =emacs -Q=, with a number in every row but the =emacs -Q= cell of =SPC t m=.
 - From a shell:

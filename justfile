@@ -57,6 +57,7 @@ test:
     emacs -Q --batch -l tests/kittymacs-bench-tests.el -f ert-run-tests-batch-and-exit
     emacs -Q --batch -l tests/kittymacs-catalogue-tests.el -f ert-run-tests-batch-and-exit
     emacs -Q --batch -l tests/kittymacs-features-tests.el -f ert-run-tests-batch-and-exit
+    emacs -Q --batch -l tests/kittymacs-onboard-tests.el -f ert-run-tests-batch-and-exit
 
 # 3. Everything that needs only Emacs. Run before every commit.
 check: tangle-check doc-test test
@@ -99,6 +100,22 @@ test-minimal:
 # every feature's packages: `KITTYMACS_TEST_PROFILE=every just install`.
 test-features:
     KITTYMACS_TEST_PACKAGES={{quote(packages)}} emacs -Q --batch -l tests/kittymacs-feature-probes.el
+
+# Write a private.el with the onboarding screens for several selections, then
+# start the verifier on each. Needs what `KITTYMACS_TEST_PROFILE=every just install`
+# installs, and one start per selection, one at a time.
+test-onboard-start:
+    KITTYMACS_TEST_PACKAGES={{quote(packages)}} emacs -Q --batch -l tests/kittymacs-onboard-start.el
+
+# Choose what this checkout installs, on screens that write lisp/private.el.
+# Where no terminal can draw them, it says what to set by hand and exits 3.
+# See literate/22-onboarding.org.
+onboard:
+    @if [ -t 0 ] && [ -t 1 ] && [ "${TERM:-dumb}" != dumb ]; then \
+      emacs -nw -Q -l lisp/kittymacs-onboard.el -f kittymacs-onboard-main; \
+    else \
+      emacs -Q --batch -l lisp/kittymacs-onboard.el -f kittymacs-onboard-main; \
+    fi
 
 # Count what the code and prose cost, against tests/budgets.eld. Needs no
 # packages. Reports only; FLAGS may be --write. "Measuring" in
