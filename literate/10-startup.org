@@ -215,6 +215,7 @@
   + [[id:86fcd506-34c8-476d-8903-acbef46275bf][EXWM]] comes just before the frames policy, which reads =kittymacs-exwm= for its default;
   + frames policy goes last.
 - Files from outside this repository are read along the way: [[*Host files][host files]] and then =private.el= right after the platform chapter, the Customize file at the end; [[*Machine-specific settings]] says why there.
+- =kittymacs-features-resolve= runs straight after them, so everything later asks a settled question ([[id:5c1e7a94-8f30-4d26-b7a1-3e92d06f4c18][the features chapter]]).
 - The archive index is fetched only when a package has to be installed, by =kittymacs-ensure-package= ([[*A stale archive index]]); a start that installs nothing touches no network.
 - From the UI on, each chapter is loaded with =kittymacs-require-module=, not a bare =require=:
   + an error while a chapter loads (most often a package that failed to install, so its variables do not exist) becomes a warning naming the chapter, and the chapters after it still load;
@@ -328,14 +329,16 @@ Set before init.el loads to change them, because they are read during init.")
             (directory-files directory t "\\`[^.#].*\\.el\\'")))))
 
 ;; Foundation: the feature list, defaults, platform paths, host and machine
-;; overrides, then the look.
+;; overrides, what they selected, then the look.
 (require 'kittymacs-catalogue)
+(require 'kittymacs-features)
 (require 'kittymacs-defaults)
 (require 'kittymacs-platform)
 (kittymacs-load-host-files)
 (let ((private (expand-file-name "private.el" kittymacs-lisp-dir)))
   (when (file-exists-p private)
     (kittymacs-load-user-file private)))
+(kittymacs-features-resolve)
 (kittymacs-platform-apply)
 (kittymacs-require-module 'kittymacs-basics)
 (kittymacs-require-module 'kittymacs-ui)

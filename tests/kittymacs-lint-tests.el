@@ -334,7 +334,7 @@ with a backtick.  `SPC m' is left out: a major mode's map decides what follows."
 
 (ert-deftest kittymacs-lint-nothing-before-private-declares-a-package ()
   "These load before host files and private.el, too early for them to choose."
-  (dolist (name '("kittymacs-catalogue" "kittymacs-defaults" "kittymacs-platform"))
+  (dolist (name '("kittymacs-catalogue" "kittymacs-features" "kittymacs-defaults" "kittymacs-platform"))
     (let (found)
       (dolist (form (kittymacs-lint--forms (kittymacs-lint--path (format "lisp/%s.el" name))))
         (kittymacs-lint--walk

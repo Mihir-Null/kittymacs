@@ -67,6 +67,7 @@
                    (list feature (and (memq (plist-get plist :profile) '(minimal full optional)) t))))
     (should (plist-get plist :group))
     (should (plist-get plist :packages))
+    (should-not (seq-difference (plist-get plist :vc) (plist-get plist :packages)))
     (dolist (property '(:summary :example))
       (let ((text (plist-get plist property)))
         (should (equal (list feature property t)
@@ -101,6 +102,31 @@
                               kittymacs-catalogue)))
     (should (memq 'meow packages))
     (should (<= (length packages) kittymacs-catalogue-test-minimal-limit))))
+
+(defun kittymacs-catalogue-test--vc-declared (form)
+  "Names of the `use-package' declarations with `:vc' anywhere in FORM."
+  (when (consp form)
+    (append (and (eq (car form) 'use-package)
+                 (memq :vc (cddr form))
+                 (list (cadr form)))
+            (let (names)
+              (while (consp form)
+                (setq names (append names (kittymacs-catalogue-test--vc-declared (car form)))
+                      form (cdr form)))
+              names))))
+
+(ert-deftest kittymacs-catalogue-says-which-packages-come-from-git ()
+  "The installer leaves these to their declarations, so it must know them all."
+  (let ((declared (seq-mapcat
+                   (lambda (file)
+                     (seq-mapcat #'kittymacs-catalogue-test--vc-declared
+                                 (kittymacs-bench--forms file)))
+                   (directory-files (expand-file-name "lisp" kittymacs-catalogue-test-root)
+                                    t "\\`kittymacs-.*\\.el\\'")))
+        (listed (apply #'append (mapcar #'cdr (kittymacs-catalogue-test--property :vc)))))
+    (should declared)
+    (should-not (seq-difference declared listed))
+    (should-not (seq-difference listed declared))))
 
 (ert-deftest kittymacs-catalogue-loads-without-anything-else ()
   "Onboarding reads this under `emacs -Q', before any package exists."

@@ -31,6 +31,7 @@
 |-----------------+-----------+------------------------------------------------------------------------------------|
 | [[id:40302e33-d2b2-4c0b-9bc3-1f9e121307e1][Startup]]         | core      | the two files Emacs reads, and the order the rest loads in                         |
 | [[id:3f8a6c02-9d14-4b7e-a2c5-1e7d90b64f31][Catalogue]]       | core      | every optional feature and the packages behind it                  |
+| [[id:5c1e7a94-8f30-4d26-b7a1-3e92d06f4c18][Features]]        | core      | which of them this machine selected                                |
 | [[id:3fd783cd-deb8-48aa-bb44-0d9b16535365][Defaults]]        | core      | files, backups, text, the interface, windows, scratch, the server                  |
 | [[id:b9e6e3ce-ecec-4178-933a-234c1349e7de][Basics]]          | core      | small packages for undo, whitespace and windows                    |
 | [[id:afa6b7fd-742a-4c15-86a6-32e3e8027b0e][Platform]]        | core      | paths, shells, spelling; the macOS, Windows and Android policies                   |

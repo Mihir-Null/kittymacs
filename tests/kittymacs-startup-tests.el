@@ -245,6 +245,7 @@ The Nix chapter's \"The Emacs packages\" says why each one.")
                           "(require 'kittymacs-platform)"
                           "(kittymacs-load-host-files)"
                           "(kittymacs-load-user-file private)"
+                          "(kittymacs-features-resolve)"
                           "(kittymacs-platform-apply)"
                           "(kittymacs-require-module 'kittymacs-basics)"
                           "(kittymacs-require-module 'kittymacs-ui)"))))

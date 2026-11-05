@@ -97,14 +97,16 @@ Set before init.el loads to change them, because they are read during init.")
             (directory-files directory t "\\`[^.#].*\\.el\\'")))))
 
 ;; Foundation: the feature list, defaults, platform paths, host and machine
-;; overrides, then the look.
+;; overrides, what they selected, then the look.
 (require 'kittymacs-catalogue)
+(require 'kittymacs-features)
 (require 'kittymacs-defaults)
 (require 'kittymacs-platform)
 (kittymacs-load-host-files)
 (let ((private (expand-file-name "private.el" kittymacs-lisp-dir)))
   (when (file-exists-p private)
     (kittymacs-load-user-file private)))
+(kittymacs-features-resolve)
 (kittymacs-platform-apply)
 (kittymacs-require-module 'kittymacs-basics)
 (kittymacs-require-module 'kittymacs-ui)
