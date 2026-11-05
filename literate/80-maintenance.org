@@ -41,6 +41,8 @@
 | =install=         | Emacs, network     | start the configuration once in batch, installing its packages into =var/elpa= |
 | =compile=         | installed packages | byte-compile every module, to catch load errors                               |
 | =test-packages=   | installed packages | leader and Org-roam tests, and the startup verifier                          |
+| =size=            | Emacs              | count the code and prose against =tests/budgets.eld=                         |
+| =bench=           | installed packages | start Emacs many times and report what startup costs                         |
 | =frames-test=     | a display          | the frame-policy tests, in a graphical Emacs                                 |
 | =lint=            | Nix tools          | =deadnix=, =statix= and =nixfmt= over the generated Nix                      |
 | =eval=            | Nix                | evaluate the flake, on unstable and on stable, and both example hosts        |
@@ -104,6 +106,59 @@
 3. Give a package with its own buffers a =:meow:= heading: its starting state and a =kittymacs-define-localleader= form for =SPC m= ([[id:e5942eb0-4389-447d-9317-d9178adcaaae][the leader]]).
 4. Add a row to [[id:52a45bf9-9521-4e0d-9867-1c54721844a3][the reading guide]]'s table; =just doc-test= fails until you do.
 
+* Measuring :decision:
+:PROPERTIES:
+:ID: b49b309f-e505-422a-bd12-733e11e77411
+:END:
+
+- A claim that a change is faster needs a number from before the change, and a cost nothing counts only grows.
+- =just size= counts without starting Emacs:
+  + Lisp lines and cons cells, in total and per module, because joining lines lowers the first and not the second;
+  + declared packages, in any gate, =:vc= included;
+  + lines of prose across every =literate/*.org=, =ARCHITECTURE.md= and the README, so moving text between pages changes nothing.
+- =just bench= starts Emacs repeatedly from [[file:../tools/bench.el][tools/bench.el]], after =just install=:
+  + in a terminal it starts under its own pty, and in a frame too when =DISPLAY= is set (=xvfb-run= provides one);
+  + a first run compiles what startup loads and waits for that queue to empty, so no later run pays for compilation;
+  + each configuration throws away three runs and keeps twenty, or =KITTYMACS_BENCH_RUNS=; the table gives the median and the p90, by nearest rank.
+- Each number exists to catch a way of looking faster without being faster:
+
+| Number                  | What it catches                                                        |
+|-------------------------+------------------------------------------------------------------------|
+| first idle              | wall clock from before the process starts, so it includes the dump     |
+| CPU, settled            | work moved behind a timer, which first idle would no longer see        |
+| open =.el=, open =.org= | work moved from startup to the first file                              |
+| =SPC t m=               | work moved from startup to the first key                               |
+| ratio to =emacs -Q=     | a slow or busy machine: both sides run in the same job                 |
+
+- The counts of features, loaded files and activated packages come from a real start and repeat exactly, so they are what a budget can hold; times differ between machines and stay a report.
+- =tests/budgets.eld= holds the counts from the last =--write=, and every run prints how the checkout differs from them.
+  + Nothing enforces them yet.
+- =TERM= is =linux= under the pty: an xterm-like =TERM= makes Emacs wait up to =xterm-query-timeout= for a reply a bare pty never sends.
+- A =lisp/private.el= changes every number, so =just bench= warns when one exists.
+- =just bench= needs a pty, so it does not run on native Windows.
+
+* When Emacs stalls
+:PROPERTIES:
+:ID: 7c0b2a54-6d1e-4f3a-9b57-2e8d41a6c930
+:END:
+
+- A stall that ends in a forced quit leaves no evidence, so capture it while Emacs is still frozen, before quitting.
+- In order, from another terminal where a step needs one:
+  1. Press =C-g= once, and note whether Emacs recovers: code that checks for quit is interruptible, and a C loop is not.
+  2. Sample the native stack, which works even if Lisp never runs again: on macOS =sample Emacs 10 -file ~/emacs-stall.txt=, elsewhere =gdb -p PID -batch -ex bt=.
+  3. Ask for a Lisp backtrace with =pkill -USR2 -x Emacs= (=emacs= outside macOS): =debug-on-event= opens =*Backtrace*= at the next point that checks for quit.
+- The top of the native stack says where to look next:
+
+| Near the top                      | Look at                                       |
+|-----------------------------------+-----------------------------------------------|
+| =garbage_collect=, =mark_object=  | garbage collection, and undo in large buffers |
+| =redisplay_internal=, face code   | redisplay, faces, the mode line               |
+| =wait_reading_process_output=     | a process Emacs is waiting for                |
+| =exec_byte_code=, =eval_sub=      | Lisp: the backtrace from the third step names it |
+
+- After a recovery, =M-: (list gcs-done gc-elapsed)= shows how much time garbage collection has taken in this session.
+- For a slowdown rather than a freeze, =M-x profiler-start=, repeat the slow action, then =M-x profiler-report=.
+
 * What CI proves
 :PROPERTIES:
 :ID: b01690a2-51c1-471b-9c70-39cb2c3e1e64
@@ -114,6 +169,7 @@
   + =startup= job :: a fresh clone runs =just install=, =just compile= and =just test-packages= on Emacs 31.1 on Linux, plus informational macOS and Windows runs.
   + =nix= job :: =just nix-check= in =nix develop=, then the home-manager module's clone options read as a device would see them.
     =eval= checks the flake twice: on its own nixpkgs-unstable, and on the stable release in the justfile's =stable= variable, since a host that makes the flake follow its nixpkgs evaluates it there; move =stable= to each new release.
+  + =bench= job :: a fresh clone with no package cache runs =just bench= under =xvfb-run= and writes the tables to the job's summary ([[*Measuring]]); it is informational and cannot fail a pull request.
 - A weekly run repeats the fresh install without the package cache, so upstream breakage shows up even when nothing here changed.
 - =just frames-test= is the one suite CI cannot run: it needs a graphical session.
 - Dependabot proposes weekly updates to the workflow's actions.
@@ -367,6 +423,8 @@
 
 - =SPC C k=: =*kittymacs literate build*= ends with =LITERATE CHECK PASS=.
 - =SPC C p= on a fresh clone: =private.el= opens, a copy of the example.
+- =just size=: a table of counts, and how they differ from =tests/budgets.eld=.
+- =KITTYMACS_BENCH_RUNS=3 just bench=: a table of times against =emacs -Q=, with a number in every row but the =emacs -Q= cell of =SPC t m=.
 - From a shell:
 
 #+begin_src sh :tangle no
