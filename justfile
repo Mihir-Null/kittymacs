@@ -47,7 +47,8 @@ doc-test:
 
 # The tests that need no packages: the builder; the startup guards and the
 # Nix package list; each operating system's platform branch (on any
-# machine); the Tree-sitter grammar policy, offline; Org table wrapping.
+# machine); the Tree-sitter grammar policy, offline; Org table wrapping; the
+# onboarding screens, with scripted keys and through a real pty.
 test:
     emacs -Q --batch -l tests/kittymacs-tangle-tests.el -f ert-run-tests-batch-and-exit
     emacs -Q --batch -l tests/kittymacs-startup-tests.el -f ert-run-tests-batch-and-exit

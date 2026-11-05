@@ -267,6 +267,7 @@
 ;; Where this machine starts, and what it adds or leaves out; the names are in
 ;; literate/20-catalogue.org.  Set these here or in a host file: Customize's
 ;; file loads too late.  A feature's packages install on the next start.
+;; `just onboard' or SPC C o asks instead, and writes a block of these here.
 ;; (setopt kittymacs-profile 'minimal)
 ;; (setopt kittymacs-features '(jump lang-nix))
 ;; (setopt kittymacs-features-excluded '(suggestions agents))
