@@ -20,7 +20,12 @@
       kittymacs-org-directory (expand-file-name "absent" kittymacs-cache-dir))
 ;; Startup must load even when native SQLite is unavailable.
 (cl-letf (((symbol-function 'sqlite-available-p) (lambda () nil)))
-  (require 'kittymacs-org-roam nil t))
+  (require 'kittymacs-org-roam nil t)
+  (defconst kittymacs-roam-test-loaded-with-module
+    (seq-filter #'featurep '(org org-id org-roam))
+    "What loading the module loaded of Org and Org-roam.")
+  ;; Org-roam waits for Org, and these tests need it.
+  (require 'org))
 (defconst kittymacs-roam-test-display-template org-roam-node-display-template
   "The prompt format the chapter sets, with each note's tags after its title.")
 
@@ -100,6 +105,15 @@
                          (kittymacs-org-roam-db-path project)))
       (should (file-in-directory-p (kittymacs-org-roam-db-path project)
                                   kittymacs-cache-dir)))))
+
+(ert-deftest kittymacs-roam-module-leaves-org-unloaded ()
+  (should-not kittymacs-roam-test-loaded-with-module))
+
+(ert-deftest kittymacs-roam-arrives-with-org ()
+  (should (featurep 'org-roam))
+  (should (memq 'kittymacs--org-roam-restore hack-local-variables-hook))
+  (should (memq 'kittymacs--org-roam-capture-mode org-capture-mode-hook))
+  (should (advice-member-p 'kittymacs--org-roam-lookup-p 'org-roam-id-find)))
 
 (ert-deftest kittymacs-roam-startup-is-lazy-and-sqlite-is-required ()
   (should (featurep 'kittymacs-org-roam))

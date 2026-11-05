@@ -1,0 +1,221 @@
+:PROPERTIES:
+:ID: c41f7a2e-6d38-4f15-9b07-2e8d3a6c1f94
+:END:
+
+#+TITLE: Org extras: queries, grouped lists and a document's look
+#+FILETAGS: :notes:
+#+STARTUP: overview
+#+PROPERTY: header-args:emacs-lisp :tangle ../lisp/kittymacs-org-extras.el :eval never :comments no :padline no :mkdirp yes
+
+- What packages add to [[id:8ff7e58e-c155-4513-99ae-3b2c3a6ab729][the Org chapter]], which works without any of this:
+  + Org QL queries across your notes, on =SPC s q= and =SPC s Q=;
+  + grouped agenda lists;
+  + headings that export their contents but not their title;
+  + Org drawn like a document.
+- This chapter is the =org-extras= feature of [[id:8b1f4d67-2a93-4c08-b6e1-5d70c2a9e384][the catalogue]], in one module of its own, so a later change can switch it off whole.
+- Leans on the Org chapter for =org-directory= and on [[id:e5942eb0-4389-447d-9317-d9178adcaaae][the leader]] for =SPC s=.
+- It knows nothing of [[id:f48e8f01-88da-4e33-8398-c00ab346b8bb][Org-roam]] or [[id:78b654e1-a93e-4e31-b0d8-f266215b5b12][reading]], and neither of them knows it; the lint tests check that.
+
+#+begin_src emacs-lisp
+;;; kittymacs-org-extras.el --- Org queries, grouped lists and a document's look -*- lexical-binding: t; -*-
+;; Generated from literate/73-org-extras.org; edit the Org source, then tangle.
+
+;;; Code:
+
+(require 'kittymacs-leader)
+(require 'kittymacs-org)
+
+#+end_src
+
+* Org QL
+
+- [[https://github.com/alphapapa/org-ql][Org QL]] is a query language for Org files, and adds two ways to search to [[id:8ff7e58e-c155-4513-99ae-3b2c3a6ab729][the Org chapter]]'s:
+
+| Keys      | Searches           | Gives                                    |
+|-----------+--------------------+------------------------------------------|
+| =SPC s q= | the Org files here | a jump list that follows an Org QL query |
+| =SPC s Q= | the Org files here | an agenda-style list, grouped by file    |
+
+- /The Org files here/: the project's Org files when the buffer belongs to a project, otherwise every Org file under =org-directory=.
+- Its plain syntax is =predicate:argument= words that must all hold:
+  + =tags:decision=, or =tags-local:decision= for the heading's own tags only;
+  + =todo:NEXT=, =heading:services=, =level:1=;
+  + a word without a colon searches the text;
+  + =!= in front of a word negates it: =!tags:done=.
+- =SPC s q= runs the query at every keystroke and jumps to the heading you choose.
+- =SPC s Q= asks for a query and lists the matches in an agenda buffer, grouped by file:
+  + =RET= visits a heading; =g= runs the search again;
+  + =v= opens a menu that changes the query, the files, the order or the grouping;
+  + to group by tags instead of files: =v=, =g=, choose =tags=, then =r=.
+
+#+begin_src emacs-lisp
+(declare-function org-ql-find "org-ql-find")
+(declare-function org-ql-search "org-ql-search")
+(declare-function project-files "project")
+(defvar org-directory)
+
+(use-package org-ql
+  :ensure t
+  :defer t)
+
+(defun kittymacs--org-files-here ()
+  "Return the Org files that a search started in this buffer covers.
+In a project, the project's Org files; anywhere else, every Org file
+under `org-directory'."
+  (or (if-let* ((project (project-current)))
+          (seq-filter (lambda (file) (string-suffix-p ".org" file))
+                      (project-files project))
+        (directory-files-recursively org-directory "\\.org\\'"))
+      (user-error "No Org files here")))
+
+(defvar kittymacs--org-ql-history nil
+  "Queries given to `kittymacs-org-ql-search'.")
+
+(defun kittymacs-org-ql-find ()
+  "Jump to a heading in the Org files here, found with an Org QL query.
+The files are the project's, or your notes' outside a project.  The
+results follow the query as you type it: tags:decision, todo:NEXT, words."
+  (interactive)
+  (org-ql-find (kittymacs--org-files-here) :prompt "Org QL: "))
+
+(defun kittymacs-org-ql-search (query)
+  "List the headings in the Org files here that match QUERY, grouped by file.
+In the list, RET visits a heading, g runs the search again, and v changes
+the query, the files, the order or the grouping."
+  (interactive (list (read-string "Org QL query: " nil 'kittymacs--org-ql-history)))
+  (org-ql-search (kittymacs--org-files-here) query
+    :super-groups '((:auto-category t))
+    :title query))
+
+(keymap-set kittymacs-search-map "q" (cons "org query, jump" #'kittymacs-org-ql-find))
+(keymap-set kittymacs-search-map "Q" (cons "org query, list" #'kittymacs-org-ql-search))
+
+#+end_src
+
+* Grouped lists whose headers keep Meow's keys :decision:
+:PROPERTIES:
+:ID: bc958392-d92e-41ad-9f75-976c3de3629e
+:END:
+
+- [[https://github.com/alphapapa/org-super-agenda][org-super-agenda]] groups the lists; Org QL depends on it.
+- Its mode is on, so an agenda command of your own groups its entries by setting =org-super-agenda-groups= in its settings; the package's README lists the groups.
+  + The Org chapter's agenda dashboard does not group.
+- Group headers have no keymap of their own (=org-super-agenda-header-map= is nil):
+  + upstream gives each header a copy of the agenda's map as a text property;
+  + a keymap property outranks every minor mode's map, Meow's state maps included, so on a header =j=, =k= and =SPC= ran agenda commands;
+  + with no header map, a header has the same keys as the lines around it.
+- It loads with =org-agenda=, so no earlier than the first agenda or query.
+
+#+begin_src emacs-lisp
+(use-package org-super-agenda
+  :ensure t
+  :after org-agenda
+  :custom
+  (org-super-agenda-show-message nil)
+  :config
+  (setq org-super-agenda-header-map nil)
+  (org-super-agenda-mode 1))
+
+#+end_src
+
+* Plain queries on Emacs 31
+
+- Org QL parses a plain query by evaluating a =with-peg-rules= form with dynamic binding ([[https://github.com/alphapapa/org-ql/issues/498][Org QL issue 498]]).
+- Emacs 31's =peg= makes every rule an OClosure, which needs lexical binding, so every plain query failed with =(cl-assertion-failed lexical-binding)=.
+- The advice below turns such a form into =(eval '(with-peg-rules ...) t)=: the same form, evaluated with lexical binding.
+  + Lexical code expands as before, so the advice does nothing once Org QL fixes its call.
+
+#+begin_src emacs-lisp
+(defun kittymacs--peg-rules-lexically (expand &rest args)
+  "Expand `with-peg-rules' ARGS with EXPAND, under lexical binding.
+Code that is already lexical expands as before."
+  (if lexical-binding
+      (apply expand args)
+    `(eval '(with-peg-rules ,@args) t)))
+
+(with-eval-after-load 'peg
+  (advice-add 'with-peg-rules :around #'kittymacs--peg-rules-lexically))
+
+#+end_src
+
+* Headings that export without their title
+
+- Headings tagged =:ignore:= export their contents but not their title (=ox-extra= from =org-contrib=).
+
+#+begin_src emacs-lisp
+(declare-function ox-extras-activate "ox-extra")
+
+(use-package org-contrib
+  :ensure t
+  :after org
+  :config
+  (require 'ox-extra)
+  (ox-extras-activate '(ignore-headlines)))
+
+#+end_src
+
+* Drawn like a document
+
+- =org-modern= draws headings, lists, checkboxes, tags, dates and tables the way a document viewer would, in the buffer and in the agenda.
+  + Heading stars become one bullet per level, =◉ ○ ◈ ◇ ✳=, rather than fold arrows.
+  + A =-= item gets =•= rather than org-modern's en dash, and =+= gets =◦=, so lists read as lists in prose.
+  + =org-startup-indented= switches off two of its features by itself, hiding leading stars and the block border in the fringe, so neither is set here.
+- The Org chapter hides emphasis markers, so =org-appear= reveals them, and links, sub- and superscripts and entities, while point is inside.
+  + Editing =*bold*= never means guessing where the asterisks are.
+
+#+begin_src emacs-lisp
+(use-package org-modern
+  :ensure t
+  :hook ((org-mode . org-modern-mode)
+         (org-agenda-finalize . org-modern-agenda))
+  :custom
+  (org-modern-star 'replace)
+  (org-modern-list '((?- . "•") (?+ . "◦") (?* . "▹"))))
+
+(use-package org-appear
+  :ensure t
+  :hook (org-mode . org-appear-mode)
+  :custom
+  (org-appear-autoemphasis t)
+  (org-appear-autolinks t)
+  (org-appear-autosubmarkers t)
+  (org-appear-autoentities t))
+
+#+end_src
+
+- =org-modern-indent= draws the bracket beside source and example blocks that =org-indent-mode= took from org-modern.
+  + It goes on =org-mode-hook= late, at depth 90, as its README asks, so it runs after =org-indent-mode=.
+  + It is not on MELPA or in nixpkgs, so it is installed from Git, pinned to the commit of its v0.5.3 tag, as pdf-text is ([[id:78b654e1-a93e-4e31-b0d8-f266215b5b12][the reading chapter]]); a failed clone is a warning, not a stopped startup.
+  + =org-src-preserve-indentation= stays on, so =M-S-<left>= on a block nested in a list moves its delimiters but not its contents.
+  + It loads Org as it loads, so it waits for the hook: =:commands= leaves only the autoload at startup.
+
+#+begin_src emacs-lisp
+(condition-case err
+    (use-package org-modern-indent
+      :vc (:url "https://github.com/jdtsmith/org-modern-indent"
+           :rev "86bd83ee1ad95f123810eb3b116beb543db1960a")
+      :commands org-modern-indent-mode
+      :init
+      (add-hook 'org-mode-hook #'org-modern-indent-mode 90))
+  (error
+   (display-warning 'kittymacs
+                    (format "org-modern-indent was not installed: %s
+Check that `git clone https://github.com/jdtsmith/org-modern-indent' works from a terminal, and which git Emacs runs: %s"
+                            (error-message-string err) (executable-find "git"))
+                    :warning)))
+
+(provide 'kittymacs-org-extras)
+;;; kittymacs-org-extras.el ends here
+#+end_src
+
+* Check
+
+- An Org file shows =◉= headings, =•= bullets and a bracket beside each source block.
+- =SPC s Q= and =todo:TODO= list your open tasks grouped by file; =v g=, =tags=, =r= regroups them by their tags.
+- In a project with tagged headings, =SPC s q= and =tags-local:decision= jump straight to one of its decisions.
+- =just test-packages= runs [[file:../tests/verify-config.el][the startup verifier]], which checks these promises in a real startup:
+  + =SPC s Q= with =tags:decision= lists exactly the tagged heading, grouped;
+  + =SPC= on a group header is still the leader;
+  + =SPC m g= runs the Org QL query again and picks up a new heading;
+  + an Org buffer has =org-modern-indent-mode= on.
+- =just doc-test=: the lint tests check that this module, the Org chapter's, Org-roam's and reading's use nothing of each other's without a guard.

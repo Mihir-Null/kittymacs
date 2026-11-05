@@ -4,8 +4,6 @@
 ;;; Code:
 
 (require 'cl-lib)
-(require 'org)
-(require 'org-id)
 (require 'kittymacs-leader)
 
 ;; Defined by the defaults and platform chapters, which init.el loads first.
@@ -86,6 +84,7 @@ A project graph sets its own list in its .dir-locals.el."
   "Return the graph for a command in this buffer, or explain why there is none."
   (unless (sqlite-available-p)
     (user-error "Org-roam needs an Emacs built with SQLite support"))
+  (require 'org-roam)
   (let ((scope (or kittymacs--org-roam-graph
                    (kittymacs--org-roam-named-graph)
                    (kittymacs--org-roam-personal-graph))))
@@ -271,6 +270,7 @@ The active region's text is the prompt's input and the link's description."
 
 (use-package org-roam
   :ensure t
+  :after org
   :demand t
   :config
   (add-hook 'hack-local-variables-hook #'kittymacs--org-roam-restore)

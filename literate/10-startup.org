@@ -85,7 +85,7 @@
 - Everything Emacs writes goes under =var/=, which Git ignores: packages, caches, native-compiled files, saved settings.
   + =kittymacs-cache-dir= (=var/cache/=) holds what can be deleted at any time; =kittymacs-etc-dir= (=var/etc/=) holds state worth keeping.
   + Native compilation writes its =eln-cache/= into the cache and reports warnings silently.
-- This file sets options with =setq=; every later chapter uses =setopt=.
+- This file sets options with =setq=; every later chapter uses =setopt=, apart from the one option [[id:6a1d4e90-2f7b-4c63-8e15-b93c07d2a4f8][Org loads on first use]] names.
   + =setopt= checks a value against the option's type; to know the type it loads Customize and the library that defines the option.
   + For the package options that is =package.el= with its URL and EIEIO libraries: some thirty milliseconds before the first frame appears.
   + =init.el= loads them a moment later anyway, once the frame is on screen.
@@ -360,6 +360,7 @@ Set before init.el loads to change them, because they are read during init.")
 (kittymacs-require-module 'kittymacs-languages)
 (kittymacs-require-module 'kittymacs-terminal)
 (kittymacs-require-module 'kittymacs-org)
+(kittymacs-require-module 'kittymacs-org-extras)
 (kittymacs-require-module 'kittymacs-org-roam)
 (kittymacs-require-module 'kittymacs-reading)
 (kittymacs-require-module 'kittymacs-notebooks)

@@ -9,6 +9,7 @@
 
 - Linked notes under =SPC n=, one graph at a time: your personal notes and each project's documentation are separate graphs with separate indexes, so a search from a project file never turns up your diary.
 - Leans on [[id:afa6b7fd-742a-4c15-86a6-32e3e8027b0e][the platform chapter]] for the personal graph's folder, [[id:3fd783cd-deb8-48aa-bb44-0d9b16535365][the defaults chapter]] for the cache, [[id:e5942eb0-4389-447d-9317-d9178adcaaae][the leader]] for =SPC m= and the =SPC n= group, and [[id:f1d045c2-e2dc-4514-ab17-dd982ed6be00][the frames chapter]] for where notes open.
+- Org itself is enough underneath: the rest of [[id:8ff7e58e-c155-4513-99ae-3b2c3a6ab729][the Org chapter]], [[id:c41f7a2e-6d38-4f15-9b07-2e8d3a6c1f94][Org extras]] and [[id:78b654e1-a93e-4e31-b0d8-f266215b5b12][reading]] can be absent, and none of them needs this chapter.
 - The inbox and agenda of [[id:8ff7e58e-c155-4513-99ae-3b2c3a6ab729][the Org chapter]] are unaffected: they keep their own files and templates.
 - kittymacs' own chapters are a project graph: [[id:7edccfdc-3c38-489a-bc9e-4c002b432ab4][the conventions]] show it in use.
 - Read [[*One graph at a time]] first; the rest follows from it.
@@ -44,6 +45,9 @@
 
 - Nothing here scans notes or opens a database at startup.
   + Upstream's =org-roam-db-autosync-mode= stays off: switching it on rebuilds the whole index on the spot.
+- Org-roam does not even load at startup, because it loads Org ([[id:6a1d4e90-2f7b-4c63-8e15-b93c07d2a4f8][Org loads on first use]]).
+  + It loads as soon as Org does (=:after org=), so every Org buffer finds it there, =id:= links included.
+  + =SPC n= commands load it themselves, so they also work before any Org file is open.
 - The first =SPC n s= in a graph builds its index; after that, saving a note updates its entry.
   + =SPC n s= is needed again only after changes outside Emacs: edits, renames and deletions.
 - The graph commands need an Emacs built with SQLite; without it they say so, and ordinary Org editing works as before.
@@ -76,8 +80,6 @@
 ;;; Code:
 
 (require 'cl-lib)
-(require 'org)
-(require 'org-id)
 (require 'kittymacs-leader)
 
 ;; Defined by the defaults and platform chapters, which init.el loads first.
@@ -218,6 +220,7 @@ A project graph sets its own list in its .dir-locals.el."
   "Return the graph for a command in this buffer, or explain why there is none."
   (unless (sqlite-available-p)
     (user-error "Org-roam needs an Emacs built with SQLite support"))
+  (require 'org-roam)
   (let ((scope (or kittymacs--org-roam-graph
                    (kittymacs--org-roam-named-graph)
                    (kittymacs--org-roam-personal-graph))))
@@ -517,6 +520,7 @@ The active region's text is the prompt's input and the link's description."
 
 (use-package org-roam
   :ensure t
+  :after org
   :demand t
   :config
   (add-hook 'hack-local-variables-hook #'kittymacs--org-roam-restore)
@@ -682,7 +686,8 @@ its file tags, a heading note only under tags its file note lacks."
 - =C-u SPC n s= rebuilds a graph's index from nothing.
 - Type =#= and a tag at =SPC n f=: only the notes with that tag stay; =SPC n t= lists the tags themselves, and =SPC n T= every tag with its notes.
 - =just test-packages= runs [[file:../tests/kittymacs-org-roam-tests.el][the Org-roam tests]] on real graphs in SQLite, and the startup verifier:
-  + startup is lazy: no root created, no database opened, autosync off;
+  + startup is lazy: Org and Org-roam unloaded, no root created, no database opened, autosync off;
+  + Org-roam arrives with Org, so its hooks are in place before an Org buffer needs them;
   + database paths follow the real, case-folded path, and an alias shares one connection;
   + the project flag names its root, database and exclusions; project find and insert offer only existing notes;
   + a missing root fails without being created; a read-only root browses but cannot capture;

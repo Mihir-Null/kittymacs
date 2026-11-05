@@ -337,7 +337,7 @@ The loop:
 | Recipe | Needs | Checks |
 |---|---|---|
 | `just check` | Emacs | chapters match generated files; pages follow the conventions; builder, platform and Tree-sitter tests |
-| `just install`, `just compile`, `just test-packages` | network, then installed packages | a fresh install byte-compiles, and the leader, Org-roam and startup-verifier tests pass |
+| `just install`, `just compile`, `just test-packages` | network, then installed packages | a fresh install byte-compiles, and the leader, Org-roam, theme and startup-verifier tests pass |
 | `just frames-test` | a display | the frame policy |
 | `just nix-check` | Nix | the generated Nix lints, and the flake and both example hosts evaluate |
 

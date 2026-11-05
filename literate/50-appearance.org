@@ -10,7 +10,7 @@
 - Fonts, theme, mode line, icons and highlights:
   + Google Sans Code with Nerd Font icons when it is installed, the platform font otherwise;
   + the Sonokai theme, tracked in this repository, with a light theme one toggle away (=SPC t t=);
-  + a compact mode line;
+  + a compact mode line, from =doom-modeline=;
   + icons in completion, Corfu and Dired that switch off automatically when the icon font is missing, so a fresh machine never shows boxes.
 - Loads before anything is drawn, so the first frame already has the right font and colours; leans only on [[id:3fd783cd-deb8-48aa-bb44-0d9b16535365][the defaults chapter]].
 - The font and theme choices are the user's; the highlighting defaults are distilled from Lambda-Emacs by Colin McLear (=lem-setup-theme=, =-fonts=, =-faces=).
@@ -158,28 +158,47 @@ Use t for a terminal configured with a Nerd Font, or nil to disable icons."
 
 - Sonokai is a tracked port in =lisp/themes/=, so it does not depend on a package update.
 - Loading a theme disables the previous one first, so themes never stack.
-  + doom-themes' Org settings are reapplied after each load.
+  + doom-themes' Org settings are reapplied after each load, while doom-themes is there.
 - =SPC t t= toggles between =kittymacs-theme= and =kittymacs-light-theme=; =SPC t T= chooses any theme.
 - Anything that must be recomputed when colours change hangs on Emacs's own =enable-theme-functions=.
+- The theme loads by itself, not from doom-themes' =:config=, so this section works when doom-themes is absent.
+  + A =doom-= theme needs that package, Sonokai's port too, so without it =kittymacs-theme= falls back to the built-in =modus-vivendi= and =kittymacs-light-theme= to =modus-operandi=.
+  + A theme that still fails to load is a warning, and the rest of the chapter loads.
+- A later change can gate the =doom-themes= form below, and the =doom-modeline= one in [[*Mode line and tabs]], and nothing else has to change; [[file:../tests/kittymacs-theme-tests.el][the theme tests]] run the chapter without them.
 
 #+begin_src emacs-lisp
 (setopt custom-safe-themes t)
 (add-to-list 'custom-theme-load-path
              (expand-file-name "themes/" (file-name-directory (or load-file-name buffer-file-name))))
 
+(defun kittymacs--theme-or-builtin (theme builtin)
+  "Return THEME, or BUILTIN when THEME needs doom-themes and that is not loaded."
+  (if (and (string-prefix-p "doom-" (symbol-name theme))
+           (not (featurep 'doom-themes)))
+      builtin
+    theme))
+
+(defun kittymacs--default-theme ()
+  "Return the theme to use for `kittymacs-theme'."
+  (kittymacs--theme-or-builtin kittymacs-theme 'modus-vivendi))
+
+(defun kittymacs--other-theme ()
+  "Return the theme to use for `kittymacs-light-theme'."
+  (kittymacs--theme-or-builtin kittymacs-light-theme 'modus-operandi))
+
 (defun kittymacs-load-theme (theme)
   "Disable active themes and load THEME."
   (mapc #'disable-theme custom-enabled-themes)
   (load-theme theme t)
-  (when (fboundp 'doom-themes-org-config)
+  (when (featurep 'doom-themes)
     (doom-themes-org-config)))
 
 (defun kittymacs-toggle-theme ()
   "Toggle between `kittymacs-theme' and `kittymacs-light-theme'."
   (interactive)
-  (kittymacs-load-theme (if (memq kittymacs-theme custom-enabled-themes)
-                          kittymacs-light-theme
-                        kittymacs-theme)))
+  (kittymacs-load-theme (if (memq (kittymacs--default-theme) custom-enabled-themes)
+                            (kittymacs--other-theme)
+                          (kittymacs--default-theme))))
 
 (keymap-set kittymacs-toggle-map "t" (cons "light/dark theme" #'kittymacs-toggle-theme))
 (keymap-set kittymacs-toggle-map "T" (cons "choose theme" #'load-theme))
@@ -188,15 +207,22 @@ Use t for a terminal configured with a Nerd Font, or nil to disable icons."
   :ensure t
   :custom
   (doom-themes-enable-bold t)
-  (doom-themes-enable-italic t)
-  :config
-  (kittymacs-load-theme kittymacs-theme))
+  (doom-themes-enable-italic t))
+
+(condition-case-unless-debug err
+    (kittymacs-load-theme (kittymacs--default-theme))
+  (error
+   (display-warning 'kittymacs
+                    (format "Theme %s did not load: %s"
+                            (kittymacs--default-theme) (error-message-string err))
+                    :error)))
 
 #+end_src
 
 * Mode line and tabs
 
 - =doom-modeline= is compact and shows the Meow state; its icons follow =kittymacs-icons=.
+  + Nothing else here refers to it, so without it the frame has Emacs's own mode line.
 - The built-in tab bar appears once a second workspace exists and borrows the mode line's faces.
 - =SPC t H= hides the current buffer's mode line with =hide-mode-line-mode=, handy for a screenshot or a presentation; pressing it again brings it back.
 
@@ -369,3 +395,4 @@ Use t for a terminal configured with a Nerd Font, or nil to disable icons."
 - =SPC f f=: icons beside the candidates, or none at all on a machine without the icon font.
 - Set =kittymacs-icons= to =nil= in =private.el= to run without icon fonts.
 - =just test-packages=: the verifier toggles the theme both ways and checks that Sonokai comes back alone, and that =doom-modeline-mode= is on.
+  + The theme tests leave out doom-themes and doom-modeline, and check that the Modus themes load and toggle instead.
