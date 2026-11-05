@@ -1076,7 +1076,8 @@ A name the catalogue lacks goes in NOTES."
   + A setting before the block, or in a host file, loses to it, and the screen says that too.
 - A target it cannot write does not stop the screens, because the Nix options they end in are the useful answer there.
   + Pressing =w= still ends in a refusal, so nothing pretends to have written.
-- Every ending says a change takes effect at the next start.
+- It can outgrow a small terminal, and nothing on it has a cursor, so =n= and =p= scroll it.
+- Every ending says a change takes effect at the next start, and the preview says it near the top, where no scrolling can hide it.
 
 #+begin_src emacs-lisp
 (defun kittymacs-onboard--target-problem (file)
@@ -1142,7 +1143,8 @@ A name the catalogue lacks goes in NOTES."
          (earlier (kittymacs-onboard--earlier-settings state)))
     (concat
      (kittymacs-onboard--screen-title place "What changes")
-     "\nw writes.  b back.  C-g quit, writing nothing.\n\n"
+     "\nw writes.  n, p scroll.  b back.  C-g quit, writing nothing.\n"
+     "A change takes effect at the next start, which installs what the features need.\n\n"
      (if problem
          (format "Onboarding cannot write this: %s\n\n" problem)
        (format "%s %s, in the block between its two marker lines.\nEverything else in the file stays as it is%s\n\n"
@@ -1165,16 +1167,23 @@ A name the catalogue lacks goes in NOTES."
      (if (kittymacs-onboard--nix-host-p)
          (format "\nThe same answer as Nix options, if you would rather keep it there:\n%s"
                  (kittymacs-onboard--nix-text state))
-       "")
-     "\nA change takes effect at the next start, which installs what the features need.\n")))
+       ""))))
+
+(defun kittymacs-onboard--scroll (direction)
+  "Scroll the screen with DIRECTION, a function, stopping quietly at either end."
+  (unless noninteractive
+    (ignore-errors (funcall direction 8))
+    (redisplay)))
 
 (defun kittymacs-onboard--preview-screen (state place)
   "Show what would change in STATE; return `write' or `back'."
+  (kittymacs-onboard--show (kittymacs-onboard--render-preview state place))
   (let (answer)
     (while (not answer)
-      (kittymacs-onboard--show (kittymacs-onboard--render-preview state place))
-      (pcase (kittymacs-onboard--key "w write, b back, C-g quit: ")
+      (pcase (kittymacs-onboard--key "w write, n/p scroll, b back, C-g quit: ")
         (?w (setq answer 'write))
+        ((or ?n 'down) (kittymacs-onboard--scroll #'scroll-up))
+        ((or ?p 'up) (kittymacs-onboard--scroll #'scroll-down))
         ((or ?b 'left) (setq answer 'back))))
     answer))
 
@@ -1235,7 +1244,9 @@ Return nil when the file already said this.  Refuse rather than guess."
 * Running it
 
 - =kittymacs-onboard--can-ask-p= stops it where nothing could draw the screens, with a message saying what to set by hand.
-  + =emacs -nw= itself refuses a dumb terminal before any Lisp runs, so =just onboard= tests the terminal first and runs batch Emacs instead, which reaches this message.
+  + That means batch Emacs alone: =emacs -nw= itself refuses a dumb terminal before any Lisp runs.
+  + So =just onboard= tests the terminal first, and runs batch Emacs instead where it finds none, which reaches this message.
+  + The variable =TERM= says nothing inside a started Emacs, because what a chapter or a shell import sets there is for subprocesses.
 - =kittymacs-onboard--ask= walks the screens forward and back, and rebuilds the list each time, because a choice on an earlier screen decides whether the structural-editing screen exists.
 - =kittymacs-onboard--run= holds the one handler, and returns a status and a text for either way of starting.
 - =kittymacs-onboard-main= is for a command line.
@@ -1245,9 +1256,7 @@ Return nil when the file already said this.  Refuse rather than guess."
 #+begin_src emacs-lisp
 (defun kittymacs-onboard--can-ask-p ()
   "Return non-nil if this Emacs can draw the screens and read keys."
-  (and (not noninteractive)
-       (or (display-graphic-p)
-           (not (member (getenv "TERM") '(nil "" "dumb" "unknown"))))))
+  (not noninteractive))
 
 (defun kittymacs-onboard--by-hand ()
   "Return what to do where the screens cannot run."

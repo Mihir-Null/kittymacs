@@ -932,7 +932,8 @@ A name the catalogue lacks goes in NOTES."
          (earlier (kittymacs-onboard--earlier-settings state)))
     (concat
      (kittymacs-onboard--screen-title place "What changes")
-     "\nw writes.  b back.  C-g quit, writing nothing.\n\n"
+     "\nw writes.  n, p scroll.  b back.  C-g quit, writing nothing.\n"
+     "A change takes effect at the next start, which installs what the features need.\n\n"
      (if problem
          (format "Onboarding cannot write this: %s\n\n" problem)
        (format "%s %s, in the block between its two marker lines.\nEverything else in the file stays as it is%s\n\n"
@@ -955,16 +956,23 @@ A name the catalogue lacks goes in NOTES."
      (if (kittymacs-onboard--nix-host-p)
          (format "\nThe same answer as Nix options, if you would rather keep it there:\n%s"
                  (kittymacs-onboard--nix-text state))
-       "")
-     "\nA change takes effect at the next start, which installs what the features need.\n")))
+       ""))))
+
+(defun kittymacs-onboard--scroll (direction)
+  "Scroll the screen with DIRECTION, a function, stopping quietly at either end."
+  (unless noninteractive
+    (ignore-errors (funcall direction 8))
+    (redisplay)))
 
 (defun kittymacs-onboard--preview-screen (state place)
   "Show what would change in STATE; return `write' or `back'."
+  (kittymacs-onboard--show (kittymacs-onboard--render-preview state place))
   (let (answer)
     (while (not answer)
-      (kittymacs-onboard--show (kittymacs-onboard--render-preview state place))
-      (pcase (kittymacs-onboard--key "w write, b back, C-g quit: ")
+      (pcase (kittymacs-onboard--key "w write, n/p scroll, b back, C-g quit: ")
         (?w (setq answer 'write))
+        ((or ?n 'down) (kittymacs-onboard--scroll #'scroll-up))
+        ((or ?p 'up) (kittymacs-onboard--scroll #'scroll-down))
         ((or ?b 'left) (setq answer 'back))))
     answer))
 (defun kittymacs-onboard--write-atomically (file bytes modes)
@@ -1003,9 +1011,7 @@ Return nil when the file already said this.  Refuse rather than guess."
                                       real (error-message-string err))))))))
 (defun kittymacs-onboard--can-ask-p ()
   "Return non-nil if this Emacs can draw the screens and read keys."
-  (and (not noninteractive)
-       (or (display-graphic-p)
-           (not (member (getenv "TERM") '(nil "" "dumb" "unknown"))))))
+  (not noninteractive))
 
 (defun kittymacs-onboard--by-hand ()
   "Return what to do where the screens cannot run."

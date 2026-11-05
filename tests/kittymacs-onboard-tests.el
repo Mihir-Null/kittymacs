@@ -395,15 +395,20 @@ quits as a minibuffer would."
         (should (string-search "(setopt kittymacs-profile" output))
         (should (string-search "next start" output))))))
 
-(ert-deftest kittymacs-onboard-a-dumb-terminal-cannot-be-asked ()
+(ert-deftest kittymacs-onboard-the-recipe-without-a-terminal-says-what-to-set-by-hand ()
+  "Emacs refuses a dumb terminal before any Lisp runs, so the recipe has to look first."
+  (skip-unless (executable-find "just"))
+  (let ((default-directory kittymacs-onboard-test-root)
+        (process-environment (cons "TERM=dumb" process-environment)))
+    (with-temp-buffer
+      (should (= 3 (call-process "just" nil t nil "onboard")))
+      (should (string-search "(setopt kittymacs-profile" (buffer-string))))))
+
+(ert-deftest kittymacs-onboard-term-in-a-started-emacs-does-not-stop-it ()
+  "A started Emacs can hold TERM=dumb for its subprocesses, and draw perfectly well."
   (let ((noninteractive nil)
         (process-environment (cons "TERM=dumb" process-environment)))
-    (cl-letf (((symbol-function 'display-graphic-p) #'ignore))
-      (should-not (kittymacs-onboard--can-ask-p))))
-  (let ((noninteractive nil)
-        (process-environment (cons "TERM=xterm" process-environment)))
-    (cl-letf (((symbol-function 'display-graphic-p) #'ignore))
-      (should (kittymacs-onboard--can-ask-p)))))
+    (should (kittymacs-onboard--can-ask-p))))
 
 ;;; One source of truth
 
