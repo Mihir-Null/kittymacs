@@ -17,7 +17,7 @@
 :ID: fc8a853a-879a-4bc7-81dc-9d2f4ccc5fe2
 :END:
 
-- Meow's /keypad/: =SPC= starts a loop that reads keys one at a time and *translates* them (=SPC x f= becomes =C-x f=).
+- Meow's /keypad/: =SPC= starts a loop that reads keys one at a time and *translates* them (=x f= after it becomes =C-x f=).
 - Clever, but =SPC f f= is then not a binding anywhere, so Emacs's own tools cannot see it:
   + =C-h k= cannot describe it; =C-h b= does not list it;
   + which-key shows the translated keys;

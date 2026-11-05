@@ -175,7 +175,7 @@
 
 (defun kittymacs--restore-scratch ()
   "Restore *scratch* from `kittymacs-scratch-file' when it exists."
-  (when (file-exists-p kittymacs-scratch-file)
+  (when (file-readable-p kittymacs-scratch-file)
     (with-current-buffer (get-buffer-create "*scratch*")
       (erase-buffer)
       (insert-file-contents kittymacs-scratch-file))))
