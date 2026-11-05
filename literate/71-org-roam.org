@@ -8,7 +8,7 @@
 #+PROPERTY: header-args:emacs-lisp :tangle ../lisp/kittymacs-org-roam.el :eval never :comments no :padline no :mkdirp yes
 
 - Linked notes under =SPC n=, one graph at a time: your personal notes and each project's documentation are separate graphs with separate indexes, so a search from a project file never turns up your diary.
-- Leans on [[id:afa6b7fd-742a-4c15-86a6-32e3e8027b0e][the platform chapter]] for the personal graph's folder, [[id:3fd783cd-deb8-48aa-bb44-0d9b16535365][the defaults chapter]] for the cache, [[id:e5942eb0-4389-447d-9317-d9178adcaaae][the leader]] for =SPC m= and [[id:f1d045c2-e2dc-4514-ab17-dd982ed6be00][the frames chapter]] for where notes open; [[id:53ad53ed-155f-47dc-973d-7be18de2893c][the keys chapter]] binds =SPC n=.
+- Leans on [[id:afa6b7fd-742a-4c15-86a6-32e3e8027b0e][the platform chapter]] for the personal graph's folder, [[id:3fd783cd-deb8-48aa-bb44-0d9b16535365][the defaults chapter]] for the cache, [[id:e5942eb0-4389-447d-9317-d9178adcaaae][the leader]] for =SPC m= and the =SPC n= group, and [[id:f1d045c2-e2dc-4514-ab17-dd982ed6be00][the frames chapter]] for where notes open.
 - The inbox and agenda of [[id:8ff7e58e-c155-4513-99ae-3b2c3a6ab729][the Org chapter]] are unaffected: they keep their own files and templates.
 - kittymacs' own chapters are a project graph: [[id:7edccfdc-3c38-489a-bc9e-4c002b432ab4][the conventions]] show it in use.
 - Read [[*One graph at a time]] first; the rest follows from it.
@@ -404,6 +404,18 @@ save that finishes the capture updates that graph's database."
   + Upstream redraws the panel on every refresh, first switching its major mode on again, which clears every buffer-local variable.
   + The panel's graph survives in the permanent =kittymacs--org-roam-graph=; =kittymacs--org-roam-restore= on =org-roam-mode-hook= puts the upstream variables back before the sections query the database.
   + Upstream's own permanent =org-roam-buffer-current-directory= and =org-roam-buffer-current-node= say which note the panel is about.
+- =SPC n= holds this chapter's commands, and nothing else does.
+
+#+begin_src emacs-lisp
+(keymap-set kittymacs-notes-map "f" (cons "find node" #'kittymacs-org-roam-find))
+(keymap-set kittymacs-notes-map "t" (cons "find node by tag" #'kittymacs-org-roam-find-by-tag))
+(keymap-set kittymacs-notes-map "T" (cons "tag index" #'kittymacs-org-roam-tag-index))
+(keymap-set kittymacs-notes-map "i" (cons "insert ID link" #'kittymacs-org-roam-insert))
+(keymap-set kittymacs-notes-map "c" (cons "capture (show destination)" #'kittymacs-org-roam-capture))
+(keymap-set kittymacs-notes-map "b" (cons "backlinks panel" #'kittymacs-org-roam-backlinks))
+(keymap-set kittymacs-notes-map "s" (cons "sync graph" #'kittymacs-org-roam-sync))
+
+#+end_src
 
 ** What this chapter asks of Org-roam
 

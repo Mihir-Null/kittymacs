@@ -23,6 +23,25 @@
          ("C-h C-l" . find-library)
          ("C-h C-c" . finder-commentary)))
 
+(keymap-set kittymacs-help-map "k" (cons "key" #'helpful-key))
+(keymap-set kittymacs-help-map "f" (cons "function" #'helpful-callable))
+(keymap-set kittymacs-help-map "v" (cons "variable" #'helpful-variable))
+(keymap-set kittymacs-help-map "o" (cons "symbol" #'helpful-symbol))
+(keymap-set kittymacs-help-map "c" (cons "command" #'helpful-command))
+(keymap-set kittymacs-help-map "." (cons "at point" #'helpful-at-point))
+
+(keymap-set kittymacs-help-map "m" (cons "mode" #'describe-mode))
+(keymap-set kittymacs-help-map "B" (cons "all bindings" #'describe-bindings))
+(keymap-set kittymacs-help-map "l" (cons "leader" #'kittymacs-describe-leader))
+(keymap-set kittymacs-help-map "F" (cons "face" #'describe-face))
+(keymap-set kittymacs-help-map "w" (cons "where is" #'where-is))
+(keymap-set kittymacs-help-map "e" (cons "messages" #'view-echo-area-messages))
+(keymap-set kittymacs-help-map "L" (cons "lossage" #'view-lossage))
+(keymap-set kittymacs-help-map "i" (cons "info" #'info))
+(keymap-set kittymacs-help-map "S" (cons "find source" #'find-function))
+(keymap-set kittymacs-help-map "V" (cons "find variable" #'find-variable))
+(keymap-set kittymacs-help-map "K" (cons "find key" #'find-function-on-key))
+
 (use-package elisp-demos
   :ensure t
   :after helpful
@@ -54,9 +73,14 @@
     (add-to-list 'keycast-substitute-alist `(,input "." "Typing...")))
   (dolist (event '(mouse-event-p mouse-movement-p mwheel-scroll))
     (add-to-list 'keycast-substitute-alist `(,event nil))))
+
+(keymap-set kittymacs-toggle-map "k" (cons "show keys (keycast)" #'keycast-header-line-mode))
+(keymap-set kittymacs-toggle-map "K" (cons "log keys" #'keycast-log-mode))
 (use-package casual
   :ensure t
   :defer t)
+
+(keymap-set kittymacs-code-map "m" (cons "editing menu" #'casual-editkit-main-tmenu))
 
 (with-eval-after-load 'calc (keymap-set calc-mode-map "C-o" #'casual-calc-tmenu))
 (with-eval-after-load 'isearch (keymap-set isearch-mode-map "C-o" #'casual-isearch-tmenu))

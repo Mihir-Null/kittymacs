@@ -326,6 +326,10 @@ With prefix ARG, create another one instead of reusing the existing buffer."
           (ghostel-buffer-name "*ghostel: msys2*"))
       (ghostel arg))))
 
+(keymap-set kittymacs-open-map "e" (cons "terminal" #'kittymacs-terminal-open))
+(keymap-set kittymacs-open-map "p" (cons "project terminal" #'kittymacs-terminal-project))
+(keymap-set kittymacs-open-map "m" (cons "MSYS2 terminal (Windows)" #'kittymacs-terminal-msys2))
+
 #+end_src
 
 * MSYS2 on Windows :windows:
@@ -365,6 +369,8 @@ With prefix ARG, create another one instead of reusing the existing buffer."
            ("C-c h" . consult-ghostel-history))
     :config
     (consult-ghostel-mode 1)))
+
+(keymap-set kittymacs-open-map "E" (cons "pick a terminal" #'consult-ghostel))
 
 #+end_src
 

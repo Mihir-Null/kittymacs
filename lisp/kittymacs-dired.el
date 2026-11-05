@@ -38,6 +38,9 @@
   :bind (:map dired-mode-map
          ("h" . dired-up-directory)
          ("l" . dired-find-file)))
+(keymap-set kittymacs-leader-map "d" (cons "directory" #'dired-jump))
+(keymap-set kittymacs-file-map "d" (cons "directory" #'dired-jump))
+(keymap-set kittymacs-open-map "d" (cons "dired" #'dired))
 (use-package diredfl
   :ensure t
   :hook (dired-mode . diredfl-mode))

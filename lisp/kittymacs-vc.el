@@ -64,6 +64,25 @@ Falls back to `magit-status', which asks, when neither is a repository."
                             (project-root (project-current)))))))
       (magit-status-setup-buffer root)
     (call-interactively #'magit-status)))
+
+(keymap-set kittymacs-vc-map "s" (cons "status" #'kittymacs-magit-status))
+(keymap-set kittymacs-vc-map "d" (cons "diff" #'magit-diff))
+(keymap-set kittymacs-vc-map "l" (cons "log" #'magit-log))
+(keymap-set kittymacs-vc-map "L" (cons "log this file" #'magit-log-buffer-file))
+(keymap-set kittymacs-vc-map "b" (cons "blame" #'magit-blame))
+(keymap-set kittymacs-vc-map "c" (cons "commit" #'magit-commit))
+(keymap-set kittymacs-vc-map "f" (cons "file actions" #'magit-file-dispatch))
+(keymap-set kittymacs-vc-map "F" (cons "fetch" #'magit-fetch))
+(keymap-set kittymacs-vc-map "p" (cons "push" #'magit-push))
+(keymap-set kittymacs-vc-map "P" (cons "pull" #'magit-pull))
+(keymap-set kittymacs-vc-map "z" (cons "stash" #'magit-stash))
+(keymap-set kittymacs-vc-map "r" (cons "reflog" #'magit-reflog-current))
+(keymap-set kittymacs-vc-map "i" (cons "init" #'magit-init))
+(keymap-set kittymacs-vc-map "C" (cons "clone" #'magit-clone))
+(keymap-set kittymacs-vc-map "q" (cons "quick commit (vc)" #'vc-next-action))
+(keymap-set kittymacs-vc-map "?" (cons "all commands" #'magit-dispatch))
+
+(keymap-set kittymacs-project-map "G" (cons "Magit status" #'magit-project-status))
 (defun kittymacs--git-commit-setup ()
   "Prepare a commit message buffer for writing."
   (setq fill-column 80)
@@ -89,6 +108,8 @@ Falls back to `magit-status', which asks, when neither is a repository."
   (with-eval-after-load 'magit
     (add-hook 'magit-pre-refresh-hook #'diff-hl-magit-pre-refresh)
     (add-hook 'magit-post-refresh-hook #'diff-hl-magit-post-refresh)))
+
+(keymap-set kittymacs-toggle-map "g" (cons "git gutter" #'diff-hl-mode))
 (with-eval-after-load 'meow
   (add-to-list 'meow-mode-state-list '(magit-mode . motion)))
 

@@ -7,6 +7,7 @@
 
 (require 'seq)
 (require 'kittymacs-defaults)
+(require 'kittymacs-leader)
 
 (defgroup kittymacs-ui nil
   "Fonts, theme and presentation."
@@ -119,6 +120,9 @@ Use t for a terminal configured with a Nerd Font, or nil to disable icons."
                           kittymacs-light-theme
                         kittymacs-theme)))
 
+(keymap-set kittymacs-toggle-map "t" (cons "light/dark theme" #'kittymacs-toggle-theme))
+(keymap-set kittymacs-toggle-map "T" (cons "choose theme" #'load-theme))
+
 (use-package doom-themes
   :ensure t
   :custom
@@ -141,6 +145,8 @@ Use t for a terminal configured with a Nerd Font, or nil to disable icons."
 (use-package hide-mode-line
   :ensure t
   :commands hide-mode-line-mode)
+
+(keymap-set kittymacs-toggle-map "H" (cons "hide mode line" #'hide-mode-line-mode))
 
 (defun kittymacs--tab-bar-faces (&rest _)
   "Give the tab bar a compact, mode-line-like look."
@@ -206,6 +212,8 @@ Use t for a terminal configured with a Nerd Font, or nil to disable icons."
   :ensure t
   :hook ((prog-mode markdown-mode markdown-ts-mode) . hl-todo-mode))
 
+(keymap-set kittymacs-search-map "t" (cons "todo keywords" #'hl-todo-occur))
+
 (use-package highlight-numbers
   :ensure t
   :hook (prog-mode . highlight-numbers-mode))
@@ -222,6 +230,8 @@ Use t for a terminal configured with a Nerd Font, or nil to disable icons."
 (use-package writeroom-mode
   :ensure t
   :commands writeroom-mode)
+
+(keymap-set kittymacs-toggle-map "w" (cons "writeroom" #'writeroom-mode))
 (defun kittymacs--programming-presentation ()
   "Visual aids for programming buffers."
   (when kittymacs-line-numbers-in-programming

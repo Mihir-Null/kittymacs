@@ -100,6 +100,15 @@
 
 #+end_src
 
+- Three keys reach it, each named in =:commands= so it works before Treemacs has loaded: =SPC t d= opens the sidebar, =SPC o t= jumps into it, and =SPC f t= reveals the current file.
+
+#+begin_src emacs-lisp
+(keymap-set kittymacs-toggle-map "d" (cons "file tree sidebar" #'treemacs))
+(keymap-set kittymacs-open-map "t" (cons "file tree" #'treemacs-select-window))
+(keymap-set kittymacs-file-map "t" (cons "reveal in file tree" #'treemacs-find-file))
+
+#+end_src
+
 * Every file on disk is shown :decision:
 :PROPERTIES:
 :ID: c0abb9db-6cb2-4eee-ae75-343666cf53c6

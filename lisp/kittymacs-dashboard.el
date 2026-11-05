@@ -7,11 +7,14 @@
 
 ;;; Code:
 
+(require 'kittymacs-leader)
 (require 'kittymacs-ui)
 (defun kittymacs-dashboard-open-cheatsheet (&rest _)
   "Open the local keybindings and commands cheat sheet."
   (interactive)
   (find-file (expand-file-name "keybindings.org" kittymacs-lisp-dir)))
+
+(keymap-set kittymacs-help-map "?" (cons "cheat sheet" #'kittymacs-dashboard-open-cheatsheet))
 (defun kittymacs--dashboard-run (command)
   "Return a dashboard button action that runs COMMAND interactively."
   (lambda (&rest _) (call-interactively command)))
@@ -156,6 +159,9 @@ Exclude trailing padding and compensate for leading indentation."
 
   ;; Skip the home page when Emacs was invoked with a file argument.
   (dashboard-setup-startup-hook))
+
+(keymap-set kittymacs-help-map "h" (cons "home" #'dashboard-open))
+(keymap-set kittymacs-open-map "h" (cons "home" #'dashboard-open))
 ;; Keep r/p/b/? and dashboard item shortcuts alongside Meow j/k and SPC.
 (with-eval-after-load 'meow
   (add-to-list 'meow-mode-state-list '(dashboard-mode . motion)))

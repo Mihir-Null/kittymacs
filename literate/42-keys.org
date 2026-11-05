@@ -7,19 +7,22 @@
 #+STARTUP: overview
 #+PROPERTY: header-args:emacs-lisp :tangle ../lisp/kittymacs-keys.el :eval never :comments no :padline no :mkdirp yes
 
-- Every key directly under =SPC=, in one place, grouped and labelled so which-key shows "files" instead of "+prefix".
+- Every group directly under =SPC=, in one place, so you can see the tree without reading each chapter.
+- The tables list keys from every chapter; the code here binds only what no feature owns.
+  + A key that belongs to a feature is in that feature's chapter, so a feature that is off has no keys.
+  + What stays here runs Emacs's own commands, or a command of a module that always loads.
 - The vocabulary follows Spacemacs and Doom, which most Meow and Evil users already know:
   + a letter for each area;
   + the same letter twice for the most common action in that area.
-- Leans on [[id:e5942eb0-4389-447d-9317-d9178adcaaae][the leader]] for the mechanism; package chapters define their own =SPC m= menus there, never keys here.
+- Leans on [[id:e5942eb0-4389-447d-9317-d9178adcaaae][the leader]] for the mechanism and the empty groups.
   + [[id:a1607a41-b741-428a-9de3-c16e7c8d3ecc][The editing chapter]] explains when =SPC= is live; [[file:../lisp/keybindings.org][the cheat sheet]] prints the tree on one page.
 
 * How to read and change the tree
 
-- Each group is a keymap made with =defvar-keymap=.
+- Each group is a keymap that [[id:e5942eb0-4389-447d-9317-d9178adcaaae][the leader]] defines, empty.
 - A definition of the form =(cons "label" #'command)= is an ordinary Emacs menu item: the label is what which-key prints.
 - To add a key, use =keymap-set= on the group map or on =kittymacs-leader-map= itself.
-  + Here, or in =private.el= inside its =after-init-hook= function: =private.el= loads before this chapter.
+  + In the chapter of the feature it belongs to, or in =private.el= inside its =after-init-hook= function: =private.el= loads before the chapters.
 - =SPC u= is a group reserved for your own keys.
 
 #+begin_src emacs-lisp :tangle no
@@ -27,7 +30,7 @@
 #+end_src
 
 #+begin_src emacs-lisp
-;;; kittymacs-keys.el --- The leader tree -*- lexical-binding: t; -*-
+;;; kittymacs-keys.el --- The keys no feature owns -*- lexical-binding: t; -*-
 ;; Generated from literate/42-keys.org; edit the Org source, then tangle.
 
 ;;; Code:
@@ -59,7 +62,9 @@
 | =SPC f= | files   | =f= find           | =r= recent, =d= directory, =y= copy file name, =t= reveal in the file tree, =o= show in the file manager |
 | =SPC s= | search  | =s= lines          | =d= ripgrep, =.= symbol at point, =r= visual replace, =q= / =Q= Org query, =l= last completion |
 
-- =SPC b N= runs =kittymacs-new-buffer= from [[id:3fd783cd-deb8-48aa-bb44-0d9b16535365][the defaults chapter]] in a new frame, through a small wrapper defined here.
+- Emacs's own commands for buffers and files stay here, with three commands that always load: =kittymacs-new-buffer= and =kittymacs-copy-file-name= from [[id:3fd783cd-deb8-48aa-bb44-0d9b16535365][the defaults chapter]], and =kittymacs-reveal-in-file-manager= from [[id:afa6b7fd-742a-4c15-86a6-32e3e8027b0e][the platform chapter]].
+- =SPC b N= runs =kittymacs-new-buffer= in a new frame, through a small wrapper defined here.
+- Every key in =SPC s= belongs to a feature.
 
 #+begin_src emacs-lisp
 (defun kittymacs-new-buffer-frame ()
@@ -67,62 +72,26 @@
   (interactive)
   (kittymacs-new-buffer t))
 
-(defvar-keymap kittymacs-buffer-map
-  :doc "Buffers."
-  "b" (cons "switch" #'consult-buffer)
-  "B" (cons "switch in other frame" #'consult-buffer-other-frame)
-  "p" (cons "project buffer" #'consult-project-buffer)
-  "k" (cons "kill this" #'kill-current-buffer)
-  "K" (cons "kill some" #'kill-buffer)
-  "n" (cons "new" #'kittymacs-new-buffer)
-  "N" (cons "new in frame" #'kittymacs-new-buffer-frame)
-  "s" (cons "save" #'save-buffer)
-  "r" (cons "revert" #'revert-buffer-quick)
-  "R" (cons "rename file" #'rename-visited-file)
-  "i" (cons "imenu" #'consult-imenu)
-  "j" (cons "jump to heading" #'kittymacs-jump-in-buffer)
-  "m" (cons "mark ring" #'consult-mark)
-  "M" (cons "global mark ring" #'consult-global-mark)
-  "a" (cons "ibuffer" #'ibuffer)
-  "x" (cons "scratch" #'scratch-buffer)
-  "u" (cons "undo tree" #'vundo)
-  "[" (cons "previous" #'previous-buffer)
-  "]" (cons "next" #'next-buffer))
+(keymap-set kittymacs-buffer-map "k" (cons "kill this" #'kill-current-buffer))
+(keymap-set kittymacs-buffer-map "K" (cons "kill some" #'kill-buffer))
+(keymap-set kittymacs-buffer-map "n" (cons "new" #'kittymacs-new-buffer))
+(keymap-set kittymacs-buffer-map "N" (cons "new in frame" #'kittymacs-new-buffer-frame))
+(keymap-set kittymacs-buffer-map "s" (cons "save" #'save-buffer))
+(keymap-set kittymacs-buffer-map "r" (cons "revert" #'revert-buffer-quick))
+(keymap-set kittymacs-buffer-map "R" (cons "rename file" #'rename-visited-file))
+(keymap-set kittymacs-buffer-map "a" (cons "ibuffer" #'ibuffer))
+(keymap-set kittymacs-buffer-map "x" (cons "scratch" #'scratch-buffer))
+(keymap-set kittymacs-buffer-map "[" (cons "previous" #'previous-buffer))
+(keymap-set kittymacs-buffer-map "]" (cons "next" #'next-buffer))
 
-(defvar-keymap kittymacs-file-map
-  :doc "Files."
-  "f" (cons "find" #'find-file)
-  "F" (cons "find in other frame" #'find-file-other-frame)
-  "s" (cons "save" #'save-buffer)
-  "S" (cons "save all" #'save-some-buffers)
-  "r" (cons "recent" #'consult-recent-file)
-  "b" (cons "bookmarks" #'consult-bookmark)
-  "B" (cons "set bookmark" #'bookmark-set)
-  "d" (cons "directory" #'dired-jump)
-  "D" (cons "switch directory" #'consult-dir)
-  "R" (cons "rename" #'rename-visited-file)
-  "y" (cons "copy file name" #'kittymacs-copy-file-name)
-  "t" (cons "reveal in file tree" #'treemacs-find-file)
-  "o" (cons "show in file manager" #'kittymacs-reveal-in-file-manager))
-
-(defvar-keymap kittymacs-search-map
-  :doc "Search."
-  "s" (cons "lines" #'consult-line)
-  "S" (cons "lines in all buffers" #'consult-line-multi)
-  "." (cons "symbol at point" #'kittymacs-search-symbol-at-point)
-  "d" (cons "ripgrep" #'consult-ripgrep)
-  "r" (cons "replace (visual)" #'vr/query-replace)
-  "i" (cons "imenu" #'consult-imenu)
-  "o" (cons "outline" #'consult-outline)
-  "h" (cons "org heading" #'consult-org-heading)
-  "a" (cons "org agenda" #'consult-org-agenda)
-  "q" (cons "org query, jump" #'kittymacs-org-ql-find)
-  "Q" (cons "org query, list" #'kittymacs-org-ql-search)
-  "k" (cons "kill ring" #'consult-yank-pop)
-  "m" (cons "mark ring" #'consult-mark)
-  "t" (cons "todo keywords" #'hl-todo-occur)
-  "p" (cons "spelling" #'consult-flyspell)
-  "l" (cons "last completion" #'vertico-repeat))
+(keymap-set kittymacs-file-map "f" (cons "find" #'find-file))
+(keymap-set kittymacs-file-map "F" (cons "find in other frame" #'find-file-other-frame))
+(keymap-set kittymacs-file-map "s" (cons "save" #'save-buffer))
+(keymap-set kittymacs-file-map "S" (cons "save all" #'save-some-buffers))
+(keymap-set kittymacs-file-map "B" (cons "set bookmark" #'bookmark-set))
+(keymap-set kittymacs-file-map "R" (cons "rename" #'rename-visited-file))
+(keymap-set kittymacs-file-map "y" (cons "copy file name" #'kittymacs-copy-file-name))
+(keymap-set kittymacs-file-map "o" (cons "show in file manager" #'kittymacs-reveal-in-file-manager))
 
 #+end_src
 
@@ -136,98 +105,26 @@
 | =SPC w= | windows         | =w= jump to window      | =n= new frame, =k= close frame, =h= / =v= split, =u= / =U= undo / redo layout |
 | =SPC W= | workspaces      | (=TAB= switch)          | =s= switch or create, =o= open project, =d= close                             |
 
-- =SPC p= is =kittymacs-project-map=, whose /parent/ is Emacs's own =project-prefix-map=:
-  + a key not found in a keymap is looked up in its parent, so the =C-x p= commands work under =SPC p= as well;
-  + the map below adds to it or overrides a key.
-- The additions live here, not in Emacs's map, so =C-x p= stays exactly the menu the Emacs manual describes.
-- Three keys are overridden:
-  + =SPC p p= opens the project in its own workspace; =C-x p p= still switches project in the current one;
-  + =SPC p b= is Consult's project buffer list, with preview, instead of =project-switch-to-buffer=;
-  + =SPC p G= is Magit's status for the project; the command =C-x p G= runs, =project-or-external-find-regexp=, has no key under =SPC p=, so use =C-x p G= for it.
-- =SPC p E= is the project's direnv environment, from [[id:a121fda8-198e-498c-8867-eb1ecba8236d][the shells chapter]]: =a= allow its =.envrc=, =d= deny it, =r= reload it, =l= the last run's log.
-  + Capital =E= because =SPC p e= is =project-eshell=, inherited from =C-x p=.
 - Windows are frames here: =SPC w n= makes a new OS window.
   + =SPC w h= and =SPC w v= are bound to Emacs's own split commands, which [[id:f1d045c2-e2dc-4514-ab17-dd982ed6be00][the frames chapter]] turns into frame creation while frames-only mode is on, so they make a new OS window too.
   + With the mode off (=SPC t f=) they split the current frame.
+- Only =SPC w w= and =SPC w s= need a package, so the rest of =SPC w= stays here.
 
 #+begin_src emacs-lisp
-(defvar-keymap kittymacs-project-map
-  :doc "Project commands: Emacs's `project-prefix-map' plus a few more."
-  :parent project-prefix-map
-  "p" (cons "open in a workspace" #'tabspaces-open-or-create-project-and-workspace)
-  "b" (cons "project buffer" #'consult-project-buffer)
-  "m" (cons "bookmark" #'consult-bookmark)
-  "G" (cons "Magit status" #'magit-project-status)
-  "t" (cons "projects directory" #'kittymacs-projects-directory)
-  "R" (cons "remember projects under" #'project-remember-projects-under)
-  "C" (cons "recompile" #'recompile)
-  "E" (cons "direnv" (define-keymap
-                       "a" (cons "allow .envrc" #'envrc-allow)
-                       "d" (cons "deny .envrc" #'envrc-deny)
-                       "r" (cons "reload" #'envrc-reload)
-                       "l" (cons "log" #'envrc-show-log))))
-
-(defvar-keymap kittymacs-jump-map
-  :doc "Jump with on-screen hints."
-  "j" (cons "to character" #'avy-goto-char-timer)
-  "l" (cons "to line" #'avy-goto-line)
-  "w" (cons "to word" #'avy-goto-word-1)
-  "s" (cons "to symbol" #'avy-goto-symbol-1)
-  "e" (cons "to end of line" #'avy-goto-end-of-line)
-  "i" (cons "in this line" #'avy-goto-char-in-line))
-
-(defvar-keymap kittymacs-vc-map
-  :doc "Version control."
-  "s" (cons "status" #'kittymacs-magit-status)
-  "d" (cons "diff" #'magit-diff)
-  "l" (cons "log" #'magit-log)
-  "L" (cons "log this file" #'magit-log-buffer-file)
-  "b" (cons "blame" #'magit-blame)
-  "c" (cons "commit" #'magit-commit)
-  "f" (cons "file actions" #'magit-file-dispatch)
-  "F" (cons "fetch" #'magit-fetch)
-  "p" (cons "push" #'magit-push)
-  "P" (cons "pull" #'magit-pull)
-  "z" (cons "stash" #'magit-stash)
-  "r" (cons "reflog" #'magit-reflog-current)
-  "i" (cons "init" #'magit-init)
-  "C" (cons "clone" #'magit-clone)
-  "q" (cons "quick commit (vc)" #'vc-next-action)
-  "?" (cons "all commands" #'magit-dispatch))
-
-(defvar-keymap kittymacs-window-map
-  :doc "Windows and frames."
-  "n" (cons "new frame" #'make-frame-command)
-  "k" (cons "close frame" #'delete-frame)
-  "K" (cons "close other frames" #'delete-other-frames)
-  "w" (cons "jump to window" #'ace-window)
-  "o" (cons "other window" #'other-window)
-  "s" (cons "swap windows" #'ace-swap-window)
-  "d" (cons "close window" #'delete-window)
-  "m" (cons "only this window" #'delete-other-windows)
-  "h" (cons "split below" #'split-window-below)
-  "v" (cons "split right" #'split-window-right)
-  "=" (cons "balance" #'balance-windows)
-  "t" (cons "window to frame" #'tear-off-window)
-  "u" (cons "undo layout" #'winner-undo)
-  "U" (cons "redo layout" #'winner-redo)
-  "f" (cons "fullscreen" #'toggle-frame-fullscreen)
-  "M" (cons "maximize" #'toggle-frame-maximized))
-
-(defvar-keymap kittymacs-workspace-map
-  :doc "Workspaces (tabs with their own buffers)."
-  "TAB" (cons "switch" #'kittymacs-tab-dwim)
-  "s" (cons "switch or create" #'tabspaces-switch-or-create-workspace)
-  "o" (cons "open project" #'tabspaces-open-or-create-project-and-workspace)
-  "n" (cons "new tab" #'tab-new)
-  "b" (cons "workspace buffer" #'tabspaces-switch-to-buffer)
-  "r" (cons "remove buffer" #'tabspaces-remove-current-buffer)
-  "R" (cons "remove some buffer" #'tabspaces-remove-selected-buffer)
-  "c" (cons "clear buffers" #'tabspaces-clear-buffers)
-  "d" (cons "close workspace" #'tabspaces-close-workspace)
-  "k" (cons "kill buffers and close" #'tabspaces-kill-buffers-close-workspace)
-  "]" (cons "next tab" #'tab-next)
-  "[" (cons "previous tab" #'tab-previous))
+(keymap-set kittymacs-window-map "n" (cons "new frame" #'make-frame-command))
+(keymap-set kittymacs-window-map "k" (cons "close frame" #'delete-frame))
+(keymap-set kittymacs-window-map "K" (cons "close other frames" #'delete-other-frames))
+(keymap-set kittymacs-window-map "o" (cons "other window" #'other-window))
+(keymap-set kittymacs-window-map "d" (cons "close window" #'delete-window))
+(keymap-set kittymacs-window-map "m" (cons "only this window" #'delete-other-windows))
+(keymap-set kittymacs-window-map "h" (cons "split below" #'split-window-below))
+(keymap-set kittymacs-window-map "v" (cons "split right" #'split-window-right))
+(keymap-set kittymacs-window-map "=" (cons "balance" #'balance-windows))
+(keymap-set kittymacs-window-map "t" (cons "window to frame" #'tear-off-window))
+(keymap-set kittymacs-window-map "u" (cons "undo layout" #'winner-undo))
+(keymap-set kittymacs-window-map "U" (cons "redo layout" #'winner-redo))
+(keymap-set kittymacs-window-map "f" (cons "fullscreen" #'toggle-frame-fullscreen))
+(keymap-set kittymacs-window-map "M" (cons "maximize" #'toggle-frame-maximized))
 
 #+end_src
 
@@ -241,84 +138,32 @@
 | =SPC F= | diagnostics     | (=n= next)           | =p= previous, =d= / =D= list buffer / project |
 | =SPC i= | insert          | (=s= snippet)        | =y= from kill ring, =c= character, =e= emoji, =d= date        |
 
-- =SPC l= is the language-server menu; the servers are opt-in in [[id:560fcdca-6cb8-49d9-bf27-eb78f32b9285][the languages chapter]].
-- =SPC c p= completes at point from one particular source, for when Corfu's automatic popup does not offer what you want.
-  + [[id:42b02bb4-ea68-4981-b427-35705bf162f4][The completion chapter]] installs Cape, which provides most of these sources.
+- Emacs's own commands for changing code and evaluating Lisp stay here.
 - =SPC i d= inserts today's date as =YYYY-MM-DD=.
 
 #+begin_src emacs-lisp
-(defvar-keymap kittymacs-cape-map
-  :doc "Complete with one particular source."
-  "p" (cons "everything (capf)" #'completion-at-point)
-  "d" (cons "words in buffers" #'cape-dabbrev)
-  "f" (cons "file name" #'cape-file)
-  "k" (cons "language keyword" #'cape-keyword)
-  "l" (cons "whole line" #'cape-line)
-  "a" (cons "abbrev" #'cape-abbrev)
-  "w" (cons "dictionary word" #'cape-dict)
-  "e" (cons "Emacs Lisp symbol" #'cape-elisp-symbol))
+(keymap-set kittymacs-code-map "c" (cons "comment" #'comment-dwim))
+(keymap-set kittymacs-code-map "l" (cons "comment line" #'comment-line))
+(keymap-set kittymacs-code-map "d" (cons "duplicate" #'duplicate-dwim))
+(keymap-set kittymacs-code-map "f" (cons "indent region" #'indent-region))
+(keymap-set kittymacs-code-map "w" (cons "clean whitespace" #'whitespace-cleanup))
 
-(defvar-keymap kittymacs-code-map
-  :doc "Change code."
-  "c" (cons "comment" #'comment-dwim)
-  "l" (cons "comment line" #'comment-line)
-  "d" (cons "duplicate" #'duplicate-dwim)
-  "s" (cons "surround" #'embrace-commander)
-  "f" (cons "indent region" #'indent-region)
-  "w" (cons "clean whitespace" #'whitespace-cleanup)
-  "m" (cons "editing menu" #'casual-editkit-main-tmenu)
-  "p" (cons "complete with" kittymacs-cape-map))
-
-(defvar-keymap kittymacs-eval-map
-  :doc "Evaluate Lisp."
-  "e" (cons "last sexp" #'eval-last-sexp)
-  "d" (cons "defun" #'eval-defun)
-  "b" (cons "buffer" #'eval-buffer)
-  "r" (cons "region" #'eval-region)
-  "x" (cons "expression" #'eval-expression)
-  "i" (cons "ielm" #'ielm)
-  "l" (cons "load file" #'load-file))
-
-(defvar-keymap kittymacs-lsp-map
-  :doc "Language server and code intelligence."
-  "e" (cons "start or manage" #'eglot)
-  "q" (cons "shut down" #'eglot-shutdown)
-  "=" (cons "reconnect" #'eglot-reconnect)
-  "a" (cons "code actions" #'eglot-code-actions)
-  "R" (cons "rename" #'eglot-rename)
-  "f" (cons "format buffer" #'eglot-format-buffer)
-  "F" (cons "format region" #'eglot-format)
-  "d" (cons "definition" #'xref-find-definitions)
-  "r" (cons "references" #'xref-find-references)
-  "D" (cons "declaration" #'eglot-find-declaration)
-  "i" (cons "implementation" #'eglot-find-implementation)
-  "t" (cons "type definition" #'eglot-find-typeDefinition)
-  "h" (cons "documentation" #'eldoc-doc-buffer))
-
-(defvar-keymap kittymacs-diagnostics-map
-  :doc "Diagnostics (Flymake)."
-  "n" (cons "next" #'flymake-goto-next-error)
-  "p" (cons "previous" #'flymake-goto-prev-error)
-  "d" (cons "list buffer" #'flymake-show-buffer-diagnostics)
-  "D" (cons "list project" #'flymake-show-project-diagnostics)
-  "c" (cons "choose" #'consult-flymake)
-  "s" (cons "start check" #'flymake-start))
+(keymap-set kittymacs-eval-map "e" (cons "last sexp" #'eval-last-sexp))
+(keymap-set kittymacs-eval-map "d" (cons "defun" #'eval-defun))
+(keymap-set kittymacs-eval-map "b" (cons "buffer" #'eval-buffer))
+(keymap-set kittymacs-eval-map "r" (cons "region" #'eval-region))
+(keymap-set kittymacs-eval-map "x" (cons "expression" #'eval-expression))
+(keymap-set kittymacs-eval-map "i" (cons "ielm" #'ielm))
+(keymap-set kittymacs-eval-map "l" (cons "load file" #'load-file))
 
 (defun kittymacs-insert-date ()
   "Insert today's date as YYYY-MM-DD."
   (interactive)
   (insert (format-time-string "%Y-%m-%d")))
 
-(defvar-keymap kittymacs-insert-map
-  :doc "Insert."
-  "s" (cons "snippet" #'yas-insert-snippet)
-  "S" (cons "new snippet" #'yas-new-snippet)
-  "y" (cons "from kill ring" #'consult-yank-from-kill-ring)
-  "r" (cons "register" #'consult-register)
-  "R" (cons "store register" #'consult-register-store)
-  "c" (cons "character" #'insert-char)
-  "e" (cons "emoji" #'emoji-insert)
-  "d" (cons "date" #'kittymacs-insert-date))
+(keymap-set kittymacs-insert-map "c" (cons "character" #'insert-char))
+(keymap-set kittymacs-insert-map "e" (cons "emoji" #'emoji-insert))
+(keymap-set kittymacs-insert-map "d" (cons "date" #'kittymacs-insert-date))
 
 #+end_src
 
@@ -334,99 +179,27 @@
 | =SPC q= | quit   | =q= save and quit    | =Q= without saving, =r= restart, =f= close frame               |
 | =SPC u= | user   | (empty)              | yours                                                          |
 
-- The commands these groups call belong to the chapters they serve:
+- These groups' keys and commands belong to the chapters they serve:
   + the Org inbox to [[id:8ff7e58e-c155-4513-99ae-3b2c3a6ab729][the Org chapter]];
   + the linked-notes commands to [[id:f48e8f01-88da-4e33-8398-c00ab346b8bb][Org-roam]];
   + the agent commands to [[id:94d55283-5011-4f98-a7f0-8c6bcb51aab9][the agents chapter]];
   + the suggestion commands, =SPC a c= and =SPC t a=, to [[id:0b43a1e9-2e16-4d5b-985d-342c4897634f][the suggestions chapter]];
   + the =SPC C= commands that open and rebuild this configuration to [[id:9ea539a0-f1a3-4d05-aa10-6f2d2ff3e335][the maintenance chapter]].
+- Toggles for Emacs's own modes and quitting stay here.
 
 #+begin_src emacs-lisp
-(defvar-keymap kittymacs-notes-map
-  :doc "Linked notes in the current graph."
-  "f" (cons "find node" #'kittymacs-org-roam-find)
-  "t" (cons "find node by tag" #'kittymacs-org-roam-find-by-tag)
-  "T" (cons "tag index" #'kittymacs-org-roam-tag-index)
-  "i" (cons "insert ID link" #'kittymacs-org-roam-insert)
-  "c" (cons "capture (show destination)" #'kittymacs-org-roam-capture)
-  "b" (cons "backlinks panel" #'kittymacs-org-roam-backlinks)
-  "s" (cons "sync graph" #'kittymacs-org-roam-sync))
+(keymap-set kittymacs-toggle-map "n" (cons "line numbers" #'display-line-numbers-mode))
+(keymap-set kittymacs-toggle-map "h" (cons "highlight line" #'hl-line-mode))
+(keymap-set kittymacs-toggle-map "v" (cons "visual lines" #'visual-line-mode))
+(keymap-set kittymacs-toggle-map "l" (cons "truncate lines" #'toggle-truncate-lines))
+(keymap-set kittymacs-toggle-map "s" (cons "spell check" #'flyspell-mode))
+(keymap-set kittymacs-toggle-map "m" (cons "menu bar" #'menu-bar-mode))
+(keymap-set kittymacs-toggle-map "z" (cons "zone out" #'zone))
 
-(defvar-keymap kittymacs-agent-map
-  :doc "Coding agents (agent-shell), and a suggestion at point."
-  "a" (cons "start or switch" #'agent-shell)
-  "n" (cons "new shell" #'agent-shell-new-shell)
-  "t" (cons "toggle" #'agent-shell-toggle)
-  "b" (cons "switch shell" #'agent-shell-switch-buffer)
-  "r" (cons "resume session" #'agent-shell-resume-session)
-  "s" (cons "send region or file" #'agent-shell-send-dwim)
-  "f" (cons "send a file" #'agent-shell-send-file)
-  "j" (cons "jump to waiting shell" #'agent-shell-attention-jump)
-  "d" (cons "all shells" #'agent-shell-attention-dashboard)
-  "c" (cons "suggestion here (Copilot)" #'kittymacs-suggestions-complete)
-  "?" (cons "menu" #'agent-shell-help-menu))
-
-(defvar-keymap kittymacs-open-map
-  :doc "Open applications."
-  "e" (cons "terminal" #'kittymacs-terminal-open)
-  "E" (cons "pick a terminal" #'consult-ghostel)
-  "p" (cons "project terminal" #'kittymacs-terminal-project)
-  "m" (cons "MSYS2 terminal (Windows)" #'kittymacs-terminal-msys2)
-  "t" (cons "file tree" #'treemacs-select-window)
-  "s" (cons "eshell (project)" #'kittymacs-eshell-project)
-  "S" (cons "eshell" #'eshell)
-  "a" (cons "agenda dashboard" #'kittymacs-org-dashboard)
-  "A" (cons "agenda" #'org-agenda)
-  "c" (cons "capture" #'org-capture)
-  "i" (cons "org inbox" #'kittymacs-org-inbox)
-  "d" (cons "dired" #'dired)
-  "h" (cons "home" #'dashboard-open))
-
-(defvar-keymap kittymacs-toggle-map
-  :doc "Toggles."
-  "t" (cons "light/dark theme" #'kittymacs-toggle-theme)
-  "T" (cons "choose theme" #'load-theme)
-  "n" (cons "line numbers" #'display-line-numbers-mode)
-  "h" (cons "highlight line" #'hl-line-mode)
-  "H" (cons "hide mode line" #'hide-mode-line-mode)
-  "w" (cons "writeroom" #'writeroom-mode)
-  "P" (cons "prose font" #'kittymacs-org-prose-mode)
-  "v" (cons "visual lines" #'visual-line-mode)
-  "l" (cons "truncate lines" #'toggle-truncate-lines)
-  "s" (cons "spell check" #'flyspell-mode)
-  "F" (cons "flymake" #'flymake-mode)
-  "r" (cons "colour names" #'rainbow-mode)
-  "f" (cons "frames-only mode" #'frames-only-mode)
-  "d" (cons "file tree sidebar" #'treemacs)
-  "a" (cons "suggestions (Copilot)" #'kittymacs-suggestions-toggle)
-  "g" (cons "git gutter" #'diff-hl-mode)
-  "k" (cons "show keys (keycast)" #'keycast-header-line-mode)
-  "K" (cons "log keys" #'keycast-log-mode)
-  "m" (cons "menu bar" #'menu-bar-mode)
-  "p" (cons "structural editing" #'puni-mode)
-  "z" (cons "zone out" #'zone))
-
-(defvar-keymap kittymacs-config-map
-  :doc "This configuration."
-  "c" (cons "reading guide" #'kittymacs-literate-open)
-  "f" (cons "find chapter" #'kittymacs-find-config-file)
-  "s" (cons "search config" #'kittymacs-search-config)
-  "t" (cons "tangle" #'kittymacs-literate-tangle)
-  "k" (cons "check tangle" #'kittymacs-literate-check)
-  "p" (cons "private.el" #'kittymacs-open-private-file)
-  "u" (cons "custom.el" #'kittymacs-open-custom-file)
-  "a" (cons "architecture" #'kittymacs-open-architecture)
-  "r" (cons "restart Emacs" #'restart-emacs))
-
-(defvar-keymap kittymacs-quit-map
-  :doc "Quit."
-  "q" (cons "save and quit" #'save-buffers-kill-emacs)
-  "Q" (cons "quit without saving" #'kill-emacs)
-  "r" (cons "restart" #'restart-emacs)
-  "f" (cons "close frame" #'delete-frame))
-
-(defvar-keymap kittymacs-user-map
-  :doc "Your own keys. Add them here or in private.el.")
+(keymap-set kittymacs-quit-map "q" (cons "save and quit" #'save-buffers-kill-emacs))
+(keymap-set kittymacs-quit-map "Q" (cons "quit without saving" #'kill-emacs))
+(keymap-set kittymacs-quit-map "r" (cons "restart" #'restart-emacs))
+(keymap-set kittymacs-quit-map "f" (cons "close frame" #'delete-frame))
 
 #+end_src
 
@@ -436,39 +209,7 @@
 |---------+-------+-------------+-----------------------------------------------------------------------|
 | =SPC h= | help  | =h= home    | =?= cheat sheet, =k= key, =f= function, =v= variable, =l= leader, =t= Meow tutor |
 
-- The help group gathers:
-  + the describe commands, source lookup and the manuals;
-  + the three places a learner is sent: the home page, this configuration's cheat sheet and Meow's tutorial.
-- Most entries are the Helpful versions that [[id:8545f3ea-11d0-420b-a823-22a344e56f1e][the help chapter]] installs.
-
-#+begin_src emacs-lisp
-(defvar-keymap kittymacs-help-map
-  :doc "Help, documentation and tutorials."
-  "h" (cons "home" #'dashboard-open)
-  "?" (cons "cheat sheet" #'kittymacs-dashboard-open-cheatsheet)
-  "k" (cons "key" #'helpful-key)
-  "f" (cons "function" #'helpful-callable)
-  "v" (cons "variable" #'helpful-variable)
-  "o" (cons "symbol" #'helpful-symbol)
-  "c" (cons "command" #'helpful-command)
-  "." (cons "at point" #'helpful-at-point)
-  "m" (cons "mode" #'describe-mode)
-  "b" (cons "bindings here" #'embark-bindings)
-  "B" (cons "all bindings" #'describe-bindings)
-  "l" (cons "leader" #'kittymacs-describe-leader)
-  "F" (cons "face" #'describe-face)
-  "w" (cons "where is" #'where-is)
-  "e" (cons "messages" #'view-echo-area-messages)
-  "L" (cons "lossage" #'view-lossage)
-  "i" (cons "info" #'info)
-  "s" (cons "search manuals" #'kittymacs-search-manuals)
-  "S" (cons "find source" #'find-function)
-  "V" (cons "find variable" #'find-variable)
-  "K" (cons "find key" #'find-function-on-key)
-  "t" (cons "meow tutor" #'meow-tutor)
-  "C" (cons "meow cheatsheet" #'meow-cheatsheet))
-
-#+end_src
+- [[id:8545f3ea-11d0-420b-a823-22a344e56f1e][The help chapter]] binds most of this group.
 
 * The top level, and the tree without Meow
 
@@ -487,6 +228,7 @@
 | =SPC {= / =}= | previous / next tab                     |
 | =SPC TAB=     | switch tab                              |
 
+- [[id:878a9e46-62be-4b9f-82f6-589560d2ebc1][Dired]], [[id:42b02bb4-ea68-4981-b427-35705bf162f4][completion]] and [[id:e4d65984-892d-4046-b718-d4265ab74215][navigation]] bind =SPC d=, =SPC k= and the tab keys.
 - =C-c C-SPC= opens the same tree where =SPC= cannot: in Insert state and in buffers where Meow is off.
 
 #+begin_src emacs-lisp
@@ -494,36 +236,9 @@
 (keymap-set kittymacs-leader-map "/" (cons "describe leader" #'kittymacs-describe-leader))
 (keymap-set kittymacs-leader-map "?" (cons "search commands" #'apropos-command))
 (keymap-set kittymacs-leader-map ";" (cons "comment line" #'comment-line))
-(keymap-set kittymacs-leader-map "d" (cons "directory" #'dired-jump))
 (keymap-set kittymacs-leader-map "x" (cons "scratch" #'scratch-buffer))
-(keymap-set kittymacs-leader-map "k" (cons "kill ring" #'consult-yank-from-kill-ring))
 (keymap-set kittymacs-leader-map "[" (cons "previous buffer" #'previous-buffer))
 (keymap-set kittymacs-leader-map "]" (cons "next buffer" #'next-buffer))
-(keymap-set kittymacs-leader-map "{" (cons "previous tab" #'tab-bar-switch-to-prev-tab))
-(keymap-set kittymacs-leader-map "}" (cons "next tab" #'tab-bar-switch-to-next-tab))
-(keymap-set kittymacs-leader-map "TAB" (cons "switch tab" #'kittymacs-tab-dwim))
-
-(keymap-set kittymacs-leader-map "b" (cons "buffers" kittymacs-buffer-map))
-(keymap-set kittymacs-leader-map "f" (cons "files" kittymacs-file-map))
-(keymap-set kittymacs-leader-map "s" (cons "search" kittymacs-search-map))
-(keymap-set kittymacs-leader-map "j" (cons "jump" kittymacs-jump-map))
-(keymap-set kittymacs-leader-map "p" (cons "project" kittymacs-project-map))
-(keymap-set kittymacs-leader-map "v" (cons "version control" kittymacs-vc-map))
-(keymap-set kittymacs-leader-map "w" (cons "windows" kittymacs-window-map))
-(keymap-set kittymacs-leader-map "W" (cons "workspaces" kittymacs-workspace-map))
-(keymap-set kittymacs-leader-map "c" (cons "code" kittymacs-code-map))
-(keymap-set kittymacs-leader-map "e" (cons "eval" kittymacs-eval-map))
-(keymap-set kittymacs-leader-map "l" (cons "language server" kittymacs-lsp-map))
-(keymap-set kittymacs-leader-map "F" (cons "diagnostics" kittymacs-diagnostics-map))
-(keymap-set kittymacs-leader-map "i" (cons "insert" kittymacs-insert-map))
-(keymap-set kittymacs-leader-map "n" (cons "notes" kittymacs-notes-map))
-(keymap-set kittymacs-leader-map "a" (cons "agent" kittymacs-agent-map))
-(keymap-set kittymacs-leader-map "o" (cons "open" kittymacs-open-map))
-(keymap-set kittymacs-leader-map "t" (cons "toggle" kittymacs-toggle-map))
-(keymap-set kittymacs-leader-map "C" (cons "config" kittymacs-config-map))
-(keymap-set kittymacs-leader-map "q" (cons "quit" kittymacs-quit-map))
-(keymap-set kittymacs-leader-map "h" (cons "help" kittymacs-help-map))
-(keymap-set kittymacs-leader-map "u" (cons "user" kittymacs-user-map))
 
 ;; The same tree without Meow: C-c C-SPC works in Insert state and in
 ;; buffers where Meow is off.

@@ -2,6 +2,8 @@
 ;; Generated from literate/45-frames.org; edit the Org source, then tangle.
 
 ;;; Code:
+
+(require 'kittymacs-leader)
 (defcustom kittymacs-frames-only
   (not (or (eq system-type 'android) (bound-and-true-p kittymacs-exwm)))
   "Whether every auxiliary buffer becomes its own operating-system window.
@@ -24,6 +26,7 @@ before this module is loaded, to override."
                                     '(magit-commit-show-diff magit-bury-buffer-function)))
                             frames-only-mode-configuration-variables)))
   (frames-only-mode-remap-common-window-split-keybindings))
+(keymap-set kittymacs-toggle-map "f" (cons "frames-only mode" #'frames-only-mode))
 (when kittymacs-frames-only
   (require 'frames-only-mode)
   ;; Re-evaluating this file must not overwrite the mode's saved defaults.

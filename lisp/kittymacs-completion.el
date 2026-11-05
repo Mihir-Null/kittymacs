@@ -6,6 +6,7 @@
 ;;; Code:
 
 (require 'kittymacs-defaults)
+(require 'kittymacs-leader)
 (defun kittymacs-vertico-directories-first (files)
   "Sort FILES by history, length and name, then put directories first."
   (let ((sorted (vertico-sort-history-length-alpha files)))
@@ -107,12 +108,44 @@
   (consult-info "emacs" "efaq" "elisp" "org" "vertico" "consult" "marginalia"
                 "orderless" "embark" "corfu" "cape"))
 
+(keymap-set kittymacs-buffer-map "b" (cons "switch" #'consult-buffer))
+(keymap-set kittymacs-buffer-map "B" (cons "switch in other frame" #'consult-buffer-other-frame))
+(keymap-set kittymacs-buffer-map "p" (cons "project buffer" #'consult-project-buffer))
+(keymap-set kittymacs-buffer-map "i" (cons "imenu" #'consult-imenu))
+(keymap-set kittymacs-buffer-map "m" (cons "mark ring" #'consult-mark))
+(keymap-set kittymacs-buffer-map "M" (cons "global mark ring" #'consult-global-mark))
+
+(keymap-set kittymacs-file-map "r" (cons "recent" #'consult-recent-file))
+(keymap-set kittymacs-file-map "b" (cons "bookmarks" #'consult-bookmark))
+
+(keymap-set kittymacs-search-map "s" (cons "lines" #'consult-line))
+(keymap-set kittymacs-search-map "S" (cons "lines in all buffers" #'consult-line-multi))
+(keymap-set kittymacs-search-map "." (cons "symbol at point" #'kittymacs-search-symbol-at-point))
+(keymap-set kittymacs-search-map "d" (cons "ripgrep" #'consult-ripgrep))
+(keymap-set kittymacs-search-map "i" (cons "imenu" #'consult-imenu))
+(keymap-set kittymacs-search-map "o" (cons "outline" #'consult-outline))
+(keymap-set kittymacs-search-map "k" (cons "kill ring" #'consult-yank-pop))
+(keymap-set kittymacs-search-map "m" (cons "mark ring" #'consult-mark))
+(keymap-set kittymacs-search-map "l" (cons "last completion" #'vertico-repeat))
+
+(keymap-set kittymacs-project-map "b" (cons "project buffer" #'consult-project-buffer))
+(keymap-set kittymacs-project-map "m" (cons "bookmark" #'consult-bookmark))
+
+(keymap-set kittymacs-insert-map "y" (cons "from kill ring" #'consult-yank-from-kill-ring))
+(keymap-set kittymacs-insert-map "r" (cons "register" #'consult-register))
+(keymap-set kittymacs-insert-map "R" (cons "store register" #'consult-register-store))
+
+(keymap-set kittymacs-leader-map "k" (cons "kill ring" #'consult-yank-from-kill-ring))
+(keymap-set kittymacs-help-map "s" (cons "search manuals" #'kittymacs-search-manuals))
+
 (use-package consult-dir
   :ensure t
   :bind (("C-x C-d" . consult-dir)
          :map vertico-map
          ("C-x C-d" . consult-dir)
          ("C-x C-j" . consult-dir-jump-file)))
+
+(keymap-set kittymacs-file-map "D" (cons "switch directory" #'consult-dir))
 ;; Embark's variable, bound dynamically below even before Embark has loaded.
 (defvar embark-indicators)
 
@@ -170,6 +203,8 @@
   (keymap-set embark-file-map "D" #'kittymacs-embark-dired-here)
   (keymap-set embark-file-map "g" #'kittymacs-embark-ripgrep-here)
   (keymap-set embark-general-map "A" #'marginalia-cycle))
+
+(keymap-set kittymacs-help-map "b" (cons "bindings here" #'embark-bindings))
 
 (use-package embark-consult
   :ensure t
@@ -230,6 +265,19 @@
   (add-to-list 'completion-at-point-functions #'cape-keyword)
   :config
   (advice-add 'pcomplete-completions-at-point :around #'cape-wrap-silent))
+
+(defvar-keymap kittymacs-cape-map
+  :doc "Complete with one particular source."
+  "p" (cons "everything (capf)" #'completion-at-point)
+  "d" (cons "words in buffers" #'cape-dabbrev)
+  "f" (cons "file name" #'cape-file)
+  "k" (cons "language keyword" #'cape-keyword)
+  "l" (cons "whole line" #'cape-line)
+  "a" (cons "abbrev" #'cape-abbrev)
+  "w" (cons "dictionary word" #'cape-dict)
+  "e" (cons "Emacs Lisp symbol" #'cape-elisp-symbol))
+
+(keymap-set kittymacs-code-map "p" (cons "complete with" kittymacs-cape-map))
 (use-package flyspell-correct
   :ensure t
   :after flyspell
@@ -238,6 +286,8 @@
 (use-package consult-flyspell
   :ensure t
   :commands consult-flyspell)
+
+(keymap-set kittymacs-search-map "p" (cons "spelling" #'consult-flyspell))
 (defcustom kittymacs-snippets-dir (expand-file-name "snippets/" kittymacs-etc-dir)
   "Directory of personal snippets, one subdirectory per major mode."
   :type 'directory
@@ -263,6 +313,9 @@
   (with-eval-after-load 'warnings
     (push '(yasnippet backquote-change) warning-suppress-types))
   (yas-global-mode 1))
+
+(keymap-set kittymacs-insert-map "s" (cons "snippet" #'yas-insert-snippet))
+(keymap-set kittymacs-insert-map "S" (cons "new snippet" #'yas-new-snippet))
 
 (provide 'kittymacs-completion)
 ;;; kittymacs-completion.el ends here

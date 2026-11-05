@@ -38,6 +38,12 @@
     (should (eq (keymap-lookup meow-motion-state-keymap "SPC") kittymacs-leader-map))
     (should (eq (key-binding (kbd "SPC f f")) #'find-file))))
 
+(ert-deftest kittymacs-leader-groups-exist-with-no-other-chapter-loaded ()
+  "A chapter that binds into a group needs nothing but this module first."
+  (should (eq (keymap-lookup kittymacs-leader-map "p") kittymacs-project-map))
+  (should (eq (keymap-lookup kittymacs-leader-map "u") kittymacs-user-map))
+  (should (eq (keymap-lookup kittymacs-leader-map "p f") #'project-find-file)))
+
 (ert-deftest kittymacs-leader-insert-state-still-inserts-spaces ()
   (kittymacs-test-with-mode #'text-mode 'insert
     (should (eq (key-binding (kbd "SPC")) #'self-insert-command))))

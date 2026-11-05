@@ -10,7 +10,7 @@
 - Emacs is self-documenting; this chapter makes that documentation nicer to read and easier to reach.
   + =C-h k= then a key says what it does; =C-h f= and =C-h v= describe a function or variable.
   + Helpful makes those pages richer, Info manuals get colour, and Casual gives the built-in tools menus.
-- Leans on [[id:e5942eb0-4389-447d-9317-d9178adcaaae][the leader]] for its =SPC m= menus; the leader's help menu, =SPC h=, is in [[id:53ad53ed-155f-47dc-973d-7be18de2893c][the keys chapter]]; [[id:42b02bb4-ea68-4981-b427-35705bf162f4][the completion chapter]] supplies =C-h B= and the manual search.
+- Leans on [[id:e5942eb0-4389-447d-9317-d9178adcaaae][the leader]] for its =SPC m= menus and the =SPC h= group; [[id:42b02bb4-ea68-4981-b427-35705bf162f4][the completion chapter]] supplies =C-h B= and the manual search.
 - Distilled from Lambda-Emacs by Colin McLear (=lem-setup-help=).
 
 * Help windows and help at point
@@ -43,6 +43,9 @@
 - =elisp-demos= injects worked examples into those pages.
 - =info-colors= makes manuals readable.
 - Two extra keys: =C-h C-l= finds a library's source, =C-h C-c= shows its commentary.
+- =SPC h= gathers the describe commands, source lookup and the manuals, so a learner finds them all under one letter.
+  + The first six keys below run the Helpful versions; the rest run Emacs's own commands.
+  + The home page and cheat sheet keys are in [[id:e73c0805-dc30-4671-a448-65a78921ec92][the dashboard chapter]], and Meow's tutorial is in [[id:a1607a41-b741-428a-9de3-c16e7c8d3ecc][the editing chapter]].
 
 #+begin_src emacs-lisp
 (use-package helpful
@@ -55,6 +58,25 @@
          ([remap describe-command] . helpful-command)
          ("C-h C-l" . find-library)
          ("C-h C-c" . finder-commentary)))
+
+(keymap-set kittymacs-help-map "k" (cons "key" #'helpful-key))
+(keymap-set kittymacs-help-map "f" (cons "function" #'helpful-callable))
+(keymap-set kittymacs-help-map "v" (cons "variable" #'helpful-variable))
+(keymap-set kittymacs-help-map "o" (cons "symbol" #'helpful-symbol))
+(keymap-set kittymacs-help-map "c" (cons "command" #'helpful-command))
+(keymap-set kittymacs-help-map "." (cons "at point" #'helpful-at-point))
+
+(keymap-set kittymacs-help-map "m" (cons "mode" #'describe-mode))
+(keymap-set kittymacs-help-map "B" (cons "all bindings" #'describe-bindings))
+(keymap-set kittymacs-help-map "l" (cons "leader" #'kittymacs-describe-leader))
+(keymap-set kittymacs-help-map "F" (cons "face" #'describe-face))
+(keymap-set kittymacs-help-map "w" (cons "where is" #'where-is))
+(keymap-set kittymacs-help-map "e" (cons "messages" #'view-echo-area-messages))
+(keymap-set kittymacs-help-map "L" (cons "lossage" #'view-lossage))
+(keymap-set kittymacs-help-map "i" (cons "info" #'info))
+(keymap-set kittymacs-help-map "S" (cons "find source" #'find-function))
+(keymap-set kittymacs-help-map "V" (cons "find variable" #'find-variable))
+(keymap-set kittymacs-help-map "K" (cons "find key" #'find-function-on-key))
 
 (use-package elisp-demos
   :ensure t
@@ -109,6 +131,9 @@
   (dolist (event '(mouse-event-p mouse-movement-p mwheel-scroll))
     (add-to-list 'keycast-substitute-alist `(,event nil))))
 
+(keymap-set kittymacs-toggle-map "k" (cons "show keys (keycast)" #'keycast-header-line-mode))
+(keymap-set kittymacs-toggle-map "K" (cons "log keys" #'keycast-log-mode))
+
 #+end_src
 
 * Menus for the built-ins: Casual
@@ -129,6 +154,8 @@
 (use-package casual
   :ensure t
   :defer t)
+
+(keymap-set kittymacs-code-map "m" (cons "editing menu" #'casual-editkit-main-tmenu))
 
 (with-eval-after-load 'calc (keymap-set calc-mode-map "C-o" #'casual-calc-tmenu))
 (with-eval-after-load 'isearch (keymap-set isearch-mode-map "C-o" #'casual-isearch-tmenu))

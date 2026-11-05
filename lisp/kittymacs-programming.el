@@ -28,6 +28,8 @@
          ("C-{" . puni-barf-backward)
          ("C-}" . puni-barf-forward)))
 
+(keymap-set kittymacs-toggle-map "p" (cons "structural editing" #'puni-mode))
+
 (defun kittymacs--embrace-markdown ()
   "Markdown pairs for Embrace."
   (dolist (pair '((?* "*" . "*") (?_ "_" . "_") (?` "`" . "`") (?$ "$" . "$")))
@@ -40,6 +42,8 @@
   :config
   (add-hook 'markdown-mode-hook #'kittymacs--embrace-markdown)
   (add-hook 'markdown-ts-mode-hook #'kittymacs--embrace-markdown))
+
+(keymap-set kittymacs-code-map "s" (cons "surround" #'embrace-commander))
 (defun kittymacs--indent-guides ()
   "Show indent guides in graphical frames.
 The package cannot derive its faces without a display."
@@ -78,6 +82,14 @@ The package cannot derive its faces without a display."
   (flymake-mode-line-counter-format '("" flymake-mode-line-error-counter flymake-mode-line-warning-counter flymake-mode-line-note-counter ""))
   (flymake-mode-line-format '(" " flymake-mode-line-exception flymake-mode-line-counters)))
 
+(keymap-set kittymacs-diagnostics-map "n" (cons "next" #'flymake-goto-next-error))
+(keymap-set kittymacs-diagnostics-map "p" (cons "previous" #'flymake-goto-prev-error))
+(keymap-set kittymacs-diagnostics-map "d" (cons "list buffer" #'flymake-show-buffer-diagnostics))
+(keymap-set kittymacs-diagnostics-map "D" (cons "list project" #'flymake-show-project-diagnostics))
+(keymap-set kittymacs-diagnostics-map "c" (cons "choose" #'consult-flymake))
+(keymap-set kittymacs-diagnostics-map "s" (cons "start check" #'flymake-start))
+(keymap-set kittymacs-toggle-map "F" (cons "flymake" #'flymake-mode))
+
 (use-package flymake-collection
   :ensure t
   :demand t
@@ -88,6 +100,8 @@ The package cannot derive its faces without a display."
         compilation-scroll-output 'first-error)
 (with-eval-after-load 'compile
   (add-hook 'compilation-filter-hook #'comint-truncate-buffer))
+
+(keymap-set kittymacs-project-map "C" (cons "recompile" #'recompile))
 (setopt eldoc-idle-delay 0)
 
 (defun kittymacs--show-trailing-whitespace ()

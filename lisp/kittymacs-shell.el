@@ -41,6 +41,12 @@ They go at the end of `exec-path' and of the PATH that subprocesses see."
   (envrc-async 1)
   :init
   (kittymacs-after-init #'envrc-global-mode 90))
+
+(keymap-set kittymacs-project-map "E" (cons "direnv" (define-keymap
+                                                       "a" (cons "allow .envrc" #'envrc-allow)
+                                                       "d" (cons "deny .envrc" #'envrc-deny)
+                                                       "r" (cons "reload" #'envrc-reload)
+                                                       "l" (cons "log" #'envrc-show-log))))
 (defcustom kittymacs-eshell-dir (expand-file-name "eshell/" kittymacs-etc-dir)
   "Directory for Eshell history, aliases and the directory ring."
   :type 'directory
@@ -143,6 +149,9 @@ With REGEXP, go to the most recent directory matching it."
   :after eshell
   :config
   (eshell-syntax-highlighting-global-mode 1))
+
+(keymap-set kittymacs-open-map "s" (cons "eshell (project)" #'kittymacs-eshell-project))
+(keymap-set kittymacs-open-map "S" (cons "eshell" #'eshell))
 (setopt tramp-persistency-file-name (expand-file-name "tramp" kittymacs-cache-dir)
         tramp-default-method "ssh"
         tramp-copy-size-limit nil

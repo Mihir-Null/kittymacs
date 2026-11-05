@@ -19,7 +19,8 @@
 - =show-paren-mode= highlights the match at once, and shows the opening line when it is off screen.
 - Puni is structural editing for every language, and for Org, Markdown, TeX and the =M-:= prompt:
   + deleting never breaks a pair;
-  + =C-)= and =C-(= slurp the next or previous expression into the current one; =C-}= and =C-{= barf it out.
+  + =C-)= and =C-(= slurp the next or previous expression into the current one; =C-}= and =C-{= barf it out;
+  + =SPC t p= turns it on or off in a buffer.
 - Embrace adds, changes and removes surrounding pairs (=SPC c s=); Org and Markdown get their own pairs (=*=, =_=, =`=, =$= in Markdown).
 - =prettify-symbols-mode= is on everywhere and shows the real text when point is on a symbol.
 
@@ -58,6 +59,8 @@
          ("C-{" . puni-barf-backward)
          ("C-}" . puni-barf-forward)))
 
+(keymap-set kittymacs-toggle-map "p" (cons "structural editing" #'puni-mode))
+
 (defun kittymacs--embrace-markdown ()
   "Markdown pairs for Embrace."
   (dolist (pair '((?* "*" . "*") (?_ "_" . "_") (?` "`" . "`") (?$ "$" . "$")))
@@ -70,6 +73,8 @@
   :config
   (add-hook 'markdown-mode-hook #'kittymacs--embrace-markdown)
   (add-hook 'markdown-ts-mode-hook #'kittymacs--embrace-markdown))
+
+(keymap-set kittymacs-code-map "s" (cons "surround" #'embrace-commander))
 
 #+end_src
 
@@ -117,7 +122,7 @@ The package cannot derive its faces without a display."
 - Flymake is built in and runs a checker for the current language when one is available:
   + Eglot provides one for any language server;
   + =flymake-collection= adds checkers for common tools.
-- Problems show in the left fringe and as counters in the mode line (zero counts hidden); =SPC F= lists them.
+- Problems show in the left fringe and as counters in the mode line (zero counts hidden); =SPC F= lists them, and =SPC t F= turns Flymake on or off in a buffer.
 - Checks run on save, not on a timer after each change; next and previous stop at the last error instead of wrapping.
 - Flymake's own commands carry no autoload cookie:
   + until some buffer has switched =flymake-mode= on, =flymake-start= and its neighbours are not defined and the =SPC F= keys would fail;
@@ -138,6 +143,14 @@ The package cannot derive its faces without a display."
   (flymake-mode-line-counter-format '("" flymake-mode-line-error-counter flymake-mode-line-warning-counter flymake-mode-line-note-counter ""))
   (flymake-mode-line-format '(" " flymake-mode-line-exception flymake-mode-line-counters)))
 
+(keymap-set kittymacs-diagnostics-map "n" (cons "next" #'flymake-goto-next-error))
+(keymap-set kittymacs-diagnostics-map "p" (cons "previous" #'flymake-goto-prev-error))
+(keymap-set kittymacs-diagnostics-map "d" (cons "list buffer" #'flymake-show-buffer-diagnostics))
+(keymap-set kittymacs-diagnostics-map "D" (cons "list project" #'flymake-show-project-diagnostics))
+(keymap-set kittymacs-diagnostics-map "c" (cons "choose" #'consult-flymake))
+(keymap-set kittymacs-diagnostics-map "s" (cons "start check" #'flymake-start))
+(keymap-set kittymacs-toggle-map "F" (cons "flymake" #'flymake-mode))
+
 (use-package flymake-collection
   :ensure t
   :demand t
@@ -151,6 +164,7 @@ The package cannot derive its faces without a display."
 - =compile= runs a command and links errors to source lines.
 - A new compilation kills the old one, buffers save without asking, and the output scrolls to the first error.
 - The compilation buffer is truncated as output arrives, so a long build cannot grow it without bound.
+- =SPC p C= runs the last compilation again.
 
 #+begin_src emacs-lisp
 (setopt compilation-always-kill t
@@ -158,6 +172,8 @@ The package cannot derive its faces without a display."
         compilation-scroll-output 'first-error)
 (with-eval-after-load 'compile
   (add-hook 'compilation-filter-hook #'comint-truncate-buffer))
+
+(keymap-set kittymacs-project-map "C" (cons "recompile" #'recompile))
 
 #+end_src
 

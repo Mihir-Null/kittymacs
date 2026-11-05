@@ -76,6 +76,17 @@
 
 #+end_src
 
+* Opening it
+
+- =SPC d= and =SPC f d= open the directory of the current file; =SPC o d= asks for a directory first.
+
+#+begin_src emacs-lisp
+(keymap-set kittymacs-leader-map "d" (cons "directory" #'dired-jump))
+(keymap-set kittymacs-file-map "d" (cons "directory" #'dired-jump))
+(keymap-set kittymacs-open-map "d" (cons "dired" #'dired))
+
+#+end_src
+
 * Directories first, on every system
 
 - Directories sort first, except on macOS without GNU =ls=.
