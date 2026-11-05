@@ -19,6 +19,8 @@
 
 ;;; Code:
 
+(require 'kittymacs-leader)
+
 #+end_src
 
 * Whitespace
@@ -57,11 +59,13 @@
   (with-eval-after-load 'meow
     (add-to-list 'meow-mode-state-list '(vundo-mode . motion))))
 
+(keymap-set kittymacs-buffer-map "u" (cons "undo tree" #'vundo))
+
 #+end_src
 
 * Windows and popups
 
-- =ace-window= jumps to a window by letter.
+- =ace-window= jumps to a window by letter on =SPC w w=, and swaps two windows on =SPC w s=.
 - Popper collects transient buffers under one toggle key:
   + =*Messages*=, =*Async Shell Command*=, any buffer ending in =Output*=, Help and compilation buffers;
   + grouped by directory, twenty lines high.
@@ -76,6 +80,9 @@
 (use-package ace-window
   :ensure t
   :commands (ace-window ace-swap-window aw-flip-window))
+
+(keymap-set kittymacs-window-map "w" (cons "jump to window" #'ace-window))
+(keymap-set kittymacs-window-map "s" (cons "swap windows" #'ace-swap-window))
 
 (use-package popper
   :ensure t
@@ -100,12 +107,14 @@
 
 * Colour names
 
-- =rainbow-mode= colours colour names in place.
+- =rainbow-mode= colours colour names in place; =SPC t r= turns it on in a buffer.
 
 #+begin_src emacs-lisp
 (use-package rainbow-mode
   :ensure t
   :commands rainbow-mode)
+
+(keymap-set kittymacs-toggle-map "r" (cons "colour names" #'rainbow-mode))
 
 (provide 'kittymacs-basics)
 ;;; kittymacs-basics.el ends here

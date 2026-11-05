@@ -99,5 +99,10 @@
   :after meow
   :config
   (meow-tree-sitter-register-defaults))
+(declare-function meow-tutor "meow-tutor")
+(declare-function meow-cheatsheet "meow-cheatsheet")
+(keymap-set kittymacs-help-map "t" (cons "meow tutor" #'meow-tutor))
+(keymap-set kittymacs-help-map "C" (cons "meow cheatsheet" #'meow-cheatsheet))
+
 (provide 'kittymacs-meow)
 ;;; kittymacs-meow.el ends here

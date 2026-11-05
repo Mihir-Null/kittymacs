@@ -10,7 +10,7 @@
 - Tree-sitter major modes wherever Emacs has one and its grammar loads, the classic modes everywhere else, and Eglot on demand under =SPC l=.
 - Tree-sitter, Eglot, Flymake and xref are Emacs facilities; grammars, compilers and language-server executables are separate dependencies, which this chapter never assumes.
   + Building a grammar waits for your answer to Emacs's question, and starting a language server for =SPC l e=; startup only configures and checks.
-- Leans on [[id:afa6b7fd-742a-4c15-86a6-32e3e8027b0e][the platform chapter]] for =kittymacs-msys2-root=; [[id:53ad53ed-155f-47dc-973d-7be18de2893c][the keys chapter]] binds =SPC l=; [[id:a1607a41-b741-428a-9de3-c16e7c8d3ecc][the editing chapter]] turns the parse tree into Meow things.
+- Leans on [[id:afa6b7fd-742a-4c15-86a6-32e3e8027b0e][the platform chapter]] for =kittymacs-msys2-root=; [[id:e5942eb0-4389-447d-9317-d9178adcaaae][the leader]] defines the =SPC l= group; [[id:a1607a41-b741-428a-9de3-c16e7c8d3ecc][the editing chapter]] turns the parse tree into Meow things.
 - Read [[id:97c04bd3-1404-4b0a-8018-20d77bc671bc][the programming chapter]] first: it is what every programming buffer gets regardless of language.
 
 * Tree-sitter grammars
@@ -368,6 +368,7 @@ choose the languages and rebuild them.  Return the languages built."
 
 ;;; Code:
 
+(require 'kittymacs-leader)
 (require 'kittymacs-treesit)
 (defgroup kittymacs-languages nil
   "Selective language tooling for the starter configuration."
@@ -391,6 +392,7 @@ until the language server for a mode is deliberately installed on each machine."
 ** Eglot, the built-in client
 
 - Eglot talks to the server; Emacs's own xref and Flymake show its navigation and diagnostics.
+- =SPC l= is the language-server menu, with Emacs's own xref and documentation commands beside Eglot's.
 - =:commands= declares Eglot's commands as autoloads, so the =SPC l= keys load it on first use.
 - =eglot-autoshutdown= stops a server once its last buffer is killed.
 
@@ -403,6 +405,20 @@ until the language server for a mode is deliberately installed on each machine."
                    eglot-find-implementation eglot-find-typeDefinition)
   :custom
   (eglot-autoshutdown t))
+
+(keymap-set kittymacs-lsp-map "e" (cons "start or manage" #'eglot))
+(keymap-set kittymacs-lsp-map "q" (cons "shut down" #'eglot-shutdown))
+(keymap-set kittymacs-lsp-map "=" (cons "reconnect" #'eglot-reconnect))
+(keymap-set kittymacs-lsp-map "a" (cons "code actions" #'eglot-code-actions))
+(keymap-set kittymacs-lsp-map "R" (cons "rename" #'eglot-rename))
+(keymap-set kittymacs-lsp-map "f" (cons "format buffer" #'eglot-format-buffer))
+(keymap-set kittymacs-lsp-map "F" (cons "format region" #'eglot-format))
+(keymap-set kittymacs-lsp-map "d" (cons "definition" #'xref-find-definitions))
+(keymap-set kittymacs-lsp-map "r" (cons "references" #'xref-find-references))
+(keymap-set kittymacs-lsp-map "D" (cons "declaration" #'eglot-find-declaration))
+(keymap-set kittymacs-lsp-map "i" (cons "implementation" #'eglot-find-implementation))
+(keymap-set kittymacs-lsp-map "t" (cons "type definition" #'eglot-find-typeDefinition))
+(keymap-set kittymacs-lsp-map "h" (cons "documentation" #'eldoc-doc-buffer))
 #+end_src
 
 ** Starting servers automatically, per mode

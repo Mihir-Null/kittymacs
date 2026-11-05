@@ -10,7 +10,7 @@
 - Selection-first modal editing: Meow's Normal-state grammar, its things, and the state each buffer starts in.
   + The key grammar is adapted from Colin McLear's Meow setup (GPL-3.0-or-later).
 - Meow is an external package; this chapter configures it and hands =SPC= to [[id:e5942eb0-4389-447d-9317-d9178adcaaae][the leader]].
-  + Every key under =SPC= lives in [[id:53ad53ed-155f-47dc-973d-7be18de2893c][the keys chapter]]; each package chapter defines its own =SPC m= menu next to the package.
+  + [[id:e5942eb0-4389-447d-9317-d9178adcaaae][The leader]] defines the groups under =SPC=; each package chapter binds its keys in them and defines its own =SPC m= menu next to the package.
   + [[file:../lisp/keybindings.org][The cheat sheet]] lists the keys on one page.
 - Read [[*How Meow thinks]] first; every other keys chapter assumes it.
 
@@ -197,7 +197,16 @@
 
 #+end_src
 
+* Learning the grammar
+
+- =SPC h t= starts Meow's tutorial, and =SPC h C= shows its cheat sheet of the keys in this layout.
+
 #+begin_src emacs-lisp
+(declare-function meow-tutor "meow-tutor")
+(declare-function meow-cheatsheet "meow-cheatsheet")
+(keymap-set kittymacs-help-map "t" (cons "meow tutor" #'meow-tutor))
+(keymap-set kittymacs-help-map "C" (cons "meow cheatsheet" #'meow-cheatsheet))
+
 (provide 'kittymacs-meow)
 ;;; kittymacs-meow.el ends here
 #+end_src

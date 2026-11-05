@@ -37,8 +37,8 @@
 | [[id:bd2638bc-735d-4849-bafe-3dab5e8e30b7][Terminal]]        | apps      | ghostel: a real terminal, its integrations, and Meow inside it                     |
 | [[id:d2e0bc37-0bd4-4b28-a8ee-04f94ac451f8][Shells]]          | apps      | the login environment, Eshell and Tramp                                            |
 | [[id:a1607a41-b741-428a-9de3-c16e7c8d3ecc][Editing]]         | keys      | Meow's states and grammar                                                          |
-| [[id:e5942eb0-4389-447d-9317-d9178adcaaae][Leader]]          | keys      | why =SPC= is a real keymap, and how modes get their own menu                         |
-| [[id:53ad53ed-155f-47dc-973d-7be18de2893c][Keys]]            | keys      | the whole =SPC= tree, group by group, and what moved                                 |
+| [[id:e5942eb0-4389-447d-9317-d9178adcaaae][Leader]]          | keys      | why =SPC= is a real keymap, its groups, and how modes get their own menu             |
+| [[id:53ad53ed-155f-47dc-973d-7be18de2893c][Keys]]            | keys      | the whole =SPC= tree, group by group, and the keys no feature owns                   |
 | [[id:86fcd506-34c8-476d-8903-acbef46275bf][EXWM]]            | interface | Emacs as the X window manager, with LeopardWM's keys                               |
 | [[id:f1d045c2-e2dc-4514-ab17-dd982ed6be00][Frames]]          | interface | frames-only mode and its exceptions                                                |
 | [[id:0286f652-e861-4e61-9ca6-91e225c8939d][Appearance]]      | interface | fonts, theme, mode line, icons, highlighting                                       |

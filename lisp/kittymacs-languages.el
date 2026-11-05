@@ -8,6 +8,7 @@
 
 ;;; Code:
 
+(require 'kittymacs-leader)
 (require 'kittymacs-treesit)
 (defgroup kittymacs-languages nil
   "Selective language tooling for the starter configuration."
@@ -34,6 +35,20 @@ until the language server for a mode is deliberately installed on each machine."
                    eglot-find-implementation eglot-find-typeDefinition)
   :custom
   (eglot-autoshutdown t))
+
+(keymap-set kittymacs-lsp-map "e" (cons "start or manage" #'eglot))
+(keymap-set kittymacs-lsp-map "q" (cons "shut down" #'eglot-shutdown))
+(keymap-set kittymacs-lsp-map "=" (cons "reconnect" #'eglot-reconnect))
+(keymap-set kittymacs-lsp-map "a" (cons "code actions" #'eglot-code-actions))
+(keymap-set kittymacs-lsp-map "R" (cons "rename" #'eglot-rename))
+(keymap-set kittymacs-lsp-map "f" (cons "format buffer" #'eglot-format-buffer))
+(keymap-set kittymacs-lsp-map "F" (cons "format region" #'eglot-format))
+(keymap-set kittymacs-lsp-map "d" (cons "definition" #'xref-find-definitions))
+(keymap-set kittymacs-lsp-map "r" (cons "references" #'xref-find-references))
+(keymap-set kittymacs-lsp-map "D" (cons "declaration" #'eglot-find-declaration))
+(keymap-set kittymacs-lsp-map "i" (cons "implementation" #'eglot-find-implementation))
+(keymap-set kittymacs-lsp-map "t" (cons "type definition" #'eglot-find-typeDefinition))
+(keymap-set kittymacs-lsp-map "h" (cons "documentation" #'eldoc-doc-buffer))
 (defvar kittymacs--eglot-auto-start-hooks nil
   "Mode hooks currently managed by `kittymacs-eglot-apply-auto-start-modes'.")
 (defun kittymacs-eglot-apply-auto-start-modes ()

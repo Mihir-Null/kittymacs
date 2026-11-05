@@ -111,7 +111,8 @@ They go at the end of `exec-path' and of the PATH that subprocesses see."
   + Each buffer opened during the evaluation waits up to that second, so opening many of them adds up.
   + A mode hook that outruns direnv, such as Eglot's start, can then see the global environment; =SPC p E r= and =M-x eglot-reconnect= correct it.
 - The mode line shows =envrc= in green when a buffer has its project's environment, yellow when the =.envrc= waits to be allowed, red when it failed.
-- The commands are on =SPC p E= ([[id:53ad53ed-155f-47dc-973d-7be18de2893c][the keys chapter]]): =a= allow, =d= deny, =r= reload after editing a flake, =l= the log of the last =direnv= run.
+- The commands are on =SPC p E=: =a= allow, =d= deny, =r= reload after editing a flake, =l= the log of the last =direnv= run.
+  + Capital =E= because =SPC p e= is =project-eshell=, inherited from =C-x p=.
 
 #+begin_src emacs-lisp
 (use-package envrc
@@ -121,6 +122,12 @@ They go at the end of `exec-path' and of the PATH that subprocesses see."
   (envrc-async 1)
   :init
   (kittymacs-after-init #'envrc-global-mode 90))
+
+(keymap-set kittymacs-project-map "E" (cons "direnv" (define-keymap
+                                                       "a" (cons "allow .envrc" #'envrc-allow)
+                                                       "d" (cons "deny .envrc" #'envrc-deny)
+                                                       "r" (cons "reload" #'envrc-reload)
+                                                       "l" (cons "log" #'envrc-show-log))))
 
 #+end_src
 
@@ -262,6 +269,9 @@ With REGEXP, go to the most recent directory matching it."
   :after eshell
   :config
   (eshell-syntax-highlighting-global-mode 1))
+
+(keymap-set kittymacs-open-map "s" (cons "eshell (project)" #'kittymacs-eshell-project))
+(keymap-set kittymacs-open-map "S" (cons "eshell" #'eshell))
 
 #+end_src
 

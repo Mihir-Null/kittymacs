@@ -5,6 +5,7 @@
 ;;; Code:
 
 (require 'kittymacs-defaults)
+(require 'kittymacs-leader)
 
 (defun kittymacs-literate-open (&rest _)
   "Open the literate configuration's reading guide."
@@ -70,5 +71,16 @@
   "Check that deployed Lisp matches saved literate sources without writing it."
   (interactive)
   (kittymacs-literate--build nil))
+
+(keymap-set kittymacs-config-map "c" (cons "reading guide" #'kittymacs-literate-open))
+(keymap-set kittymacs-config-map "f" (cons "find chapter" #'kittymacs-find-config-file))
+(keymap-set kittymacs-config-map "s" (cons "search config" #'kittymacs-search-config))
+(keymap-set kittymacs-config-map "t" (cons "tangle" #'kittymacs-literate-tangle))
+(keymap-set kittymacs-config-map "k" (cons "check tangle" #'kittymacs-literate-check))
+(keymap-set kittymacs-config-map "p" (cons "private.el" #'kittymacs-open-private-file))
+(keymap-set kittymacs-config-map "u" (cons "custom.el" #'kittymacs-open-custom-file))
+(keymap-set kittymacs-config-map "a" (cons "architecture" #'kittymacs-open-architecture))
+(keymap-set kittymacs-config-map "r" (cons "restart Emacs" #'restart-emacs))
+
 (provide 'kittymacs-literate)
 ;;; kittymacs-literate.el ends here

@@ -19,6 +19,15 @@
   :config
   (setopt agent-shell-anthropic-claude-environment
           (agent-shell-make-environment-variables :inherit-env t)))
+
+(keymap-set kittymacs-agent-map "a" (cons "start or switch" #'agent-shell))
+(keymap-set kittymacs-agent-map "n" (cons "new shell" #'agent-shell-new-shell))
+(keymap-set kittymacs-agent-map "t" (cons "toggle" #'agent-shell-toggle))
+(keymap-set kittymacs-agent-map "b" (cons "switch shell" #'agent-shell-switch-buffer))
+(keymap-set kittymacs-agent-map "r" (cons "resume session" #'agent-shell-resume-session))
+(keymap-set kittymacs-agent-map "s" (cons "send region or file" #'agent-shell-send-dwim))
+(keymap-set kittymacs-agent-map "f" (cons "send a file" #'agent-shell-send-file))
+(keymap-set kittymacs-agent-map "?" (cons "menu" #'agent-shell-help-menu))
 (defcustom kittymacs-agent-mcp-servers nil
   "MCP servers every agent-shell session starts with.
 Each element has the shape `agent-shell-mcp-servers' documents.  Set this
@@ -56,6 +65,9 @@ The value of `agent-shell-attention-notify-function'."
 Check that `git clone https://github.com/ultronozm/agent-shell-attention.el' works from a terminal, and which git Emacs runs: %s"
                             (error-message-string err) (executable-find "git"))
                     :warning)))
+
+(keymap-set kittymacs-agent-map "j" (cons "jump to waiting shell" #'agent-shell-attention-jump))
+(keymap-set kittymacs-agent-map "d" (cons "all shells" #'agent-shell-attention-dashboard))
 (with-eval-after-load 'meow
   (dolist (entry '((agent-shell-mode . insert)
                    (agent-shell-diff-mode . motion)

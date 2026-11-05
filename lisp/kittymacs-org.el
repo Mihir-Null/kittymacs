@@ -25,6 +25,9 @@
   "Open the Org inbox file."
   (interactive)
   (find-file org-default-notes-file))
+
+(keymap-set kittymacs-open-map "c" (cons "capture" #'org-capture))
+(keymap-set kittymacs-open-map "i" (cons "org inbox" #'kittymacs-org-inbox))
 (setopt org-hide-emphasis-markers t
         org-startup-indented t
         org-adapt-indentation t
@@ -297,11 +300,16 @@ Point stays where it was, in or out of a table."
   (interactive)
   (org-agenda nil "d"))
 
+(keymap-set kittymacs-open-map "a" (cons "agenda dashboard" #'kittymacs-org-dashboard))
+(keymap-set kittymacs-open-map "A" (cons "agenda" #'org-agenda))
+
 (defun kittymacs--org-agenda-refresh ()
   "Refresh an open agenda after a capture."
   (when-let* ((buffer (get-buffer "*Org Agenda*")))
     (with-current-buffer buffer (org-agenda-redo))))
 (add-hook 'org-capture-after-finalize-hook #'kittymacs--org-agenda-refresh)
+(keymap-set kittymacs-search-map "h" (cons "org heading" #'consult-org-heading))
+(keymap-set kittymacs-search-map "a" (cons "org agenda" #'consult-org-agenda))
 (declare-function org-ql-find "org-ql-find")
 (declare-function org-ql-search "org-ql-search")
 (declare-function project-files "project")
@@ -338,6 +346,9 @@ the query, the files, the order or the grouping."
   (org-ql-search (kittymacs--org-files-here) query
     :super-groups '((:auto-category t))
     :title query))
+
+(keymap-set kittymacs-search-map "q" (cons "org query, jump" #'kittymacs-org-ql-find))
+(keymap-set kittymacs-search-map "Q" (cons "org query, list" #'kittymacs-org-ql-search))
 (declare-function org-ql-view-refresh "org-ql-view")
 (defvar org-ql-view-buffers-files)
 
@@ -447,6 +458,8 @@ Headings are semi-bold.  The faces are remapped in this buffer only."
     (kittymacs-org-prose-mode 1)))
 
 (add-hook 'org-mode-hook #'kittymacs--org-prose-maybe)
+
+(keymap-set kittymacs-toggle-map "P" (cons "prose font" #'kittymacs-org-prose-mode))
 (with-eval-after-load 'meow
   (add-to-list 'meow-mode-state-list '(org-agenda-mode . motion)))
 (with-eval-after-load 'org

@@ -109,8 +109,9 @@
    + The two digits are the load order ([[id:40302e33-d2b2-4c0b-9bc3-1f9e121307e1][startup]] has the list).
 2. Add =(require 'kittymacs-name)= to =init.el= in the startup chapter, where it belongs in that order.
 3. Give a package with its own buffers a =:meow:= heading: its starting state and a =kittymacs-define-localleader= form for =SPC m= ([[id:e5942eb0-4389-447d-9317-d9178adcaaae][the leader]]).
-4. Add a row to [[id:52a45bf9-9521-4e0d-9867-1c54721844a3][the reading guide]]'s table; =just doc-test= fails until you do.
-5. List any package it declares in [[id:3f8a6c02-9d14-4b7e-a2c5-1e7d90b64f31][the catalogue]]; =just test= fails until you do.
+4. Bind its =SPC= keys in the chapter, in the groups [[id:e5942eb0-4389-447d-9317-d9178adcaaae][the leader]] defines, after a =(require 'kittymacs-leader)=.
+5. Add a row to [[id:52a45bf9-9521-4e0d-9867-1c54721844a3][the reading guide]]'s table; =just doc-test= fails until you do.
+6. List any package it declares in [[id:3f8a6c02-9d14-4b7e-a2c5-1e7d90b64f31][the catalogue]]; =just test= fails until you do.
 
 * Measuring :decision:
 :PROPERTIES:
@@ -336,7 +337,7 @@
 :header-args:emacs-lisp: :tangle ../lisp/kittymacs-literate.el :eval never :comments no :padline no :mkdirp yes
 :END:
 
-- The =SPC C= menu, which [[id:53ad53ed-155f-47dc-973d-7be18de2893c][the keys chapter]] binds; this module holds its commands.
+- The =SPC C= menu: this module holds its commands and binds them.
 
 | Key       | Command                      | Does                                                   |
 |-----------+------------------------------+--------------------------------------------------------|
@@ -348,6 +349,7 @@
 | =SPC C k= | =kittymacs-literate-check=   | =just tangle-check=, in a clean Emacs                  |
 | =SPC C u= | =kittymacs-open-custom-file= | open the Customize file                                |
 | =SPC C a= | =kittymacs-open-architecture= | open =ARCHITECTURE.md=, the design record             |
+| =SPC C r= | =restart-emacs=              | restart Emacs                                          |
 
 - Every path is relative to =user-emacs-directory=, so the commands work from any buffer.
 
@@ -359,6 +361,7 @@
 ;;; Code:
 
 (require 'kittymacs-defaults)
+(require 'kittymacs-leader)
 
 (defun kittymacs-literate-open (&rest _)
   "Open the literate configuration's reading guide."
@@ -431,6 +434,17 @@
   "Check that deployed Lisp matches saved literate sources without writing it."
   (interactive)
   (kittymacs-literate--build nil))
+
+(keymap-set kittymacs-config-map "c" (cons "reading guide" #'kittymacs-literate-open))
+(keymap-set kittymacs-config-map "f" (cons "find chapter" #'kittymacs-find-config-file))
+(keymap-set kittymacs-config-map "s" (cons "search config" #'kittymacs-search-config))
+(keymap-set kittymacs-config-map "t" (cons "tangle" #'kittymacs-literate-tangle))
+(keymap-set kittymacs-config-map "k" (cons "check tangle" #'kittymacs-literate-check))
+(keymap-set kittymacs-config-map "p" (cons "private.el" #'kittymacs-open-private-file))
+(keymap-set kittymacs-config-map "u" (cons "custom.el" #'kittymacs-open-custom-file))
+(keymap-set kittymacs-config-map "a" (cons "architecture" #'kittymacs-open-architecture))
+(keymap-set kittymacs-config-map "r" (cons "restart Emacs" #'restart-emacs))
+
 (provide 'kittymacs-literate)
 ;;; kittymacs-literate.el ends here
 #+end_src

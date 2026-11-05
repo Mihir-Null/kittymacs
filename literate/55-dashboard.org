@@ -31,6 +31,7 @@
 
 ;;; Code:
 
+(require 'kittymacs-leader)
 (require 'kittymacs-ui)
 #+end_src
 
@@ -39,6 +40,8 @@
   "Open the local keybindings and commands cheat sheet."
   (interactive)
   (find-file (expand-file-name "keybindings.org" kittymacs-lisp-dir)))
+
+(keymap-set kittymacs-help-map "?" (cons "cheat sheet" #'kittymacs-dashboard-open-cheatsheet))
 #+end_src
 
 * Buttons that run commands
@@ -165,6 +168,7 @@ Exclude trailing padding and compensate for leading indentation."
 - Icons appear only when =kittymacs-icons-available-p= says the font has them.
 - The last item of =dashboard-startupify-list= is the centring pass, so it measures the finished page.
 - =?= opens the cheat sheet from the home page.
+- =SPC h h= and =SPC o h= return to the page.
 - The recentring hook runs at depth 100 on =window-setup-hook=, =after-setting-font-hook= and =enable-theme-functions=.
 - The page is skipped when Emacs was started with a file to open.
 
@@ -248,6 +252,9 @@ Exclude trailing padding and compensate for leading indentation."
 
   ;; Skip the home page when Emacs was invoked with a file argument.
   (dashboard-setup-startup-hook))
+
+(keymap-set kittymacs-help-map "h" (cons "home" #'dashboard-open))
+(keymap-set kittymacs-open-map "h" (cons "home" #'dashboard-open))
 #+end_src
 
 * Meow on the home page :meow:

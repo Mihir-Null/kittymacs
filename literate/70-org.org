@@ -15,7 +15,7 @@
 * Where notes live
 
 - =kittymacs-org-directory= comes from [[id:afa6b7fd-742a-4c15-86a6-32e3e8027b0e][the platform chapter]], so a machine can override it in =private.el=.
-- Captures land in =inbox.org=; =SPC o i= opens it.
+- Captures land in =inbox.org=; =SPC o c= starts one, and =SPC o i= opens the file.
 - The agenda reads every file in the directory.
 - Done tasks are archived into a dated tree in one archive file.
 - Org's ID index lives in the cache; a stored link to a heading uses its ID, created (from a timestamp) when you store the link interactively.
@@ -52,6 +52,9 @@
   "Open the Org inbox file."
   (interactive)
   (find-file org-default-notes-file))
+
+(keymap-set kittymacs-open-map "c" (cons "capture" #'org-capture))
+(keymap-set kittymacs-open-map "i" (cons "org inbox" #'kittymacs-org-inbox))
 
 #+end_src
 
@@ -338,7 +341,8 @@ Point stays where it was, in or out of a table."
 - The agenda:
   + starts on today, weeks on Monday;
   + hides done scheduled items;
-  + offers a =d= dashboard: today's agenda, tasks due within five days, and the next actions; =n= lists the next actions alone.
+  + offers a =d= dashboard: today's agenda, tasks due within five days, and the next actions; =n= lists the next actions alone;
+  + opens on =SPC o a= as that dashboard, and on =SPC o A= as Org's own menu.
 - Log mode is on from the start, listing closed and clocked items.
   + =t= used to mean that, before the option's type asked for the list itself.
 - Refiling completes across every agenda file to eight levels deep, and may create a parent after asking.
@@ -386,6 +390,9 @@ Point stays where it was, in or out of a table."
   (interactive)
   (org-agenda nil "d"))
 
+(keymap-set kittymacs-open-map "a" (cons "agenda dashboard" #'kittymacs-org-dashboard))
+(keymap-set kittymacs-open-map "A" (cons "agenda" #'org-agenda))
+
 (defun kittymacs--org-agenda-refresh ()
   "Refresh an open agenda after a capture."
   (when-let* ((buffer (get-buffer "*Org Agenda*")))
@@ -407,6 +414,13 @@ Point stays where it was, in or out of a table."
 | =SPC s Q=   | the Org files here | an agenda-style list, grouped by file            |
 
 - /The Org files here/: the project's Org files when the buffer belongs to a project, otherwise every Org file under =org-directory=.
+- =SPC s h= and =SPC s a= are Consult's commands for Org headings and agenda entries, bound here because they search Org.
+
+#+begin_src emacs-lisp
+(keymap-set kittymacs-search-map "h" (cons "org heading" #'consult-org-heading))
+(keymap-set kittymacs-search-map "a" (cons "org agenda" #'consult-org-agenda))
+
+#+end_src
 
 ** Where tags come from :concept:
 :PROPERTIES:
@@ -477,6 +491,9 @@ the query, the files, the order or the grouping."
   (org-ql-search (kittymacs--org-files-here) query
     :super-groups '((:auto-category t))
     :title query))
+
+(keymap-set kittymacs-search-map "q" (cons "org query, jump" #'kittymacs-org-ql-find))
+(keymap-set kittymacs-search-map "Q" (cons "org query, list" #'kittymacs-org-ql-search))
 
 #+end_src
 
@@ -673,6 +690,8 @@ Headings are semi-bold.  The faces are remapped in this buffer only."
     (kittymacs-org-prose-mode 1)))
 
 (add-hook 'org-mode-hook #'kittymacs--org-prose-maybe)
+
+(keymap-set kittymacs-toggle-map "P" (cons "prose font" #'kittymacs-org-prose-mode))
 
 #+end_src
 

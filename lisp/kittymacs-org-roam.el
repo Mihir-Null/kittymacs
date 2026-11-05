@@ -178,6 +178,13 @@ save that finishes the capture updates that graph's database."
    scope (lambda ()
            (let ((kittymacs--org-roam-capture-scope scope))
              (org-roam-capture- :node node :props props)))))
+(keymap-set kittymacs-notes-map "f" (cons "find node" #'kittymacs-org-roam-find))
+(keymap-set kittymacs-notes-map "t" (cons "find node by tag" #'kittymacs-org-roam-find-by-tag))
+(keymap-set kittymacs-notes-map "T" (cons "tag index" #'kittymacs-org-roam-tag-index))
+(keymap-set kittymacs-notes-map "i" (cons "insert ID link" #'kittymacs-org-roam-insert))
+(keymap-set kittymacs-notes-map "c" (cons "capture (show destination)" #'kittymacs-org-roam-capture))
+(keymap-set kittymacs-notes-map "b" (cons "backlinks panel" #'kittymacs-org-roam-backlinks))
+(keymap-set kittymacs-notes-map "s" (cons "sync graph" #'kittymacs-org-roam-sync))
 (defun kittymacs--org-roam-read (scope &optional require-match initial filter)
   "Read a node of the graph SCOPE, starting from INITIAL input.
 REQUIRE-MATCH allows only existing nodes.  FILTER, a function of a node,

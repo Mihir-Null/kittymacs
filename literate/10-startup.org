@@ -210,7 +210,7 @@
   + defaults define the directories;
   + the platform chapter defines the paths that =private.el= may override, and =kittymacs-platform-apply= runs right after it;
   + the UI must exist before the dashboard measures text;
-  + Meow must be up before the keys chapter binds the leader;
+  + the first chapter that binds a key requires [[id:e5942eb0-4389-447d-9317-d9178adcaaae][the leader]], which defines the groups, so no chapter has to load before another for its keys;
   + the terminal comes after the programming chapter, whose mode menu it extends;
   + [[id:86fcd506-34c8-476d-8903-acbef46275bf][EXWM]] comes just before the frames policy, which reads =kittymacs-exwm= for its default;
   + frames policy goes last.

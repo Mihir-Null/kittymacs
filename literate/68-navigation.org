@@ -13,7 +13,7 @@
   + a /workspace/ is a tab with its own set of buffers, usually one per project, under =SPC W=;
   + searches use ripgrep when it is installed.
 - Most of it is built into Emacs (=project.el=, =recentf=, =saveplace=, bookmarks, the tab bar); packages add jumping (Avy), live replacement (=visual-regexp=) and workspaces (Tabspaces).
-- Leans on [[id:42b02bb4-ea68-4981-b427-35705bf162f4][the completion chapter]] for Consult, [[id:3fd783cd-deb8-48aa-bb44-0d9b16535365][the defaults chapter]] for the cache directory and [[id:afa6b7fd-742a-4c15-86a6-32e3e8027b0e][the platform chapter]]; [[id:53ad53ed-155f-47dc-973d-7be18de2893c][the keys chapter]] binds the commands.
+- Leans on [[id:42b02bb4-ea68-4981-b427-35705bf162f4][the completion chapter]] for Consult, [[id:3fd783cd-deb8-48aa-bb44-0d9b16535365][the defaults chapter]] for the cache directory and [[id:afa6b7fd-742a-4c15-86a6-32e3e8027b0e][the platform chapter]], and on [[id:e5942eb0-4389-447d-9317-d9178adcaaae][the leader]] for the groups its keys go in.
 - Distilled from Lambda-Emacs by Colin McLear (=lem-setup-navigation=, =-projects=, =-search=, =-tabs=).
 
 * Remembering places and files
@@ -33,6 +33,7 @@
 ;;; Code:
 
 (require 'kittymacs-defaults)
+(require 'kittymacs-leader)
 (require 'kittymacs-platform)
 
 #+end_src
@@ -60,6 +61,8 @@
       (call-interactively #'consult-org-heading)
     (call-interactively #'consult-outline)))
 
+(keymap-set kittymacs-buffer-map "j" (cons "jump to heading" #'kittymacs-jump-in-buffer))
+
 #+end_src
 
 * Jump to anything on screen
@@ -86,23 +89,34 @@
   (avy-all-windows t)
   (avy-style 'at-full))
 
+(keymap-set kittymacs-jump-map "j" (cons "to character" #'avy-goto-char-timer))
+(keymap-set kittymacs-jump-map "l" (cons "to line" #'avy-goto-line))
+(keymap-set kittymacs-jump-map "w" (cons "to word" #'avy-goto-word-1))
+(keymap-set kittymacs-jump-map "s" (cons "to symbol" #'avy-goto-symbol-1))
+(keymap-set kittymacs-jump-map "e" (cons "to end of line" #'avy-goto-end-of-line))
+(keymap-set kittymacs-jump-map "i" (cons "in this line" #'avy-goto-char-in-line))
+
 #+end_src
 
 * Projects
 
 - =project.el= is Emacs's project layer; the project list is saved under the cache.
 - Switching to a project asks what to do there: find a file, a regexp or a directory, VC-Dir, or Magit on =G=.
-  + A command in that menu names its key when =project-prefix-map= has no key for it; [[id:53ad53ed-155f-47dc-973d-7be18de2893c][the keys chapter]] leaves that map as Emacs defines it.
+  + A command in that menu names its key when =project-prefix-map= has no key for it; [[id:e5942eb0-4389-447d-9317-d9178adcaaae][the leader]] leaves that map as Emacs defines it.
 - Extra root markers let non-Git directories count as projects: =.dir-locals.el=, =.project.el=, =package.json=, =requirements.txt=, =autogen.sh=.
 - Ripgrep backs =xref= searches when =rg= is installed.
 - Projects whose directories no longer exist are forgotten when =project.el= loads.
 - =SPC p t= opens the directory where projects live (=kittymacs-project-directory=).
+- =SPC p R= remembers every project under a directory you name.
 
 #+begin_src emacs-lisp
 (defun kittymacs-projects-directory ()
   "Open the directory where projects live."
   (interactive)
   (dired kittymacs-project-directory))
+
+(keymap-set kittymacs-project-map "t" (cons "projects directory" #'kittymacs-projects-directory))
+(keymap-set kittymacs-project-map "R" (cons "remember projects under" #'project-remember-projects-under))
 
 (use-package project
   :ensure nil
@@ -131,6 +145,8 @@
   :ensure t
   :commands (vr/query-replace vr/replace))
 
+(keymap-set kittymacs-search-map "r" (cons "replace (visual)" #'vr/query-replace))
+
 #+end_src
 
 * Workspaces: tabs with their own buffers :decision:
@@ -142,10 +158,12 @@
   + Tabs show their numbers; a new tab opens rightmost on the scratch buffer.
   + No new-tab or close buttons; closing the last tab turns the tab bar off.
 - =SPC TAB= (=kittymacs-tab-dwim=) creates a tab when there is none, switches when there are two, and otherwise asks which.
+  + =SPC W TAB= is the same command, and =SPC {= and =SPC }= move between tabs.
 - Tabspaces turns each tab into a workspace whose buffer list shows only the buffers opened inside it; the first is called "Home".
   + =SPC b b= in a project's tab lists that project's buffers first.
   + The full list is a narrow key away; =w= narrows back to the workspace.
   + Turning Tabspaces off restores Consult's ordinary buffer list.
+  + =SPC p p= opens a project in its own workspace; =C-x p p= still switches project in the current one.
 - Tabspaces is one of two global modes this configuration does not switch on in =:config= (envrc is the other); it turns on from =after-init-hook= at depth 95, through =kittymacs-after-init=, so a failure there is a warning rather than the end of startup.
   + The mode reads some of its options only when it turns on:
     - whether =switch-to-buffer= shows the workspace's buffers (=tabspaces-use-filtered-buffers-as-default=);
@@ -170,6 +188,15 @@
     (cond ((null tabs) (tab-new))
           ((= (length tabs) 1) (tab-next))
           (t (tab-bar-switch-to-tab (completing-read "Select tab: " tabs nil t))))))
+
+(keymap-set kittymacs-leader-map "{" (cons "previous tab" #'tab-bar-switch-to-prev-tab))
+(keymap-set kittymacs-leader-map "}" (cons "next tab" #'tab-bar-switch-to-next-tab))
+(keymap-set kittymacs-leader-map "TAB" (cons "switch tab" #'kittymacs-tab-dwim))
+
+(keymap-set kittymacs-workspace-map "TAB" (cons "switch" #'kittymacs-tab-dwim))
+(keymap-set kittymacs-workspace-map "n" (cons "new tab" #'tab-new))
+(keymap-set kittymacs-workspace-map "]" (cons "next tab" #'tab-next))
+(keymap-set kittymacs-workspace-map "[" (cons "previous tab" #'tab-previous))
 
 (defvar kittymacs-consult-source-workspace
   (list :name "Workspace Buffers"
@@ -206,6 +233,25 @@
   (with-eval-after-load 'consult
     (add-hook 'tabspaces-mode-hook #'kittymacs--consult-tabspaces)
     (kittymacs--consult-tabspaces)))
+
+;; Loaded by the `use-package' above; these quiet the byte compiler.
+(declare-function tabspaces-switch-to-buffer "tabspaces")
+(declare-function tabspaces-remove-current-buffer "tabspaces")
+(declare-function tabspaces-remove-selected-buffer "tabspaces")
+(declare-function tabspaces-clear-buffers "tabspaces")
+(declare-function tabspaces-close-workspace "tabspaces")
+(declare-function tabspaces-kill-buffers-close-workspace "tabspaces")
+
+(keymap-set kittymacs-project-map "p" (cons "open in a workspace" #'tabspaces-open-or-create-project-and-workspace))
+
+(keymap-set kittymacs-workspace-map "s" (cons "switch or create" #'tabspaces-switch-or-create-workspace))
+(keymap-set kittymacs-workspace-map "o" (cons "open project" #'tabspaces-open-or-create-project-and-workspace))
+(keymap-set kittymacs-workspace-map "b" (cons "workspace buffer" #'tabspaces-switch-to-buffer))
+(keymap-set kittymacs-workspace-map "r" (cons "remove buffer" #'tabspaces-remove-current-buffer))
+(keymap-set kittymacs-workspace-map "R" (cons "remove some buffer" #'tabspaces-remove-selected-buffer))
+(keymap-set kittymacs-workspace-map "c" (cons "clear buffers" #'tabspaces-clear-buffers))
+(keymap-set kittymacs-workspace-map "d" (cons "close workspace" #'tabspaces-close-workspace))
+(keymap-set kittymacs-workspace-map "k" (cons "kill buffers and close" #'tabspaces-kill-buffers-close-workspace))
 
 (provide 'kittymacs-navigation)
 ;;; kittymacs-navigation.el ends here

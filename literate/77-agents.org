@@ -12,7 +12,7 @@
   + [[https://github.com/xenodium/agent-shell][agent-shell]], the buffer: a prompt, the agent's replies, its tool calls, and a diff for each edit it proposes;
   + [[https://github.com/ultronozm/agent-shell-attention.el][agent-shell-attention]], the doorbell: a count in the mode line, and a desktop notification, when a shell is waiting for you.
 - What the agent itself is allowed to do lives outside Emacs, in =~/.claude/settings.json=, so the command line and this buffer share it ([[*What lives in Emacs, and what does not]]).
-- Leans on [[id:e5942eb0-4389-447d-9317-d9178adcaaae][the leader]] for =SPC m=, [[id:d2e0bc37-0bd4-4b28-a8ee-04f94ac451f8][the shells chapter]] for the login environment, and [[id:53ad53ed-155f-47dc-973d-7be18de2893c][the keys chapter]] for =SPC a=.
+- Leans on [[id:e5942eb0-4389-447d-9317-d9178adcaaae][the leader]] for =SPC m= and the =SPC a= group, and on [[id:d2e0bc37-0bd4-4b28-a8ee-04f94ac451f8][the shells chapter]] for the login environment.
 - Read [[*How agent-shell talks to Claude]] first.
 
 #+begin_src emacs-lisp
@@ -82,9 +82,19 @@
   (setopt agent-shell-anthropic-claude-environment
           (agent-shell-make-environment-variables :inherit-env t)))
 
+(keymap-set kittymacs-agent-map "a" (cons "start or switch" #'agent-shell))
+(keymap-set kittymacs-agent-map "n" (cons "new shell" #'agent-shell-new-shell))
+(keymap-set kittymacs-agent-map "t" (cons "toggle" #'agent-shell-toggle))
+(keymap-set kittymacs-agent-map "b" (cons "switch shell" #'agent-shell-switch-buffer))
+(keymap-set kittymacs-agent-map "r" (cons "resume session" #'agent-shell-resume-session))
+(keymap-set kittymacs-agent-map "s" (cons "send region or file" #'agent-shell-send-dwim))
+(keymap-set kittymacs-agent-map "f" (cons "send a file" #'agent-shell-send-file))
+(keymap-set kittymacs-agent-map "?" (cons "menu" #'agent-shell-help-menu))
+
 #+end_src
 
 - The environment is set in =:config=, not =:custom=: =agent-shell-make-environment-variables= is a function of the package, and only exists once it has loaded.
+- The keys go in =SPC a=, each one a command =:commands= declares, so the first key press loads agent-shell.
 
 * What lives in Emacs, and what does not :decision:
 :PROPERTIES:
@@ -182,6 +192,9 @@ The value of `agent-shell-attention-notify-function'."
 Check that `git clone https://github.com/ultronozm/agent-shell-attention.el' works from a terminal, and which git Emacs runs: %s"
                             (error-message-string err) (executable-find "git"))
                     :warning)))
+
+(keymap-set kittymacs-agent-map "j" (cons "jump to waiting shell" #'agent-shell-attention-jump))
+(keymap-set kittymacs-agent-map "d" (cons "all shells" #'agent-shell-attention-dashboard))
 
 #+end_src
 

@@ -5,6 +5,7 @@
 
 (require 'seq)
 (require 'kittymacs-defaults)
+(require 'kittymacs-leader)
 
 (declare-function copilot-clear-overlay "copilot" (&optional is-accepted))
 (declare-function copilot-complete "copilot" ())
@@ -83,6 +84,9 @@ excluded file is never sent."
   (when (or (bound-and-true-p copilot-mode)
             (kittymacs--suggestions-start))
     (copilot-complete)))
+
+(keymap-set kittymacs-toggle-map "a" (cons "suggestions (Copilot)" #'kittymacs-suggestions-toggle))
+(keymap-set kittymacs-agent-map "c" (cons "suggestion here (Copilot)" #'kittymacs-suggestions-complete))
 (defun kittymacs-suggestions-typing-p ()
   "Return non-nil while you type: in Meow's Insert state, or where Meow is off.
 A member of `copilot-enable-predicates'."

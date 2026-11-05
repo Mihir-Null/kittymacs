@@ -56,6 +56,9 @@
     ('(t . nil) (treemacs-git-mode 'simple)))
   ;; Show files that Git ignores, too.
   (treemacs-hide-gitignored-files-mode -1))
+(keymap-set kittymacs-toggle-map "d" (cons "file tree sidebar" #'treemacs))
+(keymap-set kittymacs-open-map "t" (cons "file tree" #'treemacs-select-window))
+(keymap-set kittymacs-file-map "t" (cons "reveal in file tree" #'treemacs-find-file))
 (use-package treemacs-nerd-icons
   :ensure t
   :after treemacs

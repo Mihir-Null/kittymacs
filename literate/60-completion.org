@@ -10,7 +10,7 @@
 - Two kinds of completion: in the /minibuffer/, whenever Emacs asks for a file, buffer, command or anything else; and /in the buffer/, as you type. Plus templates.
 - The packages are the "minad stack" by Daniel Mendler and Omar Antolín: each does one thing and uses Emacs's own completion machinery rather than replacing it.
 - Distilled from Lambda-Emacs by Colin McLear (=lem-setup-completion=).
-- Leans on [[id:3fd783cd-deb8-48aa-bb44-0d9b16535365][the defaults chapter]] for its directories; [[id:53ad53ed-155f-47dc-973d-7be18de2893c][the keys chapter]] binds the commands under =SPC=; [[id:8545f3ea-11d0-420b-a823-22a344e56f1e][the help chapter]] is the other half of discovery.
+- Leans on [[id:3fd783cd-deb8-48aa-bb44-0d9b16535365][the defaults chapter]] for its directories and on [[id:e5942eb0-4389-447d-9317-d9178adcaaae][the leader]] for the groups its keys go in; [[id:8545f3ea-11d0-420b-a823-22a344e56f1e][the help chapter]] is the other half of discovery.
 
 | Package                                | Does                                             | Reach it                        |
 |----------------------------------------+--------------------------------------------------+---------------------------------|
@@ -46,6 +46,7 @@
 ;;; Code:
 
 (require 'kittymacs-defaults)
+(require 'kittymacs-leader)
 
 #+end_src
 
@@ -155,7 +156,7 @@
 
 * Searching and jumping: Consult
 
-- Consult supplies the commands the leader's search and buffer menus call.
+- Consult supplies most of the commands in the leader's =SPC s= and =SPC b= groups, and the ones for recent files, bookmarks, registers and the kill ring, so this chapter binds those keys.
   + They preview the candidate as you move through the list, after a 0.2 s pause for searches, files, bookmarks and themes.
   + =M-n= inserts the thing at point.
 - Ripgrep results appear after two characters.
@@ -164,6 +165,7 @@
   + =kittymacs-search-symbol-at-point= (=SPC s .=) searches the buffer's lines for the symbol at point;
   + =kittymacs-search-manuals= (=SPC h s=) searches the Emacs, Org and completion-stack Info manuals.
 - =consult-dir= (=C-x C-d=, =SPC f D=) picks a directory; inside a Vertico prompt =C-x C-d= switches the prompt there and =C-x C-j= jumps to a file in it.
+- =SPC p b= is Consult's project buffer list, with preview, instead of =project-switch-to-buffer=, the command =C-x p b= runs.
 
 #+begin_src emacs-lisp
 (use-package consult
@@ -201,12 +203,44 @@
   (consult-info "emacs" "efaq" "elisp" "org" "vertico" "consult" "marginalia"
                 "orderless" "embark" "corfu" "cape"))
 
+(keymap-set kittymacs-buffer-map "b" (cons "switch" #'consult-buffer))
+(keymap-set kittymacs-buffer-map "B" (cons "switch in other frame" #'consult-buffer-other-frame))
+(keymap-set kittymacs-buffer-map "p" (cons "project buffer" #'consult-project-buffer))
+(keymap-set kittymacs-buffer-map "i" (cons "imenu" #'consult-imenu))
+(keymap-set kittymacs-buffer-map "m" (cons "mark ring" #'consult-mark))
+(keymap-set kittymacs-buffer-map "M" (cons "global mark ring" #'consult-global-mark))
+
+(keymap-set kittymacs-file-map "r" (cons "recent" #'consult-recent-file))
+(keymap-set kittymacs-file-map "b" (cons "bookmarks" #'consult-bookmark))
+
+(keymap-set kittymacs-search-map "s" (cons "lines" #'consult-line))
+(keymap-set kittymacs-search-map "S" (cons "lines in all buffers" #'consult-line-multi))
+(keymap-set kittymacs-search-map "." (cons "symbol at point" #'kittymacs-search-symbol-at-point))
+(keymap-set kittymacs-search-map "d" (cons "ripgrep" #'consult-ripgrep))
+(keymap-set kittymacs-search-map "i" (cons "imenu" #'consult-imenu))
+(keymap-set kittymacs-search-map "o" (cons "outline" #'consult-outline))
+(keymap-set kittymacs-search-map "k" (cons "kill ring" #'consult-yank-pop))
+(keymap-set kittymacs-search-map "m" (cons "mark ring" #'consult-mark))
+(keymap-set kittymacs-search-map "l" (cons "last completion" #'vertico-repeat))
+
+(keymap-set kittymacs-project-map "b" (cons "project buffer" #'consult-project-buffer))
+(keymap-set kittymacs-project-map "m" (cons "bookmark" #'consult-bookmark))
+
+(keymap-set kittymacs-insert-map "y" (cons "from kill ring" #'consult-yank-from-kill-ring))
+(keymap-set kittymacs-insert-map "r" (cons "register" #'consult-register))
+(keymap-set kittymacs-insert-map "R" (cons "store register" #'consult-register-store))
+
+(keymap-set kittymacs-leader-map "k" (cons "kill ring" #'consult-yank-from-kill-ring))
+(keymap-set kittymacs-help-map "s" (cons "search manuals" #'kittymacs-search-manuals))
+
 (use-package consult-dir
   :ensure t
   :bind (("C-x C-d" . consult-dir)
          :map vertico-map
          ("C-x C-d" . consult-dir)
          ("C-x C-j" . consult-dir-jump-file)))
+
+(keymap-set kittymacs-file-map "D" (cons "switch directory" #'consult-dir))
 
 #+end_src
 
@@ -217,7 +251,7 @@
   + on a symbol it offers help and definitions.
 - which-key draws the menu, so it looks like the leader.
   + When Embark switches to its completing-read prompter, the which-key popup is hidden first.
-- =C-h B= lists every key bound in the current context: the fastest way to explore a mode.
+- =C-h B= and =SPC h b= list every key bound in the current context: the fastest way to explore a mode.
 - Extra file actions: =x= opens the file externally, =D= opens Dired in its directory, =g= runs ripgrep there.
 
 | Key     | Where                 | Does                              |
@@ -287,6 +321,8 @@
   (keymap-set embark-file-map "D" #'kittymacs-embark-dired-here)
   (keymap-set embark-file-map "g" #'kittymacs-embark-ripgrep-here)
   (keymap-set embark-general-map "A" #'marginalia-cycle))
+
+(keymap-set kittymacs-help-map "b" (cons "bindings here" #'embark-bindings))
 
 (use-package embark-consult
   :ensure t
@@ -377,7 +413,7 @@
 
 - Cape adds completion /sources/.
   + File names and language keywords are always on.
-  + The rest are explicit commands on =SPC c p= ([[id:53ad53ed-155f-47dc-973d-7be18de2893c][the keys chapter]]), for when you want a particular kind of candidate.
+  + The rest are explicit commands on =SPC c p=, for when Corfu's automatic popup does not offer the kind of candidate you want.
 - Emacs's own text-mode source, the spell checker's dictionary, is off; =SPC c p w= asks for Cape's dictionary source, =cape-dict=, explicitly.
   + With =corfu-auto= it would run Hunspell a few times per word.
   + On Windows there is no word list for it to read, so every attempt costs a process and logs an error.
@@ -393,6 +429,19 @@
   (add-to-list 'completion-at-point-functions #'cape-keyword)
   :config
   (advice-add 'pcomplete-completions-at-point :around #'cape-wrap-silent))
+
+(defvar-keymap kittymacs-cape-map
+  :doc "Complete with one particular source."
+  "p" (cons "everything (capf)" #'completion-at-point)
+  "d" (cons "words in buffers" #'cape-dabbrev)
+  "f" (cons "file name" #'cape-file)
+  "k" (cons "language keyword" #'cape-keyword)
+  "l" (cons "whole line" #'cape-line)
+  "a" (cons "abbrev" #'cape-abbrev)
+  "w" (cons "dictionary word" #'cape-dict)
+  "e" (cons "Emacs Lisp symbol" #'cape-elisp-symbol))
+
+(keymap-set kittymacs-code-map "p" (cons "complete with" kittymacs-cape-map))
 
 #+end_src
 
@@ -411,6 +460,8 @@
 (use-package consult-flyspell
   :ensure t
   :commands consult-flyspell)
+
+(keymap-set kittymacs-search-map "p" (cons "spelling" #'consult-flyspell))
 
 #+end_src
 
@@ -451,6 +502,9 @@
   (with-eval-after-load 'warnings
     (push '(yasnippet backquote-change) warning-suppress-types))
   (yas-global-mode 1))
+
+(keymap-set kittymacs-insert-map "s" (cons "snippet" #'yas-insert-snippet))
+(keymap-set kittymacs-insert-map "S" (cons "new snippet" #'yas-new-snippet))
 
 (provide 'kittymacs-completion)
 ;;; kittymacs-completion.el ends here
