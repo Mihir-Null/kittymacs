@@ -143,6 +143,7 @@ Set before init.el loads to change them, because they are read during init.")
 ;; Applications: shells, programming, Org, reading, notebooks, agents, suggestions,
 ;; then the window manager, and finally frame policy, which reads it.
 (kittymacs-require-module 'kittymacs-shell)
+(kittymacs-require-module 'kittymacs-remote)
 (kittymacs-require-module 'kittymacs-programming)
 (kittymacs-require-module 'kittymacs-treesit)
 (kittymacs-require-module 'kittymacs-languages)

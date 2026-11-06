@@ -86,13 +86,15 @@ compile:
       -f batch-byte-compile lisp/*.el
 
 # The tests that load installed packages: the SPC and SPC m machinery, real
-# Org-roam graphs in SQLite, the look without doom, and the startup verifier,
+# Org-roam graphs in SQLite, the look without doom, a remote machine through a
+# Tramp method that needs no ssh, and the startup verifier,
 # which replays a real startup and fails on any warning. All under the full
 # profile: `KITTYMACS_TEST_PROFILE=full just install` makes its directory.
 test-packages:
     KITTYMACS_TEST_PROFILE=full KITTYMACS_TEST_PACKAGES={{quote(packages)}} emacs -Q --batch -l tests/kittymacs-leader-tests.el -f ert-run-tests-batch-and-exit
     KITTYMACS_TEST_PROFILE=full KITTYMACS_TEST_PACKAGES={{quote(packages)}} emacs -Q --batch -l tests/kittymacs-org-roam-tests.el -f ert-run-tests-batch-and-exit
     KITTYMACS_TEST_PROFILE=full KITTYMACS_TEST_PACKAGES={{quote(packages)}} emacs -Q --batch -l tests/kittymacs-theme-tests.el -f ert-run-tests-batch-and-exit
+    KITTYMACS_TEST_PROFILE=full KITTYMACS_TEST_PACKAGES={{quote(packages)}} emacs -Q --batch -l tests/kittymacs-remote-tests.el -f ert-run-tests-batch-and-exit
     KITTYMACS_TEST_PROFILE=full KITTYMACS_TEST_PACKAGES={{quote(packages)}} emacs -Q --batch -l tests/verify-config.el
 
 # What runs against a package directory holding the minimal profile and nothing
@@ -101,6 +103,7 @@ test-packages:
 test-minimal:
     KITTYMACS_TEST_PROFILE=minimal KITTYMACS_TEST_PACKAGES={{quote(packages)}} emacs -Q --batch -l tests/kittymacs-leader-tests.el -f ert-run-tests-batch-and-exit
     KITTYMACS_TEST_PROFILE=minimal KITTYMACS_TEST_PACKAGES={{quote(packages)}} emacs -Q --batch -l tests/kittymacs-theme-tests.el -f ert-run-tests-batch-and-exit
+    KITTYMACS_TEST_PROFILE=minimal KITTYMACS_TEST_PACKAGES={{quote(packages)}} emacs -Q --batch -l tests/kittymacs-remote-tests.el -f ert-run-tests-batch-and-exit
     KITTYMACS_TEST_PROFILE=minimal KITTYMACS_TEST_PACKAGES={{quote(packages)}} emacs -Q --batch -l tests/verify-config.el
 
 # Start once per feature, off in turn from full and on in turn from minimal. Needs

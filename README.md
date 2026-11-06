@@ -52,7 +52,8 @@ A new installation starts small: Meow, Vertico, Orderless, Marginalia, Consult, 
 - **Completion:** Vertico, Orderless, Marginalia, Consult and Embark in the minibuffer; Corfu and Cape in the buffer; Yasnippet templates.
 - **Files and projects:** Dired with directories first on every platform, a Treemacs sidebar, `project.el` projects in Tabspaces workspaces, ripgrep search.
 - **Version control:** Magit with Meow-friendly Motion state and a `SPC m` menu, VC, diff-hl in the gutter.
-- **A real terminal:** [ghostel](https://github.com/dakra/ghostel) (libghostty), with Meow inside it; Eshell and Tramp alongside.
+- **A real terminal:** [ghostel](https://github.com/dakra/ghostel) (libghostty), with Meow inside it; Eshell alongside.
+- **Remote machines:** Tramp with named backends (`SPC o b`), and guards so that a dead connection cannot stall a start or an idle Emacs.
 - **Notes:** Org with an agenda, Org QL queries by tag and TODO state, and Org-roam graphs scoped per project.
 - **Reading papers:** pdf-tools renders PDFs inside Emacs; org-noter keeps a notes file beside each one, in step with the page; `pdf:` links point at a page or a highlight.
 - **Notebooks:** Jupyter notebooks edited as [Jupytext](https://jupytext.readthedocs.io) scripts: `# %%` cells you run with `C-c C-c`, an optional Jupyter kernel, LaTeX in Markdown cells drawn in place, and each project's own environment through direnv.
@@ -187,7 +188,7 @@ There are two ways, and they are alternatives rather than layers:
 - In the virtual machine: an SSH server on port 2222, allowed when the Terminal app offers to forward it; then Nix and `nix profile install github:Mihir-Null/kittymacs#tools`.
 - In Eshell inside Emacs: `ssh-keygen`, and a `Host vm` entry in `~/.ssh/config` for `127.0.0.1` port 2222.
 
-[The shells chapter](literate/35-shells.org) has every step and the reasons for each.
+[The remote chapter](literate/36-remote.org) has every step and the reasons for each.
 
 **nix-on-droid** uses the Home Manager module; [`nix/example-nix-on-droid/flake.nix`](nix/example-nix-on-droid/flake.nix) is a complete device. The two cannot be combined: Nix programs exist only inside the PRoot.
 
@@ -292,11 +293,21 @@ In Normal state, Meow selects first and acts second: `w` selects a word, `x` a l
 | `kittymacs-frames-only` | whether new surfaces become OS windows |
 | `kittymacs-macos-modifiers`, `kittymacs-msys2-root`, `kittymacs-termux-root` | per-platform keys and paths |
 | `kittymacs-keypad-key` | a key under `SPC` for Meow's original keypad |
+| `kittymacs-backends`, `kittymacs-backend-tools` | the machines you work on, and what `SPC o B` looks for there |
+| `kittymacs-remote-nix-path`, `kittymacs-remote-auto-capfs` | where Tramp searches after the login shell's `PATH`; which completion sources run unasked in a remote buffer |
 
 - **Another package's option** that a chapter also sets must go in an `after-init-hook` function at the end of `private.el`, or the chapter will overwrite it; the example file shows how, and [the maintenance chapter](literate/80-maintenance.org) explains why.
 - **`M-x customize`** saves to `var/etc/custom.el`, which loads after everything else and always wins.
 - **A Nix module or dotfiles repository** can put `*.el` files in `~/.config/kittymacs/conf.d/`. They load in name order just before `private.el`, so your own settings still win.
 - **To start faster**, `just quickstart` or `M-x kittymacs-quickstart-write` writes one file that activates every package, so a start need not scan them. Nothing changes until a machine does this, and `just quickstart-remove` undoes it; [the startup chapter](literate/10-startup.org) has the details.
+- **To work on another machine**, name it as a backend, and this Emacs stays the screen while that machine runs Magit's `git`, Eglot's server, `compile` and the agent.
+
+  ```elisp
+  (setopt kittymacs-backends
+          '(("build" :transport ssh :host "build.example.org" :root "~/src/project/")))
+  ```
+
+  `SPC o b` opens the project there, and `SPC o B` lists which tools the machine has. `:transport` is `ssh` or any other method Tramp offers. Give the machine a key or a `ControlMaster` line in `~/.ssh/config`, because a backend starts its processes directly, and that path cannot ask for a password; `:direct-async nil` turns it off. Two things stop on a remote file so that a dead connection cannot stall Emacs: automatic saving and auto-save files, so save with `C-x C-s`, and a crash loses what you typed since. [The remote chapter](literate/36-remote.org) has the rest.
 - **To change the configuration itself**, edit its chapter in `literate/`, then `SPC C t` to regenerate the Lisp and restart. See [Develop](#develop).
 
 ## Update
@@ -339,7 +350,8 @@ Then, inside Emacs, `M-x package-upgrade-all` upgrades the installed packages; r
 
 - *Windows: Emacs ignores the clone:* see the `HOME` and junction note under [Windows](#windows).
 - *macOS: programs installed with Homebrew or Nix are not found:* start Emacs once from a terminal to compare; the shells chapter imports the environment of your *login* shell, so set `PATH` in `~/.zprofile`, not only `~/.zshrc`.
-- *A program on a remote machine is not found* (Eglot, Magit or search over Tramp): Tramp reads the remote login shell's `PATH` once per connection. After installing something there, run `M-x tramp-cleanup-connection`.
+- *A program on a remote machine is not found* (Eglot, Magit or search over Tramp): `SPC o B` shows what a backend has. Tramp reads the remote login shell's `PATH` once per connection, and then the Nix profiles. After installing something there, run `M-x tramp-cleanup-connection`.
+- *A command waits on a dead connection:* `C-g` ends it, and `M-x tramp-cleanup-connection` closes the connection. The first edit after a save, a save, and any command you run on a remote file still wait for the machine.
 - *Android: a program from Termux is not found:* the port and Termux must come from a matching pair of builds; check `kittymacs-termux-root`.
 
 **Check the installation itself.** From a shell in the clone, with [just](https://github.com/casey/just):

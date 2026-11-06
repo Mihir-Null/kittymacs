@@ -1,0 +1,469 @@
+:PROPERTIES:
+:ID: 6e1f2a90-4c7b-4d35-9f18-2b7c0d6e3a41
+:END:
+
+#+TITLE: Remote: Tramp, backends, and guards for a dead connection
+#+FILETAGS: :core:
+#+STARTUP: overview
+#+PROPERTY: header-args:emacs-lisp :tangle ../lisp/kittymacs-remote.el :eval never :comments no :padline no :mkdirp yes
+
+- Working on another machine must not stall Emacs, and that machine must be a named thing you connect to.
+  + Emacs does Lisp and redisplay on one thread; a Tramp call that waits on a dead connection stops everything, and a call with no timeout stops it until =C-g=.
+  + Stalls like that, which ended in Force Quit, are why this chapter exists.
+- It gives you:
+  + Tramp's settings, which cost a local session nothing, because none of them loads Tramp;
+  + =kittymacs-backends=, =SPC o b= to open a backend's project, and =SPC o B= to see what tools it has;
+  + a guard on each thing that talks to a remote machine without being asked.
+- It leans on [[id:d2e0bc37-0bd4-4b28-a8ee-04f94ac451f8][the shells chapter]] for the local environment and on [[id:afa6b7fd-742a-4c15-86a6-32e3e8027b0e][the platform chapter]] for the local shell.
+- The design is in [[file:../ARCHITECTURE.md][ARCHITECTURE.md]]; [[file:../tests/kittymacs-remote-tests.el][the remote tests]] run every guard through a Tramp method defined in the test.
+
+* Remote files: Tramp
+
+- =C-x C-f /ssh:host:/path= edits a remote file.
+- SSH is the default method; connection state goes under the cache.
+- These are =setopt= of options whose library has not loaded, and that does not load it.
+  + =setopt= loads what Customize's index ties to a name, and the index ties no =tramp-= option to a library.
+  + =defcustom= keeps a value set before it runs, so Tramp finds these when something first needs it.
+  + [[file:../tests/kittymacs-profile-checks.el][The startup checks]] fail if a start loads Tramp.
+
+#+begin_src emacs-lisp
+;;; kittymacs-remote.el --- Tramp, named backends and guards for a dead connection -*- lexical-binding: t; -*-
+;; Generated from literate/36-remote.org; edit the Org source, then tangle.
+
+;;; Code:
+
+(eval-when-compile (require 'files-x))
+(require 'seq)
+(require 'kittymacs-defaults)
+(require 'kittymacs-leader)
+
+(defvar agent-shell-path-resolver-function)
+(defvar tramp-direct-async-process)
+(defvar tramp-methods)
+(defvar tramp-remote-path)
+(declare-function connection-local-set-profile-variables "files-x" (profile variables))
+(declare-function connection-local-set-profiles "files-x" (criteria &rest profiles))
+(declare-function tramp-dissect-file-name "tramp" (name &optional nodefault))
+(declare-function tramp-file-name-host "tramp" (vec))
+(declare-function tramp-file-name-method "tramp" (vec))
+(declare-function tramp-get-home-directory "tramp" (vec &optional user))
+(declare-function tramp-get-method-parameter "tramp" (vec param &optional default))
+
+(setopt tramp-persistency-file-name (expand-file-name "tramp" kittymacs-cache-dir)
+        tramp-default-method "ssh"
+        tramp-copy-size-limit nil
+        tramp-use-ssh-controlmaster-options nil)
+
+#+end_src
+
+* Where a remote program is found
+
+- A program on the remote is looked up on its login shell's =PATH=.
+  + By default Tramp searches =getconf PATH= and a fixed list of system directories, which misses a Nix profile, =~/.local/bin= and anything else a login adds.
+  + =tramp-own-remote-path= in =tramp-remote-path= stands for the =PATH= that =sh -l= prints on the remote; listed first, its directories win.
+  + So Eglot, Magit, project search and Eshell find a remote =git=, =rg= or language server wherever a terminal on that machine would.
+  + Tramp asks once per connection and caches the answer: after installing something on the remote, =M-x tramp-cleanup-connection= makes it ask again.
+- The Nix directories follow it, by name, because a login shell does not always list them.
+  + Determinate's Nix, for one, sets =PATH= only for interactive shells, and =sh -l= is not interactive.
+  + =kittymacs-remote-nix-path= holds them; those a machine lacks are dropped when the connection opens, so a machine without Nix pays one check.
+- Tramp's check reads =~= literally, so a =~/= entry would always be dropped as missing.
+  + Its script runs =test -d= on the quoted name, which no shell expands, whatever Tramp's manual implies about =~/bin=.
+  + So =kittymacs--remote-expand-home= turns =~/= into the machine's home directory before Tramp checks.
+  + Tramp caches that home directory per connection, so this adds one round trip to a connection, and nothing to a local session.
+
+#+begin_src emacs-lisp
+(defcustom kittymacs-remote-nix-path
+  '("~/.nix-profile/bin" "/nix/var/nix/profiles/default/bin" "/run/current-system/sw/bin")
+  "Directories Tramp searches on a remote machine, after its login shell's PATH.
+Those that do not exist there are dropped when the connection opens."
+  :type '(repeat string)
+  :group 'kittymacs)
+
+(defun kittymacs--remote-expand-home (original vec)
+  "Call ORIGINAL, `tramp-get-remote-path', with `~/' expanded for VEC.
+Tramp's existence check quotes the name, so it never sees a home directory."
+  (let ((tramp-remote-path
+         (mapcar (lambda (entry)
+                   (if (and (stringp entry) (string-prefix-p "~/" entry))
+                       (concat (tramp-get-home-directory vec) (substring entry 1))
+                     entry))
+                 tramp-remote-path)))
+    (funcall original vec)))
+
+(defun kittymacs--remote-path-setup ()
+  "Put the login shell's PATH first in `tramp-remote-path', then the Nix directories."
+  (setq tramp-remote-path
+        (append '(tramp-own-remote-path)
+                kittymacs-remote-nix-path
+                (seq-remove (lambda (entry)
+                              (or (eq entry 'tramp-own-remote-path)
+                                  (member entry kittymacs-remote-nix-path)))
+                            tramp-remote-path)))
+  (advice-add 'tramp-get-remote-path :around #'kittymacs--remote-expand-home))
+
+#+end_src
+
+* Backends: a machine you connect to by name :decision:
+:PROPERTIES:
+:ID: 2f9c41d7-8a36-4e0b-b5d2-7c1e6a93f048
+:END:
+
+- A backend is a machine that runs your programs while this Emacs is the screen.
+  + =kittymacs-backends= names each one, with how to reach it, the host, and the project's directory there.
+  + A name is shorter than a Tramp file name, and it is what =SPC o b= and =SPC o B= ask for.
+  + Set it in =private.el= or a host file, since it is about one account's machines.
+
+| Key             | Means                                                              | Default |
+|-----------------+--------------------------------------------------------------------+---------|
+| =:transport=    | how to reach it: a row of =kittymacs-remote-transports=, or a Tramp method | =ssh=   |
+| =:host=         | the host as Tramp takes it: =build=, =me@build=, =build#2222=      | none    |
+| =:root=         | the project's directory there, such as =~/src/project/=            | none    |
+| =:shell=        | the program a shell there runs                                     | =/bin/sh= |
+| =:direct-async= | =nil= to keep Tramp's slower process start on this backend         | on where the transport can |
+
+- The transport is a key the code dispatches on, so a new one is a row in =kittymacs-remote-transports=.
+  + A row is a function that names a directory on the backend.
+  + =ssh= and any other method Tramp already offers, such as =sshx=, =docker= or =distrobox=, need nothing more than their name.
+  + A transport Tramp does not know is an error that names it, before anything connects.
+- =SPC o b= (=kittymacs-backend-connect=) checks the directory exists, which opens the connection, and then runs =project-switch-project= on it.
+  + A backend that does not answer gives the error that =tramp-connection-timeout= allows for, and =C-g= stops the wait: you asked for this connection.
+- =SPC o B= (=kittymacs-backend-doctor=) lists which of =kittymacs-backend-tools= the backend has, and where.
+  + It also says whether the project's directory exists and how processes start there.
+- These keys live in this chapter because the feature does, and it is core, so they are always there; [[file:../tests/kittymacs-lint-tests.el][the lint]] holds them here.
+
+#+begin_src emacs-lisp
+(defcustom kittymacs-backends nil
+  "The machines this Emacs works on, by name.
+Each element is (NAME . PLIST), with NAME a string.  The keys of PLIST are
+`:transport', `:host', `:root', `:shell' and `:direct-async'; the remote chapter
+says what each means.  For example:
+
+  ((\"build\" :transport ssh :host \"build.example.org\" :root \"~/src/project/\"))"
+  :type '(alist :key-type string :value-type (plist :value-type sexp))
+  :group 'kittymacs)
+
+(defcustom kittymacs-backend-tools
+  '("git" "rg" "fd" "direnv" "inotifywait" "nix" "claude-agent-acp")
+  "Programs `kittymacs-backend-doctor' looks for on a backend.
+Add the language servers your projects there use."
+  :type '(repeat string)
+  :group 'kittymacs)
+
+(defvar kittymacs-remote-transports
+  '((ssh . kittymacs-remote--tramp-root))
+  "How each transport names a directory on its machine, by the `:transport' key.
+A value is a function of the transport and the backend's plist.  A Tramp method
+needs no row: its name is the transport, handled as `ssh' is.")
+
+(defun kittymacs-remote--tramp-root (transport backend)
+  "Return the root of BACKEND as a Tramp name, with TRANSPORT as the method."
+  (format "/%s:%s:%s" transport (or (plist-get backend :host) "") (plist-get backend :root)))
+
+(defun kittymacs-remote--backend (name)
+  "Return the plist of the backend called NAME."
+  (or (cdr (assoc name kittymacs-backends))
+      (user-error "No backend called %s in `kittymacs-backends'" name)))
+
+(defun kittymacs-remote--transport (backend)
+  "Return the transport of BACKEND, after checking this Emacs can use it."
+  (let ((transport (or (plist-get backend :transport) 'ssh)))
+    (require 'tramp)
+    (unless (or (assq transport kittymacs-remote-transports)
+                (assoc (symbol-name transport) tramp-methods))
+      (user-error "No transport called %s: not in `kittymacs-remote-transports', and Tramp has no such method"
+                  transport))
+    transport))
+
+(defun kittymacs-backend-root (name)
+  "Return the file name of the project on the backend called NAME."
+  (let* ((backend (kittymacs-remote--backend name))
+         (transport (kittymacs-remote--transport backend)))
+    (funcall (alist-get transport kittymacs-remote-transports #'kittymacs-remote--tramp-root)
+             transport backend)))
+
+(defun kittymacs-remote--read-backend ()
+  "Ask for the name of a backend."
+  (unless kittymacs-backends
+    (user-error "No backends: set `kittymacs-backends' in private.el"))
+  (completing-read "Backend: " kittymacs-backends nil t))
+
+(defun kittymacs-backend-connect (name)
+  "Open the project on the backend called NAME."
+  (interactive (list (kittymacs-remote--read-backend)))
+  (let ((root (kittymacs-backend-root name)))
+    (kittymacs-remote--apply-backend name)
+    (unless (file-directory-p root)
+      (user-error "Backend %s has no directory %s" name root))
+    (project-switch-project root)))
+
+(defun kittymacs-remote--tools (root)
+  "Return (TOOL . PATH) for each of `kittymacs-backend-tools' on ROOT's machine.
+PATH is nil where the machine does not have the tool."
+  (let ((default-directory (file-remote-p root))
+        (remote-file-name-inhibit-cache t))
+    (mapcar (lambda (tool) (cons tool (executable-find tool t)))
+            kittymacs-backend-tools)))
+
+(defun kittymacs-backend-doctor (name)
+  "Report which tools the backend called NAME has, and return them as an alist."
+  (interactive (list (kittymacs-remote--read-backend)))
+  (let* ((root (kittymacs-backend-root name))
+         (backend (kittymacs-remote--backend name))
+         (tools (progn (kittymacs-remote--apply-backend name)
+                       (kittymacs-remote--tools root)))
+         (exists (file-directory-p root))
+         (direct (let ((default-directory (file-remote-p root)))
+                   (with-connection-local-variables tramp-direct-async-process))))
+    (with-help-window "*kittymacs backend*"
+      (princ (format "Backend %s, over %s\n\n" name (kittymacs-remote--transport backend)))
+      (princ (format "Project  %s (%s)\n" root (if exists "exists" "MISSING")))
+      (princ (format "Processes start %s\n\n" (if direct "directly" "through Tramp's shell")))
+      (pcase-dolist (`(,tool . ,path) tools)
+        (princ (format "%-20s %s\n" tool (or path "not found")))))
+    tools))
+
+(keymap-set kittymacs-open-map "b" (cons "backend: open its project" #'kittymacs-backend-connect))
+(keymap-set kittymacs-open-map "B" (cons "backend: what it has" #'kittymacs-backend-doctor))
+
+#+end_src
+
+* Connection-local defaults
+
+- Connection-local variables hold a value for one kind of connection, so a remote buffer can differ from a local one.
+- =explicit-shell-file-name= is the guard for =M-x shell=.
+  + [[id:afa6b7fd-742a-4c15-86a6-32e3e8027b0e][The platform chapter]] sets it to the local shell, so a remote =M-x shell= would ask the remote machine for a program that may exist only here, such as a store path or =pwsh.exe=.
+  + Emacs reads it with =with-connection-local-variables=, so a profile for every Tramp connection fixes it: =/bin/sh=, which is what Tramp's own profile gives =shell-file-name=.
+  + A local buffer does not read the profile, and it is not even defined until Tramp loads.
+- A backend adds its own profile, which wins over that one, since the newer entry comes first.
+  + =:shell= sets =shell-file-name= and =explicit-shell-file-name=, so =M-x shell= and =shell-command= there agree.
+- =tramp-direct-async-process= is on for a backend whose transport supports it, which Tramp's method table says.
+  + It starts a process straight through the transport rather than through Tramp's shell, and Eglot and Magit start several, so this is noticeably quicker.
+  + Those processes still get the =PATH= above: Tramp passes it to each one.
+  + Only a backend gets it, not every =/ssh:= file you open.
+  + It cannot ask for a password, and Tramp's connection sharing is off here, so a backend needs a key or a =ControlMaster= line in =~/.ssh/config=.
+  + =:direct-async nil= in the backend turns it off.
+
+#+begin_src emacs-lisp
+(defun kittymacs-remote--apply-backend (name)
+  "Set the connection-local variables of the backend called NAME."
+  (let* ((backend (kittymacs-remote--backend name))
+         (vec (tramp-dissect-file-name (kittymacs-backend-root name)))
+         (shell (plist-get backend :shell))
+         (direct (and (tramp-get-method-parameter vec 'tramp-direct-async)
+                      (or (not (plist-member backend :direct-async))
+                          (plist-get backend :direct-async))))
+         (profile (intern (format "kittymacs-backend-%s" name))))
+    (connection-local-set-profile-variables
+     profile
+     (append (when shell
+               `((shell-file-name . ,shell) (explicit-shell-file-name . ,shell)))
+             (when direct '((tramp-direct-async-process . t)))))
+    (connection-local-set-profiles
+     `(:application tramp
+       :protocol ,(tramp-file-name-method vec)
+       :machine ,(tramp-file-name-host vec))
+     profile)))
+
+(defun kittymacs--remote-after-tramp ()
+  "What waits for Tramp: the search path and the connection-local defaults."
+  (kittymacs--remote-path-setup)
+  (connection-local-set-profile-variables
+   'kittymacs-remote-shell '((explicit-shell-file-name . "/bin/sh")))
+  (connection-local-set-profiles '(:application tramp) 'kittymacs-remote-shell)
+  ;; A typo must not stop Tramp loading; connecting to that backend reports it.
+  (dolist (backend kittymacs-backends)
+    (ignore-error user-error
+      (kittymacs-remote--apply-backend (car backend)))))
+
+(with-eval-after-load 'tramp
+  (kittymacs--remote-after-tramp))
+
+#+end_src
+
+* The guards :decision:
+:PROPERTIES:
+:ID: 8d3b7e15-6f42-4c09-a1e8-5b2d90c7f364
+:END:
+
+- Each guard stops one thing that reaches a remote machine with nobody asking, because that thing blocks Emacs when the connection has gone.
+- What you start yourself still waits for the machine, and =C-g= ends the wait: a save, =SPC F s=, opening a file, and the first edit after a save, which compares the file's modification time.
+- None is a blanket off switch: a command you run still reaches the machine.
+  + Magit, Eglot, =compile= and agent-shell work as they do on any connection, and =SPC c p f= completes a remote file name when you ask.
+- A guard costs a local buffer one call to =file-remote-p=, which matches a regular expression and connects nothing: about 1.4 microseconds, and [[file:../tests/kittymacs-remote-tests.el][the remote tests]] hold it far below a millisecond.
+- =kittymacs-remote-buffer-p= is the test they share.
+
+| What                       | On a remote buffer without a guard                                    | Now                                          |
+|----------------------------+-----------------------------------------------------------------------+----------------------------------------------|
+| known projects, at start   | =file-exists-p= on each root logs in                                  | only local roots checked, at first read      |
+| =auto-save-visited-mode=   | its idle timer writes the file over the connection                    | remote files are left to =C-x C-s=           |
+| =auto-save-mode=           | its idle check asks the file's modes, then writes a local copy        | no auto-save file for a remote buffer        |
+| Flymake's collection       | a local program, a temporary file written beside the remote one       | the checkers are not added; Eglot's stays    |
+| Corfu and Cape             | =cape-file= reads the remote directory 0.2 seconds after you type     | automatic popups use the safe sources only   |
+| doom-modeline's version    | looks for =Pipfile= and =.envrc=, then reports the /local/ version    | no version shown                             |
+| the =diff-hl= gutter       | undoing back to the saved text runs =git= on an idle timer            | it waits for the next save                   |
+| agent-shell                | sends the agent a working directory only Emacs can read               | sends the path the machine knows             |
+| =M-x shell=                | runs the local shell's path on the remote                             | runs =/bin/sh=, or the backend's =:shell=    |
+
+- Two needed no guard, and tests hold them there.
+  + Auto-revert skips a remote buffer: =auto-revert-remote-files= is =nil=, so =auto-revert-handler= stops at =file-remote-p=, =dired-buffer-stale-p= does the same, and no notification watch is set up.
+  + envrc stays off in a remote buffer: =envrc-remote= is =nil=, so its global mode's test stops there, and =envrc-supported-tramp-methods= is never read.
+  + Set =envrc-remote= only if you accept the cost: each new buffer with a remote directory, a help buffer included, then searches for a =.envrc= over the connection.
+
+** Files saved behind your back
+
+- =remote-file-name-inhibit-auto-save-visited= is Emacs's own option for the first timer, and =remote-file-name-inhibit-auto-save= for the second.
+- The second is the expensive one.
+  + An auto-save file is local, but Emacs asks the /visited/ file's modes first, from C, on an idle timer.
+  + So a crash loses what you typed in a remote buffer since its last save.
+  + A timer that writes half a file cannot be interrupted safely, so a timeout is no alternative.
+
+#+begin_src emacs-lisp
+(setopt remote-file-name-inhibit-auto-save-visited t
+        remote-file-name-inhibit-auto-save t)
+
+(defun kittymacs-remote-buffer-p (&rest _)
+  "Return non-nil if this buffer's directory is on another machine.
+This never connects.  The arguments are ignored, so it can stand in front of any
+function as advice."
+  (file-remote-p default-directory))
+
+#+end_src
+
+** Checkers and completion
+
+- A Flymake checker from =flymake-collection= is a local program.
+  + On a remote buffer it writes a temporary file over the connection, then checks with whatever is installed here.
+  + So it is slow and it answers for the wrong machine; Eglot's checker, which runs there, stays.
+- Corfu's automatic popup calls every completion source 0.2 seconds after you type.
+  + Corfu wraps the call in =while-no-input=, which lets the next key interrupt it; =cape-file= binds =non-essential=, which stops Tramp opening a /new/ connection.
+  + Neither helps when you have stopped typing and the connection is open and dead.
+- So in a remote buffer that timer offers only =kittymacs-remote-auto-capfs=: sources that read the buffer, or that ask a server with a timeout of their own.
+  + This is a list of what is safe rather than of what is not, because a source nobody here has read must not get to stall Emacs.
+  + =TAB= and =SPC c p= still run every source, because you asked.
+- The =diff-hl= gutter updates on save and after opening a file.
+  + The exception runs on an idle timer: undoing back to the saved text.
+  + So in a remote buffer that one waits for the next save.
+
+#+begin_src emacs-lisp
+(defcustom kittymacs-remote-auto-capfs '(eglot-completion-at-point cape-keyword)
+  "Completion sources Corfu's automatic popup may call in a remote buffer."
+  :type '(repeat function)
+  :group 'kittymacs)
+
+(defun kittymacs--remote-corfu-auto (original &rest arguments)
+  "Call ORIGINAL with ARGUMENTS, keeping a remote buffer to its safe sources.
+ORIGINAL is the function behind Corfu's automatic popup."
+  (if (not (kittymacs-remote-buffer-p))
+      (apply original arguments)
+    (let ((completion-at-point-functions
+           (seq-filter (lambda (source) (memq source kittymacs-remote-auto-capfs))
+                       (append completion-at-point-functions
+                               (default-value 'completion-at-point-functions)))))
+      (apply original arguments))))
+
+(defun kittymacs--remote-undo-buffer-p (buffer)
+  "Return non-nil if BUFFER, which `diff-hl' would update, is remote."
+  (and (buffer-live-p buffer)
+       (with-current-buffer buffer (kittymacs-remote-buffer-p))))
+
+(with-eval-after-load 'flymake-collection-hook
+  (advice-add 'flymake-collection-hook-set-backends :before-until #'kittymacs-remote-buffer-p))
+(with-eval-after-load 'corfu-auto
+  (advice-add 'corfu-auto--complete-deferred :around #'kittymacs--remote-corfu-auto))
+(with-eval-after-load 'diff-hl
+  (advice-add 'diff-hl-after-undo :before-until #'kittymacs--remote-undo-buffer-p))
+
+#+end_src
+
+** What agent-shell tells the agent
+
+- agent-shell starts the agent on the remote machine, through Tramp, but gives it its working directory as Emacs names it: =/ssh:host:/project/=.
+  + That name means nothing to a program there, so the agent starts in a directory that does not exist.
+- =agent-shell-path-resolver-function= is upstream's place for this, and it maps both ways with one function.
+  + A Tramp name going out loses its prefix; a plain path coming in, from the agent's file requests, gains the shell's.
+  + A local shell gets its path back unchanged.
+- A resolver set in =private.el= wins, such as one for a dev container.
+
+#+begin_src emacs-lisp
+(defun kittymacs-remote-agent-path (path)
+  "Return PATH as the other side of an agent's connection names it.
+A remote file name becomes the path the agent knows; a path from an agent running
+on the machine of this buffer's directory becomes a remote file name."
+  (cond ((file-remote-p path) (file-local-name path))
+        ((kittymacs-remote-buffer-p) (concat (file-remote-p default-directory) path))
+        (t path)))
+
+(with-eval-after-load 'agent-shell
+  (unless agent-shell-path-resolver-function
+    (setopt agent-shell-path-resolver-function #'kittymacs-remote-agent-path)))
+
+#+end_src
+
+** A Linux virtual machine as Android's backend :android:
+:PROPERTIES:
+:ID: a575f179-35ff-4131-8b9f-2d5a4b1ab535
+:END:
+
+- Pixels and other telephones with Android's Terminal app run a Debian virtual machine beside Android.
+  + Inside it is ordinary GNU/Linux: =apt=, Nix, compilers and language servers all work there.
+  + It has its own kernel, so the Android port cannot run its programs directly; it reaches them over SSH, through Tramp.
+- So the port is the screen and the virtual machine is the backend.
+  + Files kept in the machine and opened as =/ssh:vm:~/project/= get its programs: Eglot starts the language server there, Magit runs its =git=, project search its =rg=, Eshell its commands.
+  + Files on Android's own storage get only what the port can run locally.
+  + Whatever Emacs loads into itself, a Tree-sitter grammar or a native module, is still built for Android.
+- Tramp never speaks SSH itself; it runs an =ssh= program.
+  + The port runs only programs from an application signed like itself ([[id:ca1bff94-4ca3-40b4-8cda-6a290e7889a5][Termux on Android]]), so =ssh= comes from the paired Termux: =pkg install openssh=.
+  + That is Termux's whole part here; everything else comes from the virtual machine.
+  + The paired Termux itself is not reached through Tramp; why is in [[file:../ARCHITECTURE.md][ARCHITECTURE.md]].
+- In the virtual machine, once:
+  + an SSH server on port 2222, since Android lets no application listen below 1024;
+  + the Terminal app offers to forward the port once something listens on it, and Android then reaches it as =localhost:2222=;
+  + Nix, and the flake's =tools= bundle: every program the configuration looks for ([[id:d25a5063-1439-4ae0-8fbe-b0162d05a0e0][the Nix chapter]]).
+
+#+begin_example
+sudo apt install openssh-server
+echo 'Port 2222' | sudo tee /etc/ssh/sshd_config.d/android.conf
+sudo systemctl restart ssh
+sh <(curl -L https://nixos.org/nix/install) --daemon
+nix profile install github:Mihir-Null/kittymacs#tools
+#+end_example
+
+- Then from Eshell inside Emacs, not from Termux's own window:
+  + =ssh-keygen=, and append the new =.pub= file to =~/.ssh/authorized_keys= in the virtual machine;
+  + a =Host vm= entry in =~/.ssh/config=, as below, with =User= set to what =whoami= prints in the machine.
+- Eshell, because the port runs =ssh= with its own home directory, which need not be Termux's.
+  + =ssh -G vm= in Eshell shows the configuration that Tramp's =ssh= will read.
+- The =Control= lines let every Eglot, Magit and search process share one connection.
+  + Tramp's own copy of those options is off ([[*Remote files: Tramp]]), so they live in the SSH configuration.
+
+#+begin_example
+Host vm
+  HostName 127.0.0.1
+  Port 2222
+  User droid
+  ControlMaster auto
+  ControlPath ~/.ssh/cm-%r@%h:%p
+  ControlPersist 10m
+#+end_example
+
+- Name it as a backend, so =SPC o b= opens the project and =SPC o B= says what the machine has.
+
+#+begin_src emacs-lisp :tangle no
+(setopt kittymacs-backends
+        '(("phone" :transport ssh :host "vm" :root "~/project/")))
+#+end_src
+
+#+begin_src emacs-lisp
+(provide 'kittymacs-remote)
+;;; kittymacs-remote.el ends here
+#+end_src
+
+* Check
+
+- With no remote project in play, =M-: (featurep 'tramp)= after a start is =nil=.
+- Set =kittymacs-backends= in =private.el=; =SPC o B= lists what the machine has, and =SPC o b= opens the project.
+- On a remote machine with Nix, =C-x C-f /ssh:host:~/=, then =M-: (executable-find "rg" t)= in that buffer: it names the Nix profile's =rg=.
+  + On Android with the virtual machine, =host= is =vm=.
+- =M-x shell= in that buffer runs =/bin/sh= there, or the backend's =:shell=.
+- Open a remote file and cut the network: Emacs keeps responding while you are idle; =C-g= ends a command that was waiting.
+- =just test-packages= and =just test-minimal= run [[file:../tests/kittymacs-remote-tests.el][the remote tests]], with a Tramp method that needs no ssh.

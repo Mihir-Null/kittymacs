@@ -167,7 +167,13 @@ A `doom-' theme needs the `doom-look' feature; without it, `modus-operandi'."
     (doom-modeline-major-mode-icon t)
     (doom-modeline-buffer-state-icon t)
     :config
-    (doom-modeline-mode 1)))
+    (doom-modeline-mode 1)
+    (with-eval-after-load 'doom-modeline-env
+      (dolist (update '(doom-modeline-update-env
+                        doom-modeline-env-update-python doom-modeline-env-update-ruby
+                        doom-modeline-env-update-perl doom-modeline-env-update-go
+                        doom-modeline-env-update-elixir doom-modeline-env-update-rust))
+        (advice-add update :before-until #'kittymacs-remote-buffer-p)))))
 
 (when (kittymacs-feature-p 'focus-mode)
   (use-package hide-mode-line

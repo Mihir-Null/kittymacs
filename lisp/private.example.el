@@ -41,6 +41,17 @@
 ;; (setopt kittymacs-agent-mcp-servers
 ;;         '(((name . "docs") (command . "docs-mcp") (args . ()) (env . ()))))
 
+;; Backends
+;; The machines this Emacs works on, by name; SPC o b opens one's project and
+;; SPC o B says what it has.  See literate/36-remote.org.
+;; (setopt kittymacs-backends
+;;         '(("build" :transport ssh :host "build.example.org" :root "~/src/project/")))
+;; What the doctor looks for, and where Tramp searches after the login shell's PATH.
+;; (setopt kittymacs-backend-tools '("git" "rg" "pyright-langserver"))
+;; (setopt kittymacs-remote-nix-path '("~/.nix-profile/bin"))
+;; Which completion sources may run on their own in a remote buffer.
+;; (setopt kittymacs-remote-auto-capfs '(eglot-completion-at-point))
+
 ;; Terminal
 ;; MSYS2's location, when it is not the normal C:/msys64/.
 ;; (setopt kittymacs-msys2-root "D:/Tools/msys64/")

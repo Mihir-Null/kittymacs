@@ -150,7 +150,7 @@ A menu under `SPC m' may name a command of a library that is not loaded yet, so
               features))
 
 (defun kittymacs-check-start ()
-  "Return what is wrong after any start: dead keys, empty groups and Org."
+  "Return what is wrong after any start: dead keys, empty groups, Org and Tramp."
   (append
    (mapcar (lambda (binding) (format "SPC %s is not a command" binding))
            (kittymacs-check-uncallable-bindings kittymacs-leader-map []))
@@ -162,6 +162,9 @@ A menu under `SPC m' may name a command of a library that is not loaded yet, so
            (kittymacs-check-empty-localleaders))
    (when-let* ((org (kittymacs-check-org-features)))
      (list (format "Startup loaded Org: %S" org)))
+   ;; A connection, or a remote project, loads it: no local start pays for it.
+   (when (featurep 'tramp)
+     (list "Startup loaded Tramp"))
    ;; Only a key or `just onboard' loads it: no start pays for its size.
    (when (featurep 'kittymacs-onboard)
      (list "Startup loaded the onboarding module"))))
