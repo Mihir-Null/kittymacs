@@ -22,7 +22,6 @@
 ;; the focused test the same contract without loading the rest of kittymacs.
 (defvar kittymacs-cache-dir
   (expand-file-name "var/cache/" kittymacs-treesit-test-root))
-(defvar kittymacs-msys2-root "C:/msys64/")
 
 (add-to-list 'load-path (expand-file-name "lisp" kittymacs-treesit-test-root))
 (require 'kittymacs-treesit)
@@ -99,15 +98,20 @@ The remap tables and `treesit-enabled-modes' are restored afterwards."
     (should (string-match-p (rx string-start (= 40 xdigit) string-end)
                             (plist-get (cddr recipe) :commit)))))
 
-(ert-deftest kittymacs-treesit-windows-nix-recipe-uses-msys2-gcc ()
-  "Windows grammar builds use an absolute compiler without changing PATH."
+(ert-deftest kittymacs-treesit-no-recipe-names-a-compiler ()
+  "Every system finds its compiler as Emacs does, Windows included."
+  (dolist (recipe kittymacs-treesit-language-source-alist)
+    (should-not (plist-member (cddr recipe) :cc))))
+
+(ert-deftest kittymacs-treesit-windows-without-a-compiler-keeps-classic-modes ()
+  "A grammar that cannot be built leaves the file in its classic mode."
   (let ((system-type 'windows-nt)
-        (kittymacs-msys2-root "D:/tools/msys64/"))
-    (cl-letf (((symbol-function 'file-executable-p) (lambda (_) t)))
-      (should (equal (plist-get (cddr (kittymacs-treesit--nix-source)) :cc)
-                     "D:/tools/msys64/ucrt64/bin/gcc.exe"))))
-  (let ((system-type 'gnu/linux))
-    (should-not (plist-member (cddr (kittymacs-treesit--nix-source)) :cc))))
+        (exec-path nil))
+    (kittymacs-treesit-test-with-remap 'kittymacs-treesit-test-classic-mode
+      (with-temp-buffer
+        (let ((inhibit-message t))
+          (set-auto-mode-0 'kittymacs-treesit-test-classic-mode))
+        (should (eq major-mode 'kittymacs-treesit-test-classic-mode))))))
 
 (ert-deftest kittymacs-treesit-registered-mode-remaps-and-offers-its-grammar ()
   "A package's mode is remapped like Emacs's own and asks for its grammar."

@@ -1,10 +1,16 @@
 # Generated from literate/90-nix.org (the kittymacs repository).
 # The Linux side of a Windows setup: the headless tools, with no Emacs and no
-# fonts.  How Emacs on Windows reaches this side is not chosen yet, and a later
-# step brings it, so nothing here assumes a transport.
+# fonts.  Emacs on Windows reaches this side through wsl.exe, so it needs no sshd
+# and no key.
 # Change `me', /home/me and `system', then, inside the distribution:
 #
 #   nix run github:nix-community/home-manager -- switch --flake .#me
+#
+# To connect, name the distribution as `wsl --list' prints it, in private.el on
+# Windows, and press SPC o b:
+#
+#   (setopt kittymacs-backends
+#           '(("wsl" :transport wsl :host "Ubuntu-24.04" :root "~/src/project/")))
 {
   description = "The Linux side of a Windows setup, with kittymacs's headless tools";
 

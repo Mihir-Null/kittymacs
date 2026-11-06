@@ -222,6 +222,8 @@ Press SPC C o to choose, or set `kittymacs-profile' to `full' or `minimal' in pr
   + Ending startup there would leave no editor to fix it with.
 - A selected feature that step 3 or 4 removed warns, since the machine asked for something it cannot have.
   + The exception is =:not-on=: one =private.el= can serve several machines, and a feature that does not apply on this one is no mistake.
+- A catalogue =:option= set while its feature is off warns, because a setting that silently does nothing looks like a bug.
+  + A =:not-on= feature is the same exception, and the Customize file loads too late to be seen.
 - Excluding a =minimal= feature warns and leaves it on.
   + They are the floor the rest stands on: every =SPC= key needs Meow, and most lists need Consult.
 - What depends on an excluded feature goes without a warning: the exclusion asked for that.
@@ -318,6 +320,13 @@ names what was asked for and cannot be had."
                  (kittymacs-features--applies-p feature))
         (kittymacs-features--warn
          "%s is selected but stays off: it, or a feature it depends on, is excluded" feature)))
+    (pcase-dolist (`(,feature . ,plist) kittymacs-catalogue)
+      (let ((option (plist-get plist :option)))
+        (when (and option (boundp option) (not (memq feature enabled))
+                   (kittymacs-features--applies-p feature))
+          (kittymacs-features--warn
+           "`%s' does nothing while %s is off: add %s to `kittymacs-features', or delete the setting"
+           option feature feature))))
     (setq kittymacs-features--profile profile
           kittymacs-features--enabled enabled)))
 

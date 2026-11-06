@@ -356,21 +356,34 @@ which is what an unpaired installation looks like from Emacs."
 
 (ert-deftest kittymacs-platform-flyspell-asks-for-a-checker-when-a-buffer-opens ()
   ;; The hooks are always there, so a checker that appears after the module
-  ;; loaded (MSYS2's, once private.el sets `kittymacs-msys2-root') still
-  ;; turns spelling on.
+  ;; loaded (once private.el sets `exec-path', say) still turns spelling on.
   (should (memq #'kittymacs--flyspell-text text-mode-hook))
   (should (memq #'kittymacs--flyspell-prog prog-mode-hook))
+  (let (enabled)
+    (cl-letf (((symbol-function 'flyspell-mode) (lambda () (setq enabled t))))
+      (kittymacs-platform-test-with 'windows-nt '()
+        (kittymacs--flyspell-text)
+        (should-not enabled))
+      (kittymacs-platform-test-with 'windows-nt '("hunspell")
+        (kittymacs--flyspell-text)
+        (should enabled)))))
+
+(ert-deftest kittymacs-platform-windows-looks-only-on-its-path ()
+  ;; Every file "exists" here, as a Unix layer on the disk would, and none of it
+  ;; is on `exec-path'.  Only an optional feature ever looks in such a place.
   (kittymacs-platform-test-with 'windows-nt '()
-    (let ((kittymacs-msys2-root "/msys64/") enabled)
-      (cl-letf (((symbol-function 'flyspell-mode) (lambda () (setq enabled t))))
-        (cl-letf (((symbol-function 'file-executable-p) #'ignore))
-          (kittymacs--flyspell-text)
-          (should-not enabled))
-        (cl-letf (((symbol-function 'file-executable-p)
-                   (lambda (file)
-                     (equal file "/msys64/ucrt64/bin/hunspell.exe"))))
-          (kittymacs--flyspell-text)
-          (should enabled))))))
+    (cl-letf (((symbol-function 'file-executable-p) (lambda (_) t)))
+      (should-not (kittymacs-spell-checker))
+      (should-not (kittymacs--windows-unix-tools)))))
+
+(ert-deftest kittymacs-platform-windows-keeps-git-for-windows-tools ()
+  (kittymacs-platform-test-with 'windows-nt '("git")
+    (cl-letf (((symbol-function 'executable-find)
+               (lambda (name &rest _)
+                 (and (equal name "git") (expand-file-name "/Git/cmd/git.exe"))))
+              ((symbol-function 'file-executable-p)
+               (lambda (file) (equal file (expand-file-name "/Git/usr/bin/diff.exe")))))
+      (should (equal (kittymacs--windows-unix-tools) (expand-file-name "/Git/usr/bin"))))))
 
 (ert-deftest kittymacs-platform-a-broken-flyspell-is-reported-once ()
   (kittymacs-platform-test-with 'gnu/linux '("hunspell")

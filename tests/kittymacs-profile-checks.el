@@ -18,6 +18,7 @@
 
 (defconst kittymacs-check-chapter-features
   '((file-tree . kittymacs-treemacs)
+    (msys2-fallback . kittymacs-msys2)
     (home-page . kittymacs-dashboard)
     (org-extras . kittymacs-org-extras)
     (linked-notes . kittymacs-org-roam)

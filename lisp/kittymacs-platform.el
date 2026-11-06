@@ -30,10 +30,6 @@ USERPROFILE for user-owned projects and documents."
   (expand-file-name "Documents/org/" (kittymacs--user-home-directory))
   "Portable starter Org directory."
   :type 'directory)
-(defcustom kittymacs-msys2-root
-  (file-name-as-directory (or (getenv "MSYS2_ROOT") "C:/msys64/"))
-  "Root directory of the MSYS2 installation on Windows."
-  :type 'directory)
 (defun kittymacs-android-p ()
   "Return non-nil when this Emacs is the Android port.
 A function rather than a constant so the tests can exercise the Android
@@ -78,9 +74,8 @@ denies access and every lookup below quietly returns nil."
            "-c"))))
 
 (defun kittymacs--windows-unix-tools ()
-  "Return the directory holding Git for Windows' or MSYS2's Unix tools, or nil.
-Git for Windows ships `diff', `diff3' and `patch' beside its own `git';
-MSYS2 keeps them under `usr/bin'."
+  "Return the directory holding Git for Windows' Unix tools, or nil.
+Git for Windows ships `diff', `diff3' and `patch' beside its own `git'."
   (let ((git (file-name-directory (or (executable-find "git") ""))))
     (seq-find (lambda (dir) (file-executable-p (expand-file-name "diff.exe" dir)))
               (delq nil
@@ -88,8 +83,7 @@ MSYS2 keeps them under `usr/bin'."
                      ;; git in Git/cmd or Git/bin: the tools are in Git/usr/bin.
                      ;; git found in Git/usr/bin itself: they are beside it.
                      (and git (expand-file-name "../usr/bin" git))
-                     git
-                     (expand-file-name "usr/bin" kittymacs-msys2-root))))))
+                     git)))))
 
 (defun kittymacs-platform-apply ()
   "Apply the currently configured portable platform defaults."
@@ -258,9 +252,7 @@ current directory."
 (defun kittymacs-spell-checker ()
   "Return the spell-checker program to use, or nil."
   (or (executable-find "hunspell")
-      (executable-find "aspell")
-      (let ((msys2 (expand-file-name "ucrt64/bin/hunspell.exe" kittymacs-msys2-root)))
-        (and (eq system-type 'windows-nt) (file-executable-p msys2) msys2))))
+      (executable-find "aspell")))
 
 ;; A checker that exists but has no dictionary must never break anything:
 ;; say so once and carry on.
@@ -285,8 +277,6 @@ library, runs the checker and fails again."
         (progn
           (when (string-match-p "hunspell" program)
             (unless (getenv "DICTIONARY") (setenv "DICTIONARY" "en_US"))
-            (when (string-prefix-p (expand-file-name kittymacs-msys2-root) program)
-              (setenv "DICPATH" (expand-file-name "ucrt64/share/hunspell" kittymacs-msys2-root)))
             (setopt ispell-dictionary "en_US"))
           (setopt ispell-program-name program))
       (error (kittymacs--spell-off err)))))

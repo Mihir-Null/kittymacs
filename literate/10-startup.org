@@ -66,7 +66,7 @@
 - GNU ELPA signs its archive index; Emacs verifies it with the first =gpg= on =exec-path=.
 - Windows: install [[https://gpg4win.org/][Gpg4win]].
   + =early-init.el= puts its =gpg= first on =exec-path=.
-  + Otherwise Git for Windows' MSYS =gpg= comes first; it cannot open a Windows keyring directory, so every signature fails and the archives silently vanish.
+  + Otherwise Git for Windows' own =gpg=, a POSIX build, comes first; it cannot open a Windows keyring directory, so every signature fails and the archives silently vanish.
 - macOS: an Emacs started from the Dock has no shell =PATH=.
   + =early-init.el= puts Homebrew's directories and the Nix profiles on =exec-path= when they exist (later entries win).
   + It remembers them in =kittymacs-launcher-path=, so [[id:d2e0bc37-0bd4-4b28-a8ee-04f94ac451f8][the shells chapter]] can put back any its import of the login shell's =PATH= drops.
@@ -161,7 +161,7 @@
   (push '(ns-transparent-titlebar . t) default-frame-alist))
 
 ;; GNU ELPA signs its archive index and Emacs verifies it with the first
-;; gpg on `exec-path'.  On Windows that is Git for Windows' MSYS gpg, which
+;; gpg on `exec-path'.  On Windows that is Git for Windows' POSIX gpg, which
 ;; cannot open a Windows keyring directory: every signature then fails and
 ;; the archives silently vanish.  Put Gpg4win's native gpg first when it is
 ;; installed; without one, skip the check rather than lose the archives.
@@ -534,6 +534,8 @@ Set before init.el loads to change them, because they are read during init.")
 (kittymacs-require-module 'kittymacs-treesit)
 (kittymacs-require-module 'kittymacs-languages)
 (kittymacs-require-module 'kittymacs-terminal)
+(when (kittymacs-feature-p 'msys2-fallback)
+  (kittymacs-require-module 'kittymacs-msys2))
 (kittymacs-require-module 'kittymacs-org)
 (when (kittymacs-feature-p 'org-extras)
   (kittymacs-require-module 'kittymacs-org-extras))

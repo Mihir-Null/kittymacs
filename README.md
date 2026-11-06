@@ -60,7 +60,7 @@ A new installation starts small: Meow, Vertico, Orderless, Marginalia, Consult, 
 - **A coding agent:** Claude Code in an Emacs buffer through [agent-shell](https://github.com/xenodium/agent-shell), under `SPC a`; every edit it proposes waits for your answer.
 - **Suggestions as you type:** GitHub Copilot's grey ghost text and next-edit suggestions through [copilot.el](https://github.com/copilot-emacs/copilot.el), off until you turn them on (`SPC t a`, or `kittymacs-suggestions`).
 - **Programming:** Eglot language servers (opt-in per mode), Flymake, structural editing, pinned Tree-sitter grammars that load only when they work.
-- **Every platform:** Linux, macOS, Windows (PowerShell and MSYS2) and the Android port, each with its own tested policy.
+- **Every platform:** Linux, macOS, Windows (PowerShell, with Linux on a WSL2 backend) and the Android port, each with its own tested policy.
 
 ## Dependencies
 
@@ -156,13 +156,10 @@ winget install GNU.Emacs GnuPG.Gpg4win Git.Git BurntSushi.ripgrep.MSVC sharkdp.f
   ```
 
   Never recursively delete a junction or its target: that deletes the clone.
-- **Unix tools from [MSYS2](https://www.msys2.org/)** (optional): a spell checker and a C compiler for Tree-sitter grammars. kittymacs looks in `C:\msys64` (set `kittymacs-msys2-root` otherwise):
-
-  ```sh
-  pacman -S mingw-w64-ucrt-x86_64-hunspell mingw-w64-ucrt-x86_64-hunspell-en mingw-w64-ucrt-x86_64-gcc
-  ```
-
-- PowerShell is the default shell. `SPC o m` opens an MSYS2 UCRT64 shell in the terminal; the terminal talks to Windows' ConPTY directly, with no POSIX helper.
+- **Linux programs run on a WSL2 backend,** while Emacs stays on Windows. Install a distribution with `wsl --install Ubuntu-24.04`, name it as a backend with `:transport wsl` (see [Configure](#configure)), and press `SPC o b`. The `wsl-backend` [Nix template](#nix) sets up its tools, and `SPC o B` says what it has.
+- **A spell checker and a C compiler** are optional, and kittymacs looks for them on `PATH`. Without a compiler for Tree-sitter grammars, files open in their classic modes.
+- **A fallback for Windows-side files.** A WSL2 backend is the normal way, and where file I/O across WSL would ruin performance, the optional `msys2-fallback` feature offers MSYS2's shell on `SPC o m`, plus its Hunspell and compiler, from `C:\msys64` or `kittymacs-msys2-root`. Each start warns while it is on, and with it off nothing looks for MSYS2. See [its chapter](literate/37-msys2.org).
+- PowerShell is the default shell. The terminal talks to Windows' ConPTY directly, with no POSIX helper.
 
 ### Android
 
@@ -310,7 +307,7 @@ In Normal state, Meow selects first and acts second: `w` selects a word, `x` a l
 | `kittymacs-structural-editing-modes` | the modes where Puni keeps brackets balanced |
 | `kittymacs-eglot-auto-start-modes`, `kittymacs-language-packages` | language servers started automatically; extra language packages (`nix`, `racket`, `guile`) |
 | `kittymacs-frames-only` | whether new surfaces become OS windows |
-| `kittymacs-macos-modifiers`, `kittymacs-msys2-root`, `kittymacs-termux-root` | per-platform keys and paths |
+| `kittymacs-macos-modifiers`, `kittymacs-termux-root` | per-platform keys and paths |
 | `kittymacs-keypad-key` | a key under `SPC` for Meow's original keypad |
 | `kittymacs-backends`, `kittymacs-backend-tools` | the machines you work on, and what `SPC o B` looks for there |
 | `kittymacs-remote-nix-path`, `kittymacs-remote-auto-capfs` | where Tramp searches after the login shell's `PATH`; which completion sources run unasked in a remote buffer |
@@ -326,7 +323,7 @@ In Normal state, Meow selects first and acts second: `w` selects a word, `x` a l
           '(("build" :transport ssh :host "build.example.org" :root "~/src/project/")))
   ```
 
-  `SPC o b` opens the project there, and `SPC o B` lists which tools the machine has. `:transport` is `ssh` or any other method Tramp offers. Give the machine a key or a `ControlMaster` line in `~/.ssh/config`, because a backend starts its processes directly, and that path cannot ask for a password; `:direct-async nil` turns it off. Two things stop on a remote file so that a dead connection cannot stall Emacs: automatic saving and auto-save files, so save with `C-x C-s`, and a crash loses what you typed since. [The remote chapter](literate/36-remote.org) has the rest.
+  `SPC o b` opens the project there, and `SPC o B` lists which tools the machine has. `:transport` is `ssh`, `wsl` for a WSL2 distribution from native Windows Emacs, or any other method Tramp offers. Give an ssh machine a key or a `ControlMaster` line in `~/.ssh/config`, because a backend starts its processes directly, and that path cannot ask for a password; `:direct-async nil` turns it off. Two things stop on a remote file so that a dead connection cannot stall Emacs: automatic saving and auto-save files, so save with `C-x C-s`, and a crash loses what you typed since. [The remote chapter](literate/36-remote.org) has the rest.
 - **To change the configuration itself**, edit its chapter in `literate/`, then `SPC C t` to regenerate the Lisp and restart. See [Develop](#develop).
 
 ## Update
@@ -356,7 +353,7 @@ Then, inside Emacs, `M-x package-upgrade-all` upgrades the installed packages; r
 
 - *No terminal:* `SPC o e` explains what is missing; `M-x ghostel-download-module` fetches the native module. The Android port opens Eshell instead.
 - *No icons, or boxes instead of icons:* install Symbols Nerd Font Mono and restart; set `kittymacs-icons` to `t` for a terminal Emacs that already uses a Nerd Font.
-- *No spell checking:* install `hunspell` or `aspell` with a dictionary; on Windows, MSYS2's `hunspell` in `C:\msys64`.
+- *No spell checking:* install `hunspell` or `aspell` with a dictionary, on `PATH`.
 - *No Tree-sitter highlighting:* run `M-x kittymacs-treesit-install-grammars` (needs Git and a C compiler); until a grammar loads, its files open in the classic mode, and a grammar you declined is offered again in the next session.
 - *No language server:* `SPC l e` starts Eglot in the current buffer; add the mode to `kittymacs-eglot-auto-start-modes` to start it automatically. The server itself is yours to install.
 - *A PDF opens as a picture, not in pdf-tools:* `epdfinfo` is missing. The Nix module installs it; otherwise `M-x pdf-tools-install` builds it (it needs poppler and a C compiler).

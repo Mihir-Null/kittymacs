@@ -23,13 +23,6 @@
 ;; The Eshell fallback below: `kittymacs-shell' is loaded before this module
 ;; by `init.el', but this module does not require it.
 (declare-function kittymacs-eshell-project "kittymacs-shell" ())
-;; Ghostel's options, which `kittymacs-terminal-msys2' binds with `let'.  The
-;; first terminal of a session may be that one, before ghostel has loaded and
-;; declared them; without these a `let' would bind them lexically, and ghostel
-;; would never see the MSYS2 shell.
-(defvar ghostel-shell)
-(defvar ghostel-environment)
-(defvar ghostel-buffer-name)
 
 (defgroup kittymacs-terminal nil
   "The integrated terminal."
@@ -181,26 +174,8 @@ is not used at all, Eshell answers this key instead."
     (condition-case error (ghostel-project arg)
       (void-function (kittymacs-terminal--without-module error)))))
 
-(defun kittymacs-terminal-msys2 (&optional arg)
-  "Open an MSYS2 UCRT64 login shell in a terminal.
-With prefix ARG, create another one instead of reusing the existing buffer."
-  (interactive "P")
-  (unless (eq system-type 'windows-nt)
-    (user-error "The MSYS2 terminal is for native Windows Emacs"))
-  (let ((bash (expand-file-name "usr/bin/bash.exe" kittymacs-msys2-root)))
-    (unless (file-executable-p bash)
-      (user-error "MSYS2 Bash not found at %s; set `kittymacs-msys2-root' in private.el"
-                  bash))
-    (let ((ghostel-shell (list bash "--login" "-i"))
-          (ghostel-environment (append '("MSYSTEM=UCRT64" "CHERE_INVOKING=1")
-                                       ghostel-environment))
-          (ghostel-buffer-name "*ghostel: msys2*"))
-      (ghostel arg))))
-
 (keymap-set kittymacs-open-map "e" (cons "terminal" #'kittymacs-terminal-open))
 (keymap-set kittymacs-open-map "p" (cons "project terminal" #'kittymacs-terminal-project))
-(when kittymacs-terminal-ghostel
-  (keymap-set kittymacs-open-map "m" (cons "MSYS2 terminal (Windows)" #'kittymacs-terminal-msys2)))
 (when kittymacs-terminal-ghostel
   (with-eval-after-load 'project
     (add-to-list 'project-switch-commands '(ghostel-project "Terminal" ?t) t))

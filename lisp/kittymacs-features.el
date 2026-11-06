@@ -201,6 +201,13 @@ names what was asked for and cannot be had."
                  (kittymacs-features--applies-p feature))
         (kittymacs-features--warn
          "%s is selected but stays off: it, or a feature it depends on, is excluded" feature)))
+    (pcase-dolist (`(,feature . ,plist) kittymacs-catalogue)
+      (let ((option (plist-get plist :option)))
+        (when (and option (boundp option) (not (memq feature enabled))
+                   (kittymacs-features--applies-p feature))
+          (kittymacs-features--warn
+           "`%s' does nothing while %s is off: add %s to `kittymacs-features', or delete the setting"
+           option feature feature))))
     (setq kittymacs-features--profile profile
           kittymacs-features--enabled enabled)))
 

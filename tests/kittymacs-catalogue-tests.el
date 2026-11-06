@@ -53,7 +53,13 @@
     (pcase-dolist (`(,feature . ,plist) kittymacs-catalogue)
       (let ((module (plist-get plist :module)))
         (should (equal (list feature t)
-                       (list feature (and (assq module declared) t))))
+                       ;; A feature that installs nothing declares nothing.
+                       (list feature (and (if (plist-get plist :packages)
+                                              (assq module declared)
+                                            (file-exists-p
+                                             (expand-file-name (format "lisp/%s.el" module)
+                                                               kittymacs-catalogue-test-root)))
+                                          t))))
         (dolist (package (plist-get plist :packages))
           (should (equal (list feature package t)
                          (list feature package
@@ -66,7 +72,8 @@
     (should (equal (list feature t)
                    (list feature (and (memq (plist-get plist :profile) '(minimal full optional)) t))))
     (should (plist-get plist :group))
-    (should (plist-get plist :packages))
+    ;; A feature may install nothing, but then its own module is what it is.
+    (should (or (plist-get plist :packages) (plist-get plist :module)))
     (should-not (seq-difference (plist-get plist :vc) (plist-get plist :packages)))
     (dolist (property '(:summary :example))
       (let ((text (plist-get plist property)))

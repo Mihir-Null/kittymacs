@@ -254,6 +254,25 @@ with a backtick.  `SPC m' is left out: a major mode's map decides what follows."
             (push (format "%s:%d: %s" (file-name-nondirectory file) line name) found)))))
     (should-not (reverse found))))
 
+(defun kittymacs-lint--msys2-allowed-p (file text)
+  "Return non-nil if TEXT, a line of FILE, may mention MSYS2.
+Its chapter, module and catalogue entry, and elsewhere only by the feature's name."
+  (let ((name (file-name-nondirectory file)))
+    (or (member name '("37-msys2.org" "kittymacs-msys2.el" "20-catalogue.org" "kittymacs-catalogue.el"))
+        (string-prefix-p "- **MSYS2 stays only as a fallback" text)
+        (and (not (member name '("30-platform.org" "kittymacs-platform.el"
+                                 "34-terminal.org" "kittymacs-terminal.el"
+                                 "74-languages.org" "kittymacs-treesit.el")))
+             (string-match-p "msys2-fallback\\|kittymacs-msys2" text)))))
+
+(ert-deftest kittymacs-lint-msys2-stays-in-its-module ()
+  (let (found)
+    (dolist (file (append (kittymacs-lint--pages) (kittymacs-lint--shipped-files)))
+      (pcase-dolist (`(,line . ,text) (kittymacs-lint--lines-matching "[Mm][Ss][Yy][Ss]" file))
+        (unless (kittymacs-lint--msys2-allowed-p file text)
+          (push (format "%s:%d" (file-name-nondirectory file) line) found))))
+    (should-not (reverse found))))
+
 ;;; Host names
 
 (defconst kittymacs-lint-host-name-regexp

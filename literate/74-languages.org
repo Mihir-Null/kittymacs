@@ -10,7 +10,7 @@
 - Tree-sitter major modes wherever Emacs has one and its grammar loads, the classic modes everywhere else, and Eglot on demand under =SPC l=.
 - Tree-sitter, Eglot, Flymake and xref are Emacs facilities; grammars, compilers and language-server executables are separate dependencies, which this chapter never assumes.
   + Building a grammar waits for your answer to Emacs's question, and starting a language server for =SPC l e=; startup only configures and checks.
-- Leans on [[id:afa6b7fd-742a-4c15-86a6-32e3e8027b0e][the platform chapter]] for =kittymacs-msys2-root=; [[id:e5942eb0-4389-447d-9317-d9178adcaaae][the leader]] defines the =SPC l= group; [[id:a1607a41-b741-428a-9de3-c16e7c8d3ecc][the editing chapter]] turns the parse tree into Meow things.
+- [[id:e5942eb0-4389-447d-9317-d9178adcaaae][The leader]] defines the =SPC l= group; [[id:a1607a41-b741-428a-9de3-c16e7c8d3ecc][the editing chapter]] turns the parse tree into Meow things.
 - Read [[id:97c04bd3-1404-4b0a-8018-20d77bc671bc][the programming chapter]] first: it is what every programming buffer gets regardless of language.
 
 * Tree-sitter grammars
@@ -106,23 +106,13 @@
 - Each recipe names an exact commit, like Emacs's own, so a grammar is rebuilt from the same source on every machine.
   + A recipe that followed the repository's head could change the parse tree under the mode's queries, or emit a parser ABI this Emacs cannot load.
 - The recipes identify source only: nothing is downloaded or compiled at startup.
-- Each entry has the shape of =treesit-language-source-alist=: =(LANGUAGE REPOSITORY [KEYWORD VALUE]…)=, with =:commit= and, on Windows, =:cc=.
+- Each entry has the shape of =treesit-language-source-alist=: =(LANGUAGE REPOSITORY [KEYWORD VALUE]…)=, with =:commit=.
 - They are written into Emacs's own =treesit-language-source-alist=, replacing any entry for the same language, so Emacs's installer and its prompt use them.
 
 #+begin_src emacs-lisp
-(defun kittymacs-treesit--nix-source ()
-  "Return the pinned Nix recipe, with a local Windows compiler when present."
-  (let ((compiler
-         (when (and (eq system-type 'windows-nt)
-                    (boundp 'kittymacs-msys2-root))
-           (file-name-concat kittymacs-msys2-root "ucrt64" "bin" "gcc.exe"))))
-    (append
-     '(nix "https://github.com/nix-community/tree-sitter-nix"
-           :commit "ea1d87f7996be1329ef6555dcacfa63a69bd55c6")
-     (when (and compiler (file-executable-p compiler))
-       (list :cc compiler)))))
 (defcustom kittymacs-treesit-language-source-alist
-  `(,(kittymacs-treesit--nix-source))
+  '((nix "https://github.com/nix-community/tree-sitter-nix"
+         :commit "ea1d87f7996be1329ef6555dcacfa63a69bd55c6"))
   "Pinned grammar recipes for Tree-sitter modes that Emacs does not ship.
 
 Each entry has the shape accepted by `treesit-language-source-alist':
@@ -137,14 +127,13 @@ commit."
           (cdr source))))
 #+end_src
 
-*** Building the Nix grammar on Windows :windows:
+*** Grammars on Windows :windows:
 :PROPERTIES:
 :ID: 829db0d6-d4e5-4346-9114-1205a00cac3c
 :END:
 
-- On Windows the Nix recipe names MSYS2's UCRT64 GCC by absolute path (=ucrt64/bin/gcc.exe= under =kittymacs-msys2-root=), when that file is executable.
-- A per-recipe compiler choice: it does not change =PATH= or =exec-path= for Emacs or its child processes.
-- Other platforms, and Windows without that GCC, keep Emacs's normal compiler discovery, as do the recipes Emacs ships.
+- No recipe names a compiler, so Windows uses Emacs's normal discovery, which looks for =cc=, =gcc= and =c99= on =exec-path=.
+- Windows without a C compiler keeps working: a build that fails hands each file to its classic mode ([[*A missing grammar leaves the classic mode in charge]]).
 
 ** Registering a mode from a package
 
@@ -495,7 +484,7 @@ until the language server for a mode is deliberately installed on each machine."
 - =just test= includes the offline Tree-sitter tests, [[file:../tests/kittymacs-treesit-tests.el][tests/kittymacs-treesit-tests.el]], which check:
   + the grammar directory defaults under the cache, and a directory chosen after load is searched before every probe and install;
   + every Tree-sitter mode is enabled, and a missing grammar is offered;
-  + the Nix recipe is pinned to a commit, and on Windows uses MSYS2's GCC without touching =PATH=;
+  + the Nix recipe is pinned to a commit, and names no compiler on any system;
   + a registered package mode is remapped, offers its grammar, and registers once however often it is called;
   + =.md= files go to =markdown-ts-mode-maybe=, and =markdown-mode= is remapped to =markdown-ts-mode=;
   + a Tree-sitter mode without a parser hands the file to its classic mode, or to =fundamental-mode= (=text-mode= for Markdown), and is left out for the session, but not for an oversized file;

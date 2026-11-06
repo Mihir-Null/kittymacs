@@ -13,7 +13,7 @@
 - Leans on [[id:40302e33-d2b2-4c0b-9bc3-1f9e121307e1][startup]]: =init.el= loads =private.el= right after this module, then calls =kittymacs-platform-apply=.
 - Must not declare a package: [[file:../tests/kittymacs-platform-tests.el][the platform tests]] load it with none, and run every operating system's branch on any machine by binding =system-type=.
   + Nor does it force a font: inheriting the platform default makes first boot robust; [[id:0286f652-e861-4e61-9ca6-91e225c8939d][the appearance chapter]] chooses fonts.
-- PowerShell stays the ordinary Windows shell; MSYS2 UCRT64 is a separate choice offered by [[id:bd2638bc-735d-4849-bafe-3dab5e8e30b7][the terminal chapter]], not a global environment replacement.
+- PowerShell stays the ordinary Windows shell, and Linux programs come from a backend ([[id:3c9e7a52-1d84-4f6b-a0c3-8e5d27b1f96a][a WSL distribution]]), so Windows needs no Unix layer of its own.
 
 * Where your files live
 
@@ -65,25 +65,6 @@ USERPROFILE for user-owned projects and documents."
 (defcustom kittymacs-org-directory
   (expand-file-name "Documents/org/" (kittymacs--user-home-directory))
   "Portable starter Org directory."
-  :type 'directory)
-#+end_src
-
-* MSYS2 on Windows :windows:
-:PROPERTIES:
-:ID: 9b2cc3de-7231-43a0-8223-229329619a3c
-:END:
-
-- MSYS2 is the usual way to get Unix tools, a compiler and a spell checker on Windows.
-- =kittymacs-msys2-root= is a /path/, not a policy:
-  + [[*Spell checking][the spell checker]] looks inside it;
-  + [[id:bd2638bc-735d-4849-bafe-3dab5e8e30b7][the terminal chapter]] offers its shell on =SPC o m=;
-  + the ordinary Windows shell is unchanged.
-- Default =C:/msys64/=; if MSYS2 is elsewhere, set =MSYS2_ROOT= in the environment or the option in =private.el=.
-
-#+begin_src emacs-lisp
-(defcustom kittymacs-msys2-root
-  (file-name-as-directory (or (getenv "MSYS2_ROOT") "C:/msys64/"))
-  "Root directory of the MSYS2 installation on Windows."
   :type 'directory)
 #+end_src
 
@@ -159,7 +140,7 @@ denies access and every lookup below quietly returns nil."
   + =/system/bin/sh=, always present, is a real fallback, not a hopeful one.
 - =shell-file-name= and =explicit-shell-file-name= are user options, set with =setopt=; =shell-command-switch=, the flag that says "run this command", is a plain variable.
 - On Windows it borrows Unix tools, last on =exec-path=: Magit's hunk refinement, Ediff and diff-hl call =diff=, =diff3= and =patch= by name, and Windows has none.
-  + They come from Git for Windows (=Git/usr/bin=, or beside =git= itself), else from MSYS2's =usr/bin=.
+  + They come from Git for Windows (=Git/usr/bin=, or beside =git= itself).
   + As they go last, every native program still wins; =PATH= is left alone, so subprocesses see no change.
 - It hands over to [[*macOS]] and [[*Android]].
 
@@ -182,9 +163,8 @@ denies access and every lookup below quietly returns nil."
            "-c"))))
 
 (defun kittymacs--windows-unix-tools ()
-  "Return the directory holding Git for Windows' or MSYS2's Unix tools, or nil.
-Git for Windows ships `diff', `diff3' and `patch' beside its own `git';
-MSYS2 keeps them under `usr/bin'."
+  "Return the directory holding Git for Windows' Unix tools, or nil.
+Git for Windows ships `diff', `diff3' and `patch' beside its own `git'."
   (let ((git (file-name-directory (or (executable-find "git") ""))))
     (seq-find (lambda (dir) (file-executable-p (expand-file-name "diff.exe" dir)))
               (delq nil
@@ -192,8 +172,7 @@ MSYS2 keeps them under `usr/bin'."
                      ;; git in Git/cmd or Git/bin: the tools are in Git/usr/bin.
                      ;; git found in Git/usr/bin itself: they are beside it.
                      (and git (expand-file-name "../usr/bin" git))
-                     git
-                     (expand-file-name "usr/bin" kittymacs-msys2-root))))))
+                     git)))))
 
 (defun kittymacs-platform-apply ()
   "Apply the currently configured portable platform defaults."
@@ -494,16 +473,16 @@ current directory."
 
 * Spell checking
 
-- Which spell checker exists is a property of the machine, so the search happens here: =hunspell= or =aspell= on =exec-path=, or MSYS2's =hunspell= on Windows.
+- Which spell checker exists is a property of the machine, so the search happens here: =hunspell= or =aspell= on =exec-path=, on every system.
   + Nothing is enabled when none is installed.
   + A checker without a dictionary reports once and is switched off rather than breaking every buffer.
   + =SPC t s= toggles it.
 - Ispell is configured in one guarded function, when Ispell loads, which sets the environment Hunspell needs before pointing Ispell at it.
   + =setopt ispell-program-name= runs a setter that asks Hunspell to list its dictionaries, and Hunspell needs a default dictionary name from the environment even for that; Windows sets no =LANG=.
-  + So =DICTIONARY= (=en_US= unless already set) and, for MSYS2's Hunspell, =DICPATH= come first.
+  + So =DICTIONARY= (=en_US= unless already set) comes first; a Hunspell with its dictionaries somewhere unusual needs =DICPATH= from you.
   + Guarded because an error here aborts the load of Ispell itself: Emacs restores Ispell's autoload stubs, and every later call reloads the library, runs the checker and fails again.
 - The hooks that turn Flyspell on are added unconditionally; each asks for a checker only when a buffer opens.
-  + Deciding once, at load time, would be too early: the module loads before =private.el=, so a =kittymacs-msys2-root= set there, or a checker that =exec-path-from-shell= later finds on the login shell's =PATH=, would never turn spelling on.
+  + Deciding once, at load time, would be too early: the module loads before =private.el=, so an =exec-path= set there, or a checker that =exec-path-from-shell= later finds on the login shell's =PATH=, would never turn spelling on.
   + The question costs two lookups on =exec-path= per buffer, nothing next to what Flyspell itself does.
   + Text modes get =flyspell-mode=; programming modes =flyspell-prog-mode=, which checks only comments and strings.
 - Only Emacs's own Flyspell is used here; the two front ends that make corrections pleasant (=C-;= and =SPC s p=) are declared in [[id:42b02bb4-ea68-4981-b427-35705bf162f4][the completion chapter]].
@@ -512,9 +491,7 @@ current directory."
 (defun kittymacs-spell-checker ()
   "Return the spell-checker program to use, or nil."
   (or (executable-find "hunspell")
-      (executable-find "aspell")
-      (let ((msys2 (expand-file-name "ucrt64/bin/hunspell.exe" kittymacs-msys2-root)))
-        (and (eq system-type 'windows-nt) (file-executable-p msys2) msys2))))
+      (executable-find "aspell")))
 
 ;; A checker that exists but has no dictionary must never break anything:
 ;; say so once and carry on.
@@ -539,8 +516,6 @@ library, runs the checker and fails again."
         (progn
           (when (string-match-p "hunspell" program)
             (unless (getenv "DICTIONARY") (setenv "DICTIONARY" "en_US"))
-            (when (string-prefix-p (expand-file-name kittymacs-msys2-root) program)
-              (setenv "DICPATH" (expand-file-name "ucrt64/share/hunspell" kittymacs-msys2-root)))
             (setopt ispell-dictionary "en_US"))
           (setopt ispell-program-name program))
       (error (kittymacs--spell-off err)))))
