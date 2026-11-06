@@ -1663,6 +1663,11 @@ in
   + it reads the selection with onboarding's reader, which [[file:22-onboarding.org][never runs a setting]], using the flake's Emacs; =tests/kittymacs-onboard-tests.el= fails if a function named here goes away;
   + with no checkout it lists every tool, and a missing tool is a note, because every chapter degrades quietly without one;
   + it exits 1 only for what stops a start: no Emacs, an old one, or no checkout.
+- =doctor= and [[file:36-remote.org][=SPC o B=]] keep separate lists, because they answer different questions.
+  + =doctor= asks what this machine needs for its selection, with no Emacs to read an option from, so it takes =commands=, each with a feature. That brings =gpg= and =hunspell=, which a backend never runs.
+  + =SPC o B= asks what a project can use on another machine, so it takes =kittymacs-backend-tools=, which a person can change. That brings =inotifywait=, =nix= and =claude-agent-acp=, which no local feature in this table asks for.
+  + So the =doctor= reading the option's default would lose the features and report the wrong tools.
+  + =tests/kittymacs-startup-tests.el= holds what they share: each command =backendPrograms= picks from the table is in the option, and only those three named tools are in the option and not the table.
 
 #+begin_src nix
 # Generated from literate/90-nix.org; edit the Org source, then tangle.
