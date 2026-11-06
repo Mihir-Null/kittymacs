@@ -85,6 +85,8 @@ Git for Windows ships `diff', `diff3' and `patch' beside its own `git'."
                      (and git (expand-file-name "../usr/bin" git))
                      git)))))
 
+(defvar w32-pipe-buffer-size)
+
 (defun kittymacs-platform-apply ()
   "Apply the currently configured portable platform defaults."
   (when-let* ((shell (kittymacs--platform-shell)))
@@ -92,6 +94,7 @@ Git for Windows ships `diff', `diff3' and `patch' beside its own `git'."
             explicit-shell-file-name (car shell))
     (setq shell-command-switch (cdr shell)))
   (when (eq system-type 'windows-nt)
+    (setq w32-pipe-buffer-size (* 1024 1024))
     (when-let* ((tools (kittymacs--windows-unix-tools)))
       (add-to-list 'exec-path tools t)))
   (when (eq system-type 'darwin)
