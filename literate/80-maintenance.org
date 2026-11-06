@@ -131,6 +131,7 @@
   + Lisp lines and cons cells, in total and per module, because joining lines lowers the first and not the second;
   + declared packages, in any gate, =:vc= included;
   + lines of prose across every =literate/*.org=, =ARCHITECTURE.md= and the README, so moving text between pages changes nothing;
+  + =org-lines=, those chapters alone, because a target for the literate source compares with them and not with the two Markdown pages;
   + =default-loaded-lines= and =default-loaded-conses=, the files a start on the default profile loads, and =default-packages=, the packages that profile installs.
 - The total =elisp-lines= counts every file under =lisp/=, so onboarding looks like a cost of starting, and only the =default-= counts say what a start pays.
   + They follow =require= from =init.el=, past the gates that are on, without starting Emacs.
