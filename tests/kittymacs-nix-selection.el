@@ -39,6 +39,7 @@
 (declare-function kittymacs-feature-p "kittymacs-features" (feature))
 (declare-function kittymacs-features-enabled "kittymacs-features" ())
 (declare-function kittymacs-features-profile "kittymacs-features" ())
+(declare-function kittymacs-features--compute "kittymacs-features" (profile selected excluded))
 
 (defun kittymacs-nix--report ()
   "Return the report as an alist of hosts."
@@ -48,6 +49,16 @@
                        :null-object nil :false-object :false)))
 
 ;;; One start
+
+(defun kittymacs-nix--answer (system)
+  "Return the features on for SYSTEM, the report's name for a host's system.
+A start here runs on this machine.  Another system's answer comes from the same
+four steps with `system-type' bound, since a feature may not be for that system."
+  (if (equal system "gnu/linux")
+      (kittymacs-features-enabled)
+    (let ((system-type (intern system)))
+      (kittymacs-features--compute (kittymacs-features-profile)
+                                   kittymacs-features kittymacs-features-excluded))))
 
 (defvar kittymacs-nix-warnings nil
   "Warnings shown while this start ran.")
@@ -87,11 +98,11 @@ so the warning for such a machine is the configuration working, and no finding."
               failures)))
     failures))
 
-(defun kittymacs-nix--check-enabled (said enabled)
-  "Return what is wrong with Nix's answer ENABLED, for the options SAID.
+(defun kittymacs-nix--check-enabled (said enabled system)
+  "Return what is wrong with Nix's answer ENABLED on SYSTEM, for the options SAID.
 With no profile, Nix answers from `full', so it need only cover what is on."
   (let* ((nix (mapcar #'intern enabled))
-         (elisp (kittymacs-features-enabled))
+         (elisp (kittymacs-nix--answer system))
          (too-few (seq-difference elisp nix))
          (too-many (seq-difference nix elisp)))
     (when enabled
@@ -99,16 +110,17 @@ With no profile, Nix answers from `full', so it need only cover what is on."
               (and too-many (alist-get 'profile said)
                    (list (format "in Nix's answer, and off here: %S" too-many)))))))
 
-(defun kittymacs-nix--check-built (name built)
-  "Return what is wrong with the packages Nix BUILT for the host NAME.
-Only `minimal' builds the features that are on, and it adds Avy of its own."
-  (when (eq name 'minimal)
+(defun kittymacs-nix--check-built (name built system)
+  "Return what is wrong with the packages Nix BUILT for the host NAME on SYSTEM.
+Only the `minimal' hosts build the features that are on, and they add Avy of
+their own."
+  (when (memq name '(minimal nixosMinimal darwinMinimal))
     (let* ((names (mapcar #'intern built))
            (wanted (seq-mapcat
                     (lambda (feature)
                       (let ((entry (alist-get feature kittymacs-catalogue)))
                         (seq-difference (plist-get entry :packages) (plist-get entry :vc))))
-                    (kittymacs-features-enabled)))
+                    (kittymacs-nix--answer system)))
            (missing (seq-difference (seq-difference wanted names) kittymacs-nix-archive-only))
            (extra (seq-difference names wanted)))
       (append (and missing (list (format "not built: %S" missing)))
@@ -118,7 +130,7 @@ Only `minimal' builds the features that are on, and it adds Avy of its own."
 
 (defun kittymacs-nix--check-settings (name)
   "Return what is wrong with the settings the host NAME asked for."
-  (when (eq name 'full)
+  (when (memq name '(full nixosFull darwinFull))
     (seq-keep (pcase-lambda (`(,variable . ,expected))
                 (unless (equal (and (boundp variable) (symbol-value variable)) expected)
                   (format "%s is %S, not %S" variable
@@ -167,8 +179,10 @@ Only `minimal' builds the features that are on, and it adds Avy of its own."
           (setq failures
                 (append (kittymacs-nix--check-said (alist-get 'said entry))
                         (kittymacs-nix--check-enabled (alist-get 'said entry)
-                                                      (alist-get 'enabled entry))
-                        (kittymacs-nix--check-built name (alist-get 'built entry))
+                                                      (alist-get 'enabled entry)
+                                                      (alist-get 'system entry))
+                        (kittymacs-nix--check-built name (alist-get 'built entry)
+                                                    (alist-get 'system entry))
                         (kittymacs-nix--check-settings name)
                         (kittymacs-nix--selection-warnings))))
       (error (push (format "Startup error: %S" err) failures)))
@@ -195,12 +209,17 @@ Only `minimal' builds the features that are on, and it adds Avy of its own."
 (defun kittymacs-nix--check-report (report)
   "Return what is wrong with REPORT itself, before any start."
   (append
-   (and (alist-get 'files (alist-get 'plain report))
-        (list (format "plain writes files: %S" (alist-get 'files (alist-get 'plain report)))))
-   (and (alist-get 'enabled (alist-get 'plain report))
-        (list "plain chose features"))
-   (and (null (alist-get 'plain report))
-        (list "the report has no plain host"))
+   (seq-mapcat
+    (lambda (name)
+      (let ((host (alist-get name report)))
+        (append
+         (and (alist-get 'files host)
+              (list (format "%s writes files: %S" name (alist-get 'files host))))
+         (and (alist-get 'enabled host)
+              (list (format "%s chose features" name)))
+         (and (null host)
+              (list (format "the report has no %s host" name))))))
+    '(plain nixosPlain darwinPlain))
    (and (not (equal (alist-get 'built (alist-get 'extraOnly report)) '("vundo")))
         (list (format "extraOnly built %S" (alist-get 'built (alist-get 'extraOnly report)))))))
 

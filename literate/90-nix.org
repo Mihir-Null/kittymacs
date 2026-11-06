@@ -19,13 +19,25 @@
 | Output                       | What it is                                                                                         |
 |------------------------------+----------------------------------------------------------------------------------------------------|
 | =darwinModules.default=      | nix-darwin: =programs.kittymacs.enable= installs Emacs, the tools and the fonts system-wide         |
+| =nixosModules.default=       | NixOS: the same module, from [[*The system modules][one file]]                                      |
 | =homeManagerModules.default= | Home Manager: clones a checkout, links it to =~/.config/emacs=; can install the tools and run a daemon |
+| =overlays.default=           | =pkgs.kittymacs=: the packages below, built from the host's nixpkgs                                 |
 | =packages.<system>.default=  | the bare Emacs (=pkgs.emacs=)                                                                      |
 | =packages.<system>.with-packages= | that Emacs with [[id:3c7f2a90-8e15-4b6d-a2c4-5d9e0f1b7a68][the Emacs packages]] built in: what the modules install with =packagesFromNix= |
 | =packages.<system>.tools=    | one environment with every tool, for =nix profile install=                                         |
+| =packages.<system>.minimal=  | Emacs, its Emacs packages, tools and fonts for the =minimal= profile, in one environment           |
+| =packages.<system>.full=     | the same for the =full= profile                                                                    |
+| =packages.<system>.backend=  | [[*The tools][the headless tools]] a machine needs when Emacs runs elsewhere                       |
+| =apps.<system>.default=      | [[*The apps][Emacs on a checkout, with the tools on its =PATH=]]                                    |
+| =apps.<system>.onboard=      | the onboarding screens, for a checkout                                                             |
+| =apps.<system>.doctor=       | what this machine has, against what its selection needs                                            |
+| =checks.<system>=            | [[*The flake's checks][claims that fail at evaluation]]                                             |
+| =formatter.<system>=         | =nixfmt-tree=, for =nix fmt=                                                                       |
+| =templates=                  | [[*The templates][=home-manager=, =nix-darwin=, =nixos= and =wsl-backend=]], for =nix flake init -t= |
 | =devShells.<system>.default= | Emacs, the tools, =just= and the Nix linters, for the recipes                                      |
 
 - Each module is also exported as =kittymacs=, beside =default=, for a host that imports several flakes' modules by name.
+- The configuration itself is in none of these, as =ARCHITECTURE.md= records: =packages.minimal= and =packages.full= still need a checkout to start from.
 
 * The flake
 :PROPERTIES:
@@ -36,6 +48,8 @@
 - Three systems: Apple Silicon, ARM Linux (phones, through nix-on-droid) and x86_64 Linux.
   + nixpkgs-unstable dropped =x86_64-darwin= in 26.11; an Intel Mac points this flake's =nixpkgs= input at the =nixpkgs-26.05-darwin= branch.
 - =forEachSystem= hands every per-system output the package set and [[*The tools][the tool list]], so that list is read in one place.
+- [[*The packages][nix/profiles.nix]] holds the packages, so the overlay builds the same set from the host's nixpkgs.
+- The formatter is =nixfmt-tree=, the walking form of the =nixfmt= that =just lint= runs, because =nix fmt= hands a bare =nixfmt= no files.
 - The Home Manager module is a function of the flake itself, so its clone can default to the revision the host locked ([[*Cloning the checkout on first activation]]).
 - The dev shell adds =just=, =nixfmt=, =deadnix= and =statix= to Emacs and the tools: everything =just all= needs.
 
@@ -68,24 +82,62 @@
         );
     in
     {
-      darwinModules.default = import ./nix/darwin-module.nix;
+      darwinModules.default = import ./nix/system-module.nix {
+        moduleName = "nix-darwin";
+        packageNote = "`pkgs.emacs` is the Cocoa build; `pkgs.emacs-macport` is the Mitsuharu port.";
+      };
       darwinModules.kittymacs = self.darwinModules.default;
+
+      nixosModules.default = import ./nix/system-module.nix {
+        moduleName = "NixOS";
+        packageNote = "`pkgs.emacs-pgtk` speaks Wayland; `pkgs.emacs-nox` has no GUI.";
+      };
+      nixosModules.kittymacs = self.nixosModules.default;
 
       # The module is given the flake itself, so the clone can default to
       # this flake's revision.
       homeManagerModules.default = import ./nix/home-module.nix { inherit self; };
       homeManagerModules.kittymacs = self.homeManagerModules.default;
 
-      packages = forEachSystem (
-        pkgs: tools: {
-          tools = pkgs.buildEnv {
-            name = "kittymacs-tools";
-            paths = tools.programs ++ tools.fonts;
-          };
-          default = tools.emacs;
-          with-packages = import ./nix/packages.nix { inherit (tools) emacs; };
+      overlays.default = final: _: { kittymacs = import ./nix/profiles.nix { pkgs = final; }; };
+
+      packages = forEachSystem (pkgs: _: import ./nix/profiles.nix { inherit pkgs; });
+
+      apps = forEachSystem (pkgs: tools: import ./nix/apps.nix { inherit pkgs tools; });
+
+      checks = forEachSystem (
+        pkgs: tools:
+        import ./nix/checks.nix {
+          inherit nixpkgs pkgs tools;
+          nixosModule = self.nixosModules.default;
+          overlay = self.overlays.default;
         }
       );
+
+      formatter = forEachSystem (pkgs: _: pkgs.nixfmt-tree);
+
+      templates = {
+        home-manager = {
+          path = ./nix/template-home-manager;
+          description = "A Home Manager home with kittymacs, on any Linux";
+          welcomeText = "Edit flake.nix: its first lines name what to change.";
+        };
+        nix-darwin = {
+          path = ./nix/template-nix-darwin;
+          description = "A nix-darwin Mac with kittymacs";
+          welcomeText = "Edit flake.nix: its first lines name what to change.";
+        };
+        nixos = {
+          path = ./nix/template-nixos;
+          description = "A NixOS machine with kittymacs";
+          welcomeText = "Edit flake.nix: its first lines name what to change.";
+        };
+        wsl-backend = {
+          path = ./nix/template-wsl-backend;
+          description = "The Linux side of a Windows setup: the tools, with no Emacs or fonts";
+          welcomeText = "Edit flake.nix: its first lines name what to change.";
+        };
+      };
 
       # Emacs and the tools, plus just and the Nix linters for the recipes.
       devShells = forEachSystem (
@@ -136,6 +188,16 @@
 | =gls= (macOS)          | [[id:878a9e46-62be-4b9f-82f6-589560d2ebc1][Dired]]           | GNU =ls=, directories first           |
 | =trash= (macOS)        | [[id:afa6b7fd-742a-4c15-86a6-32e3e8027b0e][platform]]        | the Trash, with Finder's "Put Back"   |
 
+- Each entry also names the catalogue's feature that needs it, or null for every machine, and the command that shows it is there.
+  + =programs= stays the whole list in its old order, so a host that chose nothing keeps its store paths.
+  + =programsFor= and =fontsFor= filter by a list of features, for =packages.minimal= and =packages.full=: =minimal= would otherwise mean only fewer Emacs packages.
+  + The modules still install =programs=, whatever a host selects, so that no host loses a tool it has.
+  + =commands= is what [[*The apps][the doctor]] checks.
+- =backendPrograms= is what a machine needs when Emacs runs elsewhere and reaches it over a remote connection.
+  + =git=, =rg=, =fd= and =direnv= from the list, because Magit, the project commands and envrc run them on the remote side.
+  + =inotify-tools=, on Linux, because Tramp's file notification watches through =inotifywait=.
+  + Language servers for the languages most projects have: =nil=, =pyright= and =bash-language-server=. A project's own come from its =.envrc=, which is why direnv is here.
+  + No Emacs, no fonts, nothing with a GUI: [[*The flake's checks][a check]] holds that by name, since evaluation cannot read a store path.
 - Fonts: the three [[id:0286f652-e861-4e61-9ca6-91e225c8939d][the appearance chapter]] looks for.
   + Google Sans Code, the editing font, as its Nerd Font build, the family the configuration asks for first, where this nixpkgs has one.
     nixos-26.05 does not, and a host that makes this flake follow its nixpkgs gets the plain =googlesans-code= instead, which the configuration also accepts: its icons come from the icon font either way.
@@ -159,63 +221,104 @@
   emacs ? pkgs.emacs,
 }:
 
-{
-  inherit emacs;
+let
+  inherit (pkgs) lib;
+  tool = feature: command: package: { inherit feature command package; };
+  font = feature: package: { inherit feature package; };
+  isOn = features: entry: entry.feature == null || lib.elem entry.feature features;
+  packagesOf = map (entry: entry.package);
 
-  programs =
+  programTable =
     with pkgs;
     [
-      git # version control chapter (Magit)
-      ripgrep # navigation chapter (consult-ripgrep)
-      fd # navigation chapter (consult-fd)
-      gnupg # startup chapter: GNU ELPA's signed index
-      (hunspell.withDicts (d: [ d.en_US ])) # platform chapter: spelling
-      python3 # Treemacs chapter: directory collapsing and the extended (colouring) git mode
-      zig # terminal chapter: builds ghostel's native module
+      (tool "version-control" "git" git) # version control chapter (Magit)
+      (tool "completion" "rg" ripgrep) # navigation chapter (consult-ripgrep)
+      (tool "completion" "fd" fd) # navigation chapter (consult-fd)
+      (tool null "gpg" gnupg) # startup chapter: GNU ELPA's signed index
+      (tool "spelling" "hunspell" (hunspell.withDicts (d: [ d.en_US ]))) # platform chapter: spelling
+      (tool "file-tree" "python3" python3) # Treemacs chapter: directory collapsing and the extended (colouring) git mode
+      (tool "terminal" "zig" zig) # terminal chapter: builds ghostel's native module
       # reading chapter: pdf-tools' server, linked out of nixpkgs' pdf-tools build
-      (runCommand "epdfinfo" { } ''
-        mkdir -p $out/bin
-        ln -s ${emacsPackages.pdf-tools}/share/emacs/site-lisp/elpa/pdf-tools-*/epdfinfo $out/bin/epdfinfo
-      '')
-      mupdf-headless # reading chapter: pdf-text's extractor (mutool)
-      direnv # shells chapter: envrc, each project's own environment
-      (python3Packages.toPythonApplication python3Packages.jupytext) # notebooks chapter: .ipynb files
-      math-preview # notebooks chapter: LaTeX drawn with MathJax
+      (tool "pdf-reading" "epdfinfo" (
+        runCommand "epdfinfo" { } ''
+          mkdir -p $out/bin
+          ln -s ${emacsPackages.pdf-tools}/share/emacs/site-lisp/elpa/pdf-tools-*/epdfinfo $out/bin/epdfinfo
+        ''
+      ))
+      (tool "pdf-reading" "mutool" mupdf-headless) # reading chapter: pdf-text's extractor
+      (tool "project-environment" "direnv" direnv) # shells chapter: envrc, each project's own environment
+      (tool "notebooks" "jupytext" (python3Packages.toPythonApplication python3Packages.jupytext)) # notebooks chapter: .ipynb files
+      (tool "notebooks" "math-preview" math-preview) # notebooks chapter: LaTeX drawn with MathJax
       # notebooks chapter: prints the path of emacs-zmq's native module, built by nixpkgs
-      (runCommand "kittymacs-zmq-module" { } ''
-        module=$(echo ${(emacsPackagesFor emacs).zmq}/share/emacs/site-lisp/elpa/zmq-*/emacs-zmq.*)
-        mkdir -p $out/bin
-        printf '#!%s\necho %s\n' ${runtimeShell} "$module" > $out/bin/kittymacs-zmq-module
-        chmod +x $out/bin/kittymacs-zmq-module
-      '')
+      (tool "jupyter" "kittymacs-zmq-module" (
+        runCommand "kittymacs-zmq-module" { } ''
+          module=$(echo ${(emacsPackagesFor emacs).zmq}/share/emacs/site-lisp/elpa/zmq-*/emacs-zmq.*)
+          mkdir -p $out/bin
+          printf '#!%s\necho %s\n' ${runtimeShell} "$module" > $out/bin/kittymacs-zmq-module
+          chmod +x $out/bin/kittymacs-zmq-module
+        ''
+      ))
     ]
-    ++ pkgs.lib.optionals pkgs.stdenv.hostPlatform.isDarwin [
-      coreutils-prefixed # Dired chapter: GNU ls as `gls'
-      darwin.trash # platform chapter: Trash with Finder's "Put Back"
+    ++ lib.optionals stdenv.hostPlatform.isDarwin [
+      (tool null "gls" coreutils-prefixed) # Dired chapter: GNU ls as `gls'
+      (tool null "trash" darwin.trash) # platform chapter: Trash with Finder's "Put Back"
     ];
 
   # The editing font, the prose font and the icon font.
-  fonts = with pkgs; [
+  fontTable = with pkgs; [
     # Older nixpkgs (nixos-26.05) has no Nerd Font build of it.
-    (nerd-fonts.googlesanscode or googlesans-code)
-    (stdenvNoCC.mkDerivation {
-      pname = "google-sans-flex";
-      version = "0-unstable-2026-10-27";
-      # Not yet in nixpkgs' google-fonts; replace with
-      # `google-fonts.override { fonts = [ "GoogleSansFlex" ]; }` once it is.
-      src = fetchurl {
-        name = "GoogleSansFlex.ttf";
-        url = "https://raw.githubusercontent.com/google/fonts/ddf386ba1b9fbc6b2c818f1ddcd9148f54ced94b/ofl/googlesansflex/GoogleSansFlex%5BROND%2Copsz%2Cslnt%2Cwdth%2Cwght%5D.ttf";
-        hash = "sha256-qax3B5iFfV6KxZPO1Csi5Ap8CM7Jgxn5Kw7Mwng6d7o=";
-      };
-      dontUnpack = true;
-      installPhase = ''
-        install -Dm444 $src $out/share/fonts/truetype/GoogleSansFlex.ttf
-      '';
-      meta.license = lib.licenses.ofl;
-    })
-    nerd-fonts.symbols-only
+    (font null (nerd-fonts.googlesanscode or googlesans-code))
+    (font null (
+      stdenvNoCC.mkDerivation {
+        pname = "google-sans-flex";
+        version = "0-unstable-2026-10-27";
+        # Not yet in nixpkgs' google-fonts; replace with
+        # `google-fonts.override { fonts = [ "GoogleSansFlex" ]; }` once it is.
+        src = fetchurl {
+          name = "GoogleSansFlex.ttf";
+          url = "https://raw.githubusercontent.com/google/fonts/ddf386ba1b9fbc6b2c818f1ddcd9148f54ced94b/ofl/googlesansflex/GoogleSansFlex%5BROND%2Copsz%2Cslnt%2Cwdth%2Cwght%5D.ttf";
+          hash = "sha256-qax3B5iFfV6KxZPO1Csi5Ap8CM7Jgxn5Kw7Mwng6d7o=";
+        };
+        dontUnpack = true;
+        installPhase = ''
+          install -Dm444 $src $out/share/fonts/truetype/GoogleSansFlex.ttf
+        '';
+        meta.license = lib.licenses.ofl;
+      }
+    ))
+    (font "icons" nerd-fonts.symbols-only)
   ];
+in
+{
+  inherit emacs;
+
+  programs = packagesOf programTable;
+  fonts = packagesOf fontTable;
+  programsFor = features: packagesOf (lib.filter (isOn features) programTable);
+  fontsFor = features: packagesOf (lib.filter (isOn features) fontTable);
+
+  # What the doctor looks for, and the feature that asks for each.
+  commands = map (entry: { inherit (entry) feature command; }) programTable;
+
+  # A machine that Emacs reaches from elsewhere: no Emacs, no fonts, no GUI.
+  backendPrograms =
+    packagesOf (
+      lib.filter (
+        entry:
+        lib.elem entry.command [
+          "git"
+          "rg"
+          "fd"
+          "direnv"
+        ]
+      ) programTable
+    )
+    ++ lib.optional pkgs.stdenv.hostPlatform.isLinux pkgs.inotify-tools
+    ++ [
+      pkgs.nil
+      pkgs.pyright
+      pkgs.bash-language-server
+    ];
 }
 #+end_src
 
@@ -405,7 +508,7 @@ emacs.pkgs.withPackages (
 :END:
 
 - A Nix user picks features with options rather than hand-written Elisp, and the options become [[id:7d20c8f1-46ab-4e93-a15c-9b3f7e60d214][the three Elisp options]].
-- The Home Manager module imports this file, which holds what a system module could also use.
+- All three modules import this file, so each has the same options and the same answers.
 
 | Option                 | Says                                                                            |
 |------------------------+---------------------------------------------------------------------------------|
@@ -414,6 +517,7 @@ emacs.pkgs.withPackages (
 | =settings=             | more options to set, by name: Nix values rendered as Elisp                      |
 | =hostFiles.<name>=     | a host-layer file of your own, as text                                          |
 | =extraPackages=        | a function from the Emacs package set to more packages to build in              |
+| =backend.enable=       | install only [[*The tools][the headless tools]]: Emacs reaches this machine from elsewhere |
 
 #+begin_src nix :tangle no
 programs.kittymacs = {
@@ -425,8 +529,8 @@ programs.kittymacs = {
 #+end_src
 
 - With none of these set, the module writes no file and no package changes, so a host that ignores them keeps what it has, with [[id:2ea4f7b0-6c19-4d85-93f2-c07a1be58d36][the warning]] until it chooses, and a new host starts on the configuration's default.
-- Only the Home Manager module has these options so far: a system module would write to =/etc/kittymacs/conf.d/=, and none does yet.
-  + On a Mac with both modules, set them on the Home Manager side; =packagesFromNix= in the nix-darwin module still builds every feature.
+- The Home Manager module writes to =~/.config/kittymacs/conf.d/=, and [[*The system modules][the system modules]] to =/etc/kittymacs/conf.d/=, which loads first.
+  + On a machine with both, each module's =packagesFromNix= follows that module's own options, and a user's file loads after the system's.
 - =features= is generated from =nix/features.json=, which the builder reads from the catalogue, so each feature's summary is its option's description.
 - A name the catalogue lacks fails at evaluation, with the module system's message naming the option: a typo costs least there.
   + Elisp only warns about such a name, because a checkout can drift from the flake that wrote the file.
@@ -486,7 +590,7 @@ let
 
 #+begin_src nix :padline yes
 in
-{
+rec {
   options = {
     profile = lib.mkOption {
       type = lib.types.nullOr (
@@ -556,6 +660,12 @@ in
         package set.  This works with `packagesFromNix` off too.
       '';
     };
+
+    backend.enable = lib.mkEnableOption ''
+      a machine that Emacs reaches from elsewhere: only the headless tools, with
+      no Emacs, no fonts and nothing with a GUI.  It works without `enable`.
+      `daemon` still runs `package`, and `source` still links a checkout, if set
+    '';
   };
 #+end_src
 
@@ -602,6 +712,66 @@ in
       null
     else
       dropUnmet (lib.filter (name: !(lib.elem name removed) && applies name) wanted);
+
+  # Emacs's name for the system PKGS is for.
+  systemType = pkgs: if pkgs.stdenv.hostPlatform.isDarwin then "darwin" else "gnu/linux";
+
+  # The features of the profile PROFILE, for the flake's packages.
+  profileFeatures =
+    system: profile:
+    enabled system {
+      inherit profile;
+      features = lib.mapAttrs (_: _: { enable = null; }) catalogue;
+    };
+
+  # The Emacs a module installs and runs.
+  emacsFor =
+    system: cfg:
+    if cfg.packagesFromNix then
+      import ./packages.nix {
+        emacs = cfg.package;
+        features = enabled system cfg;
+        inherit (cfg) extraPackages;
+      }
+    else if cfg.extraPackages != null then
+      cfg.package.pkgs.withPackages cfg.extraPackages
+    else
+      cfg.package;
+#+end_src
+
+** Refusing what cannot work
+:PROPERTIES:
+:ID: 5c1e8b47-2f6a-4d93-b0e8-7a94d2c61f05
+:END:
+
+- Each module adds these assertions, so a mistake stops at evaluation and names its option.
+- The first refuses =10-nix= as a =hostFiles= name, because one file would silently replace the other.
+- The second refuses an Emacs older than 31, because =init.el= would refuse it at every start, where the cause is further away.
+  + The check takes the major version, as =init.el= does, so a 31.0.50 from a Git build passes.
+  + A package whose name holds no version passes too: nothing here can tell, and =init.el= still decides.
+- The guard: the assertion reads =package= only when the module installs or runs it (=usesPackage=).
+  + A host with =installPackages = false= and no daemon gets its Emacs elsewhere, so an old default on a stable nixpkgs says nothing about it.
+  + A =backend.enable= host installs no Emacs at all.
+- A host that does install the default on nixos-26.05, which has no Emacs 31, now fails here instead of at its first start.
+  + So its message names the override, and [[*The templates][each template]] shows it: =kittymacs.packages.<system>.default= is Emacs 31 once the =kittymacs= input stops following that nixpkgs.
+
+#+begin_src nix :padline yes
+
+  assertions =
+    { cfg, usesPackage }:
+    let
+      version = lib.getVersion cfg.package;
+    in
+    [
+      {
+        assertion = !(cfg.hostFiles ? "10-nix");
+        message = ''programs.kittymacs.hostFiles."10-nix" is the file the selection options write; choose another name.'';
+      }
+      {
+        assertion = !usesPackage || version == "" || lib.versionAtLeast version "31";
+        message = "kittymacs needs Emacs 31 or later, and programs.kittymacs.package is Emacs ${version}. Set programs.kittymacs.package to a newer one, such as kittymacs.packages.<system>.default from a kittymacs input that does not follow this nixpkgs.";
+      }
+    ];
 #+end_src
 
 ** The generated host file
@@ -613,12 +783,14 @@ in
 - The file is a link into the store, and holds only these settings; the configuration stays a writable checkout.
 - A list renders as a =list= call rather than a quoted list, so an =elisp= value inside one is still evaluated.
 - =builtins.toJSON= writes a string: its escapes are all ones Elisp reads the same way.
+- =hostLayer= is what a module writes there: this file, when it has text, and one file per =hostFiles= entry.
+  + Each =hostFiles= entry starts with the =lexical-binding= cookie, since Emacs warns about a Lisp file without one.
 
 #+begin_src nix :padline yes
 
   # The text of 10-nix.el, or null when the options ask for nothing.
   hostFile =
-    cfg:
+    moduleName: cfg:
     let
       setFeatures =
         option: features:
@@ -635,20 +807,191 @@ in
       lib.concatLines (
         [
           ";;; 10-nix.el --- What programs.kittymacs chose -*- lexical-binding: t; -*-"
-          ";; Generated by the kittymacs Home Manager module; change its options instead."
+          ";; Generated by the kittymacs ${moduleName} module; change its options instead."
         ]
         ++ lines
       );
+
+  # Each host-layer file MODULENAME writes, by file name, as its text.
+  hostLayer =
+    moduleName: cfg:
+    let
+      generated = hostFile moduleName cfg;
+    in
+    lib.optionalAttrs (generated != null) { "10-nix.el" = generated; }
+    // lib.mapAttrs' (
+      name: text:
+      lib.nameValuePair "${name}.el" ''
+        ;;; -*- lexical-binding: t; -*-
+        ${text}
+      ''
+    ) cfg.hostFiles;
+}
+#+end_src
+
+* The packages
+:PROPERTIES:
+:header-args:nix: :tangle ../nix/profiles.nix :eval never :comments no :padline no :mkdirp yes
+:END:
+
+- What =packages.<system>= holds, as a function of the package set, so =overlays.default= gives a host the same set built from its own nixpkgs.
+- =minimal= and =full= come from the catalogue: =profileFeatures= reads =nix/features.json= and takes [[id:b7e4d1a6-20c9-4f3e-8a57-c61f09d3e248][the same four steps]] as a host's options, so no list here names a feature.
+- Each is one environment: Emacs with that profile's packages built in, with its tools and fonts.
+  + So installing one compiles the Emacs packages on the machine ([[id:3c7f2a90-8e15-4b6d-a2c4-5d9e0f1b7a68][why no cache has them]]), as =with-packages= always has.
+  + =default= and =tools= stay the way to get Emacs and the tools with nothing compiled, and the configuration then installs its packages from the archives.
+- =backend= is [[*The tools][the headless tools]] alone.
+
+#+begin_src nix
+# Generated from literate/90-nix.org; edit the Org source, then tangle.
+{ pkgs }:
+
+let
+  tools = import ./tools.nix { inherit pkgs; };
+  selection = import ./selection.nix { inherit (pkgs) lib; };
+
+  profile =
+    name:
+    let
+      features = selection.profileFeatures (selection.systemType pkgs) name;
+    in
+    pkgs.buildEnv {
+      name = "kittymacs-${name}";
+      paths = [
+        (import ./packages.nix {
+          inherit (tools) emacs;
+          inherit features;
+        })
+      ]
+      ++ tools.programsFor features
+      ++ tools.fontsFor features;
+    };
+in
+{
+  default = tools.emacs;
+  tools = pkgs.buildEnv {
+    name = "kittymacs-tools";
+    paths = tools.programs ++ tools.fonts;
+  };
+  with-packages = import ./packages.nix { inherit (tools) emacs; };
+  minimal = profile "minimal";
+  full = profile "full";
+  backend = pkgs.buildEnv {
+    name = "kittymacs-backend";
+    paths = tools.backendPrograms;
+  };
+}
+#+end_src
+
+* The system modules
+:PROPERTIES:
+:header-args:nix: :tangle ../nix/system-module.nix :eval never :comments no :padline no :mkdirp yes
+:END:
+
+- nix-darwin and NixOS install into a system the same way, with the same four options, so one file serves both.
+  + Only the words differ: =flake.nix= applies the function with the module's name and a note on its Emacs builds.
+- It has every option in [[id:b7e4d1a6-20c9-4f3e-8a57-c61f09d3e248][Choosing features]], and writes to =/etc/kittymacs/conf.d/=, which =kittymacs-host-directories= already reads.
+- With nothing new set, a host gets the system packages it always did: the file writes nothing and installs the same list in the same order.
+- Neither system module clones anything: it has no user to clone for. The README's =git clone= or [[*Home Manager][the Home Manager module]] does that.
+
+#+begin_src nix
+# Generated from literate/90-nix.org; edit the Org source, then tangle.
+{ moduleName, packageNote }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
+
+let
+  cfg = config.programs.kittymacs;
+  selection = import ./selection.nix { inherit lib; };
+  tools = import ./tools.nix {
+    inherit pkgs;
+    emacs = cfg.package;
+  };
+  emacs = selection.emacsFor (selection.systemType pkgs) cfg;
+in
+{
+  options.programs.kittymacs = selection.options // {
+    enable = lib.mkEnableOption "kittymacs: Emacs with the tools its configuration looks for";
+
+    package = lib.mkOption {
+      type = lib.types.package;
+      default = pkgs.emacs;
+      defaultText = lib.literalExpression "pkgs.emacs";
+      description = ''
+        The Emacs to install, and to run when `daemon` is on.  kittymacs
+        needs 31.1 or later.  ${packageNote}
+      '';
+    };
+
+    packagesFromNix = lib.mkOption {
+      type = lib.types.bool;
+      default = false;
+      description = ''
+        Build the Emacs packages the configuration declares into `package`
+        with Nix, pinned by the flake's lock, so startup installs nothing
+        from the network.  The few nixpkgs lacks still install into the
+        checkout's `var/elpa`.  No binary cache carries them, so each
+        flake update compiles them all on the machine.  Off, every package
+        comes from the archives.
+      '';
+    };
+
+    daemon = lib.mkOption {
+      type = lib.types.bool;
+      default = false;
+      description = ''
+        Start the Emacs server at login, so `emacsclient` opens files in
+        frames of one running Emacs.  This turns on ${moduleName}'s
+        `services.emacs` with `package`.  Turn on this option or the
+        home-manager module's, not both.
+      '';
+    };
+
+    suggestions = {
+      enable = lib.mkEnableOption ''
+        Copilot's language server, for the suggestions chapter's ghost text
+        and next edits.  nixpkgs marks it unfree: allow it, for example with
+        `nixpkgs.config.allowUnfreePredicate`.  Installing the server turns
+        nothing on in Emacs; `SPC t a` or `kittymacs-suggestions` does
+      '';
+      package = lib.mkPackageOption pkgs "copilot-language-server" { };
+    };
+  };
+
+  config = lib.mkIf (cfg.enable || cfg.backend.enable) {
+    assertions = selection.assertions {
+      inherit cfg;
+      usesPackage = !cfg.backend.enable || cfg.daemon;
+    };
+
+    environment.systemPackages =
+      if cfg.backend.enable then
+        tools.backendPrograms
+      else
+        [ emacs ] ++ tools.programs ++ lib.optional cfg.suggestions.enable cfg.suggestions.package;
+    fonts.packages = lib.optionals (!cfg.backend.enable) tools.fonts;
+
+    environment.etc = lib.mapAttrs' (
+      file: text: lib.nameValuePair "kittymacs/conf.d/${file}" { inherit text; }
+    ) (selection.hostLayer moduleName cfg);
+
+    services.emacs = lib.mkIf cfg.daemon {
+      enable = true;
+      package = emacs;
+    };
+  };
 }
 #+end_src
 
 * nix-darwin :macos:
 :PROPERTIES:
 :ID: fff6b1f2-3651-474b-8ecf-dcad207ead9d
-:header-args:nix: :tangle ../nix/darwin-module.nix :eval never :comments no :padline no :mkdirp yes
 :END:
 
-- Add the flake as an input and import the module:
+- Add the flake as an input and import the module, or start from =nix flake init -t github:Mihir-Null/kittymacs#nix-darwin=:
 
 #+begin_src nix :tangle no
 {
@@ -675,92 +1018,18 @@ git clone https://github.com/Mihir-Null/kittymacs.git ~/.config/emacs
 - Emacs reads =~/.config/emacs= only when =~/.emacs.d= does not exist, empty or not: move an old =~/.emacs.d= aside first.
 - Options under =programs.kittymacs=:
   + =package= :: the Emacs to install; default =pkgs.emacs=, the Cocoa build; =pkgs.emacs-macport= is the Mitsuharu port. kittymacs needs 31.1 or later.
-  + =packagesFromNix= :: off by default: the configuration installs its packages from the archives; on, =package= is installed with the Emacs packages built in, compiled on the machine ([[id:3c7f2a90-8e15-4b6d-a2c4-5d9e0f1b7a68][why it is off]]).
-  + =daemon= :: start the Emacs server at login through launchd, so =emacsclient= opens files as frames of one Emacs. Off by default: the configuration starts a server itself whenever it has a display. The Home Manager module has the same option; turn on one, not both.
+  + =packagesFromNix= :: off by default: the configuration installs its packages from the archives; on, =package= is installed with the Emacs packages built in, compiled on the machine ([[id:3c7f2a90-8e15-4b6d-a2c4-5d9e0f1b7a68][why it is off]]). It builds what [[id:b7e4d1a6-20c9-4f3e-8a57-c61f09d3e248][the selection options]] chose.
+  + =daemon= :: start the Emacs server at login through launchd, so =emacsclient= opens files as frames of one Emacs. Off by default: the configuration starts a server itself whenever it has a display. The Home Manager module has the same option; turn on one, not both. nix-darwin's agent needs =system.primaryUser= set.
   + =suggestions.enable=, =suggestions.package= :: install Copilot's language server; see [[id:9e0c1f52-7a43-4d0e-b1a8-63c2f5d48e17][the opt-in]].
+  + =backend.enable= :: only the headless tools, for a machine Emacs reaches from elsewhere.
+  + The selection options, in [[id:b7e4d1a6-20c9-4f3e-8a57-c61f09d3e248][Choosing features]], write to =/etc/kittymacs/conf.d/=.
 
-#+begin_src nix
-# Generated from literate/90-nix.org; edit the Org source, then tangle.
-{
-  config,
-  lib,
-  pkgs,
-  ...
-}:
+* NixOS
 
-let
-  cfg = config.programs.kittymacs;
-  tools = import ./tools.nix {
-    inherit pkgs;
-    emacs = cfg.package;
-  };
-  emacs = if cfg.packagesFromNix then import ./packages.nix { emacs = cfg.package; } else cfg.package;
-in
-{
-  options.programs.kittymacs = {
-    enable = lib.mkEnableOption "kittymacs: Emacs with the tools its configuration looks for";
-
-    package = lib.mkOption {
-      type = lib.types.package;
-      default = pkgs.emacs;
-      defaultText = lib.literalExpression "pkgs.emacs";
-      description = ''
-        The Emacs to install, and to run when `daemon` is on.  kittymacs
-        needs 31.1 or later.  `pkgs.emacs` is nixpkgs' current release as
-        the Cocoa build; `pkgs.emacs-macport` is the Mitsuharu port.
-      '';
-    };
-
-    packagesFromNix = lib.mkOption {
-      type = lib.types.bool;
-      default = false;
-      description = ''
-        Build the Emacs packages the configuration declares into `package`
-        with Nix, pinned by the flake's lock, so startup installs nothing
-        from the network.  The few nixpkgs lacks still install into the
-        checkout's `var/elpa`.  No binary cache carries them, so each
-        flake update compiles them all on the machine.  Off, every package
-        comes from the archives.
-      '';
-    };
-
-    daemon = lib.mkOption {
-      type = lib.types.bool;
-      default = false;
-      description = ''
-        Start the Emacs server at login, so `emacsclient` opens files in
-        frames of one running Emacs.  This turns on nix-darwin's
-        `services.emacs` with `package`, a launchd agent.  Turn on this
-        option or the home-manager module's, not both.
-      '';
-    };
-
-    suggestions = {
-      enable = lib.mkEnableOption ''
-        Copilot's language server, for the suggestions chapter's ghost text
-        and next edits.  nixpkgs marks it unfree: allow it, for example with
-        `nixpkgs.config.allowUnfreePredicate`.  Installing the server turns
-        nothing on in Emacs; `SPC t a` or `kittymacs-suggestions` does
-      '';
-      package = lib.mkPackageOption pkgs "copilot-language-server" { };
-    };
-  };
-
-  config = lib.mkIf cfg.enable {
-    environment.systemPackages = [
-      emacs
-    ]
-    ++ tools.programs
-    ++ lib.optional cfg.suggestions.enable cfg.suggestions.package;
-    fonts.packages = tools.fonts;
-
-    services.emacs = lib.mkIf cfg.daemon {
-      enable = true;
-      package = emacs;
-    };
-  };
-}
-#+end_src
+- Import =kittymacs.nixosModules.default=, or start from =nix flake init -t github:Mihir-Null/kittymacs#nixos=.
+- The options are those of [[*nix-darwin][nix-darwin]], from the same file, with one difference: =daemon= turns on NixOS's =services.emacs=, a systemd user service.
+- On NixOS with Home Manager, use [[*Home Manager][its module]] for what belongs to the user, as a Mac with both does, and leave =installPackages= off there if this module installs them.
+- =just nix-matrix= evaluates a real NixOS system with this module, and nothing here has run on one.
 
 * Home Manager
 :PROPERTIES:
@@ -770,6 +1039,7 @@ in
 
 - Looks after the checkout itself: clones it on the first switch, links it to =~/.config/emacs=, and keeps its hands off it after that.
 - Works with nix-darwin's Home Manager module, a standalone Home Manager on any Linux, and nix-on-droid.
+- To start from a complete host, =nix flake init -t github:Mihir-Null/kittymacs#home-manager=.
 
 #+begin_src nix :tangle no
 home-manager.users.me = {
@@ -798,24 +1068,12 @@ home-manager.users.me = {
 let
   cfg = config.programs.kittymacs;
   selection = import ./selection.nix { inherit lib; };
-  hostFile = selection.hostFile cfg;
+  hostLayer = selection.hostLayer "Home Manager" cfg;
   tools = import ./tools.nix {
     inherit pkgs;
     emacs = cfg.package;
   };
-  emacs =
-    if cfg.packagesFromNix then
-      import ./packages.nix {
-        emacs = cfg.package;
-        features = selection.enabled (
-          if pkgs.stdenv.hostPlatform.isDarwin then "darwin" else "gnu/linux"
-        ) cfg;
-        inherit (cfg) extraPackages;
-      }
-    else if cfg.extraPackages != null then
-      cfg.package.pkgs.withPackages cfg.extraPackages
-    else
-      cfg.package;
+  emacs = selection.emacsFor (selection.systemType pkgs) cfg;
   git = "${pkgs.git}/bin/git";
   coreutils = "${pkgs.coreutils}/bin";
 in
@@ -880,7 +1138,7 @@ in
 ** What gets installed, and the daemon
 
 - =installPackages= :: Emacs and the tools into the user profile. Turn it off when the nix-darwin module already installs them system-wide.
-- =installFonts= :: follows =installPackages=; turn it off alone for a terminal Emacs, which has no use for the editing, prose and icon fonts. The configuration notices the missing fonts: it renders without icons and falls back to the platform's fonts.
+- =installFonts= :: follows =installPackages=, and is off under =backend.enable=; turn it off alone for a terminal Emacs, which has no use for the editing, prose and icon fonts. The configuration notices the missing fonts: it renders without icons and falls back to the platform's fonts.
 - =package= :: the Emacs to install and, with =daemon=, to run; default =pkgs.emacs=.
 - =packagesFromNix= :: off by default: the configuration installs its packages from the archives into =var/elpa=; on, what is installed and run is =package= with the Emacs packages built in, compiled on the machine, so startup installs almost nothing ([[id:3c7f2a90-8e15-4b6d-a2c4-5d9e0f1b7a68][why it is off]]).
 - =daemon= :: run Emacs as a server for this user through Home Manager's =services.emacs=:
@@ -900,8 +1158,8 @@ in
 
     installFonts = lib.mkOption {
       type = lib.types.bool;
-      default = cfg.installPackages;
-      defaultText = lib.literalExpression "config.programs.kittymacs.installPackages";
+      default = cfg.installPackages && !cfg.backend.enable;
+      defaultText = lib.literalExpression "with config.programs.kittymacs; installPackages && !backend.enable";
       description = ''
         Install the editing, prose and icon fonts, and turn on fontconfig.
         Turn off for a terminal-only Emacs, which has no use for either;
@@ -1016,42 +1274,47 @@ in
 ** The link and the packages
 
 - =home.packages= gets Emacs (with its packages, under =packagesFromNix=) and the tools (with Copilot's server when =suggestions.enable= is on), then the fonts, each behind its option; fontconfig is turned on, as a default, with the fonts.
+  + With =backend.enable= it gets [[*The tools][the headless tools]] instead, which =installPackages= still governs.
 - =xdg.configFile."emacs"= is an out-of-store symlink: =~/.config/emacs= points at the checkout itself, not a copy.
 - The rest of =xdg.configFile= is the host layer ([[id:b7e4d1a6-20c9-4f3e-8a57-c61f09d3e248][Choosing features]]): =10-nix.el= when the options ask for something, and one file per =hostFiles= entry.
-  + Each host file starts with the =lexical-binding= cookie, since Emacs warns about a Lisp file without one.
-  + =10-nix= is refused as a =hostFiles= name, because one file would silently replace the other.
+- Emacs looks for that directory under =XDG_CONFIG_HOME= when the home exports it, and under =~/.config= when it does not, so a home with a custom =xdg.configHome= and no export would write where Emacs does not look.
+  + So such a home gets the host layer in =~/.config= too. Only one of the two is ever read, so nothing loads twice.
+  + The =emacs= link stays under =xdg.configHome= alone: another path could collide with what the home already holds, and the daemon names its directory anyway.
+- [[id:5c1e8b47-2f6a-4d93-b0e8-7a94d2c61f05][The assertions]] read =package= when the home installs it or runs it.
 
 #+begin_src nix :padline yes
-  config = lib.mkIf cfg.enable {
-    assertions = [
-      {
-        assertion = !(cfg.hostFiles ? "10-nix");
-        message = ''programs.kittymacs.hostFiles."10-nix" is the file the selection options write; choose another name.'';
-      }
-    ];
+  config = lib.mkIf (cfg.enable || cfg.backend.enable) {
+    assertions = selection.assertions {
+      inherit cfg;
+      usesPackage = (cfg.installPackages && !cfg.backend.enable) || cfg.daemon;
+    };
 
-    home.packages =
-      (lib.optionals cfg.installPackages (
-        [ emacs ] ++ tools.programs ++ lib.optional cfg.suggestions.enable cfg.suggestions.package
-      ))
-      ++ (lib.optionals cfg.installFonts tools.fonts);
+    home = {
+      packages =
+        (lib.optionals cfg.installPackages (
+          if cfg.backend.enable then
+            tools.backendPrograms
+          else
+            [ emacs ] ++ tools.programs ++ lib.optional cfg.suggestions.enable cfg.suggestions.package
+        ))
+        ++ (lib.optionals cfg.installFonts tools.fonts);
+
+      file = lib.mkIf (config.xdg.configHome != "${config.home.homeDirectory}/.config") (
+        lib.mapAttrs' (
+          file: text: lib.nameValuePair ".config/kittymacs/conf.d/${file}" { inherit text; }
+        ) hostLayer
+      );
+    };
     fonts.fontconfig.enable = lib.mkIf cfg.installFonts (lib.mkDefault true);
 
     xdg.configFile = {
       emacs = lib.mkIf (cfg.source != null) {
         source = config.lib.file.mkOutOfStoreSymlink cfg.source;
       };
-      "kittymacs/conf.d/10-nix.el" = lib.mkIf (hostFile != null) { text = hostFile; };
     }
     // lib.mapAttrs' (
-      name: text:
-      lib.nameValuePair "kittymacs/conf.d/${name}.el" {
-        text = ''
-          ;;; -*- lexical-binding: t; -*-
-          ${text}
-        '';
-      }
-    ) cfg.hostFiles;
+      file: text: lib.nameValuePair "kittymacs/conf.d/${file}" { inherit text; }
+    ) hostLayer;
 #+end_src
 
 ** Cloning the checkout on first activation :decision:
@@ -1138,7 +1401,7 @@ in
         ''
       );
 
-      kittymacsDaemon = lib.mkIf (cfg.daemon && pkgs.stdenv.isLinux) (
+      kittymacsDaemon = lib.mkIf (cfg.daemon && pkgs.stdenv.hostPlatform.isLinux) (
         lib.hm.dag.entryAfter [ "reloadSystemd" ] ''
           systemctl=${config.systemd.user.systemctlPath}
           if [[ ! -v DRY_RUN ]] \
@@ -1159,7 +1422,7 @@ in
   + The other side of that: after a switch that changes =package=, =emacsclient= keeps talking to the /old/ Emacs until you restart the service, and if the old one is too old for this configuration, every frame it opens is a stock Emacs with an init error.
   + So on Linux, once systemd has reloaded, activation compares the running unit's =ExecStart= with =package= and says in one line when they differ: =systemctl --user restart emacs=, when nothing is unsaved.
   + Where no user systemd runs (boot-time activation, nix-on-droid) =systemctl= answers nothing and the check stays quiet.
-  + Its code, =kittymacsDaemon=, sits in [[id:41497b01-c9a9-4aa9-b658-7fda73fce4a8][the clone's]] =home.activation= set: =statix= rejects a third =home.…= key in one set.
+  + Its code, =kittymacsDaemon=, sits in [[id:41497b01-c9a9-4aa9-b658-7fda73fce4a8][the clone's]] =home.activation= set: =statix= rejects a third =home= key in one set, which is also why =home.file= shares a set with =home.packages=.
 - A daemon that fails as it starts is retried three times, ten seconds apart, and then left failed:
   + Home Manager's unit says =Restart=on-failure= with no limit, so a configuration that cannot start (*seen* 2026-10-27: a package that failed to install) was restarted every three seconds, at ten seconds of CPU each, for as long as nobody looked;
   + three tries ride out a slow network at login; after them =systemctl --user status emacs= says =failed= and =journalctl --user -u emacs= has the reason;
@@ -1174,7 +1437,7 @@ in
       extraOptions = lib.optional (cfg.initDirectory != null) "--init-directory=${cfg.initDirectory}";
     };
 
-    systemd.user.services.emacs = lib.mkIf (cfg.daemon && pkgs.stdenv.isLinux) {
+    systemd.user.services.emacs = lib.mkIf (cfg.daemon && pkgs.stdenv.hostPlatform.isLinux) {
       Unit = {
         StartLimitIntervalSec = 120;
         StartLimitBurst = 3;
@@ -1374,27 +1637,524 @@ in
   3. Android 10 and later forbid executing anything in another application's data directory.
 - Pair the Android port with Termux instead ([[id:afa6b7fd-742a-4c15-86a6-32e3e8027b0e][the platform chapter]]); the two paths are alternatives, not layers.
 
-* The selection check
+* The apps :decision:
 :PROPERTIES:
-:ID: 1c9a5e37-d482-4b06-97f1-e3a80c6b42d5
-:header-args:nix: :tangle ../nix/selection-check/flake.nix :eval never :comments no :padline no :mkdirp yes
+:ID: 7fb2c6d1-48e3-4a07-9d15-3e6c80f7a2b4
+:header-args:nix: :tangle ../nix/apps.nix :eval never :comments no :padline no :mkdirp yes
 :END:
 
-- What =just nix-selection= evaluates: real Home Manager hosts, each with its options, and a report of what each one produced.
-- A flake of its own, as the examples are, so Home Manager stays out of this repository's inputs.
-- [[file:../tests/kittymacs-nix-selection.el][The test]] writes each host's files where a real start reads them, starts Emacs once per host, and compares the answers with the report.
-  + =plain= sets no new option, and must write no file.
-  + =full= selects, excludes and settles a cascade of dependencies.
-  + =minimal= also builds its packages, with one extra.
-  + =noProfile= sets features alone, and =extraOnly= builds in one package with =packagesFromNix= off.
-  + =typo= and =reserved= must fail evaluation, each with a message naming the option.
-- The check's starts have no packages in CI, because Elisp settles the selection before any package loads.
+- =nix run= gives a person something to do before they have read anything, and each app needs a checkout, since the configuration is never in the store.
+- So all three find one the same way, and print where they looked if there is none:
+  1. =KITTYMACS_CHECKOUT=, and a name that is not a checkout is an error rather than a reason to look elsewhere;
+  2. this directory;
+  3. =~/.config/emacs=, under =XDG_CONFIG_HOME= when the environment sets it, where [[*Home Manager][the Home Manager module]] links one;
+  4. =~/.emacs.d=.
+- With no checkout, =default= and =onboard= say what to clone and exit 2. They do not clone one themselves: a command run to look at something should not create a directory in a home.
+- =onboard= loads the checkout's own =lisp/kittymacs-onboard.el=, as =just onboard= does.
+  + Under =nix run= the flake's copy is in the store, its neighbours too, and it would refuse to write there.
+  + The checkout's copy finds its =private.el=, its catalogue and its =var/= by itself, so what it offers is what that checkout can install.
+  + The flake's Emacs runs it, because the machine may have none, or an older one.
+- =default= starts the flake's Emacs on the checkout, with the tools on =PATH=, passing its arguments on.
+  + =--init-directory= takes the choice away from whatever else the home holds ([[id:4a4acce6-c592-4c82-a885-d7824a07594f][why]]).
+- =doctor= reports and changes nothing:
+  + the Emacs on the person's =PATH= and whether it is new enough;
+  + the checkout, and the host-layer files;
+  + each tool the selection needs, found on that same =PATH=, so =doctor= alone does not put the tools on it;
+  + it reads the selection with onboarding's reader, which [[file:22-onboarding.org][never runs a setting]], using the flake's Emacs; =tests/kittymacs-onboard-tests.el= fails if a function named here goes away;
+  + with no checkout it lists every tool, and a missing tool is a note, because every chapter degrades quietly without one;
+  + it exits 1 only for what stops a start: no Emacs, an old one, or no checkout.
+
+#+begin_src nix
+# Generated from literate/90-nix.org; edit the Org source, then tangle.
+{ pkgs, tools }:
+
+let
+  inherit (pkgs) lib;
+
+  # Sets `checkout`, or returns 1.  Each app says for itself what that means.
+  findCheckout = ''
+    is_checkout() {
+      [ -f "$1/init.el" ] && [ -f "$1/lisp/kittymacs-catalogue.el" ]
+    }
+    config_emacs="''${XDG_CONFIG_HOME:-$HOME/.config}/emacs"
+    find_checkout() {
+      if [ -n "''${KITTYMACS_CHECKOUT:-}" ]; then
+        if is_checkout "$KITTYMACS_CHECKOUT"; then
+          checkout=$KITTYMACS_CHECKOUT
+          return 0
+        fi
+        echo "kittymacs: KITTYMACS_CHECKOUT is $KITTYMACS_CHECKOUT, which is not a kittymacs checkout." >&2
+        exit 2
+      fi
+      for candidate in "$PWD" "$config_emacs" "$HOME/.emacs.d"; do
+        if is_checkout "$candidate"; then
+          checkout=$candidate
+          return 0
+        fi
+      done
+      return 1
+    }
+  '';
+
+  # What an app that cannot go on without one says.
+  noCheckout = ''
+    no_checkout() {
+      cat >&2 <<EOF
+    kittymacs: $1
+    It needs a writable checkout, because the configuration is never in the Nix store.
+    Looked in: this directory, $config_emacs and $HOME/.emacs.d.
+
+    To make one:  git clone https://github.com/Mihir-Null/kittymacs.git $config_emacs
+    To name one:  KITTYMACS_CHECKOUT=/path/to/kittymacs nix run github:Mihir-Null/kittymacs#$2
+    EOF
+      exit 2
+    }
+  '';
+
+  app =
+    {
+      name,
+      description,
+      runtimeInputs,
+      needsCheckout ? true,
+      text,
+    }:
+    {
+      type = "app";
+      program = lib.getExe (
+        pkgs.writeShellApplication {
+          name = "kittymacs-${name}";
+          inherit runtimeInputs;
+          text = findCheckout + lib.optionalString needsCheckout noCheckout + text;
+        }
+      );
+      meta = { inherit description; };
+    };
+in
+{
+  default = app {
+    name = "start";
+    description = "Start Emacs on a kittymacs checkout, with the tools on its PATH";
+    runtimeInputs = [ tools.emacs ] ++ tools.programs;
+    text = ''
+      find_checkout || no_checkout "there is no checkout to start." default
+      exec emacs --init-directory="$checkout" "$@"
+    '';
+  };
+
+  onboard = app {
+    name = "onboard";
+    description = "Choose what a kittymacs checkout installs, on screens that write its private.el";
+    runtimeInputs = [ tools.emacs ];
+    text = ''
+      find_checkout || no_checkout "there is no checkout to write private.el in." onboard
+      module=$checkout/lisp/kittymacs-onboard.el
+      if [ ! -f "$module" ]; then
+        echo "kittymacs: $checkout is older than onboarding; pull it, then run this again." >&2
+        exit 2
+      fi
+      echo "kittymacs: onboarding $checkout"
+      if [ -t 0 ] && [ -t 1 ] && [ "''${TERM:-dumb}" != dumb ]; then
+        exec emacs -nw -Q -l "$module" -f kittymacs-onboard-main
+      else
+        exec emacs -Q --batch -l "$module" -f kittymacs-onboard-main
+      fi
+    '';
+  };
+
+  doctor = app {
+    name = "doctor";
+    description = "Report this machine's Emacs, checkout, host-layer files and tools";
+    # Empty, so the tools it looks for are the person's and not this app's.
+    runtimeInputs = [ ];
+    needsCheckout = false;
+    text = ''
+      problems=0
+      line() { printf '%-11s %s\n' "$1" "$2"; }
+
+      if version=$(emacs --version 2>/dev/null); then
+        read -r _ _ version <<<"''${version%%$'\n'*}"
+        if [ "''${version%%.*}" -ge 31 ]; then
+          line Emacs "$version, $(command -v emacs)"
+        else
+          line Emacs "$version, $(command -v emacs): too old, kittymacs needs 31.1 or later"
+          problems=1
+        fi
+      else
+        line Emacs "none on PATH; nix run github:Mihir-Null/kittymacs starts one"
+        problems=1
+      fi
+
+      features=
+      selection_known=
+      if find_checkout; then
+        line Checkout "$checkout"
+        if [ -f "$checkout/lisp/kittymacs-onboard.el" ] \
+          && features=$(${tools.emacs}/bin/emacs -Q --batch -l "$checkout/lisp/kittymacs-onboard.el" \
+            --eval '(princ (mapconcat (function symbol-name) (kittymacs-onboard--on (kittymacs-onboard--initial-state)) " "))' 2>/dev/null); then
+          selection_known=yes
+          line Selection "$features"
+        else
+          line Selection "could not be read; every tool is listed"
+        fi
+      else
+        line Checkout "none; nix run github:Mihir-Null/kittymacs#onboard says how to make one"
+        problems=1
+      fi
+
+      for directory in /etc/kittymacs/conf.d "''${XDG_CONFIG_HOME:-$HOME/.config}/kittymacs/conf.d"; do
+        files=
+        for file in "$directory"/*.el; do
+          if [ -e "$file" ]; then
+            files="$files ''${file##*/}"
+          fi
+        done
+        line "Host layer" "$directory:''${files:- nothing}"
+      done
+
+      needs() {
+        [ -z "$selection_known" ] || [ "$1" = - ] || [[ " $features " == *" $1 "* ]]
+      }
+      while read -r feature command; do
+        if needs "$feature"; then
+          if command -v "$command" >/dev/null; then
+            line Tool "$command"
+          else
+            line Tool "$command is missing, and ''${feature/#-/every start} would use it"
+          fi
+        fi
+      done <<'EOF'
+      ${lib.concatMapStringsSep "\n" (
+        entry: "${if entry.feature == null then "-" else entry.feature} ${entry.command}"
+      ) tools.commands}
+      EOF
+
+      exit "$problems"
+    '';
+  };
+}
+#+end_src
+
+* The flake's checks
+:PROPERTIES:
+:header-args:nix: :tangle ../nix/checks.nix :eval never :comments no :padline no :mkdirp yes
+:END:
+
+- CI evaluates and does not build, so each check here does its work at evaluation, and =nix flake check --no-build= fails on a false one.
+  + Each is a trivial derivation behind the claim, which is the form =checks= requires.
+- These are the claims nixpkgs alone can test, so they cost a consumer no input. Home Manager and nix-darwin hosts are in [[id:1c9a5e37-d482-4b06-97f1-e3a80c6b42d5][the selection check]] and [[*The evaluation matrix][the matrix]], which are flakes of their own.
+- =tool-features= :: every feature [[*The tools][the tool list]] names is in the catalogue, so a renamed feature cannot quietly take its tool out of a profile.
+- =profiles-narrow= :: =minimal= has fewer tools than =full=, and =full= leaves out what only an optional feature needs. Without this, keying the tools could stop meaning anything.
+- =backend-headless= :: the backend's tools include direnv and, on Linux, =inotify-tools=, and no name in the list is an Emacs, a font or a GUI toolkit.
+  + By name, because evaluation cannot read a closure. =just nix-backend-closure= reads the real one, and CI does not run it.
+- =system-module= :: on x86_64 Linux, real NixOS evaluations:
+  + a plain host writes nothing to =/etc/kittymacs=;
+  + a selection writes =10-nix.el=;
+  + an old Emacs fails the assertion, naming =package=;
+  + an old Emacs with =backend.enable= passes it.
+  + The two Emacs packages are stand-ins, so the answer is the same on every nixpkgs: the check reads only their version.
+- =overlay= :: =pkgs.kittymacs.backend= under =overlays.default= is the same derivation as =packages.backend=.
+
+#+begin_src nix
+# Generated from literate/90-nix.org; edit the Org source, then tangle.
+{
+  nixpkgs,
+  nixosModule,
+  overlay,
+  pkgs,
+  tools,
+}:
+
+let
+  inherit (pkgs) lib;
+  selection = import ./selection.nix { inherit lib; };
+  catalogue = builtins.fromJSON (builtins.readFile ./features.json);
+  system = selection.systemType pkgs;
+  namesOf = map lib.getName;
+
+  check =
+    name: holds:
+    if holds then
+      pkgs.runCommand "kittymacs-check-${name}" { } "touch $out"
+    else
+      throw "kittymacs: the flake check ${name} failed; see \"The flake's checks\" in literate/90-nix.org";
+
+  minimalTools = namesOf (tools.programsFor (selection.profileFeatures system "minimal"));
+  fullTools = namesOf (tools.programsFor (selection.profileFeatures system "full"));
+  backendTools = namesOf tools.backendPrograms;
+
+  standIn = version: {
+    type = "derivation";
+    name = "emacs-${version}";
+    inherit version;
+    outPath = "/nonexistent";
+    drvPath = "/nonexistent";
+  };
+
+  nixos =
+    settings:
+    (nixpkgs.lib.nixosSystem {
+      modules = [
+        nixosModule
+        {
+          nixpkgs.hostPlatform = "x86_64-linux";
+          system.stateVersion = "26.05";
+          programs.kittymacs = {
+            enable = true;
+            package = standIn "31.1";
+          }
+          // settings;
+        }
+      ];
+    }).config;
+  # NixOS's own assertions want a bootable machine, which these are not.
+  failedAssertions =
+    config:
+    lib.filter (lib.hasInfix "kittymacs") (
+      map (a: a.message) (lib.filter (a: !a.assertion) config.assertions)
+    );
+  hostLayerNames =
+    config: lib.filter (lib.hasPrefix "kittymacs/") (builtins.attrNames config.environment.etc);
+
+  plain = nixos { };
+  chosen = nixos { profile = "minimal"; };
+  old = nixos { package = standIn "30.2"; };
+  oldBackend = nixos {
+    package = standIn "30.2";
+    backend.enable = true;
+  };
+in
+{
+  tool-features = check "tool-features" (
+    lib.all (entry: entry.feature == null || catalogue ? ${entry.feature}) tools.commands
+  );
+
+  profiles-narrow = check "profiles-narrow" (
+    lib.length minimalTools < lib.length fullTools
+    && lib.all (name: lib.elem name fullTools) minimalTools
+    && !(lib.elem "kittymacs-zmq-module" fullTools)
+  );
+
+  backend-headless = check "backend-headless" (
+    lib.elem "direnv" backendTools
+    && (pkgs.stdenv.hostPlatform.isLinux -> lib.elem "inotify-tools" backendTools)
+    && !(lib.any (name: builtins.match ".*(emacs|font|gtk|qt|X11).*" name != null) backendTools)
+  );
+}
+// lib.optionalAttrs (pkgs.stdenv.hostPlatform.system == "x86_64-linux") {
+  overlay = check "overlay" (
+    (pkgs.extend overlay).kittymacs.backend.drvPath
+    == (import ./profiles.nix { inherit pkgs; }).backend.drvPath
+  );
+
+  system-module = check "system-module" (
+    failedAssertions plain == [ ]
+    && hostLayerNames plain == [ ]
+    && hostLayerNames chosen == [ "kittymacs/conf.d/10-nix.el" ]
+    && lib.hasInfix "programs.kittymacs.package" (lib.concatStrings (failedAssertions old))
+    && failedAssertions oldBackend == [ ]
+  );
+}
+#+end_src
+
+* The templates
+:PROPERTIES:
+:ID: 8ea1d5c2-37f4-4b60-a9e2-14d7c3f8b096
+:END:
+
+- =nix flake init -t github:Mihir-Null/kittymacs#<name>= copies one complete host, and each has its placeholders at the top.
+- =just nix-templates= instantiates each with =nix flake init= in an empty directory and evaluates it, so a template that only works inside this repository fails.
+  + It takes the flake reference to instantiate from, so you can try a branch as a user would: =just nix-templates github:Mihir-Null/kittymacs/my-branch=.
+- Each sets =package= from =kittymacs.packages=, so a host on a stable nixpkgs has one line to change: drop the =follows=, and Emacs stays at 31 while the rest of the host stays stable.
+  + =nixos-26.05= has no Emacs 31, so a host that keeps the =follows= there stops at [[id:5c1e8b47-2f6a-4d93-b0e8-7a94d2c61f05][the assertion]], and that message says the same thing.
+- None sets =profile=, so a new host starts on the configuration's default until it chooses.
+- =wsl-backend= is the Linux side only: =backend.enable= with no Emacs and no checkout.
+  + The transport from Windows is not chosen yet, and a later step brings it, so nothing here assumes one.
+
+** home-manager
+:PROPERTIES:
+:header-args:nix: :tangle ../nix/template-home-manager/flake.nix :eval never :comments no :padline no :mkdirp yes
+:END:
+
+- A standalone Home Manager on any Linux: the first switch clones the checkout at the revision =flake.lock= pins, and links it.
 
 #+begin_src nix
 # Generated from literate/90-nix.org (the kittymacs repository).
-# Hosts for `just nix-selection`, each with a report of what it produced.
+# A Home Manager home with kittymacs.  Change `me', /home/me and `system', then:
+#
+#   nix run github:nix-community/home-manager -- switch --flake .#me
 {
-  description = "Home Manager hosts that exercise kittymacs's selection options";
+  description = "A Home Manager home with kittymacs";
+
+  inputs = {
+    nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
+    home-manager.url = "github:nix-community/home-manager";
+    home-manager.inputs.nixpkgs.follows = "nixpkgs";
+    kittymacs.url = "github:Mihir-Null/kittymacs";
+    # On a stable nixpkgs with no Emacs 31, delete this line.
+    kittymacs.inputs.nixpkgs.follows = "nixpkgs";
+  };
+
+  outputs =
+    {
+      nixpkgs,
+      home-manager,
+      kittymacs,
+      ...
+    }:
+    let
+      system = "x86_64-linux";
+    in
+    {
+      homeConfigurations.me = home-manager.lib.homeManagerConfiguration {
+        pkgs = nixpkgs.legacyPackages.${system};
+        modules = [
+          kittymacs.homeManagerModules.default
+          {
+            home = {
+              username = "me";
+              homeDirectory = "/home/me";
+              stateVersion = "26.05";
+            };
+            programs.home-manager.enable = true;
+            programs.kittymacs = {
+              enable = true;
+              package = kittymacs.packages.${system}.default;
+              # The first switch clones the writable checkout here.
+              source = "/home/me/src/kittymacs";
+            };
+          }
+        ];
+      };
+    };
+}
+#+end_src
+
+** nix-darwin
+:PROPERTIES:
+:header-args:nix: :tangle ../nix/template-nix-darwin/flake.nix :eval never :comments no :padline no :mkdirp yes
+:END:
+
+- A Mac with Emacs, the tools and the fonts installed system-wide, and a =git clone= by hand.
+- [[id:6792811b-df4f-4c63-87de-6b55a2958d54][The example host]] adds Home Manager, for a machine that should clone by itself.
+
+#+begin_src nix
+# Generated from literate/90-nix.org (the kittymacs repository).
+# A Mac with kittymacs.  Change `me' and the host name, then:
+#
+#   nix run github:nix-darwin/nix-darwin -- switch --flake .#mac
+#   git clone https://github.com/Mihir-Null/kittymacs.git ~/.config/emacs
+{
+  description = "A nix-darwin Mac with kittymacs";
+
+  inputs = {
+    nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
+    nix-darwin.url = "github:nix-darwin/nix-darwin/master";
+    nix-darwin.inputs.nixpkgs.follows = "nixpkgs";
+    kittymacs.url = "github:Mihir-Null/kittymacs";
+    # On a stable nixpkgs with no Emacs 31, delete this line.
+    kittymacs.inputs.nixpkgs.follows = "nixpkgs";
+  };
+
+  outputs =
+    { nix-darwin, kittymacs, ... }:
+    let
+      system = "aarch64-darwin";
+    in
+    {
+      darwinConfigurations.mac = nix-darwin.lib.darwinSystem {
+        modules = [
+          kittymacs.darwinModules.default
+          {
+            programs.kittymacs = {
+              enable = true;
+              package = kittymacs.packages.${system}.default;
+            };
+            users.users.me.home = "/Users/me";
+            system.primaryUser = "me";
+            system.stateVersion = 6;
+            nixpkgs.hostPlatform = system;
+          }
+        ];
+      };
+    };
+}
+#+end_src
+
+** nixos
+:PROPERTIES:
+:header-args:nix: :tangle ../nix/template-nixos/flake.nix :eval never :comments no :padline no :mkdirp yes
+:END:
+
+- A NixOS machine with Emacs, the tools and the fonts system-wide, and a =git clone= by hand.
+- Its boot and file system lines are placeholders, so it evaluates as it stands. They need replacing with the machine's own.
+
+#+begin_src nix
+# Generated from literate/90-nix.org (the kittymacs repository).
+# A NixOS machine with kittymacs.  Change `me', and replace the boot and file
+# system lines with the machine's own, then:
+#
+#   sudo nixos-rebuild switch --flake .#machine
+#   git clone https://github.com/Mihir-Null/kittymacs.git ~/.config/emacs
+{
+  description = "A NixOS machine with kittymacs";
+
+  inputs = {
+    nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
+    kittymacs.url = "github:Mihir-Null/kittymacs";
+    # On a stable nixpkgs with no Emacs 31, delete this line.
+    kittymacs.inputs.nixpkgs.follows = "nixpkgs";
+  };
+
+  outputs =
+    { nixpkgs, kittymacs, ... }:
+    let
+      system = "x86_64-linux";
+    in
+    {
+      nixosConfigurations.machine = nixpkgs.lib.nixosSystem {
+        modules = [
+          kittymacs.nixosModules.default
+          {
+            programs.kittymacs = {
+              enable = true;
+              package = kittymacs.packages.${system}.default;
+            };
+            users.users.me.isNormalUser = true;
+
+            # Placeholders: use the machine's hardware-configuration.nix.
+            boot.loader.grub.enable = false;
+            fileSystems."/" = {
+              device = "/dev/disk/by-label/nixos";
+              fsType = "ext4";
+            };
+
+            nixpkgs.hostPlatform = system;
+            system.stateVersion = "26.05";
+          }
+        ];
+      };
+    };
+}
+#+end_src
+
+** wsl-backend
+:PROPERTIES:
+:header-args:nix: :tangle ../nix/template-wsl-backend/flake.nix :eval never :comments no :padline no :mkdirp yes
+:END:
+
+- The tools for the Linux side of a Windows setup, with Home Manager, because that works in any distribution.
+
+#+begin_src nix
+# Generated from literate/90-nix.org (the kittymacs repository).
+# The Linux side of a Windows setup: the headless tools, with no Emacs and no
+# fonts.  How Emacs on Windows reaches this side is not chosen yet, and a later
+# step brings it, so nothing here assumes a transport.
+# Change `me', /home/me and `system', then, inside the distribution:
+#
+#   nix run github:nix-community/home-manager -- switch --flake .#me
+{
+  description = "The Linux side of a Windows setup, with kittymacs's headless tools";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
@@ -1411,9 +2171,106 @@ in
       kittymacs,
       ...
     }:
+    {
+      homeConfigurations.me = home-manager.lib.homeManagerConfiguration {
+        pkgs = nixpkgs.legacyPackages.x86_64-linux;
+        modules = [
+          kittymacs.homeManagerModules.default
+          {
+            home = {
+              username = "me";
+              homeDirectory = "/home/me";
+              stateVersion = "26.05";
+            };
+            programs.home-manager.enable = true;
+            programs.kittymacs.backend.enable = true;
+          }
+        ];
+      };
+    };
+}
+#+end_src
+
+* The selection check
+:PROPERTIES:
+:ID: 1c9a5e37-d482-4b06-97f1-e3a80c6b42d5
+:header-args:nix: :tangle ../nix/selection-check/flake.nix :eval never :comments no :padline no :mkdirp yes
+:END:
+
+- What =just nix-selection= evaluates: real Home Manager, NixOS and nix-darwin hosts, each with its options, and a report of what each one produced.
+- A flake of its own, as the examples are, so Home Manager and nix-darwin stay out of this repository's inputs.
+- [[file:../tests/kittymacs-nix-selection.el][The test]] writes each host's files where a real start reads them, starts Emacs once per host, and compares the answers with the report.
+  + =plain= sets no new option, and must write no file.
+  + =full= selects, excludes and settles a cascade of dependencies.
+  + =minimal= also builds its packages, with one extra.
+  + =noProfile= sets features alone, and =extraOnly= builds in one package with =packagesFromNix= off.
+  + =typo= and =reserved= must fail evaluation, each with a message naming the option.
+  + =nixosPlain=, =nixosFull= and =nixosMinimal=, and =darwinPlain=, =darwinFull= and =darwinMinimal=, are =plain=, =full= and =minimal= again, through [[*The system modules][the system module]].
+  + =darwinReserved= must fail too, through its own module.
+- The check's starts have no packages in CI, because Elisp settles the selection before any package loads.
+- A nix-darwin host evaluates on Linux, and its start runs here, on Linux.
+  + Its generated files are the real ones, and they load through the real host layer.
+  + Elisp's answer for it comes from the same four steps with =system-type= bound to =darwin=, so a feature that is not for a Mac drops out on both sides. =darwinFull= selects =window-manager= to prove that.
+  + What stays untested without a Mac: a start under =darwin= itself, the launchd agent, and that nix-darwin puts the files in =/etc=.
+
+#+begin_src nix
+# Generated from literate/90-nix.org (the kittymacs repository).
+# Hosts for `just nix-selection`, each with a report of what it produced.
+{
+  description = "Home Manager hosts that exercise kittymacs's selection options";
+
+  inputs = {
+    nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
+    home-manager.url = "github:nix-community/home-manager";
+    home-manager.inputs.nixpkgs.follows = "nixpkgs";
+    nix-darwin.url = "github:nix-darwin/nix-darwin/master";
+    nix-darwin.inputs.nixpkgs.follows = "nixpkgs";
+    kittymacs.url = "github:Mihir-Null/kittymacs";
+    kittymacs.inputs.nixpkgs.follows = "nixpkgs";
+  };
+
+  outputs =
+    {
+      nixpkgs,
+      home-manager,
+      nix-darwin,
+      kittymacs,
+      ...
+    }:
     let
       inherit (nixpkgs) lib;
       selection = import "${kittymacs}/nix/selection.nix" { inherit lib; };
+
+      nixosHost =
+        settings:
+        nixpkgs.lib.nixosSystem {
+          modules = [
+            kittymacs.nixosModules.default
+            {
+              nixpkgs.hostPlatform = "x86_64-linux";
+              system.stateVersion = "26.05";
+              programs.kittymacs = {
+                enable = true;
+              }
+              // settings;
+            }
+          ];
+        };
+      darwinHost =
+        settings:
+        nix-darwin.lib.darwinSystem {
+          modules = [
+            kittymacs.darwinModules.default
+            {
+              nixpkgs.hostPlatform = "aarch64-darwin";
+              system.stateVersion = 6;
+              programs.kittymacs = {
+                enable = true;
+              }
+              // settings;
+            }
+          ];
+        };
       host =
         settings:
         home-manager.lib.homeManagerConfiguration {
@@ -1434,15 +2291,19 @@ in
             }
           ];
         };
-      report =
-        settings:
+      describe =
+        {
+          system,
+          config,
+          files,
+        }:
         let
-          inherit (host settings) config;
           cfg = config.programs.kittymacs;
         in
         {
+          inherit system;
           files = lib.mapAttrs' (name: file: lib.nameValuePair (baseNameOf name) file.text) (
-            lib.filterAttrs (name: _: lib.hasPrefix "kittymacs/" name) config.xdg.configFile
+            lib.filterAttrs (name: _: lib.hasPrefix "kittymacs/" name) files
           );
           said = {
             inherit (cfg) profile;
@@ -1450,59 +2311,321 @@ in
               lib.mapAttrs (_: feature: feature.enable) cfg.features
             );
           };
-          enabled = selection.enabled "gnu/linux" cfg;
+          enabled = selection.enabled system cfg;
           built =
             if cfg.daemon then
               map (package: package.pname) config.services.emacs.package.deps.explicitRequires
             else
               null;
         };
+      report =
+        settings:
+        let
+          inherit (host settings) config;
+        in
+        describe {
+          system = "gnu/linux";
+          inherit config;
+          files = config.xdg.configFile;
+        };
+      systemReport =
+        system: build: settings:
+        let
+          inherit (build settings) config;
+        in
+        describe {
+          inherit system config;
+          files = config.environment.etc;
+        };
+      nixosReport = systemReport "gnu/linux" nixosHost;
+      darwinReport = systemReport "darwin" darwinHost;
+
+      fullOptions = {
+        profile = "full";
+        features = {
+          lang-nix.enable = true;
+          jump.enable = false;
+          icons.enable = false;
+        };
+        settings = {
+          kittymacs-nix-check-true = true;
+          kittymacs-nix-check-false = false;
+          kittymacs-nix-check-null = null;
+          kittymacs-nix-check-number = 3;
+          kittymacs-nix-check-string = "a \"quoted\" line\n";
+          kittymacs-nix-check-list = [
+            "one"
+            2
+            { elisp = "'three"; }
+          ];
+          kittymacs-nix-check-symbol.elisp = "'chosen";
+        };
+        hostFiles."50-check" = "(setq kittymacs-nix-check-host-file t)";
+      };
+      minimalOptions = {
+        profile = "minimal";
+        features = {
+          file-tree.enable = true;
+          jupyter.enable = true;
+        };
+        packagesFromNix = true;
+        extraPackages = epkgs: [ epkgs.avy ];
+        daemon = true;
+      };
     in
     {
-      hosts = lib.mapAttrs (_: report) {
-        plain = { };
-        full = {
-          profile = "full";
-          features = {
-            lang-nix.enable = true;
-            jump.enable = false;
-            icons.enable = false;
+      hosts =
+        lib.mapAttrs (_: report) {
+          plain = { };
+          full = fullOptions;
+          minimal = minimalOptions;
+          noProfile.features.jump.enable = false;
+          extraOnly = {
+            extraPackages = epkgs: [ epkgs.vundo ];
+            daemon = true;
           };
-          settings = {
-            kittymacs-nix-check-true = true;
-            kittymacs-nix-check-false = false;
-            kittymacs-nix-check-null = null;
-            kittymacs-nix-check-number = 3;
-            kittymacs-nix-check-string = "a \"quoted\" line\n";
-            kittymacs-nix-check-list = [
-              "one"
-              2
-              { elisp = "'three"; }
-            ];
-            kittymacs-nix-check-symbol.elisp = "'chosen";
-          };
-          hostFiles."50-check" = "(setq kittymacs-nix-check-host-file t)";
+        }
+        // {
+          nixosPlain = nixosReport { };
+          nixosFull = nixosReport fullOptions;
+          nixosMinimal = nixosReport minimalOptions;
+          darwinPlain = darwinReport { };
+          # Not a feature for a Mac: both sides must drop it.
+          darwinFull = darwinReport (
+            lib.recursiveUpdate fullOptions { features.window-manager.enable = true; }
+          );
+          darwinMinimal = darwinReport minimalOptions;
         };
-        minimal = {
-          profile = "minimal";
-          features = {
-            file-tree.enable = true;
-            jupyter.enable = true;
-          };
+
+      # These three must fail evaluation.
+      typo = report { features.no-such-feature.enable = true; };
+      reserved = report { hostFiles."10-nix" = ""; };
+      darwinReserved = (darwinHost { hostFiles."10-nix" = ""; }).system.drvPath;
+    };
+}
+#+end_src
+
+* The evaluation matrix
+:PROPERTIES:
+:ID: 3bd7a0e4-96c1-4f28-8d53-c2e1f47ab906
+:header-args:nix: :tangle ../nix/eval-matrix/flake.nix :eval never :comments no :padline no :mkdirp yes
+:END:
+
+- =just nix-matrix= evaluates each host to the derivation a switch would build, once on the lock and once on [[file:../justfile][the justfile's]] stable release.
+- Each case runs in its own process, because a real NixOS evaluation is heavy and several in one process hold all their memory until the end.
+- On stable, =kittymacs/nixpkgs= stays on unstable, so =package= is Emacs 31 while everything else comes from the stable release, as on a real host that dropped the =follows=.
+- What each case proves:
+
+| Case                | Proves                                                                                   |
+|---------------------+------------------------------------------------------------------------------------------|
+| =home-plain=        | a plain Linux home evaluates whole: link, clone step, tools, fonts, activation           |
+| =home-daemon=       | =daemon = true=: the systemd unit, its limits and =--init-directory=                     |
+| =home-packages=     | =packagesFromNix = true=: Emacs with every package                                       |
+| =home-darwin=       | the launchd agent and the Mac's tool list, through Home Manager                          |
+| =home-xdg=          | a custom =xdg.configHome= writes the host layer in both places                           |
+| =home-backend=      | =backend.enable= installs no Emacs and no fonts                                          |
+| =home-old-unused=   | an old =package= the home neither installs nor runs passes: the assertion's guard        |
+| =nixos=             | a NixOS system evaluates whole with this module                                          |
+| =nixos-full=        | the same with =daemon=, =packagesFromNix= and a selection                                |
+| =nixos-backend=     | a NixOS backend has no Emacs                                                             |
+| =darwin=            | a nix-darwin system evaluates whole on Linux; building it needs a Mac                    |
+| =darwin-full=       | the same with =daemon= and =packagesFromNix=                                             |
+
+- =mustFail= holds the old =package= through each module, which must fail naming the option.
+- =defaultEmacs= is a home with no =package= at all. It must pass where nixpkgs' Emacs is 31 or later, and fail naming the option where it is older, which is the case on =nixos-26.05=.
+- The templates, on both channels, are the matrix's other half: =just nix-templates=.
+- To compare a change with its base, evaluate =home-plain=, =home-daemon=, =home-packages=, =home-darwin=, =darwin= and =darwin-full= against both, and the paths must match: these set no option newer than the base.
+
+#+begin_src nix
+# Generated from literate/90-nix.org (the kittymacs repository).
+# Hosts for `just nix-matrix`, each evaluated to what a switch would build.
+{
+  description = "Hosts that exercise every way of using kittymacs's modules";
+
+  inputs = {
+    nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
+    home-manager.url = "github:nix-community/home-manager";
+    home-manager.inputs.nixpkgs.follows = "nixpkgs";
+    nix-darwin.url = "github:nix-darwin/nix-darwin/master";
+    nix-darwin.inputs.nixpkgs.follows = "nixpkgs";
+    kittymacs.url = "github:Mihir-Null/kittymacs";
+    kittymacs.inputs.nixpkgs.follows = "nixpkgs";
+  };
+
+  outputs =
+    {
+      nixpkgs,
+      home-manager,
+      nix-darwin,
+      kittymacs,
+      ...
+    }:
+    let
+      inherit (nixpkgs) lib;
+      emacsOf = system: kittymacs.packages.${system}.default;
+      oldEmacs = {
+        type = "derivation";
+        name = "emacs-30.2";
+        version = "30.2";
+        outPath = "/nonexistent";
+        drvPath = "/nonexistent";
+      };
+
+      homeWith =
+        system: settings:
+        home-manager.lib.homeManagerConfiguration {
+          pkgs = nixpkgs.legacyPackages.${system};
+          modules = [
+            kittymacs.homeManagerModules.default
+            {
+              home = {
+                username = "me";
+                homeDirectory = if lib.hasSuffix "darwin" system then "/Users/me" else "/home/me";
+                stateVersion = "24.11";
+              };
+              programs.kittymacs = {
+                enable = true;
+                source = "/home/me/src/kittymacs";
+                # So the clone step is part of what is compared.
+                revision = "0123456789abcdef0123456789abcdef01234567";
+              }
+              // settings;
+            }
+          ];
+        };
+      linuxHome = homeWith "x86_64-linux";
+      home =
+        settings: (linuxHome ({ package = emacsOf "x86_64-linux"; } // settings)).activationPackage.drvPath;
+
+      nixosWith =
+        settings:
+        nixpkgs.lib.nixosSystem {
+          modules = [
+            kittymacs.nixosModules.default
+            {
+              nixpkgs.hostPlatform = "x86_64-linux";
+              system.stateVersion = "26.05";
+              boot.loader.grub.enable = false;
+              fileSystems."/" = {
+                device = "/dev/disk/by-label/nixos";
+                fsType = "ext4";
+              };
+              programs.kittymacs = {
+                enable = true;
+              }
+              // settings;
+            }
+          ];
+        };
+      nixos =
+        settings:
+        (nixosWith ({ package = emacsOf "x86_64-linux"; } // settings))
+        .config.system.build.toplevel.drvPath;
+
+      darwinWith =
+        settings:
+        nix-darwin.lib.darwinSystem {
+          modules = [
+            kittymacs.darwinModules.default
+            {
+              nixpkgs.hostPlatform = "aarch64-darwin";
+              system.stateVersion = 6;
+              # nix-darwin's launchd agent asks for one, and `daemon` is one.
+              system.primaryUser = "me";
+              programs.kittymacs = {
+                enable = true;
+              }
+              // settings;
+            }
+          ];
+        };
+      darwin =
+        settings: (darwinWith ({ package = emacsOf "aarch64-darwin"; } // settings)).system.drvPath;
+
+      # A home whose packages hold no Emacs and no fonts.
+      headless =
+        host:
+        let
+          names = map lib.getName host.config.home.packages;
+        in
+        assert !(lib.any (name: builtins.match ".*(emacs|font).*" name != null) names);
+        host.activationPackage.drvPath;
+    in
+    {
+      cases = {
+        home-plain = home { };
+        home-daemon = home { daemon = true; };
+        home-packages = home { packagesFromNix = true; };
+        home-darwin =
+          (homeWith "aarch64-darwin" {
+            package = emacsOf "aarch64-darwin";
+            daemon = true;
+            source = "/Users/me/src/kittymacs";
+          }).activationPackage.drvPath;
+        home-xdg =
+          let
+            host = home-manager.lib.homeManagerConfiguration {
+              pkgs = nixpkgs.legacyPackages.x86_64-linux;
+              modules = [
+                kittymacs.homeManagerModules.default
+                {
+                  home = {
+                    username = "me";
+                    homeDirectory = "/home/me";
+                    stateVersion = "24.11";
+                  };
+                  xdg.configHome = "/home/me/.xdg";
+                  programs.kittymacs = {
+                    enable = true;
+                    package = emacsOf "x86_64-linux";
+                    profile = "minimal";
+                  };
+                }
+              ];
+            };
+          in
+          assert host.config.home.file ? ".config/kittymacs/conf.d/10-nix.el";
+          assert host.config.xdg.configFile ? "kittymacs/conf.d/10-nix.el";
+          host.activationPackage.drvPath;
+        home-backend = headless (linuxHome {
+          backend.enable = true;
+        });
+        home-old-unused =
+          (linuxHome {
+            package = oldEmacs;
+            installPackages = false;
+          }).activationPackage.drvPath;
+        nixos = nixos { };
+        nixos-full = nixos {
+          daemon = true;
           packagesFromNix = true;
-          extraPackages = epkgs: [ epkgs.avy ];
-          daemon = true;
+          profile = "minimal";
+          features.jump.enable = true;
         };
-        noProfile.features.jump.enable = false;
-        extraOnly = {
-          extraPackages = epkgs: [ epkgs.vundo ];
+        nixos-backend =
+          let
+            host = nixosWith {
+              package = oldEmacs;
+              backend.enable = true;
+            };
+          in
+          assert !(lib.any (package: lib.getName package == "emacs") host.config.environment.systemPackages);
+          host.config.system.build.toplevel.drvPath;
+        darwin = darwin { };
+        darwin-full = darwin {
           daemon = true;
+          packagesFromNix = true;
         };
       };
 
-      # These two must fail evaluation.
-      typo = report { features.no-such-feature.enable = true; };
-      reserved = report { hostFiles."10-nix" = ""; };
+      mustFail = {
+        home = (linuxHome { package = oldEmacs; }).activationPackage.drvPath;
+        nixos = (nixosWith { package = oldEmacs; }).config.system.build.toplevel.drvPath;
+        darwin = (darwinWith { package = oldEmacs; }).system.drvPath;
+      };
+
+      defaultEmacs = (linuxHome { }).activationPackage.drvPath;
+      defaultEmacsVersion = nixpkgs.legacyPackages.x86_64-linux.emacs.version;
     };
 }
 #+end_src
@@ -1515,12 +2638,23 @@ in
 nix profile install github:Mihir-Null/kittymacs#default github:Mihir-Null/kittymacs#tools
 #+end_src
 
+- Or one profile's Emacs, packages, tools and fonts, compiled on the machine, or the headless tools for a machine Emacs reaches from elsewhere:
+
+#+begin_src sh :tangle no
+nix profile install github:Mihir-Null/kittymacs#minimal
+nix profile install github:Mihir-Null/kittymacs#full
+nix profile install github:Mihir-Null/kittymacs#backend
+#+end_src
+
 - On macOS, an Emacs.app started from the Dock inherits no shell =PATH=: [[id:40302e33-d2b2-4c0b-9bc3-1f9e121307e1][the startup chapter]] puts the Nix profiles and Homebrew on =exec-path= before anything runs, and [[id:d2e0bc37-0bd4-4b28-a8ee-04f94ac451f8][the shells chapter]] imports the login shell's environment.
 
 * Check
 
 - =just nix-check= lints the generated Nix and evaluates the flake on every system, then both example hosts against this checkout; nothing is built.
 - =just nix-selection=, part of =nix-check=, starts Emacs once per host in [[id:1c9a5e37-d482-4b06-97f1-e3a80c6b42d5][the selection check]], and fails if =kittymacs-feature-p= disagrees with the options.
+- =just nix-matrix= and =just nix-templates=, also part of it, evaluate [[*The evaluation matrix][the matrix]] and each template on the lock and on stable.
+- =just nix-backend-closure= builds =packages.backend= and fails if a font or a GUI toolkit is in its closure. It builds, so CI leaves it out.
+- =nix run .#doctor= says what this machine has. No real activation runs anywhere here: one on a real host is the owner's to do.
 - =nix develop= then =just --list=: the shell has every recipe's tools.
 - CI also reads the clone options as a device would see them. It overrides the input with =git+file=, not =path:=, because a =path:= input has no revision, and without one the module defines no clone step:
 
