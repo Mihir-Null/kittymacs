@@ -97,7 +97,7 @@
   + frames created without the toolbar and the menu bar, rather than with ones that are then removed.
 - =menu-bar-mode= is turned off too, to agree with the frame parameter; otherwise the first =SPC t m= would switch a hidden menu bar "off" and show nothing.
   + =SPC t m= brings the menu bar back.
-- No startup screen, an empty =*scratch*=, no scroll bars, and =load-prefer-newer=.
+- No startup screen, no message in =*scratch*= unless [[id:0286f652-e861-4e61-9ca6-91e225c8939d][the appearance chapter]] sets one, no scroll bars, and =load-prefer-newer=.
 - Frames are sized by the pixel, not by whole lines and columns.
   + A tiling window manager asks for an exact rectangle; rounded down to the character grid, the frame falls a few pixels short of its tile, and a manager that checks the result may keep asking again.
   + Set here, before the first frame exists, so that frame is sized the same way as every later one.
