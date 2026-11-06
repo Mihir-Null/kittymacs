@@ -203,11 +203,30 @@ The flake installs everything the configuration uses (Emacs, the tools and the e
 }
 ```
 
-- **nix-darwin:** import `kittymacs.darwinModules.default` and set `programs.kittymacs.enable = true;`.
+To start from a complete host, copy a template, then edit the names its first lines give:
+
+```sh
+nix flake init -t github:Mihir-Null/kittymacs#home-manager   # or nix-darwin, nixos, wsl-backend
+```
+
+- **nix-darwin, NixOS:** import `kittymacs.darwinModules.default` or `kittymacs.nixosModules.default` and set `programs.kittymacs.enable = true;`. Neither clones anything, so clone the configuration yourself.
 - **Home Manager** (any Linux, macOS, nix-on-droid): import `kittymacs.homeManagerModules.default` and set `programs.kittymacs.source` to where the clone should live. The first switch clones it, at the revision your `flake.lock` pins, and links it to `~/.config/emacs`; after that the checkout is yours.
 - **Without a module:** `nix profile install github:Mihir-Null/kittymacs#default github:Mihir-Null/kittymacs#tools`.
+- **One profile, in one environment:** `#minimal` or `#full` is Emacs, that profile's Lisp packages built in, its tools and fonts. Nix compiles the packages on the machine.
+- **A machine Emacs reaches from elsewhere:** `#backend`, or `programs.kittymacs.backend.enable = true;`, installs headless tools: Git, ripgrep, fd, direnv, inotify-tools on Linux and a few language servers, with no Emacs and no fonts.
+- **In a host's own packages:** `kittymacs.overlays.default` adds `pkgs.kittymacs`, the same set built from your nixpkgs.
 
-**Choosing features.** With the Home Manager module, options choose [the catalogue](literate/20-catalogue.org)'s features, so you write no Elisp:
+kittymacs needs Emacs 31. If your nixpkgs has an older one, evaluation stops and names the option: set `programs.kittymacs.package = kittymacs.packages.<system>.default;`, and remove the `follows` line from your inputs, so that input keeps its own nixpkgs.
+
+**Trying it.** Each of these needs a checkout, and says what to clone if it finds none. It looks at `KITTYMACS_CHECKOUT`, this directory, `~/.config/emacs` and `~/.emacs.d`.
+
+```sh
+nix run github:Mihir-Null/kittymacs            # start Emacs on the checkout, with the tools on its PATH
+nix run github:Mihir-Null/kittymacs#onboard    # choose features, on screens that write its private.el
+nix run github:Mihir-Null/kittymacs#doctor     # report Emacs, the checkout, the host-layer files and the tools
+```
+
+**Choosing features.** With any of the modules, options choose [the catalogue](literate/20-catalogue.org)'s features, so you write no Elisp:
 
 ```nix
 programs.kittymacs = {
@@ -218,12 +237,12 @@ programs.kittymacs = {
 };
 ```
 
-- The module writes these to `~/.config/kittymacs/conf.d/10-nix.el`, which loads before `private.el`, so your own settings still win. With none of them set, it writes nothing, and the rules in [First start](#first-start) apply.
+- The Home Manager module writes these to `~/.config/kittymacs/conf.d/10-nix.el`, and a system module to `/etc/kittymacs/conf.d/10-nix.el`. Either loads before `private.el`, so your own settings still win. With none of them set, it writes nothing, and the rules in [First start](#first-start) apply.
 - A feature name the catalogue lacks fails at evaluation, naming the option.
 - With `packagesFromNix`, Nix builds only what the chosen features need. A feature `private.el` adds still installs from the archives.
 - `settings` sets other options by name, `hostFiles.<name>` adds a host file of your own, and `extraPackages` builds more Emacs packages in.
 
-[The Nix chapter](literate/90-nix.org) documents every option, the daemon, and both example hosts.
+[The Nix chapter](literate/90-nix.org) documents every option and output, the daemon, the templates and both example hosts.
 
 ### First start
 

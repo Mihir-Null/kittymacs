@@ -16,6 +16,10 @@ default: check
 # to each new release.
 stable := "nixos-26.05"
 
+# The same release of the two inputs a host pairs with it, and Emacs from
+# unstable, because that release has no Emacs 31. See "The evaluation matrix".
+stable_flags := "--override-input nixpkgs github:NixOS/nixpkgs/" + stable + " --override-input home-manager github:nix-community/home-manager/release-26.05 --override-input nix-darwin github:nix-darwin/nix-darwin/nix-darwin-26.05 --override-input kittymacs/nixpkgs github:NixOS/nixpkgs/nixpkgs-unstable"
+
 emacs := "emacs -Q --batch --eval '(setq user-emacs-directory (file-name-as-directory (expand-file-name \".\")))'"
 
 # The tests that load the configuration need its installed packages: the
@@ -211,9 +215,83 @@ nix-selection:
     ! nix eval --no-write-lock-file --override-input kittymacs "path:$PWD" \
       --json ./nix/selection-check#reserved 2> "${TMPDIR:-/tmp}/kittymacs-reserved.txt"
     grep -F 'programs.kittymacs.hostFiles."10-nix"' "${TMPDIR:-/tmp}/kittymacs-reserved.txt"
+    ! nix eval --no-write-lock-file --override-input kittymacs "path:$PWD" \
+      --raw ./nix/selection-check#darwinReserved 2> "${TMPDIR:-/tmp}/kittymacs-reserved.txt"
+    grep -F 'programs.kittymacs.hostFiles."10-nix"' "${TMPDIR:-/tmp}/kittymacs-reserved.txt"
+
+# Every case of the matrix, on the lock and on stable, each in its own process.
+# "The evaluation matrix" in literate/90-nix.org says what each proves. Nothing
+# is built.
+nix-matrix:
+    {{just_executable()}} nix-matrix-on lock
+    {{just_executable()}} nix-matrix-on stable {{stable_flags}}
+
+# One channel of the matrix: NAME for the output, then FLAGS for its nixpkgs.
+nix-matrix-on name *FLAGS:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    cd {{quote(justfile_directory())}}
+    evaluate() {
+      nix eval --no-write-lock-file --override-input kittymacs "path:$PWD" {{FLAGS}} "$@"
+    }
+    errors=$(mktemp)
+    for case in $(evaluate --raw ./nix/eval-matrix#cases --apply 'c: toString (builtins.attrNames c)'); do
+      evaluate --raw "./nix/eval-matrix#cases.$case" > /dev/null
+      echo "ok {{name}} $case"
+    done
+    for case in $(evaluate --raw ./nix/eval-matrix#mustFail --apply 'c: toString (builtins.attrNames c)'); do
+      if evaluate --raw "./nix/eval-matrix#mustFail.$case" > /dev/null 2> "$errors"; then
+        echo "FAIL {{name}} mustFail.$case evaluated"
+        exit 1
+      fi
+      grep -F 'and programs.kittymacs.package is Emacs' "$errors" > /dev/null
+      echo "ok {{name}} mustFail.$case"
+    done
+    version=$(evaluate --raw ./nix/eval-matrix#defaultEmacsVersion)
+    if [ "${version%%.*}" -ge 31 ]; then
+      evaluate --raw ./nix/eval-matrix#defaultEmacs > /dev/null
+      echo "ok {{name}} defaultEmacs passes on Emacs $version"
+    else
+      if evaluate --raw ./nix/eval-matrix#defaultEmacs > /dev/null 2> "$errors"; then
+        echo "FAIL {{name}} defaultEmacs evaluated on Emacs $version"
+        exit 1
+      fi
+      grep -F 'and programs.kittymacs.package is Emacs' "$errors" > /dev/null
+      echo "ok {{name}} defaultEmacs refused on Emacs $version, naming the option"
+    fi
+
+# Every template as a user gets it, in an empty directory, on the lock and on
+# stable. KITTYMACS is the flake to instantiate from, and it may be a branch.
+nix-templates kittymacs=("path:" + justfile_directory()):
+    {{just_executable()}} nix-templates-on lock {{quote(kittymacs)}}
+    {{just_executable()}} nix-templates-on stable {{quote(kittymacs)}} {{stable_flags}}
+
+# One channel of the templates: NAME for the output, KITTYMACS and FLAGS.
+nix-templates-on name kittymacs *FLAGS:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    instantiate() {
+      local directory
+      directory=$(mktemp -d)
+      (cd "$directory" && nix flake init --template {{quote(kittymacs)}}"#$1" > /dev/null)
+      nix eval --raw --no-write-lock-file --override-input kittymacs {{quote(kittymacs)}} {{FLAGS}} \
+        "$directory#$2" > /dev/null
+      rm -rf "$directory"
+      echo "ok {{name}} $1"
+    }
+    instantiate home-manager homeConfigurations.me.activationPackage.drvPath
+    instantiate nix-darwin darwinConfigurations.mac.system.drvPath
+    instantiate nixos nixosConfigurations.machine.config.system.build.toplevel.drvPath
+    instantiate wsl-backend homeConfigurations.me.activationPackage.drvPath
+
+# Build the backend's tools, and fail if a font or a GUI toolkit is in the closure.
+# The matches print. It builds, so CI leaves it out.
+nix-backend-closure:
+    nix build --no-link .#backend
+    ! nix path-info --recursive .#backend | grep -E -- '-(gtk|qt|libX11|fontconfig|emacs)[-+0-9]'
 
 # Everything that needs Nix.
-nix-check: lint eval nix-selection
+nix-check: lint eval nix-selection nix-matrix nix-templates
 
 # Everything CI runs on Linux, in order, under the profile its last two recipes need.
 all: check budget-check nix-check

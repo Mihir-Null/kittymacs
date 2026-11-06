@@ -969,6 +969,26 @@ quits as a minibuffer would."
 
 ;;; A real terminal
 
+;; `nix run .#doctor' calls onboarding's reader from a shell string, where a
+;; rename would only make it say the selection could not be read.
+(ert-deftest kittymacs-onboard-what-the-doctor-calls-exists ()
+  (let ((apps (with-temp-buffer
+                (insert-file-contents
+                 (expand-file-name "nix/apps.nix"
+                                   (file-name-directory
+                                    (directory-file-name kittymacs-onboard--directory))))
+                (buffer-string)))
+        (start 0)
+        names)
+    (while (string-match "kittymacs-onboard-[-a-z]+" apps start)
+      (push (intern (match-string 0 apps)) names)
+      (setq start (match-end 0)))
+    (should (memq 'kittymacs-onboard--initial-state names))
+    (should (memq 'kittymacs-onboard-main names))
+    (dolist (name names)
+      (unless (eq name 'kittymacs-onboard)
+        (should (fboundp name))))))
+
 (defun kittymacs-onboard-test--pty (keys wait-for &optional prepare)
   "Run onboarding on a pty in a copy of the modules; send KEYS once WAIT-FOR shows.
 Call PREPARE with the directory first, if given.
