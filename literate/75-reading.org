@@ -59,7 +59,7 @@
   + =epdfinfo=, a small server written in C on top of the poppler PDF library, renders pages and answers queries;
   + the Lisp side asks it for pages, text, links and annotations, and draws them.
 - =pdf-loader-install= registers =pdf-view-mode= for =.pdf= files and loads the rest on the first PDF you open, so startup pays nothing.
-  + =pdf-tools-install=, its older sibling, loads everything at once and offers to build the server.
+  + =pdf-tools-install=, the older command, loads everything at once and offers to build the server.
 
 ** Where the server comes from :decision:
 :PROPERTIES:

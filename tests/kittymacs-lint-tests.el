@@ -267,10 +267,6 @@ with a backtick.  `SPC m' is left out: a major mode's map decides what follows."
   "One person's machines and their configuration.  A host plugs in through
 `kittymacs-host-directories', so nothing shipped needs to name one.")
 
-(defun kittymacs-lint--sibling-record-p (line)
-  "Return non-nil if LINE is the one record of the sibling repository."
-  (string-prefix-p "- **The sibling repository is" line))
-
 (ert-deftest kittymacs-lint-host-name-regexp-matches-whole-names-only ()
   (let ((case-fold-search nil))
     (should (string-match-p kittymacs-lint-host-name-regexp "(on EmptyNet, Caps Lock)"))
@@ -290,10 +286,9 @@ with a backtick.  `SPC m' is left out: a major mode's map decides what follows."
         found)
     (should (> (length files) 50))
     (dolist (file files)
-      (pcase-dolist (`(,line . ,text)
+      (pcase-dolist (`(,line . ,_text)
                      (kittymacs-lint--lines-matching kittymacs-lint-host-name-regexp file))
-        (unless (kittymacs-lint--sibling-record-p text)
-          (push (format "%s:%d" (file-name-nondirectory file) line) found))))
+        (push (format "%s:%d" (file-name-nondirectory file) line) found)))
     (should-not (reverse found))))
 
 (ert-deftest kittymacs-lint-agent-mcp-servers-default-to-none ()
