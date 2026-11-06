@@ -706,6 +706,10 @@ A file with line endings keeps them.  This never connects."
   + Otherwise =wsl.exe= writes its complaint to standard output, and tramp-rpc reads =Ther= as a frame's length.
 - Errors from a server that started and then failed say =SSH stderr:=, which is only upstream's wording: read it as the server's standard error.
 - A dead connection gives an error after 40 s, and the next call starts a new server, where =wslm= waits until =C-g=, so every guard in [[id:8d3b7e15-6f42-4c09-a1e8-5b2d90c7f364][the guards]] stays.
+- A save is not atomic here, because the server's =file.write= truncates the file and then writes it, as a plain Emacs save does.
+  + So a server killed in between leaves an empty file: every round that the hosted job held that window open with =strace=, and none of its plain races, where 1 MiB finished first.
+  + Emacs reports it, and the buffer stays modified, so saving again repairs the file for as long as Emacs runs.
+- A killed server's next call can say =tramp-rpc-server not found=, with an impossible frame length, though the server is there: the call after that starts a new one.
 - =tramp-rpc= caches a file's attributes for up to 300 s and relies on =inotify= to hear of changes, which should not fire for a change made on the Windows side of =/mnt/=, so reopen those natively with =SPC o w=.
 
 #+begin_src emacs-lisp
@@ -1038,6 +1042,7 @@ person, with what to install for whichever is missing."
 | =SPC o e= on a WSL backend                 | the login shell's own | yes                              | no                                 |
 
 - [[file:../tests/wsl-backend/connect.el][The job on real WSL2]] measures the first three rows, so a change in Tramp shows there.
+  + =wsl-rpc= gives the same answers, and [[file:../tests/wsl-backend/rpc.el][its own job]] measures them.
 - =~/.profile= on the machine is the nearest parallel, for =PATH=: one file, on the machine, for that machine.
   + [[*Where a remote program is found]] asks =sh -l= for its =PATH=, and Tramp passes the answer to each process.
   + =sh= reads it, so it uses POSIX syntax and not Bash's.

@@ -79,7 +79,7 @@ FUNCTION returns a string saying what it saw, or signals.  A stall is a failure.
     (princ "\n| Check | Seconds | Result | Detail |\n|---|---:|---|---|\n")
     (pcase-dolist (`(,name ,seconds ,ok ,detail) rows)
       (princ (format "| %s | %.3f | %s | %s |\n" name seconds (if ok "pass" "FAIL")
-                     (string-replace "|" "/" (string-replace "\n" " " (or detail ""))))))
+                     (string-replace "|" "/" (string-replace "\n" " " (format "%s" (or detail "")))))))
     (let ((passed (cl-every #'caddr rows)))
       (princ (if passed "\nPASS\n" "\nFAIL\n"))
       (kill-emacs (if passed 0 1)))))
@@ -97,6 +97,8 @@ Return (STATUS . OUTPUT)."
       (let* ((process (apply #'start-process "rpc-wsl" (current-buffer) "wsl.exe" arguments))
              (end (+ (float-time) limit)))
         (set-process-query-on-exit-flag process nil)
+        ;; Or Emacs writes "Process rpc-wsl finished" into what this returns.
+        (set-process-sentinel process #'ignore)
         (while (and (process-live-p process) (< (float-time) end))
           (accept-process-output process 0.05))
         (when (process-live-p process) (delete-process process))
@@ -774,7 +776,7 @@ Return their hash."
                   ('widened-temp (format "bash %s/kill-in-window.sh %s %s second-file"
                                          rpc-home target rpc-server-comm)))))
     (make-process :name "killer" :buffer (generate-new-buffer " *killer*") :noquery t
-                  :connection-type 'pipe
+                  :connection-type 'pipe :sentinel #'ignore
                   :command (list "wsl.exe" "-d" rpc-distribution "-u" "root"
                                  "--exec" "/bin/sh" "-c" script))))
 
@@ -792,6 +794,9 @@ Return their hash."
            ((zerop length) "0 bytes, EMPTY")
            ((and (= length (length new)) (equal hash (secure-hash 'sha256 new)))
             (format "%d bytes, ALL NEW" length))
+           ;; A save adds the final newline a buffer lacks.
+           ((equal hash (secure-hash 'sha256 (concat new "\n")))
+            (format "%d bytes, ALL NEW, and the final newline" length))
            ((and (< length (length new)) (equal hash (secure-hash 'sha256 (substring new 0 length))))
             (format "%d bytes, SHORT: the first of the new" length))
            (t (format "%d bytes, OTHER" length)))
@@ -834,7 +839,7 @@ HOW is `write-region', `save-buffer', or `save-precious'."
                     ('write-region
                      (let ((coding-system-for-write 'binary))
                        (write-region new nil file nil 'silent))
-                     "returned, as if it had written")
+                     "returned")
                     ('save-buffer
                      (with-current-buffer buffer (save-buffer))
                      "save-buffer returned")
@@ -882,7 +887,7 @@ HOW is `write-region', `save-buffer', or `save-precious'."
       (rpc-killed-round 'widened-temp 'save-precious round new)))
   (princ "\n## A write killed midway\n\nOld contents 1 MiB + 17 bytes, new contents 1 MiB.\n\n")
   (princ "- `watch`: killed as soon as the file's size moves.\n")
-  (princ "- `at-once`: killed as the write starts, which can be before its frame arrives.\n")
+  (princ "- `at-once`: killed as the write starts, which the write can finish first.\n")
   (princ "- `widened`: `strace` delays each write 300 ms, so the kill lands after truncate and before the bytes.\n")
   (princ "- `widened-temp`: the same, as soon as a second file appears, which for `file-precious-flag` is its temporary file.\n\n")
   (princ "| Kill | Through | Round | Seconds | How it reports | What the file holds |\n|---|---|---:|---:|---|---|\n")
