@@ -265,6 +265,8 @@
 - The =*scratch*= buffer is a notepad: killing it only buries it.
 - Its text is saved to the cache on exit and whenever Emacs has been idle for five minutes, then restored at the next start.
 - =kittymacs-scratch-file= names the file.
+- A batch start saves nothing, because nobody wrote in that buffer.
+  + =just install= would otherwise leave an empty file, and [[id:0286f652-e861-4e61-9ca6-91e225c8939d][the appearance chapter]] takes a file to mean this person has already started Emacs.
 
 #+begin_src emacs-lisp
 (defcustom kittymacs-scratch-file (expand-file-name "scratch" kittymacs-cache-dir)
@@ -279,9 +281,10 @@
     t))
 
 (defun kittymacs--save-scratch ()
-  "Save the text of *scratch* to `kittymacs-scratch-file'."
-  (with-current-buffer (get-buffer-create "*scratch*")
-    (write-region (point-min) (point-max) kittymacs-scratch-file nil 'quiet)))
+  "Save the text of *scratch* to `kittymacs-scratch-file', except in batch."
+  (unless noninteractive
+    (with-current-buffer (get-buffer-create "*scratch*")
+      (write-region (point-min) (point-max) kittymacs-scratch-file nil 'quiet))))
 
 (defun kittymacs--restore-scratch ()
   "Restore *scratch* from `kittymacs-scratch-file' when it exists."

@@ -97,11 +97,15 @@ tests/kittymacs-startup-tests.el, which leaves out `:vc' for the Nix list."
                       (directory-files-recursively (kittymacs-bench--path "lisp")
                                                    "\\.el\\'"))))
 
+(defun kittymacs-bench--org-files ()
+  "Every chapter: a target stated for the literate source compares with these."
+  (directory-files-recursively (kittymacs-bench--path "literate") "\\.org\\'"))
+
 (defun kittymacs-bench--prose-files ()
   "Every page of prose: moving text between these changes no total."
   (append (list (kittymacs-bench--path "ARCHITECTURE.md")
                 (kittymacs-bench--path "README.md"))
-          (directory-files-recursively (kittymacs-bench--path "literate") "\\.org\\'")))
+          (kittymacs-bench--org-files)))
 
 (defun kittymacs-bench--metric (&rest parts)
   "Return the metric named by joining PARTS."
@@ -188,6 +192,8 @@ Follows `require' from init.el, the way a start does, without starting."
                                                     (kittymacs-bench--default-files))))
        (default-packages . ,(length (kittymacs-bench--default-packages)))
        (declared-packages . ,(length (kittymacs-bench--declared-packages)))
+       (org-lines . ,(apply #'+ (mapcar #'kittymacs-bench--line-count
+                                        (kittymacs-bench--org-files))))
        (prose-lines . ,(apply #'+ (mapcar #'kittymacs-bench--line-count
                                           (kittymacs-bench--prose-files)))))
      (nreverse metrics))))
