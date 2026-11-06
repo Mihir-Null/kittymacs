@@ -1,0 +1,37 @@
+name: WSL spike
+
+# Numbers for one decision: how native Windows Emacs reaches a WSL2 backend,
+# a wsl.exe Tramp method or ssh.  It measures and reports, and it decides nothing.
+# It stays out of ci.yml, and it runs only when its own files change, so an
+# ordinary pull request pays nothing for it.
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - .github/workflows/wsl-spike.yml
+      - tests/wsl-spike/**
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # WSL1 translates system calls and has no Linux kernel, so its numbers say
+  # nothing about a WSL2 backend.  Everything after this job needs it to pass.
+  runner:
+    name: The runner offers real WSL2
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: Vampire/setup-wsl@4c48163d9f981914dd8caa0fc335fe19cca5bff4 # v7.2.0
+        with:
+          distribution: Ubuntu-24.04
+          wsl-version: 2
+      - name: A distribution reports version 2, and a Linux kernel answers in it
+        shell: pwsh
+        run: tests/wsl-spike/prove-wsl2.ps1 -Distribution Ubuntu-24.04
