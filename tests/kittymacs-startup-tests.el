@@ -50,25 +50,28 @@ The Nix chapter's \"The Emacs packages\" says why each one.")
                (directory-files (expand-file-name "lisp" kittymacs-startup-test-root)
                                 t "\\`kittymacs-.*\\.el\\'"))))
 
-(defun kittymacs-startup-test--nix-keyed ()
-  "The list in nix/packages.nix, as (FEATURE . PACKAGES), in the file's order."
+(defun kittymacs-startup-test--nix-archive-only ()
+  "The names in nix/packages.nix's `archiveOnly'."
   (with-temp-buffer
     (insert-file-contents (expand-file-name "nix/packages.nix" kittymacs-startup-test-root))
-    (re-search-forward "with epkgs;[[:space:]]*{")
-    (let ((end (save-excursion (re-search-forward "^[[:space:]]*};")))
-          keyed)
-      (while (re-search-forward "^[[:space:]]*\\([[:alnum:]_'-]+\\) = \\[\\([^]]*\\)\\];" end t)
-        (push (cons (intern (match-string 1))
-                    (mapcar #'intern (split-string (match-string 2))))
-              keyed))
-      (nreverse keyed))))
+    (re-search-forward "archiveOnly = \\[\\([^]]*\\)\\];")
+    (mapcar #'intern (split-string (match-string 1) "[\"[:space:]]+" t))))
 
 (defun kittymacs-startup-test--nix-list ()
-  "The package names in nix/packages.nix's list."
-  (seq-mapcat #'cdr (kittymacs-startup-test--nix-keyed)))
+  "The packages nix/packages.nix builds: nix/features.json's, less those it leaves out."
+  (let ((archive-only (kittymacs-startup-test--nix-archive-only))
+        (json (with-temp-buffer
+                (insert-file-contents
+                 (expand-file-name "nix/features.json" kittymacs-startup-test-root))
+                (json-parse-buffer :object-type 'alist :array-type 'list))))
+    (seq-mapcat (lambda (row)
+                  (seq-difference (mapcar #'intern (alist-get 'packages (cdr row)))
+                                  (append archive-only
+                                          (mapcar #'intern (alist-get 'vc (cdr row))))))
+                json)))
 
 (ert-deftest kittymacs-startup-nix-list-matches-declarations ()
-  "nix/packages.nix lists exactly the declared packages, less the archive-only ones."
+  "nix/packages.nix builds exactly the declared packages, less the archive-only ones."
   (let ((declared (kittymacs-startup-test--declared))
         (nix (kittymacs-startup-test--nix-list)))
     (should (> (length declared) 50))
@@ -78,21 +81,6 @@ The Nix chapter's \"The Emacs packages\" says why each one.")
                  (seq-difference declared kittymacs-startup-test-archive-only) nix))
     (should-not (seq-difference nix declared))
     (should-not (seq-intersection nix kittymacs-startup-test-archive-only))))
-
-(defvar kittymacs-catalogue)
-
-(ert-deftest kittymacs-startup-nix-list-has-the-catalogue-keys ()
-  "Each key holds its catalogue entry's packages, less Git's and the archive-only ones."
-  (load (expand-file-name "lisp/kittymacs-catalogue.el" kittymacs-startup-test-root) nil t)
-  (let ((keyed (kittymacs-startup-test--nix-keyed)))
-    (should (equal (sort (mapcar #'car (copy-sequence keyed)) #'string<)
-                   (sort (mapcar #'car (copy-sequence kittymacs-catalogue)) #'string<)))
-    (pcase-dolist (`(,feature . ,plist) kittymacs-catalogue)
-      (should (equal (cons feature
-                           (seq-difference (seq-difference (plist-get plist :packages)
-                                                           (plist-get plist :vc))
-                                           kittymacs-startup-test-archive-only))
-                     (assq feature keyed))))))
 
 (defvar kittymacs--archives-refreshed)
 (defvar kittymacs-features--failed)

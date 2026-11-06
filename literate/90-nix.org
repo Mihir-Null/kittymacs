@@ -328,7 +328,7 @@ in
 :header-args:nix: :tangle ../nix/packages.nix :eval never :comments no :padline no :mkdirp yes
 :END:
 
-- Every package a chapter declares with =:ensure t=, keyed by [[id:3f8a6c02-9d14-4b7e-a2c5-1e7d90b64f31][the catalogue]]'s features, and built by Nix into the Emacs the modules install when =packagesFromNix= is on; it is off by default.
+- Every package a chapter declares with =:ensure t=, read feature by feature from =nix/features.json=, [[id:3f8a6c02-9d14-4b7e-a2c5-1e7d90b64f31][the catalogue]]'s generated copy, and built by Nix into the Emacs the modules install when =packagesFromNix= is on; it is off by default.
 - Why Nix installs them, when the configuration could install them itself:
   + the flake's lock pins them, so a machine starts with the versions the lock names rather than whatever MELPA built last night;
   + they are in the store before Emacs starts, so startup needs no network and cannot fail on an archive that is down or out of date;
@@ -343,20 +343,20 @@ in
 - The Emacs is built from =emacs.pkgs=, the package set of the Emacs's own nixpkgs, not the host's =emacsPackagesFor=, so a host whose Emacs comes from a second nixpkgs (unstable on a stable system, say) still gets packages built against it.
 - No source may be a clone of a whole ELPA repository from Savannah.
   + MELPA builds a package that moved to GNU or NonGNU ELPA from that ELPA's Git repository, which holds every package's history; nixpkgs fetches it whole, slowly, from a host that is often unreachable.
-  + Such a package is taken from =elpaPackages= or =nongnuPackages= instead, ELPA's own release tarball: today only =ws-butler=, bound in the =let= below, which wins over =with epkgs=.
+  + Such a package is taken from =elpaPackages= or =nongnuPackages= instead, ELPA's own release tarball: today only =ws-butler=, which the =let= below lays over =epkgs=.
   + =just eval= fails if any derivation behind the package build, a dependency's included, fetches from =savannah.gnu.org/git/elpa=, on unstable and on stable nixpkgs.
-- Two are left to the archives on purpose, and =tests/kittymacs-startup-tests.el= keeps this list and the chapters' declarations in step, with these two as the only exceptions:
+- Two are left to the archives on purpose, in =archiveOnly=, and =tests/kittymacs-startup-tests.el= keeps what this file builds and the chapters' declarations in step, with these two as the only exceptions:
   + =copilot= :: nixpkgs marks it unfree with its server, and an unfree package here would make every user of the flake allow it ([[id:9e0c1f52-7a43-4d0e-b1a8-63c2f5d48e17][the server's opt-in]] has the same reasoning);
   + =consult-ghostel= :: not in nixpkgs.
 - Upgrading: =nix flake update= (=just update-flake=) moves these with nixpkgs; =package-upgrade-all= leaves them alone, since they are not in =var/elpa=.
-- The list is keyed by feature, so a host that chose its features builds only those ([[id:b7e4d1a6-20c9-4f3e-8a57-c61f09d3e248][Choosing features]]).
+- This file reads the list by feature, so a host that chose its features builds only those ([[id:b7e4d1a6-20c9-4f3e-8a57-c61f09d3e248][Choosing features]]).
   + =features= is a list of the catalogue's names; null, the default, builds every feature, as the flake's =with-packages= does.
   + A host that chose nothing passes null too, so it builds what it always did.
   + A feature that =private.el= adds beyond this list still installs from the archives.
-- A package added to a chapter goes under its feature here too; the test fails until it does, and until each key holds its catalogue entry's packages.
+- A package added to a chapter goes under its feature in the catalogue, and nowhere here. The test fails until it does.
   + The catalogue's =:vc= packages are not in nixpkgs' sets, so they stay out too.
 - The result is sorted by name with hyphens ignored, because the order is part of the derivation.
-  + That is the order this list had before it was keyed, so a host that chose nothing keeps its store path and rebuilds nothing.
+  + That is the order the list had when this file wrote it out, so a host that chose nothing keeps its store path and rebuilds nothing.
 - =extraPackages= goes after the list, unsorted: a host's own packages, handed the same package set.
 
 #+begin_src nix
@@ -370,133 +370,34 @@ in
   extraPackages ? null,
 }:
 
+let
+  catalogue = builtins.fromJSON (builtins.readFile ./features.json);
+  archiveOnly = [
+    "copilot"
+    "consult-ghostel"
+  ];
+  fromNix =
+    feature:
+    let
+      entry = catalogue.${feature};
+      left = archiveOnly ++ entry.vc or [ ];
+    in
+    builtins.filter (package: !(builtins.elem package left)) entry.packages;
+  chosen = if features == null then builtins.attrNames catalogue else features;
+in
 emacs.pkgs.withPackages (
   epkgs:
   let
     # MELPA builds ws-butler from a clone of Savannah's whole NonGNU ELPA
     # repository; NonGNU ELPA's own release is one small tarball.
-    inherit (epkgs.nongnuPackages) ws-butler;
-    keyed = with epkgs; {
-      meow = [ meow ];
-      undo-tree = [ vundo ];
-      structural-editing = [
-        puni
-        aggressive-indent
-      ];
-      surround = [ embrace ];
-      syntax-things = [ meow-tree-sitter ];
-      visual-replace = [ visual-regexp ];
-      whitespace-cleanup = [ ws-butler ];
-      snippets = [ yasnippet ];
-      spelling = [
-        flyspell-correct
-        consult-flyspell
-      ];
-      completion = [
-        vertico
-        orderless
-        marginalia
-        consult
-        embark
-        embark-consult
-        corfu
-        cape
-      ];
-      directory-switch = [ consult-dir ];
-      jump = [ avy ];
-      window-picker = [ ace-window ];
-      workspaces = [ tabspaces ];
-      file-tree = [
-        treemacs
-        treemacs-nerd-icons
-        treemacs-tab-bar
-        treemacs-magit
-      ];
-      dired-extras = [
-        diredfl
-        dired-narrow
-        dired-ranger
-        async
-      ];
-      doom-look = [
-        doom-themes
-        doom-modeline
-      ];
-      icons = [
-        nerd-icons
-        nerd-icons-completion
-        nerd-icons-corfu
-        nerd-icons-dired
-      ];
-      code-display = [
-        rainbow-delimiters
-        highlight-indent-guides
-      ];
-      ui-polish = [
-        spacious-padding
-        hl-todo
-        highlight-numbers
-        goggles
-        outline-minor-faces
-      ];
-      focus-mode = [
-        writeroom-mode
-        hide-mode-line
-      ];
-      frames = [ frames-only-mode ];
-      home-page = [ dashboard ];
-      popups = [ popper ];
-      color-names = [ rainbow-mode ];
-      help-extras = [
-        helpful
-        elisp-demos
-        info-colors
-      ];
-      command-menus = [ casual ];
-      key-display = [ keycast ];
-      version-control = [ magit ];
-      diff-hl = [ diff-hl ];
-      project-environment = [ envrc ];
-      shell-path = [ exec-path-from-shell ];
-      terminal = [ ghostel ];
-      eshell-highlight = [ eshell-syntax-highlighting ];
-      org-extras = [
-        org-ql
-        org-super-agenda
-        org-contrib
-        org-modern
-        org-appear
-      ];
-      linked-notes = [ org-roam ];
-      pdf-reading = [
-        pdf-tools
-        org-noter
-        org-pdftools
-        org-noter-pdftools
-      ];
-      more-checkers = [ flymake-collection ];
-      notebooks = [
-        code-cells
-        math-preview
-      ];
-      jupyter = [ jupyter ];
-      lang-nix = [
-        nix-mode
-        nix-ts-mode
-      ];
-      lang-racket = [ racket-mode ];
-      lang-guile = [
-        geiser
-        geiser-guile
-      ];
-      agents = [ agent-shell ];
-      suggestions = [ ];
-      window-manager = [ exwm ];
+    packageSet = epkgs // {
+      inherit (epkgs.nongnuPackages) ws-butler;
     };
-    chosen = if features == null then builtins.attrNames keyed else features;
     rank = package: builtins.replaceStrings [ "-" ] [ "" ] package.pname;
   in
-  builtins.sort (a: b: rank a < rank b) (builtins.concatMap (feature: keyed.${feature}) chosen)
+  builtins.sort (a: b: rank a < rank b) (
+    map (name: packageSet.${name}) (builtins.concatMap fromNix chosen)
+  )
   ++ (if extraPackages == null then [ ] else extraPackages epkgs)
 )
 #+end_src
@@ -544,6 +445,12 @@ let
   catalogue = builtins.fromJSON (builtins.readFile ./features.json);
   names = builtins.attrNames catalogue;
   depsOf = name: catalogue.${name}.deps or [ ];
+  withDeps =
+    features:
+    let
+      grown = lib.unique (features ++ lib.concatMap depsOf features);
+    in
+    if lib.length grown == lib.length features then features else withDeps grown;
   answered = cfg: value: lib.filter (name: cfg.features.${name}.enable == value) names;
 
   settingType =
@@ -690,12 +597,6 @@ rec {
       excluded = answered cfg false;
       inProfile = profile: lib.filter (name: catalogue.${name}.profile == profile) names;
       floor = inProfile "minimal";
-      withDeps =
-        features:
-        let
-          grown = lib.unique (features ++ lib.concatMap depsOf features);
-        in
-        if lib.length grown == lib.length features then features else withDeps grown;
       dropUnmet =
         features:
         let
@@ -754,6 +655,11 @@ rec {
   + A =backend.enable= host installs no Emacs at all.
 - A host that does install the default on nixos-26.05, which has no Emacs 31, now fails here instead of at its first start.
   + So its message names the override, and [[*The templates][each template]] shows it: =kittymacs.packages.<system>.default= is Emacs 31 once the =kittymacs= input stops following that nixpkgs.
+- The last two refuse a selection that contradicts itself, because a host's own file should not ask for what it cannot get.
+  + One refuses =false= on a feature the =minimal= profile always keeps, such as =features.meow.enable=.
+  + The other refuses =true= on a feature while its dependency, direct or through other dependencies, is =false=.
+  + Leaving a feature to the profile is no conflict: excluding =icons= under =full= still drops =file-tree= quietly, as [[*From the options to the features][the steps above]] say.
+  + Elisp still warns about both, because a hand-written setting and a checkout can drift.
 
 #+begin_src nix :padline yes
 
@@ -761,6 +667,19 @@ rec {
     { cfg, usesPackage }:
     let
       version = lib.getVersion cfg.package;
+      excluded = answered cfg false;
+      option = name: "programs.kittymacs.features.${name}.enable";
+      alwaysKept = name: catalogue.${name}.profile == "minimal";
+      refuseExcluded =
+        name: "${option name} is false, but the minimal profile always keeps ${name}. Remove the setting.";
+      refuseSelected =
+        name:
+        map (
+          dep: "${option name} is true, but ${name} needs ${dep} and ${option dep} is false. Change one."
+        ) (lib.intersectLists (withDeps (depsOf name)) excluded);
+      conflicts =
+        map refuseExcluded (lib.filter alwaysKept excluded)
+        ++ lib.concatMap refuseSelected (answered cfg true);
     in
     [
       {
@@ -771,7 +690,11 @@ rec {
         assertion = !usesPackage || version == "" || lib.versionAtLeast version "31";
         message = "kittymacs needs Emacs 31 or later, and programs.kittymacs.package is Emacs ${version}. Set programs.kittymacs.package to a newer one, such as kittymacs.packages.<system>.default from a kittymacs input that does not follow this nixpkgs.";
       }
-    ];
+    ]
+    ++ map (message: {
+      assertion = false;
+      inherit message;
+    }) conflicts;
 #+end_src
 
 ** The generated host file
@@ -2437,6 +2360,8 @@ in
 | =darwin-full=       | the same with =daemon= and =packagesFromNix=                                             |
 
 - =mustFail= holds the old =package= through each module, which must fail naming the option.
+  + It also holds =floor= and =dependency=, the two selection conflicts through Home Manager, which share the assertion list the first three prove in each module.
+  + =mustFailSays= holds the sentence each case must print, so a case that fails for another reason still fails the recipe.
 - =defaultEmacs= is a home with no =package= at all. It must pass where nixpkgs' Emacs is 31 or later, and fail naming the option where it is older, which is the case on =nixos-26.05=.
 - The templates, on both channels, are the matrix's other half: =just nix-templates=.
 - To compare a change with its base, evaluate =home-plain=, =home-daemon=, =home-packages=, =home-darwin=, =darwin= and =darwin-full= against both, and the paths must match: these set no option newer than the base.
@@ -2627,6 +2552,21 @@ in
         home = (linuxHome { package = oldEmacs; }).activationPackage.drvPath;
         nixos = (nixosWith { package = oldEmacs; }).config.system.build.toplevel.drvPath;
         darwin = (darwinWith { package = oldEmacs; }).system.drvPath;
+        floor = home { features.meow.enable = false; };
+        dependency = home {
+          features = {
+            jupyter.enable = true;
+            notebooks.enable = false;
+          };
+        };
+      };
+
+      mustFailSays = rec {
+        home = "and programs.kittymacs.package is Emacs";
+        nixos = home;
+        darwin = home;
+        floor = "programs.kittymacs.features.meow.enable is false, but the minimal profile always keeps meow.";
+        dependency = "programs.kittymacs.features.jupyter.enable is true, but jupyter needs notebooks and programs.kittymacs.features.notebooks.enable is false.";
       };
 
       defaultEmacs = (linuxHome { }).activationPackage.drvPath;

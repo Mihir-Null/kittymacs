@@ -183,6 +183,21 @@
         home = (linuxHome { package = oldEmacs; }).activationPackage.drvPath;
         nixos = (nixosWith { package = oldEmacs; }).config.system.build.toplevel.drvPath;
         darwin = (darwinWith { package = oldEmacs; }).system.drvPath;
+        floor = home { features.meow.enable = false; };
+        dependency = home {
+          features = {
+            jupyter.enable = true;
+            notebooks.enable = false;
+          };
+        };
+      };
+
+      mustFailSays = rec {
+        home = "and programs.kittymacs.package is Emacs";
+        nixos = home;
+        darwin = home;
+        floor = "programs.kittymacs.features.meow.enable is false, but the minimal profile always keeps meow.";
+        dependency = "programs.kittymacs.features.jupyter.enable is true, but jupyter needs notebooks and programs.kittymacs.features.notebooks.enable is false.";
       };
 
       defaultEmacs = (linuxHome { }).activationPackage.drvPath;

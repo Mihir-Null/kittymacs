@@ -90,7 +90,7 @@ A `doom-' theme needs the `doom-look' feature; without it, `modus-operandi'."
 - Icons come from a single patched font that =nerd-icons= maps onto its own code points.
   + Mapping only those ranges keeps ordinary Unicode in the editing font.
 - Symbols fall back to a platform symbol font: Segoe UI Symbol, Symbola, Apple Symbols or Symbol, the first one installed.
-- Prose has its own font, Google Sans Flex, the proportional sibling of the editing font: it is the =variable-pitch= face, which [[id:8ff7e58e-c155-4513-99ae-3b2c3a6ab729][the Org chapter]] sets prose in.
+- Prose has its own font, Google Sans Flex, the proportional counterpart of the editing font: it is the =variable-pitch= face, which [[id:8ff7e58e-c155-4513-99ae-3b2c3a6ab729][the Org chapter]] sets prose in.
   + Without it, =variable-pitch= keeps Emacs's own choice, the platform's sans, so a fresh machine still gets proportional prose.
 - =fixed-pitch= is the editing font too.
   + Its default family is a generic =Monospace=, so code kept fixed inside proportional prose would otherwise change font.
