@@ -73,7 +73,7 @@ in
 
     environment.systemPackages =
       if cfg.backend.enable then
-        tools.backendPrograms
+        tools.backendPrograms ++ lib.optional cfg.backend.rpcServer tools.rpcServer
       else
         [ emacs ] ++ tools.programs ++ lib.optional cfg.suggestions.enable cfg.suggestions.package;
     fonts.packages = lib.optionals (!cfg.backend.enable) tools.fonts;

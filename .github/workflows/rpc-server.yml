@@ -1,0 +1,41 @@
+name: The wsl-rpc server through Nix
+
+# Builds tramp-rpc-server from the pinned source, and asks it who it is.  A hosted
+# runner's job, because its code does not build or run anywhere else here.
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - .github/workflows/rpc-server.yml
+      - nix/tramp-rpc-server.nix
+      - nix/tools.nix
+      - flake.lock
+      - tests/rpc-server-answers.sh
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build the server, and ask it its version
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: cachix/install-nix-action@75c75c31ebece974e48ebc36b4ad125bd97bd97b # v31
+        with:
+          extra_nix_config: "experimental-features = nix-command flakes"
+      - name: Build it
+        id: build
+        run: echo "out=$(nix build --no-link --print-out-paths --print-build-logs .#rpc-server)" >> "$GITHUB_OUTPUT"
+      - name: Ask it its version
+        run: |
+          version=$(sed -n 's/^ *version = "\(.*\)";/\1/p' nix/tramp-rpc-server.nix)
+          bash tests/rpc-server-answers.sh "${{ steps.build.outputs.out }}/bin/tramp-rpc-server" "$version"

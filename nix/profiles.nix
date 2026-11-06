@@ -35,4 +35,5 @@ in
     name = "kittymacs-backend";
     paths = tools.backendPrograms;
   };
+  rpc-server = tools.rpcServer;
 }

@@ -89,6 +89,24 @@ in
     .backend.drvPath
   );
 
+  rpc-server-opt-in = check "rpc-server-opt-in" (
+    let
+      packagesOfHost = host: namesOf host.config.environment.systemPackages;
+      off = nixos { backend.enable = true; };
+      on = nixos {
+        backend = {
+          enable = true;
+          rpcServer = true;
+        };
+      };
+      unasked = nixos { backend.rpcServer = true; };
+    in
+    !(lib.elem "tramp-rpc-server" (packagesOfHost off))
+    && !(lib.elem "tramp-rpc-server" backendTools)
+    && lib.elem "tramp-rpc-server" (packagesOfHost on)
+    && !(lib.elem "tramp-rpc-server" (packagesOfHost unasked))
+  );
+
   system-module = check "system-module" (
     failedAssertions plain == [ ]
     && hostLayerNames plain == [ ]

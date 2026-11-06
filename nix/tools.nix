@@ -83,6 +83,9 @@ in
   # What the doctor looks for, and the feature that asks for each.
   commands = map (entry: { inherit (entry) feature command; }) programTable;
 
+  # The server behind the wsl-rpc transport, which no list here installs by itself.
+  rpcServer = pkgs.callPackage ./tramp-rpc-server.nix { };
+
   # A machine that Emacs reaches from elsewhere: no Emacs, no fonts, no GUI.
   backendPrograms =
     packagesOf (
