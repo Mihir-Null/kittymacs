@@ -1943,8 +1943,8 @@ in
 }
 // lib.optionalAttrs (pkgs.stdenv.hostPlatform.system == "x86_64-linux") {
   overlay = check "overlay" (
-    (pkgs.extend overlay).kittymacs.backend.drvPath
-    == (import ./profiles.nix { inherit pkgs; }).backend.drvPath
+    (pkgs.extend overlay).kittymacs.backend.drvPath == (import ./profiles.nix { inherit pkgs; })
+    .backend.drvPath
   );
 
   system-module = check "system-module" (
