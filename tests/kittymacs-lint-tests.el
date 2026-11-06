@@ -653,4 +653,18 @@ For these names that is an Org library, so `setq' sets them instead."
         (push (format "%s: %S" (file-name-nondirectory file) (seq-uniq names)) found)))
     (should-not (reverse found))))
 
+;;; Backends
+
+(ert-deftest kittymacs-lint-backend-keys-belong-to-the-remote-module ()
+  "A key belongs to the module that owns its feature, and core keys are always there."
+  (let ((remote (kittymacs-lint--path "lisp/kittymacs-remote.el"))
+        (keys '("b" "B")))
+    (dolist (key keys)
+      (should (assoc key (alist-get 'kittymacs-open-map
+                                    (kittymacs-lint--collect-bindings (kittymacs-lint--forms remote))))))
+    (dolist (file (remove remote (kittymacs-lint--modules)))
+      (let ((bound (alist-get 'kittymacs-open-map
+                              (kittymacs-lint--collect-bindings (kittymacs-lint--forms file)))))
+        (should-not (seq-some (lambda (key) (assoc key bound)) keys))))))
+
 ;;; kittymacs-lint-tests.el ends here

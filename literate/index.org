@@ -37,7 +37,8 @@
 | [[id:b9e6e3ce-ecec-4178-933a-234c1349e7de][Basics]]          | core      | small packages for undo, whitespace and windows                    |
 | [[id:afa6b7fd-742a-4c15-86a6-32e3e8027b0e][Platform]]        | core      | paths, shells, spelling; the macOS, Windows and Android policies                   |
 | [[id:bd2638bc-735d-4849-bafe-3dab5e8e30b7][Terminal]]        | apps      | ghostel: a real terminal, its integrations, and Meow inside it                     |
-| [[id:d2e0bc37-0bd4-4b28-a8ee-04f94ac451f8][Shells]]          | apps      | the login environment, Eshell and Tramp                                            |
+| [[id:d2e0bc37-0bd4-4b28-a8ee-04f94ac451f8][Shells]]          | apps      | the login environment and Eshell                                                   |
+| [[id:6e1f2a90-4c7b-4d35-9f18-2b7c0d6e3a41][Remote]]          | core      | Tramp, named backends, and guards for a dead connection                             |
 | [[id:a1607a41-b741-428a-9de3-c16e7c8d3ecc][Editing]]         | keys      | Meow's states and grammar                                                          |
 | [[id:e5942eb0-4389-447d-9317-d9178adcaaae][Leader]]          | keys      | why =SPC= is a real keymap, its groups, and how modes get their own menu             |
 | [[id:53ad53ed-155f-47dc-973d-7be18de2893c][Keys]]            | keys      | the whole =SPC= tree, group by group, and the keys no feature owns                   |

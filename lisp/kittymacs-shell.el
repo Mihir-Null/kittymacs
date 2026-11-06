@@ -1,4 +1,4 @@
-;;; kittymacs-shell.el --- Eshell and Tramp -*- lexical-binding: t; -*-
+;;; kittymacs-shell.el --- Eshell and the login environment -*- lexical-binding: t; -*-
 ;; Generated from literate/35-shells.org; edit the Org source, then tangle.
 
 ;; Distilled from Lambda-Emacs by Colin McLear (GPL-3.0-or-later).
@@ -153,12 +153,6 @@ With REGEXP, go to the most recent directory matching it."
 
 (keymap-set kittymacs-open-map "s" (cons "eshell (project)" #'kittymacs-eshell-project))
 (keymap-set kittymacs-open-map "S" (cons "eshell" #'eshell))
-(setopt tramp-persistency-file-name (expand-file-name "tramp" kittymacs-cache-dir)
-        tramp-default-method "ssh"
-        tramp-copy-size-limit nil
-        tramp-use-ssh-controlmaster-options nil)
-(with-eval-after-load 'tramp
-  (add-to-list 'tramp-remote-path 'tramp-own-remote-path))
 (with-eval-after-load 'meow
   (dolist (entry '((eshell-mode . insert) (shell-mode . insert) (term-mode . insert)))
     (add-to-list 'meow-mode-state-list entry)))
