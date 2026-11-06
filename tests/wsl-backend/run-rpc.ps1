@@ -79,4 +79,9 @@ Invoke-Phase -Phase 'dead' -Minutes 15
 $report = Join-Path $resultsFull 'report.md'
 Get-Content $report
 if ($env:GITHUB_STEP_SUMMARY) { Get-Content $report | Add-Content -Path $env:GITHUB_STEP_SUMMARY }
-if (Get-Content $report | Select-String -Quiet '^FAIL$') { throw 'A check failed: see the report' }
+# Each phase's own line, so one that died before saying anything fails too.
+$phases = 'killed-write', 'compare', 'ergonomics', 'dead'
+$failed = $phases | Where-Object {
+    -not (Get-Content (Join-Path $resultsFull "$_.md") | Select-String -Quiet '^PASS$')
+}
+if ($failed) { throw "No pass from: $($failed -join ', '): see the report" }

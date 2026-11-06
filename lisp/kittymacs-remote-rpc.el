@@ -82,8 +82,8 @@ Each is for a shell to expand, so `$HOME' and not `~/'.")
 
 (defun kittymacs--remote-rpc-start-server (original vec binary-path &optional sudo-password)
   "Call ORIGINAL on VEC, BINARY-PATH and SUDO-PASSWORD, through `wsl.exe'.
-That is for a WSL backend.  For any other host it calls ORIGINAL unchanged, which
-starts `ssh'."
+That is for a WSL backend.  For any other host it calls ORIGINAL unchanged,
+which starts `ssh'."
   (if (not (kittymacs-remote-rpc--vec-p vec))
       (funcall original vec binary-path sudo-password)
     (let ((real (symbol-function 'make-process)))
@@ -146,8 +146,8 @@ backend, or move the seam: see \"Moving the pin\" in the remote chapter."
 
 (defun kittymacs-remote-rpc--distributions ()
   "Return the distributions that `wsl.exe --list' names.
-That starts no virtual machine.  It writes UTF-16 unless told otherwise, and an older one ignores being told, so
-this drops the NUL bytes either way."
+That starts no virtual machine.  It writes UTF-16 unless told otherwise, and an
+older one ignores being told, so this drops the NUL bytes either way."
   (let ((default-directory temporary-file-directory)
         (process-environment (cons "WSL_UTF8=1" process-environment))
         (coding-system-for-read 'no-conversion))
