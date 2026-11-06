@@ -231,14 +231,19 @@ pipe want different ones.  Signals after LIMIT seconds."
      (format "%s" (directory-files directory nil "\\`[^.]")))))
 
 (wsl-backend-check
- "SPC o e: a login shell on a real pty, in the project" 90
+ "SPC o e: a login shell on a real pty, in the project" 100
  (lambda ()
    (let* ((default-directory (wsl-backend-root))
           (buffer (kittymacs-terminal-open)))
      (with-current-buffer buffer
        (unless (equal (file-remote-p default-directory) (file-remote-p (wsl-backend-root)))
          (error "The terminal's buffer left the backend: %s" default-directory))
-       (let ((facts (wsl-backend-terminal-facts "terminal-facts" "\r" 60)))
+       ;; A first start of a distribution eats what is typed before the prompt.
+       (let ((end (+ (float-time) 60)))
+         (while (and (< (float-time) end)
+                     (not (string-match-p "project\\$ *$" (buffer-string))))
+           (accept-process-output nil 0.5)))
+       (let ((facts (wsl-backend-terminal-facts "terminal-facts" "\r" 20)))
          (wsl-backend-expect "/dev/pts/" facts)
          (wsl-backend-expect "login=-bash" facts)
          (wsl-backend-expect "pwd=/home/backend/project" facts)
