@@ -376,22 +376,25 @@ This only says it: nothing here installs anything."
 - VS Code's WSL extension runs one server, so =~/.vscode-server/server-env-setup= sets its environment once, and every process inherits it.
   + Here each program starts on its own, so there is no one place, and this is what each reads.
 
-| Started by                                 | =PATH=               | what the login files export | =tramp-remote-process-environment= |
-|--------------------------------------------+----------------------+-----------------------------+------------------------------------|
-| Magit, =process-file=, a Tramp-run process | the =PATH= search    | yes                         | yes                                |
-| Eglot, =compile=, a direct process         | the =PATH= search    | no                          | yes                                |
-| =M-x shell=                                | the =PATH= search    | yes                         | yes                                |
-| =SPC o e= on a =wsl= backend               | the login shell's own | yes, as a login shell       | no                                 |
+| Started by                                 | =PATH=                | another variable in =~/.profile= | =tramp-remote-process-environment= |
+|--------------------------------------------+-----------------------+----------------------------------+------------------------------------|
+| Magit, =process-file=, a Tramp-run process | the =PATH= search     | no                               | yes                                |
+| Eglot, =compile=, a direct process         | the =PATH= search     | no                               | yes                                |
+| =M-x shell=                                | the =PATH= search     | no                               | yes                                |
+| =SPC o e= on a =wsl= backend               | the login shell's own | yes                              | no                                 |
 
-- =~/.profile= on the machine is the nearest parallel: it is one file, on the machine, for that machine.
-  + =sh -l= reads it for Tramp's own shell, on any transport whose login is that shell, so it uses POSIX syntax and not Bash's.
-  + A =PATH= set there reaches every row, because [[*Where a remote program is found]] asks that shell, and Tramp passes the answer to each process.
-  + Any other variable misses a direct process: =:direct-async nil= gives that backend the first row instead, with the slower start.
-- =tramp-remote-process-environment= reaches all but the terminal, and it is one list for every machine, so it suits what is the same everywhere.
+- [[file:../tests/wsl-backend/connect.el][The job on real WSL2]] measures the first three rows, so a change in Tramp shows there.
+- =~/.profile= on the machine is the nearest parallel, for =PATH=: one file, on the machine, for that machine.
+  + [[*Where a remote program is found]] asks =sh -l= for its =PATH=, and Tramp passes the answer to each process.
+  + =sh= reads it, so it uses POSIX syntax and not Bash's.
+  + Tramp's own shell is not a login shell, so any other variable there reaches only the terminal.
+- =tramp-remote-process-environment= sets a variable for every program but that terminal, on the next connection.
+  + It is one list for every machine, so it suits what is the same everywhere.
 - Connection-local variables are per machine, and they hold Emacs's settings for that machine rather than a program's environment.
   + =:shell= is one: =M-x shell= and =shell-command= there read it.
   + A backend has the profile =kittymacs-backend-NAME=, and yours goes beside it.
-  + =:application tramp= is what makes it per connection, and =:machine= is the distribution, for a =wsl= backend.
+  + =:application tramp= makes it per connection, and =:machine= is the distribution, for a =wsl= backend.
+  + Tramp does not read =tramp-remote-process-environment= this way, so nothing here holds a variable for one machine's programs alone.
 
 #+begin_src emacs-lisp :tangle no
 (connection-local-set-profile-variables
