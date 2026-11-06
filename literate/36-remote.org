@@ -12,7 +12,8 @@
   + Stalls like that, which ended in Force Quit, are why this chapter exists.
 - It gives you:
   + Tramp's settings, which cost a local session nothing, because none of them loads Tramp;
-  + =kittymacs-backends=, =SPC o b= to open a backend's project, and =SPC o B= to see what tools it has;
+  + =kittymacs-backends=, =SPC o b= to open a backend's project, =SPC o B= to see what tools it has, and =SPC o R= to reconnect;
+  + a mode-line segment that names the backend a buffer belongs to;
   + a guard on each thing that talks to a remote machine without being asked.
 - It leans on [[id:d2e0bc37-0bd4-4b28-a8ee-04f94ac451f8][the shells chapter]] for the local environment and on [[id:afa6b7fd-742a-4c15-86a6-32e3e8027b0e][the platform chapter]] for the local shell.
 - The design is in [[file:../ARCHITECTURE.md][ARCHITECTURE.md]]; [[file:../tests/kittymacs-remote-tests.el][the remote tests]] run every guard through a Tramp method defined in the test.
@@ -37,10 +38,12 @@
 (require 'kittymacs-leader)
 
 (defvar agent-shell-path-resolver-function)
+(defvar kittymacs-remote-wsl-method)
 (defvar tramp-methods)
 (defvar tramp-remote-path)
 (declare-function connection-local-set-profile-variables "files-x" (profile variables))
 (declare-function connection-local-set-profiles "files-x" (criteria &rest profiles))
+(declare-function tramp-cleanup-connection "tramp-cmds" (vec &optional keep-debug keep-password keep-processes))
 (declare-function tramp-direct-async-process-p "tramp" (&rest args))
 (declare-function tramp-dissect-file-name "tramp" (name &optional nodefault))
 (declare-function tramp-file-name-host "tramp" (vec))
@@ -129,6 +132,9 @@ Tramp's existence check quotes the name, so it never sees a home directory."
   + A backend that does not answer gives the error that =tramp-connection-timeout= allows for, and =C-g= stops the wait: you asked for this connection.
 - =SPC o B= (=kittymacs-backend-doctor=) lists which of =kittymacs-backend-tools= the backend has, and where.
   + It also says whether the project's directory exists and how processes start there.
+- =SPC o R= (=kittymacs-backend-reconnect=) drops the connection and opens a new one, for the buffer's backend, or for one it asks you to name.
+  + That is the way out of a connection that has stopped answering.
+  + It does not touch a terminal that runs =wsl.exe= itself.
 - These keys live in this chapter because the feature does, and it is core, so they are always there; [[file:../tests/kittymacs-lint-tests.el][the lint]] holds them here.
 
 #+begin_src emacs-lisp
@@ -223,8 +229,73 @@ PATH is nil where the machine does not have the tool."
         (princ (format "%-20s %s\n" tool (or path "not found")))))
     tools))
 
+(defun kittymacs-backend-reconnect (name)
+  "Drop the connection to the backend called NAME, and open a new one.
+Interactively, NAME is this buffer's backend, or else one you choose."
+  (interactive (list (or (kittymacs-remote--buffer-backend)
+                         (kittymacs-remote--read-backend))))
+  (let ((root (kittymacs-backend-root name)))
+    (kittymacs-remote--apply-backend name)
+    (tramp-cleanup-connection (tramp-dissect-file-name root))
+    (unless (file-directory-p root)
+      (user-error "Backend %s has no directory %s" name root))
+    (message "Reconnected to %s" name)))
+
 (keymap-set kittymacs-open-map "b" (cons "backend: open its project" #'kittymacs-backend-connect))
 (keymap-set kittymacs-open-map "B" (cons "backend: what it has" #'kittymacs-backend-doctor))
+(keymap-set kittymacs-open-map "R" (cons "backend: reconnect" #'kittymacs-backend-reconnect))
+
+#+end_src
+
+** Which backend a buffer belongs to
+
+- A buffer on a backend shows that backend's name in the mode line, as =[build]=, because the same file can exist on several machines.
+  + =[build?]= means this Emacs has no connection to it now, so the next thing you ask for will open one.
+  + Clicking it runs =SPC o R=.
+- It runs on every redisplay, so it never connects.
+  + A local buffer pays one =file-remote-p=, with no backends set not even that.
+  + The name comes from comparing strings, and the state from =file-remote-p='s third argument, which only reads whether Tramp holds a live connection.
+  + So a connection that has hung still reads as connected, because finding out would mean asking it; [[id:8d3b7e15-6f42-4c09-a1e8-5b2d90c7f364][the guards]] keep it from stalling you.
+- It sits in =mode-line-misc-info=, which both mode lines show.
+  + =doom-modeline= already shows =@HOST= for any remote buffer, from its =remote-host= segment, and it stays on for the buffers that are no backend.
+  + So under =doom-look= a backend's buffer shows both, and only this one has the name you chose and the connection's state.
+- A remote buffer that is no backend's shows nothing here, as before.
+
+#+begin_src emacs-lisp
+(defun kittymacs-remote--prefix (backend)
+  "Return the start of a file name on BACKEND, without looking anything up."
+  (let ((transport (or (plist-get backend :transport) 'ssh)))
+    (format "/%s:%s:"
+            (if (eq transport 'wsl) kittymacs-remote-wsl-method transport)
+            (or (plist-get backend :host) ""))))
+
+(defun kittymacs-remote--buffer-backend ()
+  "Return the name of this buffer's backend, or nil.  It never connects."
+  (when-let* ((kittymacs-backends)
+              (remote (and default-directory (file-remote-p default-directory))))
+    (car (seq-find (lambda (backend)
+                     (equal remote (kittymacs-remote--prefix (cdr backend))))
+                   kittymacs-backends))))
+
+(defvar kittymacs-remote-mode-line-map
+  (let ((map (make-sparse-keymap)))
+    (keymap-set map "<mode-line> <mouse-1>" #'kittymacs-backend-reconnect)
+    map)
+  "The keys of the backend's name in the mode line.")
+
+(defun kittymacs-remote-mode-line ()
+  "Return the mode line's text for this buffer's backend, or nil.
+It never connects."
+  (when-let* ((name (kittymacs-remote--buffer-backend)))
+    (let ((connected (file-remote-p default-directory nil t)))
+      (propertize (format " [%s%s]" name (if connected "" "?"))
+                  'face (unless connected 'warning)
+                  'mouse-face 'mode-line-highlight
+                  'local-map kittymacs-remote-mode-line-map
+                  'help-echo (format "Backend %s, %s.  mouse-1: reconnect" name
+                                     (if connected "connected" "not connected"))))))
+
+(add-to-list 'mode-line-misc-info '(:eval (kittymacs-remote-mode-line)))
 
 #+end_src
 
@@ -626,6 +697,7 @@ Host vm
 
 - With no remote project in play, =M-: (featurep 'tramp)= after a start is =nil=.
 - Set =kittymacs-backends= in =private.el=; =SPC o B= lists what the machine has, and =SPC o b= opens the project.
+  + A buffer there shows the backend's name in the mode line, and a click, or =SPC o R=, reconnects it.
   + On native Windows with =:transport wsl=, =SPC o B= says processes start directly.
 - On a remote machine with Nix, =C-x C-f /ssh:host:~/=, then =M-: (executable-find "rg" t)= in that buffer: it names the Nix profile's =rg=.
   + On Android with the virtual machine, =host= is =vm=.
