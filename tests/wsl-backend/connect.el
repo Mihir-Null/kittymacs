@@ -234,6 +234,14 @@ Tramp suspends timers while it waits unless told not to, and the limit is a time
                (process-send-string process (concat command "; exit\n"))
                (wsl-backend-wait-for process "done" 30)))
             (reports (mapcar #'wsl-backend-environment-report (list through-shell direct shell))))
+       (message "environment: process-file saw %S; ~/.profile is %S; sh -l says %S"
+                through-shell
+                (with-temp-buffer
+                  (insert-file-contents (concat remote "~/.profile"))
+                  (buffer-string))
+                (with-temp-buffer
+                  (process-file "/bin/sh" nil t nil "-l" "-c" "echo \"$HOME $PATH\"")
+                  (buffer-string)))
        ;; The chapter's table: a change in Tramp must show here.
        (dolist (report reports)
          (wsl-backend-expect "profile=no list=yes connection-local=no path=yes" report))
