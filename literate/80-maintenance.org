@@ -40,8 +40,8 @@
 | =check=           | Emacs              | the three above; the default recipe                                          |
 | =install=         | Emacs, network     | start the configuration once in batch, installing what this machine's profile needs into =var/elpa=; on a fresh clone, =minimal= |
 | =compile=         | the full profile's packages | byte-compile every module under =full=, to catch load errors        |
-| =test-packages=   | the full profile's packages | leader, Org-roam and theme tests, and the startup verifier, under =full= |
-| =test-minimal=    | the minimal profile's packages | leader and theme tests, and the verifier, which also checks the directory holds exactly those |
+| =test-packages=   | the full profile's packages | leader, Org-roam, theme and remote tests, and the startup verifier, under =full= |
+| =test-minimal=    | the minimal profile's packages | leader, theme and remote tests, and the verifier, which also checks the directory holds exactly those |
 | =test-features=   | every feature's packages | one real start per feature, off in turn and on in turn                 |
 | =test-quickstart= | installed packages | the startup verifier, starting from a quickstart file it writes first        |
 | =quickstart=, =quickstart-remove= | installed packages | write the file that starts this machine without scanning =var/elpa=, or delete it |
@@ -230,7 +230,7 @@
   + The verifier then also fails on a package missing from it, or one nothing there needs.
 - =just test-features= starts Emacs once per selection, from [[file:../tests/kittymacs-feature-probes.el][the probes]]: each feature beyond =minimal= off in turn from =full=, and on in turn from =minimal=.
   + Each start activates only what its selection needs, through =package-load-list=, so one directory with everything in it behaves like a separate one per selection.
-  + Each must start with no warning, every =SPC= key callable, no empty group, no key naming a package that is off, and Org not loaded.
+  + Each must start with no warning, every =SPC= key callable, no empty group, no key naming a package that is off, and neither Org nor Tramp loaded.
   + A feature that is on must also have loaded its chapter and bound the key its example quotes.
 - =KITTYMACS_PROBE_ONLY=, a regexp, narrows the probes to the names it matches.
 - =just test-quickstart= runs the verifier on the profile that =KITTYMACS_TEST_PROFILE= names, or =full=, from a file it writes first.
@@ -323,6 +323,17 @@
 ;; literate/77-agents.org.
 ;; (setopt kittymacs-agent-mcp-servers
 ;;         '(((name . "docs") (command . "docs-mcp") (args . ()) (env . ()))))
+
+;; Backends
+;; The machines this Emacs works on, by name; SPC o b opens one's project and
+;; SPC o B says what it has.  See literate/36-remote.org.
+;; (setopt kittymacs-backends
+;;         '(("build" :transport ssh :host "build.example.org" :root "~/src/project/")))
+;; What the doctor looks for, and where Tramp searches after the login shell's PATH.
+;; (setopt kittymacs-backend-tools '("git" "rg" "pyright-langserver"))
+;; (setopt kittymacs-remote-nix-path '("~/.nix-profile/bin"))
+;; Which completion sources may run on their own in a remote buffer.
+;; (setopt kittymacs-remote-auto-capfs '(eglot-completion-at-point))
 
 ;; Terminal
 ;; MSYS2's location, when it is not the normal C:/msys64/.

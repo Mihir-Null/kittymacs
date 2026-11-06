@@ -90,7 +90,7 @@ A `doom-' theme needs the `doom-look' feature; without it, `modus-operandi'."
 - Icons come from a single patched font that =nerd-icons= maps onto its own code points.
   + Mapping only those ranges keeps ordinary Unicode in the editing font.
 - Symbols fall back to a platform symbol font: Segoe UI Symbol, Symbola, Apple Symbols or Symbol, the first one installed.
-- Prose has its own font, Google Sans Flex, the proportional sibling of the editing font: it is the =variable-pitch= face, which [[id:8ff7e58e-c155-4513-99ae-3b2c3a6ab729][the Org chapter]] sets prose in.
+- Prose has its own font, Google Sans Flex, the proportional counterpart of the editing font: it is the =variable-pitch= face, which [[id:8ff7e58e-c155-4513-99ae-3b2c3a6ab729][the Org chapter]] sets prose in.
   + Without it, =variable-pitch= keeps Emacs's own choice, the platform's sans, so a fresh machine still gets proportional prose.
 - =fixed-pitch= is the editing font too.
   + Its default family is a generic =Monospace=, so code kept fixed inside proportional prose would otherwise change font.
@@ -232,10 +232,14 @@ A `doom-' theme needs the `doom-look' feature; without it, `modus-operandi'."
 - By default the frame has Emacs's own mode line.
 - With =doom-look= on, =doom-modeline= is compact and shows the Meow state; its icons follow =kittymacs-icons=.
   + Nothing else here refers to it, so turning the feature off is all it takes to get the built-in one back.
+  + Its language version stays off in a remote buffer ([[id:8d3b7e15-6f42-4c09-a1e8-5b2d90c7f364][the guards]]): finding it searches the remote project, and it runs the local program, so it would be slow and wrong. The guard is here because only this declaration may name the package.
 - The built-in tab bar appears once a second workspace exists and borrows the mode line's faces.
 - =SPC t H= hides the current buffer's mode line with =hide-mode-line-mode=, handy for a screenshot or a presentation; pressing it again brings it back.
 
 #+begin_src emacs-lisp
+;; The remote chapter's, which loads later than this one.
+(declare-function kittymacs-remote-buffer-p "kittymacs-remote" (&rest _))
+
 (when (kittymacs-feature-p 'doom-look)
   (use-package doom-modeline
     :ensure t
@@ -247,7 +251,13 @@ A `doom-' theme needs the `doom-look' feature; without it, `modus-operandi'."
     (doom-modeline-major-mode-icon t)
     (doom-modeline-buffer-state-icon t)
     :config
-    (doom-modeline-mode 1)))
+    (doom-modeline-mode 1)
+    (with-eval-after-load 'doom-modeline-env
+      (dolist (update '(doom-modeline-update-env
+                        doom-modeline-env-update-python doom-modeline-env-update-ruby
+                        doom-modeline-env-update-perl doom-modeline-env-update-go
+                        doom-modeline-env-update-elixir doom-modeline-env-update-rust))
+        (advice-add update :before-until #'kittymacs-remote-buffer-p)))))
 
 (when (kittymacs-feature-p 'focus-mode)
   (use-package hide-mode-line

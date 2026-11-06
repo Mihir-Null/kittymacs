@@ -65,10 +65,11 @@
                              (project-vc-dir "VC-Dir")
                              (magit-project-status "Magit status" ?G)))
   (project-vc-extra-root-markers '(".dir-locals.el" ".project.el" "package.json" "requirements.txt" "autogen.sh"))
+  (project-prune-zombie-projects '((list-first-read . project-prune-zombies-default)
+                                   (prompt . project-prune-zombies-default)))
   :config
   (when (executable-find "rg")
-    (setopt xref-search-program 'ripgrep))
-  (project-forget-zombie-projects))
+    (setopt xref-search-program 'ripgrep)))
 (when (kittymacs-feature-p 'visual-replace)
   (use-package visual-regexp
     :ensure t
