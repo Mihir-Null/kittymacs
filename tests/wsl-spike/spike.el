@@ -7,7 +7,7 @@
 ;; is recorded rather than fixed.
 ;;
 ;; The environment names the run:
-;;   KITTYMACS_SPIKE_TRANSPORT   wsl, ssh or sshx
+;;   KITTYMACS_SPIKE_TRANSPORT   wsl, wslm, ssh, sshx or sshtt
 ;;   KITTYMACS_SPIKE_DISTRIBUTION, KITTYMACS_SPIKE_USER_HOME
 ;;   KITTYMACS_SPIKE_SSH_CONFIG  an ssh configuration naming the host wslspike
 ;;   KITTYMACS_SPIKE_RESULT      the file that receives results
@@ -105,7 +105,7 @@
 (defconst spike-distribution (getenv "KITTYMACS_SPIKE_DISTRIBUTION"))
 (defconst spike-home (or (getenv "KITTYMACS_SPIKE_USER_HOME") "/home/spike"))
 (defconst spike-quick (getenv "KITTYMACS_SPIKE_QUICK"))
-(defconst spike-ssh-p (not (equal spike-transport "wsl")))
+(defconst spike-ssh-p (string-prefix-p "ssh" spike-transport))
 (defconst spike-host (if spike-ssh-p "wslspike" spike-distribution))
 (defconst spike-prefix (format "/%s:%s:" spike-transport spike-host))
 
@@ -159,7 +159,8 @@ while it waits unless told not to, and the limit is a timer."
         (let* ((tramp-dont-suspend-timers t)
                (value (with-timeout (limit 'stalled) (funcall function))))
           (pcase value
-            ('stalled (setq detail (format "no answer in %d s" limit)))
+            ('stalled (setq detail (format "no answer in %d s | login printed: %s"
+                                           limit (spike-connection-tail))))
             ('nil (setq detail "wrong result"))
             ((pred stringp) (setq detail value))
             (`(:detail ,text) (setq ok t detail text))
@@ -281,6 +282,7 @@ WSL forwards localhost by default, and the address changes at each boot."
 (require 'tramp)
 (require 'tramp-sh)
 (setq tramp-connection-timeout 45)
+(when spike-quick (setq tramp-verbose 6))
 
 ;; The wsl row, from the `distrobox' row in Emacs's net/tramp-container.el
 ;; (`tramp-enable-distrobox-method'): the same keys, with wsl.exe as the program.
@@ -296,9 +298,28 @@ WSL forwards localhost by default, and the address changes at each boot."
                (tramp-remote-shell-args ("-c"))
                (tramp-completion-use-cache nil)))
 
-;; Tramp's own ssh rows, with one change: -F, so the run needs no line in the
-;; ~/.ssh/config of whoever runs it.
-(dolist (method '("ssh" "sshx"))
+;; The wsl row changed in one way, and so not a measure of the template.  wsl.exe
+;; relays stdout and stderr separately, and an interactive sh prompts on stderr, so
+;; a prompt can overtake the output before it, and Tramp never sees a prompt at the
+;; end.  This row merges them on the Linux side.  A group with an empty element is
+;; dropped, so a direct process, which expands %l to nothing, runs without it.
+(add-to-list 'tramp-methods
+             `("wslm"
+               ,@(assq-delete-all 'tramp-login-args (copy-alist (cdr (assoc "wsl" tramp-methods))))
+               (tramp-login-args (("-d" "%h") ("--exec")
+                                  ("/bin/sh" "-c" "\"exec" "%l" "2>&1\"")))))
+
+;; Tramp's ssh row changed in one way, and so not Tramp's own: -t -t.  Windows has
+;; no terminal to give ssh.exe, and without one the remote shell never prompts.
+;; sshx does this too, but through RemoteCommand, which rules out direct processes.
+(add-to-list 'tramp-methods
+             `("sshtt"
+               ,@(assq-delete-all 'tramp-login-args (copy-alist (cdr (assoc "ssh" tramp-methods))))
+               (tramp-login-args (("-l" "%u") ("-p" "%p") ("%c") ("-e" "none") ("-t" "-t") ("%h")))))
+
+;; Every ssh row with one change: -F, so the run needs no line in the ~/.ssh/config
+;; of whoever runs it.
+(dolist (method '("ssh" "sshx" "sshtt"))
   (let ((login-args (assq 'tramp-login-args (assoc method tramp-methods))))
     (setcar (cdr login-args)
             (cons (list "-F" (getenv "KITTYMACS_SPIKE_SSH_CONFIG"))
@@ -400,8 +421,32 @@ take the whole login timeout."
          (prog1 (with-current-buffer buffer
                   (save-excursion
                     (goto-char (point-min))
-                    (or (search-forward "Unstaged changes" nil t) "no unstaged changes shown")))
+                    (or (search-forward "Unstaged changes" nil t)
+                        (format "no unstaged changes shown; the buffer said: %s; git said: %s"
+                                (buffer-substring-no-properties
+                                 (point-min) (min (point-max) (+ (point-min) 300)))
+                                (spike-sync '("git" "-C" "repo" "status" "--short"))))))
            (kill-buffer buffer)))))))
+
+(defvar spike-eglot-failures 0 "How many Eglot starts have failed in a row.")
+
+(defun spike-eglot-why ()
+  "Record what Eglot's own buffers say, once, after a start that failed."
+  (dolist (buffer (buffer-list))
+    (when (string-search "EGLOT" (buffer-name buffer))
+      (with-current-buffer buffer
+        (spike-record "probe: what Eglot's buffer said" 1 0.0 t
+                      (format "%s: %s" (buffer-name)
+                              (buffer-substring-no-properties
+                               (max (point-min) (- (point-max) 500)) (point-max))))))))
+
+(defun spike-eglot-rounds (label rounds)
+  "Run ROUNDS of Eglot as LABEL, stopping at two failures in a row, since each costs a minute."
+  (setq spike-eglot-failures 0)
+  (cl-loop for round from 1 to (spike-rounds rounds)
+           while (< spike-eglot-failures 2)
+           do (spike-eglot-round label round))
+  (when (> spike-eglot-failures 0) (spike-eglot-why)))
 
 (defun spike-eglot-round (label round)
   "Start clangd on the fixture's C file, ask for a hover, and shut it down."
@@ -410,13 +455,15 @@ take the whole login timeout."
       (goto-char (point-min))
       (search-forward "add (40")
       (backward-char 5)
-      (let ((eglot-sync-connect t) (eglot-connect-timeout 90))
-        (when (spike-measure
-               (format "Eglot start, %s" label) round 120
-               (lambda ()
-                 (eglot (list major-mode) (project-current) 'eglot-lsp-server
-                        '("clangd") "c")
-                 (and (eglot-current-server) t)))
+      (let ((eglot-sync-connect t) (eglot-connect-timeout 60))
+        (if (not (spike-measure
+                  (format "Eglot start, %s" label) round 75
+                  (lambda ()
+                    (eglot (list major-mode) (project-current) 'eglot-lsp-server
+                           '("clangd") "c")
+                    (and (eglot-current-server) t))))
+            (setq spike-eglot-failures (1+ spike-eglot-failures))
+          (setq spike-eglot-failures 0)
           (spike-measure
            (format "Eglot first hover, %s" label) round 60
            (lambda ()
@@ -439,8 +486,7 @@ take the whole login timeout."
   (let ((default-directory spike-prefix))
     (spike-record "probe: direct async on" 1 0.0 t
                   (format "%S" (tramp-direct-async-process-p))))
-  (dotimes (i (spike-rounds 5))
-    (spike-eglot-round "backend default" (1+ i)))
+  (spike-eglot-rounds "backend default" 5)
   (setf (alist-get "spike" kittymacs-backends nil nil #'equal)
         (append (cdr (assoc "spike" kittymacs-backends)) '(:direct-async nil)))
   (kittymacs-remote--apply-backend "spike")
@@ -448,8 +494,7 @@ take the whole login timeout."
   (let ((default-directory spike-prefix))
     (spike-record "probe: direct async off" 1 0.0 t
                   (format "%S" (tramp-direct-async-process-p))))
-  (dotimes (i (spike-rounds 3))
-    (spike-eglot-round "direct async off" (1+ i)))
+  (spike-eglot-rounds "direct async off" 3)
   (setf (alist-get "spike" kittymacs-backends nil nil #'equal)
         (seq-take (cdr (assoc "spike" kittymacs-backends)) 6))
   (kittymacs-remote--apply-backend "spike")
@@ -488,10 +533,10 @@ Send it the bytes STDIN, then end of file.  Return (STATUS . BYTES)."
   "Run COMMAND on the backend with `process-file'.  Return (STATUS . BYTES)."
   (let ((default-directory (concat spike-prefix "/tmp/"))
         (coding-system-for-read 'no-conversion))
+    ;; A multibyte buffer, since a unibyte one would mangle a non-ASCII argument here.
     (with-temp-buffer
-      (set-buffer-multibyte nil)
       (let ((status (apply #'process-file (car command) nil t nil (cdr command))))
-        (cons status (buffer-string))))))
+        (cons status (encode-coding-string (buffer-string) 'utf-8-unix))))))
 
 (defun spike-show (bytes)
   "Return BYTES in a form that survives a log, cut short."
@@ -725,6 +770,13 @@ Return its value."
                         spike-phase-shutdown
                         spike-phase-idle-distribution)))
 (spike-phase #'spike-phase-bad-host)
+(when spike-quick
+  (dolist (buffer (buffer-list))
+    (when (string-prefix-p "*debug tramp/" (buffer-name buffer))
+      (with-current-buffer buffer
+        (let ((coding-system-for-write 'utf-8-unix))
+          (write-region (max (point-min) (- (point-max) 300000)) (point-max)
+                        (concat (getenv "KITTYMACS_SPIKE_RESULT") ".debug") t 'silent))))))
 (spike-log "done")
 (when (process-live-p spike-keepalive) (delete-process spike-keepalive))
 (kill-emacs 0)

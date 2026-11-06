@@ -76,7 +76,9 @@ jobs:
         run: just install
       - name: Measure
         shell: pwsh
-        run: tests/wsl-spike/run.ps1
+        env:
+          KITTYMACS_SPIKE_QUICK: 1
+        run: tests/wsl-spike/run.ps1 -Transports wsl,wslm,sshtt
       # Timings and error text.  The key is removed before this runs.
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         if: always()
