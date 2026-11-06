@@ -34,7 +34,10 @@ jobs:
           extra_nix_config: "experimental-features = nix-command flakes"
       - name: Build it
         id: build
-        run: echo "out=$(nix build --no-link --print-out-paths --print-build-logs .#rpc-server)" >> "$GITHUB_OUTPUT"
+        # An assignment of its own, because `echo' would hide the build's failure.
+        run: |
+          out=$(nix build --no-link --print-out-paths --print-build-logs .#rpc-server)
+          echo "out=$out" >> "$GITHUB_OUTPUT"
       - name: Ask it its version
         run: |
           version=$(sed -n 's/^ *version = "\(.*\)";/\1/p' nix/tramp-rpc-server.nix)

@@ -91,7 +91,7 @@ in
 
   rpc-server-opt-in = check "rpc-server-opt-in" (
     let
-      packagesOfHost = host: namesOf host.config.environment.systemPackages;
+      packagesOfHost = config: namesOf config.environment.systemPackages;
       off = nixos { backend.enable = true; };
       on = nixos {
         backend = {

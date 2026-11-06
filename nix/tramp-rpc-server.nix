@@ -16,7 +16,7 @@ rustPlatform.buildRustPackage {
     hash = "sha256-kmb0tolO3E/cXqvdzTUQFKPGgDXSO0uN+98RXvmMvBk=";
   };
 
-  cargoHash = lib.fakeHash;
+  cargoHash = "sha256-o+JyVmN8KzIiokr9UKpxwP+cSUf72RtH+/m0Rfck78g=";
   cargoBuildFlags = [
     "--package"
     "tramp-rpc-server"
