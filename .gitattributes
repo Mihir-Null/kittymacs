@@ -4,6 +4,7 @@
 *.nix text eol=lf
 *.json text eol=lf
 *.yml text eol=lf
+*.sh text eol=lf
 justfile text eol=lf
 # These files are tangled from the chapters in literate/.  GitHub folds them
 # in diffs so review happens on the chapter; expand when you want the output.

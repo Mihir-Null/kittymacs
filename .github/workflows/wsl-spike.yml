@@ -35,3 +35,51 @@ jobs:
       - name: A distribution reports version 2, and a Linux kernel answers in it
         shell: pwsh
         run: tests/wsl-spike/prove-wsl2.ps1 -Distribution Ubuntu-24.04
+
+  measure:
+    name: Measure both transports
+    needs: runner
+    runs-on: windows-latest
+    timeout-minutes: 120
+    env:
+      KITTYMACS_TEST_PACKAGES: ${{ github.workspace }}/var/elpa
+      KITTYMACS_TEST_PROFILE: full
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: Vampire/setup-wsl@4c48163d9f981914dd8caa0fc335fe19cca5bff4 # v7.2.0
+        with:
+          distribution: Ubuntu-24.04
+          wsl-version: 2
+      # GNU's own Windows build, as ci.yml installs it.
+      - name: Install Emacs from GNU
+        shell: bash
+        run: |
+          tmp=$(cygpath -u "$RUNNER_TEMP")
+          curl -sSfL -o "$tmp/emacs.zip" \
+            "https://ftp.gnu.org/gnu/emacs/windows/emacs-31/emacs-31.1.zip"
+          7z x -y "-o$(cygpath -w "$tmp/emacs")" "$(cygpath -w "$tmp/emacs.zip")" > /dev/null
+          emacs_exe=$(find "$tmp/emacs" -path '*/bin/emacs.exe' | head -n 1)
+          test -n "$emacs_exe"
+          cygpath -w "$(dirname "$emacs_exe")" >> "$GITHUB_PATH"
+      - uses: taiki-e/install-action@c509219cf42fba86913069efd0ade2458c59337b # v2
+        with:
+          tool: just
+      # Read the cache ci.yml fills, and write nothing back.
+      - name: Restore the package directory
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
+        with:
+          path: var/elpa
+          key: elpa-3-full-Windows-31.1-${{ hashFiles('lisp/*.el', 'early-init.el', 'init.el') }}
+          restore-keys: elpa-3-full-Windows-31.1-
+      - name: Install packages by starting the configuration
+        shell: bash
+        run: just install
+      - name: Measure
+        shell: pwsh
+        run: tests/wsl-spike/run.ps1
+      # Timings and error text.  The key is removed before this runs.
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        if: always()
+        with:
+          name: wsl-spike-results
+          path: wsl-spike-results
