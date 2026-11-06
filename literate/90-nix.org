@@ -424,7 +424,7 @@ programs.kittymacs = {
 };
 #+end_src
 
-- With none of these set, the module writes no file and no package changes, so a host that ignores them stays exactly as it was.
+- With none of these set, the module writes no file and no package changes, so a host that ignores them keeps what it has, with [[id:2ea4f7b0-6c19-4d85-93f2-c07a1be58d36][the warning]] until it chooses, and a new host starts on the configuration's default.
 - Only the Home Manager module has these options so far: a system module would write to =/etc/kittymacs/conf.d/=, and none does yet.
   + On a Mac with both modules, set them on the Home Manager side; =packagesFromNix= in the nix-darwin module still builds every feature.
 - =features= is generated from =nix/features.json=, which the builder reads from the catalogue, so each feature's summary is its option's description.

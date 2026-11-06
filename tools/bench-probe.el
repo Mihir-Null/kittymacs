@@ -70,6 +70,8 @@ Several, because a file that has just loaded queues its compilation late."
 (defun kittymacs-bench-probe--settled ()
   "Record what the settled Emacs has cost, then time the first actions."
   (kittymacs-bench-probe--note :cpu-settled (kittymacs-bench-probe--cpu))
+  (kittymacs-bench-probe--note :profile (and (fboundp 'kittymacs-features-profile)
+                                             (funcall 'kittymacs-features-profile)))
   (kittymacs-bench-probe--note :features (length features))
   (kittymacs-bench-probe--note :files-loaded (length load-history))
   (kittymacs-bench-probe--note :packages-activated

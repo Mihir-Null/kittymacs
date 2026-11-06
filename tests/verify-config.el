@@ -11,7 +11,9 @@
 (defvar kittymacs-verify-root (make-temp-file "kittymacs-verify-" t))
 (load (expand-file-name "tests/kittymacs-profile-checks.el" kittymacs-verify-source) nil t)
 (defvar kittymacs-verify-profile (getenv "KITTYMACS_TEST_PROFILE")
-  "The profile to check, or nil for what the configuration chooses by itself.")
+  "The profile to check, or nil where KITTYMACS_TEST_PRIVATE's file names one.
+This check always writes a private.el, so with neither a machine has no choice
+and a sign of use, and the warning for that fails it.")
 (defvar kittymacs-verify-private (getenv "KITTYMACS_TEST_PRIVATE")
   "A file to start private.el with, as onboarding wrote it, or nil.")
 (defvar kittymacs-verify-expected
@@ -127,6 +129,21 @@ Types the configuration deliberately silences are left out."
       ;; its first use, and the checks below load it themselves.
       (dolist (failure (kittymacs-check-start))
         (kittymacs-verify-check nil failure))
+      ;; `just size' counts what the default profile loads by reading init.el;
+      ;; a real start says whether it read correctly.
+      (when (and (equal kittymacs-verify-profile "minimal") (not kittymacs-verify-private))
+        (defvar kittymacs-bench-library-only t)
+        (load (expand-file-name "tools/bench.el" kittymacs-verify-source) nil t)
+        (let ((counted (kittymacs-bench-default-modules))
+              (loaded (seq-filter (lambda (feature)
+                                    (file-exists-p (expand-file-name
+                                                    (format "lisp/%s.el" feature)
+                                                    kittymacs-verify-source)))
+                                  features)))
+          (kittymacs-verify-check
+           (and (null (seq-difference counted loaded)) (null (seq-difference loaded counted)))
+           (format "just size counts other modules than a start loads: only counted %S, only loaded %S"
+                   (seq-difference counted loaded) (seq-difference loaded counted)))))
       (pcase-dolist (`(,feature . ,on) kittymacs-verify-expected)
         (kittymacs-verify-check (eq (kittymacs-feature-p feature) on)
                                 (format "kittymacs-feature-p says %s is %s"
@@ -303,8 +320,10 @@ Types the configuration deliberately silences are left out."
         (kittymacs-verify-check (equal custom-enabled-themes (list dark))
                                 "The dark theme was not restored by the theme toggle"))
       (kittymacs-verify-check meow-global-mode "Meow is off")
-      (when (kittymacs-feature-p 'doom-look)
-        (kittymacs-verify-check doom-modeline-mode "The mode line is missing"))
+      (if (kittymacs-feature-p 'doom-look)
+          (kittymacs-verify-check doom-modeline-mode "The mode line is missing")
+        (kittymacs-verify-check (not (or (featurep 'doom-modeline) (featurep 'doom-themes)))
+                                "A doom package loaded with doom-look off"))
       (kittymacs-verify-check (null kittymacs-eglot-auto-start-modes) "LSP auto-start changed")
       (kittymacs-verify-check (null kittymacs-language-packages) "Language package opt-ins changed")
       ;; Importing the login shell's PATH replaces `exec-path' whole; the

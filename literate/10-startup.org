@@ -452,7 +452,7 @@ Set before init.el loads to change them, because they are read during init.")
 - =C-h v package-check-signature=: =nil= means no native =gpg= was found ([[*GNU ELPA's signature check needs a native gpg]]).
 - =SPC C p= opens =private.el=, created from the example the first time; =SPC C u= opens the Customize file.
 - After editing this chapter, =just tangle= rewrites both files; =just tangle-check= proves they match.
-- =just install= starts the configuration once in batch, installing every package; =just test-packages= replays a real startup and fails on any warning.
+- =just install= starts the configuration once in batch, installing what its profile needs; =just test-packages= replays a real startup under =full= and fails on any warning.
 
 #+begin_src sh :tangle no
 just tangle-check     # early-init.el and init.el match this chapter

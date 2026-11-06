@@ -38,12 +38,13 @@
 | =doc-test=        | Emacs              | check IDs, tags and links on every page                                      |
 | =test=            | Emacs              | builder, platform and Tree-sitter tests                                      |
 | =check=           | Emacs              | the three above; the default recipe                                          |
-| =install=         | Emacs, network     | start the configuration once in batch, installing its packages into =var/elpa= |
-| =compile=         | installed packages | byte-compile every module, to catch load errors                               |
-| =test-packages=   | installed packages | leader, Org-roam and theme tests, and the startup verifier                   |
+| =install=         | Emacs, network     | start the configuration once in batch, installing what this machine's profile needs into =var/elpa=; on a fresh clone, =minimal= |
+| =compile=         | the full profile's packages | byte-compile every module under =full=, to catch load errors        |
+| =test-packages=   | the full profile's packages | leader, Org-roam and theme tests, and the startup verifier, under =full= |
 | =test-minimal=    | the minimal profile's packages | leader and theme tests, and the verifier, which also checks the directory holds exactly those |
 | =test-features=   | every feature's packages | one real start per feature, off in turn and on in turn                 |
 | =size=            | Emacs              | count the code and prose against =tests/budgets.eld=                         |
+| =budget-check=    | Emacs, Git history | fail if a budget rose against the merge base with no stated reason           |
 | =bench=           | installed packages | start Emacs many times and report what startup costs                         |
 | =frames-test=     | a display          | the frame-policy tests, in a graphical Emacs                                 |
 | =lint=            | Nix tools          | =deadnix=, =statix= and =nixfmt= over the generated Nix                      |
@@ -51,18 +52,20 @@
 | =sources=         | Nix                | fail if an Emacs package's source clones a whole ELPA repository (in =eval=) |
 | =nix-selection=   | Nix                | start Emacs from real Home Manager hosts' generated files, and compare its answers with their options |
 | =nix-check=       | Nix                | =lint=, =eval= and =nix-selection=                                           |
-| =all=             | Nix, network       | everything CI runs on Linux, in order                                        |
+| =all=             | Nix, network       | everything CI runs on Linux, in order, installing =full=                     |
 | =update=          | Nix, network       | =update-flake=, =update-packages=, =update-grammars=                         |
 
 - =nix develop= gives a shell with Emacs, =just= and the Nix linters ([[id:d25a5063-1439-4ae0-8fbe-b0162d05a0e0][the Nix chapter]]); outside it, any Emacs 31.1 or later runs the Emacs recipes.
 - On Windows, =just= runs recipes with the =sh= Git for Windows installs.
 - =test-packages= reads =KITTYMACS_TEST_PACKAGES=, defaulting to this checkout's =var/elpa=.
+  + It and =compile= name =full= themselves, so a fresh clone needs =KITTYMACS_TEST_PROFILE=full just install= first.
 
 ** Updating
 
 - =flake.lock= moves by itself: Dependabot opens a pull request each week, and CI's =merge-flake-bump= job merges it once the =tangle=, =startup=, =features= and =nix= jobs pass.
   + That job merges directly, so it needs no branch rule or repository setting, and a failed job leaves the pull request open for a person.
   + =bench= is not among them, because it reports and never decides.
+  + =just budget-check= runs inside =tangle=, and a bump passes it: it counts files in this repository, and a bump changes only =flake.lock=.
   + CI evaluates the flake and does not build it, so a bump can reach =main= that then fails to build on a machine: =git revert= it, and pin the input until upstream is fixed.
 - =just update= is for a machine: it runs three recipes, and each also works alone:
   + =update-flake= :: =nix flake update=: moves nixpkgs, and so the Emacs, its packages and the tools the Nix modules install. Commit =flake.lock=.
@@ -125,7 +128,12 @@
 - =just size= counts without starting Emacs:
   + Lisp lines and cons cells, in total and per module, because joining lines lowers the first and not the second;
   + declared packages, in any gate, =:vc= included;
-  + lines of prose across every =literate/*.org=, =ARCHITECTURE.md= and the README, so moving text between pages changes nothing.
+  + lines of prose across every =literate/*.org=, =ARCHITECTURE.md= and the README, so moving text between pages changes nothing;
+  + =default-loaded-lines= and =default-loaded-conses=, the files a start on the default profile loads, and =default-packages=, the packages that profile installs.
+- The total =elisp-lines= counts every file under =lisp/=, so onboarding looks like a cost of starting, and only the =default-= counts say what a start pays.
+  + They follow =require= from =init.el=, past the gates that are on, without starting Emacs.
+  + A whole file counts once it loads, because a form behind a gate that is off is still read.
+  + =just test-minimal= holds the list of modules to what a real start loads.
 - =just bench= starts Emacs repeatedly from [[file:../tools/bench.el][tools/bench.el]], after =just install=:
   + it warns when =lisp/private.el= or a host file exists, because either changes what it measures;
   + in a terminal it starts under its own pty, and in a frame too when =DISPLAY= is set (=xvfb-run= provides one);
@@ -143,9 +151,24 @@
 
 - The counts of features, loaded files and activated packages come from a real start and repeat exactly on one machine, so they are what a budget can hold; times differ between machines and stay a report.
 - =tests/budgets.eld= holds the counts from the last =--write=, and every run prints how the checkout differs from them.
-  + Nothing enforces them yet.
-  + They come from CI's =bench= job, which runs the dev shell's Emacs.
+  + The counts from a start, =features=, =files-loaded=, =packages-activated=, =dependency-closure=, =org-loaded-at-start= and =magit-loaded-at-start=, are of the default profile, =minimal=; =just bench= warns if its starts ran on another, and =--write= refuses.
+  + They come from CI's =bench= job, which runs the dev shell's Emacs on a fresh clone with no profile.
   + Another build of Emacs loads a different number of features and files, so compare under =nix develop=; even there a machine can differ from CI by a few.
+- =just budget-check= holds the file to the merge base with the branch a pull request targets, or with =origin/main=. It fails when:
+  + a budget is higher than at the merge base, and no commit since then states a reason for that budget;
+  + the file disagrees with what =just size= counts, because a stale fall leaves room for a later rise, and a stale rise lands on the next change: =just size --write= fixes it;
+  + the file no longer holds a budget, unless that is a row of a module that has gone.
+- A reason is a trailer in the last paragraph of a commit message since the merge base:
+  #+begin_example
+  Budget-rise: elisp-lines, module-lines/kittymacs-ui: the Modus fallback needs naming
+  #+end_example
+  + It names each budget it covers, and the check prints the names it wants, so a reason cannot wave through a rise nobody looked at.
+  + A trailer works the same locally and in CI, and it stays in the history beside the change.
+- A metric the merge base lacks has nothing to rise from, and a new module also moves the totals.
+- What =just size= counts is compared as measured, and the counts from a start are compared as recorded.
+  + A start's counts move with the Emacs build and with upstream packages, so a measured rise could fail a pull request, or a =flake.lock= bump, for a reason nobody can state.
+  + A real rise in one of them therefore fails nothing by itself: it shows in the =bench= job's report, and whoever runs =just bench --write= has to state it.
+- Times stay a report.
 - =TERM= is =linux= under the pty: an xterm-like =TERM= makes Emacs wait up to =xterm-query-timeout= for a reply a bare pty never sends.
 - A run that dies is listed with its exit status and last output, and the rest carry on, because one Emacs failing among dozens is itself a result.
 - A =lisp/private.el= changes every number, so =just bench= warns when one exists.
@@ -181,12 +204,13 @@
 
 - [[file:../.github/workflows/ci.yml][The CI workflow]] runs the recipes above on every push and pull request; it never deploys anything.
   + =tangle= job :: =just check=: the chapters match the generated files, and the package-free tests pass.
+    Then =just budget-check=, which is why this job fetches the whole history ([[*Measuring]]).
   + =startup= job :: a fresh clone runs =just install=, =just compile= and =just test-packages= on Emacs 31.1 on Linux, plus informational macOS and Windows runs.
     A second Linux run installs the minimal profile and runs =just test-minimal=: it has a package cache of its own that nothing older can seed, so leftovers cannot hide a removal, and the verifier fails on a package too many or too few.
   + =features= job :: =just test-features= after installing every feature's packages: one real start per feature ([[*Testing a selection]]).
   + =nix= job :: =just nix-check= in =nix develop=, then the home-manager module's clone options read as a device would see them.
     =eval= checks the flake twice: on its own nixpkgs-unstable, and on the stable release in the justfile's =stable= variable, since a host that makes the flake follow its nixpkgs evaluates it there; move =stable= to each new release.
-  + =bench= job :: a fresh clone with no package cache runs =just bench= in =nix develop= under =xvfb-run= and writes the tables to the job's summary ([[*Measuring]]); it is informational and cannot fail a pull request.
+  + =bench= job :: a fresh clone with no package cache, and so the default profile, runs =just bench= in =nix develop= under =xvfb-run= and writes the tables to the job's summary ([[*Measuring]]); it is informational and cannot fail a pull request.
 - A weekly run repeats the fresh install without the package cache, so upstream breakage shows up even when nothing here changed.
 - =just frames-test= is the one suite CI cannot run: it needs a graphical session.
 - Dependabot proposes weekly updates to the workflow's actions, for a person to review, and to =flake.lock=, which merge themselves ([[*Updating]]).
@@ -197,7 +221,7 @@
 :END:
 
 - =KITTYMACS_TEST_PROFILE= says what =just install= installs into this checkout's =var/elpa=: =minimal=, =full=, or =every=, which adds each optional feature.
-  + Unset, this machine's own settings decide, as on any start.
+  + Unset, this machine's own settings decide, as on any start: a fresh clone gets the default, =minimal=, and an older checkout stays on =full= ([[id:2ea4f7b0-6c19-4d85-93f2-c07a1be58d36][the rule]]).
   + Use a separate clone per value, so one profile's packages cannot help another's test.
 - =just test-minimal= is for a directory that holds the =minimal= profile and nothing else.
   + The verifier then also fails on a package missing from it, or one nothing there needs.
@@ -394,7 +418,8 @@
 - Every path is relative to =user-emacs-directory=, so the commands work from any buffer.
 - This chapter binds =SPC C o= and says when to press it, because the onboarding module must not load at startup.
   + =autoload= gives the key a command to call, and loads the module on the first press.
-- =kittymacs-onboard-hint= points at the key, on a machine with no selection in a host file or =private.el=.
+- =kittymacs-onboard-hint= names the profile and points at the key, on a machine with no selection in a host file or =private.el=.
+  + A new machine gets the small default, so this is how a person learns there is more.
   + It runs from =emacs-startup-hook=, after Emacs's own startup message, which would otherwise replace it.
   + A =message= and not a warning: nothing has gone wrong, and the verifier fails on any warning.
   + It only speaks: starting something a person did not ask for is how a first start stops being understandable.
@@ -415,10 +440,11 @@
   "Choose what kittymacs installs, and write it to `private.el'." t)
 
 (defun kittymacs-onboard-hint ()
-  "Say where to choose features, on a machine that has chosen none."
+  "Say where this machine started and where to choose, if it has chosen nothing."
   (unless (or noninteractive (daemonp)
               kittymacs-profile kittymacs-features kittymacs-features-excluded)
-    (message "kittymacs: no features chosen yet.  SPC C o chooses them, or `just onboard' in a terminal.")))
+    (message "kittymacs: nothing chosen yet, so this is the %s profile.  SPC C o chooses, or `just onboard' in a terminal."
+             (kittymacs-features-profile))))
 
 (add-hook 'emacs-startup-hook #'kittymacs-onboard-hint 90)
 
@@ -513,8 +539,9 @@
 
 - =SPC C k=: =*kittymacs literate build*= ends with =LITERATE CHECK PASS=.
 - =SPC C p= on a fresh clone: =private.el= opens, a copy of the example.
-- A start with no selection: the echo area names =SPC C o=, and =*Messages*= keeps the line.
+- A start with no selection: the echo area names the profile and =SPC C o=, and =*Messages*= keeps the line.
 - =just size=: a table of counts, and how they differ from =tests/budgets.eld=.
+- =just budget-check=: every budget against the merge base, and =Every budget held= at the end.
 - =KITTYMACS_BENCH_RUNS=3 just bench=: a table of times against =emacs -Q=, with a number in every row but the =emacs -Q= cell of =SPC t m=.
 - From a shell:
 

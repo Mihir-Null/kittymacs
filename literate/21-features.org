@@ -43,16 +43,18 @@
 (require 'kittymacs-catalogue)
 
 (defvar kittymacs-lisp-dir)
+(defvar kittymacs-var-dir)
 (defvar package-alist)
 
-(defconst kittymacs-default-profile 'full
-  "The profile of a machine that chose none.")
+(defconst kittymacs-default-profile 'minimal
+  "The profile of a machine that chose none and started out on the default.")
 
 (defcustom kittymacs-profile nil
   "Where this machine's features start: `minimal' or `full'.
 `full' leaves out the features the catalogue marks `optional'.  Nil means no
-choice yet, so `kittymacs-default-profile' decides.  Set it with `setopt' in a
-host file or private.el: Customize's file loads after every chapter has asked."
+choice yet, so `kittymacs-default-profile' decides, unless this machine ran
+kittymacs before that default existed.  Set it with `setopt' in a host file or
+private.el: Customize's file loads after every chapter has asked."
   :type '(choice (const :tag "Not chosen" nil) (const minimal) (const full))
   :group 'kittymacs)
 
@@ -77,11 +79,31 @@ Set it where `kittymacs-profile' is set, for the same reason."
 :ID: 2ea4f7b0-6c19-4d85-93f2-c07a1be58d36
 :END:
 
-- A machine that has run kittymacs and has chosen no profile stays on =full=, and a warning says how to choose.
-  + =kittymacs-default-profile= is =full= today, so nothing warns yet: the rule gives the answer the default already gives.
-  + Once that default moves to =minimal=, pulling that change must not take packages away from anyone unannounced.
-- The sign of a machine in use is a =private.el=, or any package =package.el= has found.
+- A new machine starts on =minimal=, the default, and a machine from before that default stays on =full=.
+  + Pulling that change must not take packages away from anyone unannounced, so such a machine gets a warning that says how to choose, and nothing else changes.
+- The sign of a machine in use is a =private.el=, any package =package.el= has found, or any file an earlier start left under =var/= outside =var/elpa=.
+  + The last covers a machine whose =var/elpa= was deleted to reinstall it, which the README suggests for a broken package.
+  + =var/elpa= itself does not count, because =just install= refreshes the archive index there before the first start.
+- Those signs alone cannot tell the two apart, because a new machine has its packages from its second start on.
+  + It would then count as in use, move to =full= and install everything.
+  + So a start that finds no choice and no sign writes the stamp =var/started-on-default=, and the rule reads the stamp first.
+- Writing it before the installer runs covers a first start whose installs fail: the next start finds the stamp, stays on =minimal= and tries again.
 - A value that is neither =minimal= nor =full= warns and counts as no choice, because a typo in a setting must not cost the editor.
+- The rule can only err towards =full=, which installs more and warns, and never towards taking something away:
+
+| The machine                                  | No choice means                       |
+|----------------------------------------------+---------------------------------------|
+| a stamp                                      | =minimal=, whatever else it has       |
+| no stamp, a =private.el= or packages         | =full=, and the warning               |
+| no stamp, neither                            | =minimal=, and it writes the stamp    |
+| =var/elpa= deleted by hand, the rest of =var/= there | =full=, and the warning       |
+| =var/= deleted by hand, no =private.el=      | nothing is left to keep: =minimal=    |
+| =var/= deleted by hand, a =private.el=       | =full=, and the warning               |
+| =packagesFromNix=, no profile, first start   | =full=, and the warning               |
+
+- =packagesFromNix= has packages on the very first start, and such a host cannot be told from one that has run for years.
+  + Nix builds every package for a host with no =profile= ([[id:d25a5063-1439-4ae0-8fbe-b0162d05a0e0][the Nix chapter]]), so =full= is also the answer those packages were built for.
+- A failed write warns, because without the stamp the next start takes this machine for an older one.
 
 #+begin_src emacs-lisp
 (defun kittymacs-features--warn (message &rest args)
@@ -89,10 +111,42 @@ Set it where `kittymacs-profile' is set, for the same reason."
   (display-warning 'kittymacs (apply #'format message args) :warning))
 
 (defun kittymacs-features--in-use-p ()
-  "Return non-nil on a machine that has run kittymacs before."
+  "Return non-nil on a machine with signs of having run kittymacs."
   (or (bound-and-true-p package-alist)
       (and (boundp 'kittymacs-lisp-dir)
-           (file-exists-p (expand-file-name "private.el" kittymacs-lisp-dir)))))
+           (file-exists-p (expand-file-name "private.el" kittymacs-lisp-dir)))
+      (and (boundp 'kittymacs-var-dir)
+           (file-directory-p kittymacs-var-dir)
+           (directory-files-recursively
+            kittymacs-var-dir "" nil
+            (lambda (directory) (not (equal (file-name-nondirectory directory) "elpa")))))))
+
+(defun kittymacs-features--stamp-file ()
+  "Return the file saying this machine started on the default, or nil.
+Nil where nothing has named the var directory, as under `emacs -Q'."
+  (and (boundp 'kittymacs-var-dir)
+       (expand-file-name "started-on-default" kittymacs-var-dir)))
+
+(defun kittymacs-features--kept-on-full-p ()
+  "Return non-nil on a machine that a missing choice keeps on `full'.
+Only reads, so onboarding can ask."
+  (let ((stamp (kittymacs-features--stamp-file)))
+    (and (not (and stamp (file-exists-p stamp)))
+         (kittymacs-features--in-use-p))))
+
+(defun kittymacs-features--write-stamp ()
+  "Record that this machine started on the default, unless that is known."
+  (when-let* ((stamp (kittymacs-features--stamp-file)))
+    (unless (file-exists-p stamp)
+      (condition-case err
+          (progn
+            (make-directory (file-name-directory stamp) t)
+            (write-region "This machine started on the default profile.\n" nil stamp nil 'silent))
+        (file-error
+         (kittymacs-features--warn
+          "Could not write %s: %s
+Without it, the next start takes this machine's packages for an older machine's, and moves it to `full'."
+          stamp (error-message-string err)))))))
 
 (defun kittymacs-features--choose-profile ()
   "Return the profile to start from, warning when it is not the one asked for."
@@ -100,13 +154,13 @@ Set it where `kittymacs-profile' is set, for the same reason."
     (kittymacs-features--warn "kittymacs-profile is %S, which is neither `minimal' nor `full'; ignoring it"
                               kittymacs-profile))
   (cond ((memq kittymacs-profile '(minimal full)) kittymacs-profile)
-        ((eq kittymacs-default-profile 'full) 'full)
-        ((kittymacs-features--in-use-p)
+        ((kittymacs-features--kept-on-full-p)
          (kittymacs-features--warn
-          "No profile is chosen and this machine has run kittymacs, so it stays on `full'.
-Set `kittymacs-profile' to `full' or `minimal' in private.el to choose, and to end this warning.")
+          "No profile is chosen and this machine ran kittymacs before `minimal' became the default, so it stays on `full'.
+Press SPC C o to choose, or set `kittymacs-profile' to `full' or `minimal' in private.el.  Either ends this warning.")
          'full)
-        (t kittymacs-default-profile)))
+        (t (kittymacs-features--write-stamp)
+           kittymacs-default-profile)))
 
 #+end_src
 
@@ -347,3 +401,4 @@ A package that cannot be installed warns, and the rest carry on."
 - Add =(setopt kittymacs-features '(no-such-feature))= to =private.el= and restart: a warning names it, and everything else starts.
 - =(setopt kittymacs-features '(jump))= on a machine without Avy: the next start installs it, and =SPC j j= works.
 - =just test= runs [[file:../tests/kittymacs-features-tests.el][the features tests]], which need no packages.
+- =ls var/started-on-default= on a machine that started with nothing: the file is there, and =M-: (kittymacs-features-profile)= says =minimal=.

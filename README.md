@@ -45,6 +45,8 @@ The whole configuration is a literate wiki (thank you, Donald Knuth). Every chap
 
 ## Features
 
+A new installation starts small: Meow, Vertico, Orderless, Marginalia, Consult, Embark, Corfu, Cape, Magit, diff-hl, envrc and Vundo, on the built-in Modus theme and Emacs's own mode line. Everything else below is a feature you turn on, one at a time or together with the `full` profile: [First start](#first-start) says how, and [the catalogue](literate/20-catalogue.org) lists them all.
+
 - **Editing:** Meow's selection grammar with numbered hints, Tree-sitter "things" (functions, classes, arguments) to select by, and Avy jumps.
 - **Discoverability:** which-key on every prefix, an offline cheat sheet (`SPC h ?`), Meow's tutor (`SPC h t`), Helpful, and Casual menus for the built-in modes.
 - **Completion:** Vertico, Orderless, Marginalia, Consult and Embark in the minibuffer; Corfu and Cape in the buffer; Yasnippet templates.
@@ -215,7 +217,7 @@ programs.kittymacs = {
 };
 ```
 
-- The module writes these to `~/.config/kittymacs/conf.d/10-nix.el`, which loads before `private.el`, so your own settings still win. With none of them set, it writes nothing.
+- The module writes these to `~/.config/kittymacs/conf.d/10-nix.el`, which loads before `private.el`, so your own settings still win. With none of them set, it writes nothing, and the rules in [First start](#first-start) apply.
 - A feature name the catalogue lacks fails at evaluation, naming the option.
 - With `packagesFromNix`, Nix builds only what the chosen features need. A feature `private.el` adds still installs from the archives.
 - `settings` sets other options by name, `hostFiles.<name>` adds a host file of your own, and `extraPackages` builds more Emacs packages in.
@@ -233,30 +235,35 @@ programs.kittymacs = {
 
 To start straight away instead:
 
-1. Start Emacs. The first start installs the Lisp packages kittymacs declares into `var/elpa/`; this takes a minute or two, and later starts take seconds.
-2. Press `SPC h t` for Meow's ten-minute tutorial, and `SPC h ?` for the cheat sheet.
-3. Optional, when you want them:
-   - `SPC o e` opens a terminal; the first time, it offers to download ghostel's small native module.
+1. Start Emacs. The first start installs the `minimal` profile into `var/elpa/`; this takes under a minute, and later starts take seconds. A line in the echo area names the profile and the key that changes it, and the theme is the built-in Modus.
+2. Press `SPC h t` for Meow's ten-minute tutorial, and `SPC h C` for Meow's own cheat sheet.
+3. For everything else, press `SPC C o`, or put `(setopt kittymacs-profile 'full)` in `lisp/private.el`. The next start installs what that needs, which takes a minute or two, and brings the Sonokai theme, doom-modeline and the home page.
+4. Optional, when you want them:
+   - With the `terminal` feature, `SPC o e` opens a terminal; the first time, it offers to download ghostel's small native module.
    - Opening a file whose Tree-sitter grammar is missing asks to build it; `M-x kittymacs-treesit-install-grammars` builds the usual ones in one go (both need Git and a C compiler).
-   - `SPC n s` indexes your Org-roam notes, once per graph.
+   - With the `linked-notes` feature, `SPC n s` indexes your Org-roam notes, once per graph.
+
+**A machine from before `minimal` became the default keeps what it has.** It stays on `full`, and each start warns and names `SPC C o`, until it chooses a profile. Setting `kittymacs-profile` to either value ends the warning.
 
 Nothing is written outside the clone: packages, caches, history and `custom.el` all live in `var/`, which Git ignores.
 
 ## Getting started
 
+Where a key needs a feature beyond `minimal`, the row names it.
+
 | Keys | Does |
 |---|---|
 | `SPC SPC` | run any command by name |
 | `SPC` then a letter | open a group; wait for the popup, or press `C-h` |
-| `SPC h ?` / `SPC h t` / `SPC h k` | cheat sheet / Meow tutorial / explain a key |
+| `SPC h ?` / `SPC h t` / `SPC h k` | cheat sheet (`home-page`) / Meow tutorial / explain a key |
 | `SPC f f` / `SPC b b` | open a file / switch buffer |
-| `SPC p p` | open a project in its own workspace |
+| `SPC p p` | open a project, in its own workspace with `workspaces` |
 | `SPC s s` / `SPC s d` | search lines / search the project with ripgrep |
 | `SPC v s` | Magit |
-| `SPC o e` / `SPC t d` | terminal / project tree |
+| `SPC o e` / `SPC t d` | terminal / project tree (`file-tree`) |
 | `SPC m` | the current mode's menu |
-| `SPC n` | linked notes: find, insert, capture, backlinks |
-| `SPC a a` | Claude Code in this project |
+| `SPC n` | linked notes (`linked-notes`): find, insert, capture, backlinks |
+| `SPC a a` | Claude Code in this project (`agents`) |
 | `SPC C c` | the reading guide to the configuration |
 | `SPC C o` | choose features again; a change takes effect at the next start |
 
@@ -275,11 +282,11 @@ In Normal state, Meow selects first and acts second: `w` selects a word, `x` a l
 
 | Option | Sets |
 |---|---|
-| `kittymacs-theme`, `kittymacs-light-theme` | the dark theme, and the one `SPC t t` toggles to |
+| `kittymacs-theme`, `kittymacs-light-theme` | the dark theme, and the one `SPC t t` toggles to; a `doom-` theme needs the `doom-look` feature, and Modus stands in without it |
 | `kittymacs-font-family`, `kittymacs-font-size`, `kittymacs-prose-font-family`, `kittymacs-nerd-font`, `kittymacs-icons` | fonts and icons |
 | `kittymacs-org-prose` | whether Org sets prose in the proportional font (`SPC t P` per buffer) |
 | `kittymacs-org-directory`, `kittymacs-org-roam-directory`, `kittymacs-project-directory` | where notes and projects live |
-| `kittymacs-profile`, `kittymacs-features`, `kittymacs-features-excluded` | where this machine starts (`minimal` or `full`, the default), and which features of [the catalogue](literate/20-catalogue.org) to add or leave out; the next start installs what they need |
+| `kittymacs-profile`, `kittymacs-features`, `kittymacs-features-excluded` | where this machine starts (`minimal`, the default on a new machine, or `full`), and which features of [the catalogue](literate/20-catalogue.org) to add or leave out; the next start installs what they need |
 | `kittymacs-structural-editing-modes` | the modes where Puni keeps brackets balanced |
 | `kittymacs-eglot-auto-start-modes`, `kittymacs-language-packages` | language servers started automatically; extra language packages (`nix`, `racket`, `guile`) |
 | `kittymacs-frames-only` | whether new surfaces become OS windows |
@@ -311,7 +318,7 @@ Then, inside Emacs, `M-x package-upgrade-all` upgrades the installed packages; r
 **Packages.**
 
 - *Packages fail to install, or a signature check fails:* check that `gpg` works (`gpg --version`); on Windows it must be Gpg4win's. Then `M-x package-refresh-contents` and restart.
-- *A package is broken after an update:* quit Emacs, delete `var/elpa/`, and start again; kittymacs reinstalls everything it declares.
+- *A package is broken after an update:* quit Emacs, delete `var/elpa/`, and start again; kittymacs reinstalls what this machine's features need.
 - *ghostel came from Git rather than MELPA* (left over from an older install): delete its directory in `var/elpa/` (and `consult-ghostel`'s) and restart.
 
 **Features that quietly switch off.** kittymacs turns a feature off when its program is missing, rather than failing. If something does nothing:
@@ -338,7 +345,8 @@ Then, inside Emacs, `M-x package-upgrade-all` upgrades the installed packages; r
 
 ```sh
 just check          # the generated files match their chapters; package-free tests pass
-just test-packages  # starts the configuration in isolation and fails on any warning
+KITTYMACS_TEST_PROFILE=full just install  # the packages the next check needs; skip it if this machine is on full
+just test-packages  # starts the configuration in isolation, on full, and fails on any warning
 ```
 
 The second runs the same startup verifier as CI: it checks that every module loads, every `SPC` key runs a command, and your `private.el` overrides survive. If it passes but your Emacs misbehaves, the cause is outside the configuration; if it fails, [open an issue](https://github.com/Mihir-Null/kittymacs/issues) with its output, your Emacs version and your operating system.
@@ -365,7 +373,8 @@ The loop:
 | Recipe | Needs | Checks |
 |---|---|---|
 | `just check` | Emacs | chapters match generated files; pages follow the conventions; builder, platform and Tree-sitter tests |
-| `just install`, `just compile`, `just test-packages` | network, then installed packages | a fresh install byte-compiles, and the leader, Org-roam, theme and startup-verifier tests pass |
+| `KITTYMACS_TEST_PROFILE=full just install`, `just compile`, `just test-packages` | network, then installed packages | a fresh install byte-compiles, and the leader, Org-roam, theme and startup-verifier tests pass, under `full` |
+| `just budget-check` | Git history | no count in `tests/budgets.eld` rose against the merge base without a stated reason |
 | `just frames-test` | a display | the frame policy |
 | `just nix-check` | Nix | the generated Nix lints, the flake and both example hosts evaluate, and the selection options reach a real start |
 

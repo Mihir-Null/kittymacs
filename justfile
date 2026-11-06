@@ -23,7 +23,8 @@ emacs := "emacs -Q --batch --eval '(setq user-emacs-directory (file-name-as-dire
 packages := env_var_or_default("KITTYMACS_TEST_PACKAGES", justfile_directory() / "var" / "elpa")
 
 # KITTYMACS_TEST_PROFILE chooses what `just install` installs: minimal, full, or
-# every, which adds each optional feature. Unset, this machine's settings decide.
+# every, which adds each optional feature. Unset, this machine's settings decide,
+# and a fresh clone with none gets the default, minimal.
 
 # 1. Org -> code. Every literate/NN-name.org chapter writes the files its
 #    :tangle headers name: early-init.el, init.el and lisp/*.el from the
@@ -74,20 +75,24 @@ install:
 
 # Byte-compile every module, to catch errors a load would hit. The .elc
 # files go to the temporary directory, so startup keeps loading the sources.
+# Under the full profile, whatever this machine chose, so that what compiling
+# loads is the same everywhere. Needs `KITTYMACS_TEST_PROFILE=full just install`.
 compile:
     {{emacs}} -l early-init.el -f package-activate-all -L lisp \
+      --eval '(setq kittymacs-profile (quote full))' \
       --eval '(setq use-package-ensure-function (quote ignore))' \
       --eval '(setq byte-compile-dest-file-function (lambda (file) (expand-file-name (concat (file-name-nondirectory file) "c") temporary-file-directory)))' \
       -f batch-byte-compile lisp/*.el
 
 # The tests that load installed packages: the SPC and SPC m machinery, real
 # Org-roam graphs in SQLite, the look without doom, and the startup verifier,
-# which replays a real startup and fails on any warning.
+# which replays a real startup and fails on any warning. All under the full
+# profile: `KITTYMACS_TEST_PROFILE=full just install` makes its directory.
 test-packages:
-    KITTYMACS_TEST_PACKAGES={{quote(packages)}} emacs -Q --batch -l tests/kittymacs-leader-tests.el -f ert-run-tests-batch-and-exit
-    KITTYMACS_TEST_PACKAGES={{quote(packages)}} emacs -Q --batch -l tests/kittymacs-org-roam-tests.el -f ert-run-tests-batch-and-exit
-    KITTYMACS_TEST_PACKAGES={{quote(packages)}} emacs -Q --batch -l tests/kittymacs-theme-tests.el -f ert-run-tests-batch-and-exit
-    KITTYMACS_TEST_PACKAGES={{quote(packages)}} emacs -Q --batch -l tests/verify-config.el
+    KITTYMACS_TEST_PROFILE=full KITTYMACS_TEST_PACKAGES={{quote(packages)}} emacs -Q --batch -l tests/kittymacs-leader-tests.el -f ert-run-tests-batch-and-exit
+    KITTYMACS_TEST_PROFILE=full KITTYMACS_TEST_PACKAGES={{quote(packages)}} emacs -Q --batch -l tests/kittymacs-org-roam-tests.el -f ert-run-tests-batch-and-exit
+    KITTYMACS_TEST_PROFILE=full KITTYMACS_TEST_PACKAGES={{quote(packages)}} emacs -Q --batch -l tests/kittymacs-theme-tests.el -f ert-run-tests-batch-and-exit
+    KITTYMACS_TEST_PROFILE=full KITTYMACS_TEST_PACKAGES={{quote(packages)}} emacs -Q --batch -l tests/verify-config.el
 
 # What runs against a package directory holding the minimal profile and nothing
 # else: `KITTYMACS_TEST_PROFILE=minimal just install` makes one. The verifier
@@ -123,6 +128,12 @@ onboard:
 # literate/80-maintenance.org explains the numbers.
 size *FLAGS:
     emacs -Q --batch -l tools/bench.el -- --size {{FLAGS}}
+
+# Fail if a budget rose against the merge base with no commit stating why, or if
+# tests/budgets.eld is out of date. BASE defaults to what a pull request targets,
+# or else origin/main; it needs that ref and the history back to it.
+budget-check *BASE:
+    emacs -Q --batch -l tools/bench.el -- --check {{BASE}}
 
 # Start Emacs many times and report what startup costs, in a terminal and, with
 # a DISPLAY, in a frame. Needs installed packages; takes minutes. Reports only.
@@ -184,8 +195,11 @@ nix-selection:
 # Everything that needs Nix.
 nix-check: lint eval nix-selection
 
-# Everything CI runs on Linux, in order.
-all: check nix-check install compile test-packages
+# Everything CI runs on Linux, in order, under the profile its last two recipes need.
+all: check budget-check nix-check
+    KITTYMACS_TEST_PROFILE=full {{just_executable()}} install
+    {{just_executable()}} compile
+    {{just_executable()}} test-packages
 
 # Move the flake's nixpkgs, and so the Emacs and tools the Nix modules
 # install; then refresh the archives and upgrade every installed Emacs

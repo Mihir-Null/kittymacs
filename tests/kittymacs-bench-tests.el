@@ -131,8 +131,142 @@
 (ert-deftest kittymacs-bench-budgets-name-only-metrics-this-harness-reports ()
   (let ((known (mapcar #'car (kittymacs-bench-size))))
     (dolist (entry (kittymacs-bench--budgets))
-      (when (string-match-p "\\`module-\\|\\`elisp-\\|\\`prose-\\|\\`declared-"
+      (when (string-match-p "\\`module-\\|\\`elisp-\\|\\`prose-\\|\\`declared-\\|\\`default-"
                             (symbol-name (car entry)))
         (should (memq (car entry) known))))))
+
+;;; What the default profile loads
+
+(ert-deftest kittymacs-bench-default-modules-stop-at-a-gate-that-is-off ()
+  "A real start holds this list to the truth: see tests/verify-config.el."
+  (let ((modules (kittymacs-bench-default-modules)))
+    (dolist (module '(kittymacs-features kittymacs-leader kittymacs-ui kittymacs-org))
+      (should (memq module modules)))
+    (dolist (module '(kittymacs-onboard kittymacs-treemacs kittymacs-agents
+                                        kittymacs-org-roam kittymacs-dashboard))
+      (should-not (memq module modules)))))
+
+(ert-deftest kittymacs-bench-default-loaded-is-less-than-everything ()
+  "The point of the count: onboarding and the gated chapters do not add to it."
+  (let ((size (kittymacs-bench-size)))
+    (should (< (alist-get 'default-loaded-lines size) (alist-get 'elisp-lines size)))
+    (should (< (alist-get 'default-loaded-conses size) (alist-get 'elisp-conses size)))
+    (should (< (alist-get 'default-packages size) (alist-get 'declared-packages size)))))
+
+(ert-deftest kittymacs-bench-modules-look-only-at-what-runs-as-it-loads ()
+  (should (equal (kittymacs-bench--modules-in '(require 'kittymacs-leader) nil)
+                 '(kittymacs-leader)))
+  (should-not (kittymacs-bench--modules-in '(require 'seq) nil))
+  (should-not (kittymacs-bench--modules-in
+               '(defun later () (require 'kittymacs-leader)) nil))
+  (should-not (kittymacs-bench--modules-in
+               '(when (kittymacs-feature-p 'agents) (require 'kittymacs-agents)) '(meow)))
+  (should (equal (kittymacs-bench--modules-in
+                  '(when (kittymacs-feature-p 'agents) (kittymacs-require-module 'kittymacs-agents))
+                  '(agents))
+                 '(kittymacs-agents))))
+
+;;; Holding the budgets to the merge base
+
+(ert-deftest kittymacs-bench-a-reason-names-its-budgets ()
+  (should (equal (kittymacs-bench--parse-reason "elisp-lines, module-lines/init: it had to grow")
+                 '((elisp-lines module-lines/init) . "it had to grow")))
+  (should-not (kittymacs-bench--parse-reason "elisp-lines:"))
+  (should-not (kittymacs-bench--parse-reason "no colon here")))
+
+(ert-deftest kittymacs-bench-rises-are-what-went-up-from-the-base ()
+  (should (equal (kittymacs-bench--rises '((a . 1) (b . 5) (c . 2)) '((a . 2) (b . 4) (c . 2) (d . 9)))
+                 '((a 1 2)))))
+
+(ert-deftest kittymacs-bench-a-measured-count-replaces-the-recorded-one ()
+  (should (equal (sort (kittymacs-bench--current '((a . 1) (b . 2)) '((a . 3)))
+                       (lambda (x y) (string< (car x) (car y))))
+                 '((a . 3) (b . 2)))))
+
+(ert-deftest kittymacs-bench-a-module-may-go-and-a-budget-may-not ()
+  (should (equal (kittymacs-bench--missing '((features . 1) (module-lines/gone . 2)) nil)
+                 '(features))))
+
+(defun kittymacs-bench-test--git (&rest arguments)
+  "Run git with ARGUMENTS in `default-directory', as a throwaway author."
+  (with-temp-buffer
+    (unless (eql 0 (apply #'call-process "git" nil t nil
+                          "-c" "user.name=Test" "-c" "user.email=test@example.invalid"
+                          "-c" "commit.gpgsign=false" arguments))
+      (error "git %S: %s" arguments (buffer-string)))))
+
+(defun kittymacs-bench-test--check (budget-text message measured)
+  "Commit BUDGET-TEXT with MESSAGE on a branch off a base, and run the check.
+Return what the check returned, with MEASURED standing in for the count of code."
+  (let* ((root (file-name-as-directory (make-temp-file "kittymacs-bench-git-" t)))
+         (default-directory root)
+         (kittymacs-bench-root root)
+         (budgets (expand-file-name "tests/budgets.eld" root)))
+    (unwind-protect
+        (progn
+          (make-directory (file-name-directory budgets))
+          (kittymacs-bench-test--git "init" "-q" "-b" "main")
+          (with-temp-file budgets (insert "((a . 5) (b . 5) (recorded . 5))\n"))
+          (kittymacs-bench-test--git "add" ".")
+          (kittymacs-bench-test--git "commit" "-q" "-m" "Base")
+          (kittymacs-bench-test--git "switch" "-q" "-c" "change")
+          (with-temp-file budgets (insert budget-text))
+          (kittymacs-bench-test--git "add" ".")
+          (kittymacs-bench-test--git "commit" "-q" "--allow-empty" "-m" message)
+          (cl-letf (((symbol-function 'kittymacs-bench-size) (lambda () measured))
+                    ((symbol-function 'princ) #'ignore))
+            (kittymacs-bench-check "main")))
+      (delete-directory root t))))
+
+(ert-deftest kittymacs-bench-check-fails-a-rise-with-no-reason ()
+  (skip-unless (executable-find "git"))
+  (should (kittymacs-bench-test--check "((a . 6) (b . 5) (recorded . 5))\n"
+                                       "Grow\n\nBecause."
+                                       '((a . 6) (b . 5)))))
+
+(ert-deftest kittymacs-bench-check-passes-a-rise-with-a-reason-for-that-budget ()
+  (skip-unless (executable-find "git"))
+  (should-not (kittymacs-bench-test--check "((a . 6) (b . 5) (recorded . 5))\n"
+                                           "Grow\n\nBudget-rise: a: it had to."
+                                           '((a . 6) (b . 5)))))
+
+(ert-deftest kittymacs-bench-check-fails-a-rise-with-a-reason-for-another-budget ()
+  (skip-unless (executable-find "git"))
+  (should (kittymacs-bench-test--check "((a . 6) (b . 5) (recorded . 5))\n"
+                                       "Grow\n\nBudget-rise: b: it had to."
+                                       '((a . 6) (b . 5)))))
+
+(ert-deftest kittymacs-bench-check-passes-a-fall ()
+  (skip-unless (executable-find "git"))
+  (should-not (kittymacs-bench-test--check "((a . 4) (b . 5) (recorded . 3))\n"
+                                           "Shrink"
+                                           '((a . 4) (b . 5)))))
+
+(ert-deftest kittymacs-bench-check-holds-a-count-only-a-start-can-measure ()
+  "A count `just size' cannot see is held by the file, so a rise there needs a reason."
+  (skip-unless (executable-find "git"))
+  (should (kittymacs-bench-test--check "((a . 5) (b . 5) (recorded . 6))\n"
+                                       "More"
+                                       '((a . 5) (b . 5)))))
+
+(ert-deftest kittymacs-bench-check-fails-a-file-that-disagrees-with-the-code ()
+  "Otherwise a fall leaves room for a later rise, and a rise ambushes the next change."
+  (skip-unless (executable-find "git"))
+  (should (kittymacs-bench-test--check "((a . 5) (b . 5) (recorded . 5))\n"
+                                       "Shrink, and forget to write it"
+                                       '((a . 4) (b . 5)))))
+
+(ert-deftest kittymacs-bench-check-fails-a-dropped-budget ()
+  (skip-unless (executable-find "git"))
+  (should (kittymacs-bench-test--check "((a . 5) (b . 5))\n"
+                                       "Lose one"
+                                       '((a . 5) (b . 5)))))
+
+(ert-deftest kittymacs-bench-check-is-silent-about-a-flake-bump ()
+  "A commit that touches nothing counted has nothing to state."
+  (skip-unless (executable-find "git"))
+  (should-not (kittymacs-bench-test--check "((a . 5) (b . 5) (recorded . 5))\n"
+                                           "Bump flake.lock"
+                                           '((a . 5) (b . 5)))))
 
 ;;; kittymacs-bench-tests.el ends here

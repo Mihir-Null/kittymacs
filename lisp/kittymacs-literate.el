@@ -12,10 +12,11 @@
   "Choose what kittymacs installs, and write it to `private.el'." t)
 
 (defun kittymacs-onboard-hint ()
-  "Say where to choose features, on a machine that has chosen none."
+  "Say where this machine started and where to choose, if it has chosen nothing."
   (unless (or noninteractive (daemonp)
               kittymacs-profile kittymacs-features kittymacs-features-excluded)
-    (message "kittymacs: no features chosen yet.  SPC C o chooses them, or `just onboard' in a terminal.")))
+    (message "kittymacs: nothing chosen yet, so this is the %s profile.  SPC C o chooses, or `just onboard' in a terminal."
+             (kittymacs-features-profile))))
 
 (add-hook 'emacs-startup-hook #'kittymacs-onboard-hint 90)
 
