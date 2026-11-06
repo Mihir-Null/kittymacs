@@ -156,6 +156,9 @@ A `doom-' theme needs the `doom-look' feature; without it, `modus-operandi'."
                     (format "Theme %s did not load: %s"
                             (kittymacs--default-theme) (error-message-string err))
                     :error)))
+;; The remote chapter's, which loads later than this one.
+(declare-function kittymacs-remote-buffer-p "kittymacs-remote" (&rest _))
+
 (when (kittymacs-feature-p 'doom-look)
   (use-package doom-modeline
     :ensure t

@@ -3,17 +3,16 @@
 
 ;;; Code:
 
-(eval-when-compile (require 'files-x))
 (require 'seq)
 (require 'kittymacs-defaults)
 (require 'kittymacs-leader)
 
 (defvar agent-shell-path-resolver-function)
-(defvar tramp-direct-async-process)
 (defvar tramp-methods)
 (defvar tramp-remote-path)
 (declare-function connection-local-set-profile-variables "files-x" (profile variables))
 (declare-function connection-local-set-profiles "files-x" (criteria &rest profiles))
+(declare-function tramp-direct-async-process-p "tramp" (&rest args))
 (declare-function tramp-dissect-file-name "tramp" (name &optional nodefault))
 (declare-function tramp-file-name-host "tramp" (vec))
 (declare-function tramp-file-name-method "tramp" (vec))
@@ -43,7 +42,7 @@ Tramp's existence check quotes the name, so it never sees a home directory."
     (funcall original vec)))
 
 (defun kittymacs--remote-path-setup ()
-  "Put the login shell's PATH first in `tramp-remote-path', then the Nix directories."
+  "Put the login shell's PATH first in `tramp-remote-path', then Nix's directories."
   (setq tramp-remote-path
         (append '(tramp-own-remote-path)
                 kittymacs-remote-nix-path
@@ -133,7 +132,7 @@ PATH is nil where the machine does not have the tool."
                        (kittymacs-remote--tools root)))
          (exists (file-directory-p root))
          (direct (let ((default-directory (file-remote-p root)))
-                   (with-connection-local-variables tramp-direct-async-process))))
+                   (tramp-direct-async-process-p))))
     (with-help-window "*kittymacs backend*"
       (princ (format "Backend %s, over %s\n\n" name (kittymacs-remote--transport backend)))
       (princ (format "Project  %s (%s)\n" root (if exists "exists" "MISSING")))
@@ -214,8 +213,8 @@ ORIGINAL is the function behind Corfu's automatic popup."
   (advice-add 'diff-hl-after-undo :before-until #'kittymacs--remote-undo-buffer-p))
 (defun kittymacs-remote-agent-path (path)
   "Return PATH as the other side of an agent's connection names it.
-A remote file name becomes the path the agent knows; a path from an agent running
-on the machine of this buffer's directory becomes a remote file name."
+A remote file name becomes the path the agent knows; a path from an agent on the
+machine of this buffer's directory becomes a remote file name."
   (cond ((file-remote-p path) (file-local-name path))
         ((kittymacs-remote-buffer-p) (concat (file-remote-p default-directory) path))
         (t path)))

@@ -237,6 +237,9 @@ A `doom-' theme needs the `doom-look' feature; without it, `modus-operandi'."
 - =SPC t H= hides the current buffer's mode line with =hide-mode-line-mode=, handy for a screenshot or a presentation; pressing it again brings it back.
 
 #+begin_src emacs-lisp
+;; The remote chapter's, which loads later than this one.
+(declare-function kittymacs-remote-buffer-p "kittymacs-remote" (&rest _))
+
 (when (kittymacs-feature-p 'doom-look)
   (use-package doom-modeline
     :ensure t
