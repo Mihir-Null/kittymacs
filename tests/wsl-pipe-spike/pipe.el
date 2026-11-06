@@ -416,6 +416,25 @@ while it writes would hang here."
       (unwind-protect (funcall function)
         (set variable old)))))
 
+(defun pipe-sweep ()
+  "Time writes of many sizes at a few pipe sizes, through each transport.
+With a 1 MiB pipe, 64 KiB through wsl.exe took 0.1 s, while 1 MiB took 0.008 s."
+  (pipe-environment)
+  (dolist (transport (pipe-commands))
+    (dolist (pipe-size '(65536 1048576 8388608))
+      (setq w32-pipe-buffer-size pipe-size)
+      (let ((process (pipe-start (cdr transport))))
+        (dolist (size '(4096 8192 16384 32768 49152 60000 65000 65536 66000 131072 262144
+                             524288 1048576))
+          (let ((payload (substring pipe-random-megabyte 0 size)) times)
+            (dotimes (_ 7)
+              (let ((start (float-time)))
+                (process-send-string process (pipe-frame 1 payload))
+                (pipe-read-frame process 30)
+                (push (- (float-time) start) times)))
+            (pipe-stats (format "%s, pipe %d, write %d" (car transport) pipe-size size) times)))
+        (pipe-stop process)))))
+
 (defun pipe-main ()
   (pipe-environment)
   (when pipe-distro
@@ -469,6 +488,7 @@ while it writes would hang here."
     (pcase pipe-mode
       ("main" (pipe-main))
       ("gui" (pipe-gui))
+      ("sweep" (pipe-section "sweep" (pipe-sweep)))
       ("stuck" (pipe-section "stuck" (pipe-stuck-write (car transport) (cdr transport))))
       ("duplex" (pipe-section "duplex" (pipe-duplex (car transport) (cdr transport))))))
   (pipe-log "end" pipe-mode))

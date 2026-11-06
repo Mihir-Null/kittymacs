@@ -49,8 +49,8 @@ function Invoke-Mode {
 }
 
 $pipe = Join-Path $here 'pipe.el'
-Invoke-Mode 'main' @('--batch', '-Q', '-l', "`"$pipe`"")
-Invoke-Mode 'duplex' @('--batch', '-Q', '-l', "`"$pipe`"")
-Invoke-Mode 'stuck' @('--batch', '-Q', '-l', "`"$pipe`"")
-Invoke-Mode 'gui' @('-Q', '-l', "`"$pipe`"")
+# The main, duplex, stuck and gui modes ran once, in run 42267500824, and need no repeat.
+Invoke-Mode 'sweep' @('--batch', '-Q', '-l', "`"$pipe`"")
+$tune = Join-Path $here 'tramp-tune.el'
+Invoke-Mode 'tune' @('--batch', '-Q', '-l', "`"$tune`"")
 exit 0
