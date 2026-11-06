@@ -21,7 +21,7 @@
 1. Emacs reads =early-init.el= /before/ it creates a frame or activates packages: the moment to
    + say where packages live;
    + switch off toolbars, so they never flash;
-   + postpone garbage collection.
+   + collect garbage less often until the start ends.
 2. Emacs reads =init.el=, which activates the installed packages, loads =use-package= and requires each generated module in dependency order:
    + defaults and platform first, then the look, then editing and the integrations, then the applications;
    + frames policy last, so nothing later can undo it.
@@ -92,9 +92,12 @@
 - Package activation is left to =init.el=, so it happens in one known place (=package-enable-at-startup= is nil).
 - The archives are GNU ELPA, NonGNU ELPA and MELPA; signatures: [[*GNU ELPA's signature check needs a native gpg]].
 - Three settings make startup quicker:
-  + no garbage collection until the end (then a 64 MB threshold);
+  + a garbage collection threshold of 128 MB until the end, then 64 MB;
   + no implied frame resizing;
   + frames created without the toolbar and the menu bar, rather than with ones that are then removed.
+- The startup threshold is finite, because a start can hang.
+  + With the collector held off completely, a start stalled on a login that never answered allocated about 200 MB a second until the kernel killed Emacs at 6.4 GB.
+  + At 128 MB a normal start collects as often as it did with no limit, and takes no measurably longer.
 - =menu-bar-mode= is turned off too, to agree with the frame parameter; otherwise the first =SPC t m= would switch a hidden menu bar "off" and show nothing.
   + =SPC t m= brings the menu bar back.
 - No startup screen, an empty =*scratch*=, no scroll bars, and =load-prefer-newer=.
@@ -172,7 +175,7 @@
   (startup-redirect-eln-cache (expand-file-name "eln-cache/" kittymacs-cache-dir))
   (setq native-comp-async-report-warnings-errors 'silent))
 
-(setq gc-cons-threshold most-positive-fixnum)
+(setq gc-cons-threshold (* 128 1024 1024))
 (add-hook 'emacs-startup-hook (lambda () (setq gc-cons-threshold (* 64 1024 1024))))
 
 ;; Size frames by the pixel, so a tiling window manager's tile is filled
@@ -558,7 +561,7 @@ Set before init.el loads to change them, because they are read during init.")
 - Start Emacs: the first frame appears with no toolbar or menu bar flashing; =SPC t m= shows the menu bar.
 - =M-x emacs-init-time=: how long the two files took.
 - =C-h v package-user-dir=: a directory under =var/elpa/= in the checkout.
-- =C-h v gc-cons-threshold= once started: =67108864=, not the huge startup value.
+- =C-h v gc-cons-threshold= once started: =67108864=, not the startup value of =134217728=.
 - =C-h v package-check-signature=: =nil= means no native =gpg= was found ([[*GNU ELPA's signature check needs a native gpg]]).
 - =SPC C p= opens =private.el=, created from the example the first time; =SPC C u= opens the Customize file.
 - After editing this chapter, =just tangle= rewrites both files; =just tangle-check= proves they match.

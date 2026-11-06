@@ -313,3 +313,20 @@ The lists differ on purpose: the Nix chapter's \"The apps\" says why."
     (should-not (seq-difference installed option))
     (should (equal (seq-difference option commands)
                    '("inotifywait" "nix" "claude-agent-acp")))))
+(ert-deftest kittymacs-startup-the-gc-threshold-stays-finite ()
+  "A start that hangs must not allocate until the machine runs out.
+Reads the two values from a child, and allocates nothing: the proof that a bound
+holds memory flat ran once, by hand, under a limit.  See ARCHITECTURE.md."
+  (let ((values
+         (car (read-from-string
+               (with-output-to-string
+                 (with-current-buffer standard-output
+                   (call-process
+                    (expand-file-name invocation-name invocation-directory) nil t nil
+                    "-Q" "--batch" "--eval"
+                    (format "(setq user-emacs-directory %S)" kittymacs-startup-test-root)
+                    "-l" (expand-file-name "early-init.el" kittymacs-startup-test-root)
+                    "--eval"
+                    "(prin1 (list gc-cons-threshold (progn (run-hooks 'emacs-startup-hook) gc-cons-threshold)))")))))))
+    (should (<= (car values) (* 512 1024 1024)))
+    (should (= (cadr values) (* 64 1024 1024)))))
