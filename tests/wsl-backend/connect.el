@@ -185,6 +185,55 @@ Tramp suspends timers while it waits unless told not to, and the limit is a time
      (mapconcat (lambda (tool) (format "%s=%s" (car tool) (if (cdr tool) "yes" "no")))
                 tools " "))))
 
+;;; Where a program's variables come from: what \"A backend's environment\" says
+
+(defvar tramp-remote-process-environment)
+
+(defun wsl-backend-environment-report (text)
+  "Return whether TEXT shows the variables, as a string for the report."
+  (format "profile=%s list=%s"
+          (if (string-search "profile-value" text) "yes" "no")
+          (if (string-search "list-value" text) "yes" "no")))
+
+(wsl-backend-check
+ "the environment, for the record and the chapter's table" 120
+ (lambda ()
+   (let ((default-directory (wsl-backend-root))
+         (command "echo \"$KITTYMACS_PROFILE_VAR $KITTYMACS_LIST_VAR\"; echo done")
+         (tramp-remote-process-environment
+          (cons "KITTYMACS_LIST_VAR=list-value" tramp-remote-process-environment)))
+     (with-temp-file (concat (file-remote-p default-directory) "~/.profile")
+       (insert "export KITTYMACS_PROFILE_VAR=profile-value\n"))
+     (wsl-backend-disconnect)
+     (let* ((through-shell
+             (with-temp-buffer
+               (process-file "/bin/sh" nil t nil "-c" command)
+               (buffer-string)))
+            (direct
+             (let* ((buffer (generate-new-buffer " *environment*"))
+                    (process (make-process :name "environment" :buffer buffer :noquery t
+                                           :file-handler t :connection-type 'pipe
+                                           :command (list "/bin/sh" "-c" command))))
+               (wsl-backend-wait-for process "done" 30)))
+            (slow
+             (let* ((tramp-direct-async-process nil)
+                    (buffer (generate-new-buffer " *environment slow*"))
+                    (process (with-connection-local-variables
+                              (make-process :name "environment-slow" :buffer buffer :noquery t
+                                            :file-handler t :connection-type 'pipe
+                                            :command (list "/bin/sh" "-c" command)))))
+               (wsl-backend-wait-for process "done" 30)))
+            (shell
+             (let* ((buffer (shell (generate-new-buffer-name "*environment shell*")))
+                    (process (get-buffer-process buffer)))
+               (process-send-string process (concat command "; exit\n"))
+               (wsl-backend-wait-for process "done" 30))))
+       (format "process-file: %s; direct: %s; through Tramp's shell: %s; M-x shell: %s"
+               (wsl-backend-environment-report through-shell)
+               (wsl-backend-environment-report direct)
+               (wsl-backend-environment-report slow)
+               (wsl-backend-environment-report shell))))))
+
 ;; This check would pass if connecting could never fail.  So a distribution that
 ;; does not exist must not look like one that answers.
 (wsl-backend-check

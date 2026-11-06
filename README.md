@@ -323,7 +323,7 @@ In Normal state, Meow selects first and acts second: `w` selects a word, `x` a l
           '(("build" :transport ssh :host "build.example.org" :root "~/src/project/")))
   ```
 
-  `SPC o b` opens the project there, and `SPC o B` lists which tools the machine has. `:transport` is `ssh`, `wsl` for a WSL2 distribution from native Windows Emacs, or any other method Tramp offers. Give an ssh machine a key or a `ControlMaster` line in `~/.ssh/config`, because a backend starts its processes directly, and that path cannot ask for a password; `:direct-async nil` turns it off. Two things stop on a remote file so that a dead connection cannot stall Emacs: automatic saving and auto-save files, so save with `C-x C-s`, and a crash loses what you typed since. [The remote chapter](literate/36-remote.org) has the rest.
+  `SPC o b` opens the project there, and `SPC o B` lists which tools the machine has, and what to run for those it lacks. [A backend's environment](literate/36-remote.org) says where its programs' variables come from. `:transport` is `ssh`, `wsl` for a WSL2 distribution from native Windows Emacs, or any other method Tramp offers. Give an ssh machine a key or a `ControlMaster` line in `~/.ssh/config`, because a backend starts its processes directly, and that path cannot ask for a password; `:direct-async nil` turns it off. Two things stop on a remote file so that a dead connection cannot stall Emacs: automatic saving and auto-save files, so save with `C-x C-s`, and a crash loses what you typed since. [The remote chapter](literate/36-remote.org) has the rest.
 - **To change the configuration itself**, edit its chapter in `literate/`, then `SPC C t` to regenerate the Lisp and restart. See [Develop](#develop).
 
 ## Update
