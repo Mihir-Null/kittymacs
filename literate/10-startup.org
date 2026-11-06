@@ -97,7 +97,7 @@
   + frames created without the toolbar and the menu bar, rather than with ones that are then removed.
 - The startup threshold is finite, because a start can hang.
   + With the collector held off completely, a start stalled on a login that never answered allocated about 200 MB a second until the kernel killed Emacs at 6.4 GB.
-  + 128 MB is the smallest value that costs no time. At 64 MB, a graphical start under =full= collects once more and takes about 50 ms longer.
+  + At 128 MB a normal start collects as often as it did with no limit, and takes no measurably longer.
 - =menu-bar-mode= is turned off too, to agree with the frame parameter; otherwise the first =SPC t m= would switch a hidden menu bar "off" and show nothing.
   + =SPC t m= brings the menu bar back.
 - No startup screen, an empty =*scratch*=, no scroll bars, and =load-prefer-newer=.
