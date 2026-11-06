@@ -96,7 +96,14 @@ in
         ]
       ) programTable
     )
-    ++ lib.optional pkgs.stdenv.hostPlatform.isLinux pkgs.inotify-tools
+    ++ lib.optionals pkgs.stdenv.hostPlatform.isLinux [
+      pkgs.inotify-tools
+      (pkgs.writeShellApplication {
+        name = "kittymacs-open";
+        runtimeInputs = [ pkgs.coreutils ];
+        text = lib.removePrefix "#!/bin/sh\n" (builtins.readFile ./kittymacs-open.sh);
+      })
+    ]
     ++ [
       pkgs.nil
       pkgs.pyright

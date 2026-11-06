@@ -156,7 +156,7 @@ winget install GNU.Emacs GnuPG.Gpg4win Git.Git BurntSushi.ripgrep.MSVC sharkdp.f
   ```
 
   Never recursively delete a junction or its target: that deletes the clone.
-- **Linux programs run on a WSL2 backend,** while Emacs stays on Windows. Install a distribution with `wsl --install Ubuntu-24.04`, name it as a backend with `:transport wsl` (see [Configure](#configure)), and press `SPC o b`. The `wsl-backend` [Nix template](#nix) sets up its tools, and `SPC o B` says what it has.
+- **Linux programs run on a WSL2 backend,** while Emacs stays on Windows. Install a distribution with `wsl --install Ubuntu-24.04`, name it as a backend with `:transport wsl` (see [Configure](#configure)), and press `SPC o b`. The `wsl-backend` [Nix template](#nix) sets up its tools, and `SPC o B` says what it has. In a WSL shell, `kittymacs-open .` opens that folder in Windows Emacs, as `code .` does in VS Code, and starts Emacs if it is not running. It comes with `packages.backend`.
 - **A spell checker and a C compiler** are optional, and kittymacs looks for them on `PATH`. Without a compiler for Tree-sitter grammars, files open in their classic modes.
 - **A fallback for Windows-side files.** A WSL2 backend is the normal way, and where file I/O across WSL would ruin performance, the optional `msys2-fallback` feature offers MSYS2's shell on `SPC o m`, plus its Hunspell and compiler, from `C:\msys64` or `kittymacs-msys2-root`. Each start warns while it is on, and with it off nothing looks for MSYS2. See [its chapter](literate/37-msys2.org).
 - PowerShell is the default shell. The terminal talks to Windows' ConPTY directly, with no POSIX helper.

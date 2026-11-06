@@ -280,6 +280,72 @@ PATH is nil where the machine does not have the tool."
 
 #+end_src
 
+** Opening from a WSL shell
+:PROPERTIES:
+:ID: 9e4c2a61-7b05-4d13-8f6e-1a0d3c95b7e2
+:END:
+
+- =kittymacs-open .= in a WSL shell opens that folder in Windows Emacs, on the backend, as =code .= does in VS Code.
+  + A name is a file or a folder, and several are fine; with none, it is the current folder.
+  + =packages.backend= installs it on Linux, where [[id:d25a5063-1439-4ae0-8fbe-b0162d05a0e0][Nix]] builds it with =writeShellApplication=, which runs =shellcheck=.
+  + Without Nix, copy =nix/kittymacs-open.sh= onto the =PATH=, because it is a plain script that needs only =realpath=.
+- WSL can run a Windows program from a Linux shell, so the script calls =emacsclient.exe=.
+  + =$WSL_DISTRO_NAME= names the distribution, so =/home/me/src= becomes =/wslm:Ubuntu-24.04:/home/me/src=, with no backend to name first.
+  + =/mnt/c/Users/me= becomes =c:/Users/me=, which Emacs opens natively, with no Tramp and none of the cost of crossing back.
+  + That test reads =/mnt/= and one letter, so a distribution that mounts its drives elsewhere gets a Tramp name, which works and is slower.
+- With no Emacs running, =--alternate-editor= starts =runemacs.exe= with the same names, as =code .= starts VS Code.
+  + A running kittymacs always answers: [[id:3fd783cd-deb8-48aa-bb44-0d9b16535365][the defaults chapter]] starts the server in every graphical Emacs.
+  + =emacsclient.exe= finds that server through the file under =~/.emacs.d/server/=, so a checkout started with =--init-directory= needs =EMACS_SERVER_FILE= in Windows.
+- Each failure says what to do: not in WSL, no =emacsclient.exe= on the =PATH=, or neither Emacs nor =runemacs.exe= answering.
+  + =KITTYMACS_EMACSCLIENT= names the client where Windows's =PATH= does not reach WSL, because of =appendWindowsPath=false= or Emacs's folder missing from it.
+
+#+begin_src sh :tangle ../nix/kittymacs-open.sh :eval never :comments no :padline no :mkdirp yes
+#!/bin/sh
+# Generated from literate/36-remote.org; edit the Org source, then tangle.
+# kittymacs-open [FILE-OR-FOLDER...]: open them in Windows Emacs, from a WSL shell.
+# With none, the current folder.
+
+client=${KITTYMACS_EMACSCLIENT:-emacsclient.exe}
+
+fail() {
+  printf 'kittymacs-open: %s\n' "$1" >&2
+  exit 1
+}
+
+[ -n "${WSL_DISTRO_NAME:-}" ] ||
+  fail "WSL_DISTRO_NAME is not set, and this runs in a WSL shell."
+command -v "$client" >/dev/null 2>&1 ||
+  fail "no $client here. Put the bin folder of Windows Emacs on the Windows PATH, or set KITTYMACS_EMACSCLIENT to the program, under /mnt/c."
+
+# What Windows Emacs calls an absolute path: a drive's own name, or a Tramp name.
+emacs_name() {
+  case $1 in
+    /mnt/[a-z] | /mnt/[a-z]/*)
+      drive=${1#/mnt/}
+      drive=${drive%%/*}
+      rest=${1#/mnt/"$drive"}
+      printf '%s:%s' "$drive" "${rest:-/}"
+      ;;
+    *)
+      printf '/wslm:%s:%s' "$WSL_DISTRO_NAME" "$1"
+      ;;
+  esac
+}
+
+[ "$#" -gt 0 ] || set -- .
+# Each argument leaves the front and its name joins the back, which keeps any spaces.
+count=$#
+while [ "$count" -gt 0 ]; do
+  path=$(realpath -m -- "$1") || fail "cannot resolve $1."
+  shift
+  set -- "$@" "$(emacs_name "$path")"
+  count=$((count - 1))
+done
+
+"$client" --quiet --no-wait --alternate-editor=runemacs.exe "$@" ||
+  fail "neither a running Emacs nor runemacs.exe answered. Start Windows Emacs, and try again."
+#+end_src
+
 * Connection-local defaults
 
 - Connection-local variables hold a value for one kind of connection, so a remote buffer can differ from a local one.
@@ -522,5 +588,6 @@ Host vm
 - On a remote machine with Nix, =C-x C-f /ssh:host:~/=, then =M-: (executable-find "rg" t)= in that buffer: it names the Nix profile's =rg=.
   + On Android with the virtual machine, =host= is =vm=.
 - =M-x shell= in that buffer runs =/bin/sh= there, or the backend's =:shell=.
+- =kittymacs-open .= in a WSL shell opens that folder in Windows Emacs, with Emacs running or not, and =kittymacs-open /mnt/c/Users= opens it with no Tramp.
 - Open a remote file and cut the network: Emacs keeps responding while you are idle; =C-g= ends a command that was waiting.
 - =just test-packages= and =just test-minimal= run [[file:../tests/kittymacs-remote-tests.el][the remote tests]], with a Tramp method that needs no ssh.
