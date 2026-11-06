@@ -194,6 +194,7 @@
   + The modules still install =programs=, whatever a host selects, so that no host loses a tool it has.
   + =commands= is what [[*The apps][the doctor]] checks.
 - =backendPrograms= is what a machine needs when Emacs runs elsewhere and reaches it over a remote connection.
+  + On Linux that includes =kittymacs-open=, which [[id:9e4c2a61-7b05-4d13-8f6e-1a0d3c95b7e2][opens a folder from a WSL shell]].
   + =git=, =rg=, =fd= and =direnv= from the list, because Magit, the project commands and envrc run them on the remote side.
   + =inotify-tools=, on Linux, because Tramp's file notification watches through =inotifywait=.
   + Language servers for the languages most projects have: =nil=, =pyright= and =bash-language-server=. A project's own come from its =.envrc=, which is why direnv is here.
@@ -313,7 +314,14 @@ in
         ]
       ) programTable
     )
-    ++ lib.optional pkgs.stdenv.hostPlatform.isLinux pkgs.inotify-tools
+    ++ lib.optionals pkgs.stdenv.hostPlatform.isLinux [
+      pkgs.inotify-tools
+      (pkgs.writeShellApplication {
+        name = "kittymacs-open";
+        runtimeInputs = [ pkgs.coreutils ];
+        text = lib.removePrefix "#!/bin/sh\n" (builtins.readFile ./kittymacs-open.sh);
+      })
+    ]
     ++ [
       pkgs.nil
       pkgs.pyright

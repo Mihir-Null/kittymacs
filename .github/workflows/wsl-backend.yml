@@ -17,6 +17,7 @@ on:
       - lisp/kittymacs-remote.el
       - literate/34-terminal.org
       - lisp/kittymacs-terminal.el
+      - nix/kittymacs-open.sh
 
 permissions:
   contents: read

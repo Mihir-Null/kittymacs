@@ -31,7 +31,8 @@
 Return nil when OUTPUT may not be generated at all.  Emacs Lisp may go to
 early-init.el, init.el and files directly in lisp/, but never lisp/private.el,
 which belongs to the user.  Nix may go to flake.nix and to nix/, at most one
-directory deep (nix/tools.nix, nix/example/flake.nix)."
+directory deep (nix/tools.nix, nix/example/flake.nix), and a shell script, which
+the flake packages, directly to nix/."
   (and (not (file-name-absolute-p output))
        (not (member ".." (split-string output "/")))
        (cond ((or (member output '("early-init.el" "init.el"))
@@ -40,7 +41,9 @@ directory deep (nix/tools.nix, nix/example/flake.nix)."
               "emacs-lisp")
              ((or (equal output "flake.nix")
                   (string-match-p "\\`nix/\\([[:alnum:]_.-]+/\\)?[[:alnum:]_.-]+\\.nix\\'" output))
-              "nix"))))
+              "nix")
+             ((string-match-p "\\`nix/[[:alnum:]_.-]+\\.sh\\'" output)
+              "sh"))))
 
 (defun kittymacs-tangle--outputs (file)
   "Return the outputs chapter FILE tangles to, relative to the root.
@@ -65,7 +68,7 @@ that output's language."
 
 (defun kittymacs-tangle--orphans (root outputs)
   "Return the generated-looking files under ROOT that no chapter generates.
-They are lisp/kittymacs-*.el and the .nix files under nix/, left over from
+They are lisp/kittymacs-*.el and the .nix and .sh files under nix/, left over from
 a chapter that was deleted or retargeted: startup would still load the
 module, and the flake would still import the Nix file."
   (let ((lisp (expand-file-name "lisp" root))
@@ -78,7 +81,7 @@ module, and the flake would still import the Nix file."
                 (directory-files lisp nil "\\`kittymacs-.*\\.el\\'")))
       (when (file-directory-p nix)
         (mapcar (lambda (file) (file-relative-name file root))
-                (directory-files-recursively nix "\\.nix\\'")))))))
+                (directory-files-recursively nix "\\.\\(?:nix\\|sh\\)\\'")))))))
 
 (defconst kittymacs-tangle-features-output "nix/features.json"
   "What the builder writes from the catalogue, for the flake to read.")
