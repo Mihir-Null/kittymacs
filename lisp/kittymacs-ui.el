@@ -159,6 +159,14 @@ A `doom-' theme needs the `doom-look' feature; without it, `modus-operandi'."
 ;; The remote chapter's, which loads later than this one.
 (declare-function kittymacs-remote-buffer-p "kittymacs-remote" (&rest _))
 
+(defvar envrc-lighter)
+(unless (or (kittymacs-feature-p 'doom-look) mode-line-collapse-minor-modes)
+  (setq mode-line-collapse-minor-modes
+        '(not meow-normal-mode meow-insert-mode meow-motion-mode meow-keypad-mode
+              meow-beacon-mode overwrite-mode defining-kbd-macro flymake-mode envrc-mode)
+        ;; `defcustom' keeps this when envrc loads.
+        envrc-lighter '(:eval (unless (eq envrc--status 'none) (envrc--lighter)))))
+
 (when (kittymacs-feature-p 'doom-look)
   (use-package doom-modeline
     :ensure t
@@ -274,6 +282,10 @@ A `doom-' theme needs the `doom-look' feature; without it, `modus-operandi'."
     :commands writeroom-mode)
 
   (keymap-set kittymacs-toggle-map "w" (cons "writeroom" #'writeroom-mode)))
+(unless (or (kittymacs-feature-p 'home-page)
+            initial-scratch-message
+            (file-exists-p kittymacs-scratch-file))
+  (setq initial-scratch-message ";; SPC opens the menu.  SPC C o chooses features.\n\n"))
 (defun kittymacs--programming-presentation ()
   "Visual aids for programming buffers."
   (when kittymacs-line-numbers-in-programming

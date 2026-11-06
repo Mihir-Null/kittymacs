@@ -133,9 +133,10 @@
     t))
 
 (defun kittymacs--save-scratch ()
-  "Save the text of *scratch* to `kittymacs-scratch-file'."
-  (with-current-buffer (get-buffer-create "*scratch*")
-    (write-region (point-min) (point-max) kittymacs-scratch-file nil 'quiet)))
+  "Save the text of *scratch* to `kittymacs-scratch-file', except in batch."
+  (unless noninteractive
+    (with-current-buffer (get-buffer-create "*scratch*")
+      (write-region (point-min) (point-max) kittymacs-scratch-file nil 'quiet))))
 
 (defun kittymacs--restore-scratch ()
   "Restore *scratch* from `kittymacs-scratch-file' when it exists."
