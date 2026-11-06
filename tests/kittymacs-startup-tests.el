@@ -279,6 +279,40 @@ The Nix chapter's \"The Emacs packages\" says why each one.")
                           "(kittymacs-require-module 'kittymacs-ui)"))))
     (should (equal order (sort (copy-sequence order) #'<)))))
 
+(defun kittymacs-startup-test--backend-tools ()
+  "The default of `kittymacs-backend-tools', read from the generated module."
+  (eval (nth 2 (seq-find (lambda (form)
+                           (and (eq (car-safe form) 'defcustom)
+                                (eq (cadr form) 'kittymacs-backend-tools)))
+                         (kittymacs-startup-test--forms
+                          (expand-file-name "lisp/kittymacs-remote.el" kittymacs-startup-test-root))))
+        t))
+
+(defun kittymacs-startup-test--nix-matches (regexp &optional after)
+  "Return the first group of each match of REGEXP in nix/tools.nix.
+With AFTER, only those between that string and the next closing bracket."
+  (with-temp-buffer
+    (insert-file-contents (expand-file-name "nix/tools.nix" kittymacs-startup-test-root))
+    (when after (search-forward after))
+    (let ((end (and after (save-excursion (search-forward "]"))))
+          matches)
+      (while (re-search-forward regexp end t)
+        (push (match-string 1) matches))
+      (nreverse matches))))
+
+(ert-deftest kittymacs-startup-the-doctors-agree-on-what-they-share ()
+  "`SPC o B' looks for what a backend installs, named as `nix run .#doctor' names it.
+The lists differ on purpose: the Nix chapter's \"The apps\" says why."
+  (let ((option (kittymacs-startup-test--backend-tools))
+        (commands (kittymacs-startup-test--nix-matches
+                   "(tool \\(?:null\\|\"[^\"]+\"\\) \"\\([^\"]+\\)\""))
+        (installed (kittymacs-startup-test--nix-matches
+                    "\"\\([^\"]+\\)\"" "lib.elem entry.command [")))
+    (should installed)
+    (should-not (seq-difference installed commands))
+    (should-not (seq-difference installed option))
+    (should (equal (seq-difference option commands)
+                   '("inotifywait" "nix" "claude-agent-acp")))))
 (ert-deftest kittymacs-startup-the-gc-threshold-stays-finite ()
   "A start that hangs must not allocate until the machine runs out.
 Reads the two values from a child, and allocates nothing: the proof that a bound
