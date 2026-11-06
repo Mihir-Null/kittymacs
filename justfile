@@ -47,7 +47,8 @@ doc-test:
 
 # The tests that need no packages: the builder; the startup guards and the
 # Nix package list; each operating system's platform branch (on any
-# machine); the Tree-sitter grammar policy, offline; Org table wrapping.
+# machine); the Tree-sitter grammar policy, offline; Org table wrapping; the
+# onboarding screens, with scripted keys and through a real pty.
 test:
     emacs -Q --batch -l tests/kittymacs-tangle-tests.el -f ert-run-tests-batch-and-exit
     emacs -Q --batch -l tests/kittymacs-startup-tests.el -f ert-run-tests-batch-and-exit
@@ -58,6 +59,7 @@ test:
     emacs -Q --batch -l tests/kittymacs-catalogue-tests.el -f ert-run-tests-batch-and-exit
     emacs -Q --batch -l tests/kittymacs-features-tests.el -f ert-run-tests-batch-and-exit
     emacs -Q --batch -l tests/kittymacs-quickstart-tests.el -f ert-run-tests-batch-and-exit
+    emacs -Q --batch -l tests/kittymacs-onboard-tests.el -f ert-run-tests-batch-and-exit
 
 # 3. Everything that needs only Emacs. Run before every commit.
 check: tangle-check doc-test test
@@ -116,6 +118,22 @@ quickstart:
 # Delete it again; the next start scans, as a machine that never wrote one does.
 quickstart-remove:
     {{emacs}} -l early-init.el -f kittymacs-quickstart-remove
+
+# Write a private.el with the onboarding screens for several selections, then
+# start the verifier on each. Needs what `KITTYMACS_TEST_PROFILE=every just install`
+# installs, and one start per selection, one at a time.
+test-onboard-start:
+    KITTYMACS_TEST_PACKAGES={{quote(packages)}} emacs -Q --batch -l tests/kittymacs-onboard-start.el
+
+# Choose what this checkout installs, on screens that write lisp/private.el.
+# Where no terminal can draw them, it says what to set by hand and exits 3.
+# See literate/22-onboarding.org.
+onboard:
+    @if [ -t 0 ] && [ -t 1 ] && [ "${TERM:-dumb}" != dumb ]; then \
+      emacs -nw -Q -l lisp/kittymacs-onboard.el -f kittymacs-onboard-main; \
+    else \
+      emacs -Q --batch -l lisp/kittymacs-onboard.el -f kittymacs-onboard-main; \
+    fi
 
 # Count what the code and prose cost, against tests/budgets.eld. Needs no
 # packages. Reports only; FLAGS may be --write. "Measuring" in

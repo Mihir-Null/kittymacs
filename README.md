@@ -224,6 +224,15 @@ programs.kittymacs = {
 
 ### First start
 
+**To choose what it installs first,** run `just onboard` in the clone, with nothing installed yet. It needs only Emacs. The screens go through a profile, then each feature with its example, then a few settings and a preview of the change, and `C-g` at any point writes nothing.
+
+- It writes a marked block in `lisp/private.el` and leaves the rest of that file as it is. It keeps the old file as `private.el~`, follows a symbolic link to the real file, and refuses with a message if the file does not read as Lisp or cannot be written.
+- Without a terminal it can draw in, it prints the options to set by hand and exits with status 3.
+- With Nix it starts from what `10-nix.el` chose, and prints the matching `programs.kittymacs` options. `private.el` loads after the host layer, so what the block says wins.
+- `SPC C o` runs the same screens later. A start with nothing chosen says so in the echo area, and never starts anything by itself.
+
+To start straight away instead:
+
 1. Start Emacs. The first start installs the Lisp packages kittymacs declares into `var/elpa/`; this takes a minute or two, and later starts take seconds.
 2. Press `SPC h t` for Meow's ten-minute tutorial, and `SPC h ?` for the cheat sheet.
 3. Optional, when you want them:
@@ -249,6 +258,7 @@ Nothing is written outside the clone: packages, caches, history and `custom.el` 
 | `SPC n` | linked notes: find, insert, capture, backlinks |
 | `SPC a a` | Claude Code in this project |
 | `SPC C c` | the reading guide to the configuration |
+| `SPC C o` | choose features again; a change takes effect at the next start |
 
 In Normal state, Meow selects first and acts second: `w` selects a word, `x` a line, `o` a block; `,` and `.` select inside or around a thing; `d` deletes, `c` changes, `y` copies the selection. `i` enters Insert state and `ESC` leaves it. The cheat sheet has the full grammar.
 
