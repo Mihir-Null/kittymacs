@@ -5,6 +5,12 @@ let
   catalogue = builtins.fromJSON (builtins.readFile ./features.json);
   names = builtins.attrNames catalogue;
   depsOf = name: catalogue.${name}.deps or [ ];
+  withDeps =
+    features:
+    let
+      grown = lib.unique (features ++ lib.concatMap depsOf features);
+    in
+    if lib.length grown == lib.length features then features else withDeps grown;
   answered = cfg: value: lib.filter (name: cfg.features.${name}.enable == value) names;
 
   settingType =
@@ -134,12 +140,6 @@ rec {
       excluded = answered cfg false;
       inProfile = profile: lib.filter (name: catalogue.${name}.profile == profile) names;
       floor = inProfile "minimal";
-      withDeps =
-        features:
-        let
-          grown = lib.unique (features ++ lib.concatMap depsOf features);
-        in
-        if lib.length grown == lib.length features then features else withDeps grown;
       dropUnmet =
         features:
         let
@@ -186,6 +186,19 @@ rec {
     { cfg, usesPackage }:
     let
       version = lib.getVersion cfg.package;
+      excluded = answered cfg false;
+      option = name: "programs.kittymacs.features.${name}.enable";
+      alwaysKept = name: catalogue.${name}.profile == "minimal";
+      refuseExcluded =
+        name: "${option name} is false, but the minimal profile always keeps ${name}. Remove the setting.";
+      refuseSelected =
+        name:
+        map (
+          dep: "${option name} is true, but ${name} needs ${dep} and ${option dep} is false. Change one."
+        ) (lib.intersectLists (withDeps (depsOf name)) excluded);
+      conflicts =
+        map refuseExcluded (lib.filter alwaysKept excluded)
+        ++ lib.concatMap refuseSelected (answered cfg true);
     in
     [
       {
@@ -196,7 +209,11 @@ rec {
         assertion = !usesPackage || version == "" || lib.versionAtLeast version "31";
         message = "kittymacs needs Emacs 31 or later, and programs.kittymacs.package is Emacs ${version}. Set programs.kittymacs.package to a newer one, such as kittymacs.packages.<system>.default from a kittymacs input that does not follow this nixpkgs.";
       }
-    ];
+    ]
+    ++ map (message: {
+      assertion = false;
+      inherit message;
+    }) conflicts;
 
   # The text of 10-nix.el, or null when the options ask for nothing.
   hostFile =
