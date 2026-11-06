@@ -187,7 +187,8 @@ This reads the name, and never connects."
 
 (defun kittymacs--remote-note-windows-file ()
   "Say once that this buffer's file would be quicker opened on Windows."
-  (when-let* ((native (kittymacs-remote--windows-file buffer-file-name)))
+  (when-let* ((buffer-file-name)
+              (native (kittymacs-remote--windows-file buffer-file-name)))
     (unless (member buffer-file-name kittymacs-remote--windows-files-noted)
       (push buffer-file-name kittymacs-remote--windows-files-noted)
       (message "This file is on Windows, and reading it through WSL is slow.  %s reopens it as %s.%s"

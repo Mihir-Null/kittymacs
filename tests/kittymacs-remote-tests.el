@@ -208,6 +208,7 @@ job in .github/workflows/wsl-backend.yml covers them on real WSL2."
                  '("c:/Users/me/a.txt" "d:/" nil nil nil nil))))
 
 (ert-deftest kittymacs-remote-windows-file-speaks-once ()
+  (should (kittymacs-remote-test--value 'working 'windows-file-hook))
   (let ((said (kittymacs-remote-test--value 'working 'windows-file-said)))
     (should (= (length said) 1))
     (should (string-search "slow" (car said)))

@@ -203,19 +203,19 @@ Tramp suspends timers while it waits unless told not to, and the limit is a time
      (kill-buffer buffer)
      (setq buffer (find-file-noselect file))
      (unless (= (- (funcall messages) before) 1) (error "It spoke again"))
-     (with-current-buffer buffer
-       (let ((reading-seconds
-              (car (benchmark-run 5
-                     (let ((remote-file-name-inhibit-cache t))
-                       (with-temp-buffer (insert-file-contents file)))))))
-         (kittymacs-remote-reopen-natively)
-         (when (file-remote-p buffer-file-name)
-           (error "Still through Tramp: %s" buffer-file-name))
-         (prog1 (format "%s; five reads through WSL %.3f s, natively %.3f s"
-                        buffer-file-name reading-seconds
+     (let ((reading-seconds
+            (car (benchmark-run 5
+                   (let ((remote-file-name-inhibit-cache t))
+                     (with-temp-buffer (insert-file-contents file)))))))
+       (with-current-buffer buffer (kittymacs-remote-reopen-natively))
+       (let ((native (get-file-buffer "c:/Windows/win.ini")))
+         (unless native (error "No buffer on the native file"))
+         (when (buffer-live-p buffer) (error "The buffer through Tramp is still there"))
+         (prog1 (format "five reads through WSL %.3f s, natively %.3f s"
+                        reading-seconds
                         (car (benchmark-run 5
-                               (with-temp-buffer (insert-file-contents buffer-file-name)))))
-           (kill-buffer)))))))
+                               (with-temp-buffer (insert-file-contents "c:/Windows/win.ini")))))
+           (kill-buffer native)))))))
 
 ;; This check would pass if connecting could never fail.  So a distribution that
 ;; does not exist must not look like one that answers.

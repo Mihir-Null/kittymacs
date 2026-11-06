@@ -254,15 +254,16 @@ while True:
   (kittymacs-remote-fixture--script ".nix-profile/bin/kfake" "echo fake-tool-ran"))
 
 (defun kittymacs-remote-start--windows-file-notes (file)
-  "Open nothing, but run what opening FILE runs, twice, and return what it said."
+  "Run the note for FILE twice, as opening it twice would, and return what it said.
+Only the note: other functions on `find-file-hook' read the file, as they may."
   (let (said)
     (cl-letf (((symbol-function 'message)
                (lambda (format-string &rest args)
                  (push (apply #'format format-string args) said))))
       (with-temp-buffer
         (setq buffer-file-name file)
-        (run-hooks 'find-file-hook)
-        (run-hooks 'find-file-hook)
+        (kittymacs--remote-note-windows-file)
+        (kittymacs--remote-note-windows-file)
         (setq buffer-file-name nil)))
     said))
 
@@ -276,6 +277,8 @@ while True:
               "/wslm:Fake-24.04:/home/me/mnt/c/a"
               "/ssh:build:/mnt/c/a"
               "/mnt/c/a")))
+  (kittymacs-remote-start-value 'windows-file-hook
+    (and (memq #'kittymacs--remote-note-windows-file find-file-hook) t))
   (kittymacs-remote-start-value 'windows-file-said
     (kittymacs-remote-start--windows-file-notes "/wslm:Fake-24.04:/mnt/c/once.txt"))
   (kittymacs-remote-start-value 'windows-file-silent
