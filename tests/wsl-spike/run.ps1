@@ -32,15 +32,16 @@ ssh -V 2>&1
 
 & "$here/prove-wsl2.ps1" -Distribution $Distribution
 
+# A script block, because a function's own parameters would take -d as -Debug.
 function Invoke-Checked {
-    param([Parameter(ValueFromRemainingArguments)][string[]]$Command)
-    & $Command[0] @($Command | Select-Object -Skip 1)
-    if ($LASTEXITCODE -ne 0) { throw "Exit $LASTEXITCODE from: $Command" }
+    param([scriptblock]$Block)
+    & $Block
+    if ($LASTEXITCODE -ne 0) { throw "Exit $LASTEXITCODE from: $Block" }
 }
 
-Invoke-Checked wsl.exe -d $Distribution -u root --cd $here --exec bash setup-distro.sh
-Invoke-Checked wsl.exe --terminate $Distribution
-Invoke-Checked wsl.exe -d $Distribution --cd $here --exec bash setup-fixtures.sh
+Invoke-Checked { wsl.exe -d $Distribution -u root --cd $here --exec bash setup-distro.sh }
+Invoke-Checked { wsl.exe --terminate $Distribution }
+Invoke-Checked { wsl.exe -d $Distribution --cd $here --exec bash setup-fixtures.sh }
 
 # The long form of the path: a short name such as RUNNER~1 would go through Tramp's quoting.
 $secrets = Join-Path (Get-Item ([IO.Path]::GetTempPath())).FullName "wsl-spike-$PID"
@@ -52,7 +53,8 @@ try {
     # OpenSSH refuses a key that anyone else can read.
     icacls $key /inheritance:r /grant:r "${env:USERNAME}:F" | Out-Null
     $public = Get-Content "$key.pub" -Raw
-    Invoke-Checked wsl.exe -d $Distribution --exec sh -c 'umask 077; mkdir -p ~/.ssh; printf "%s\n" "$1" >> ~/.ssh/authorized_keys' sh $public.Trim()
+    # No double quotes in the script: wsl.exe would have to get them through a second parse.
+    Invoke-Checked { wsl.exe -d $Distribution --exec sh -c 'umask 077; mkdir -p ~/.ssh; echo $1 >> ~/.ssh/authorized_keys' sh $public.Trim() }
 
     $config = Join-Path $secrets 'config'
     @"
