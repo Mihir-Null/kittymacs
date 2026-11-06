@@ -425,8 +425,10 @@ Types the configuration deliberately silences are left out."
       ;; Remote programs are found on the remote login shell's PATH, so a
       ;; Nix profile on an SSH host (the Android VM backend) is searched.
       (require 'tramp)
-      (kittymacs-verify-check (memq 'tramp-own-remote-path tramp-remote-path)
-                       "Tramp does not search the remote login shell's PATH")
+      (kittymacs-verify-check (eq (car tramp-remote-path) 'tramp-own-remote-path)
+                       "Tramp does not search the remote login shell's PATH first")
+      (kittymacs-verify-check (member "~/.nix-profile/bin" tramp-remote-path)
+                       "Tramp does not search the Nix profile")
       (kittymacs-verify-check (and (bound-and-true-p envrc-global-mode)
                                    (eq (lookup-key kittymacs-leader-map (kbd "p E a")) #'envrc-allow))
                        "envrc is not on, or SPC p E a is not envrc-allow")

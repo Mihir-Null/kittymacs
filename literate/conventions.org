@@ -128,7 +128,8 @@
   + the Org, Org extras, Org-roam and reading modules do not use each other's names, packages or modules without asking first, so each one can be off while the others are on;
   + no module loads Org as it loads, through =require=, a =use-package= that does not wait, or a =setopt= on a name Customize's index ties to an Org library;
   + only the declarations of doom-themes and doom-modeline, and code behind =featurep= or =kittymacs-feature-p=, name anything of theirs;
-  + every generated file's header names the chapter that tangles it.
+  + every generated file's header names the chapter that tangles it;
+  + =SPC o b= and =SPC o B= are bound by the remote chapter's module and no other.
 - A key outside the leader, such as =C-c /=, is not checked: it may belong to a mode or to Emacs.
 
 * Navigate the chapters in Emacs

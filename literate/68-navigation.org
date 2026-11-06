@@ -108,7 +108,9 @@
   + A command in that menu names its key when =project-prefix-map= has no key for it; [[id:e5942eb0-4389-447d-9317-d9178adcaaae][the leader]] leaves that map as Emacs defines it.
 - Extra root markers let non-Git directories count as projects: =.dir-locals.el=, =.project.el=, =package.json=, =requirements.txt=, =autogen.sh=.
 - Ripgrep backs =xref= searches when =rg= is installed.
-- Projects whose directories no longer exist are forgotten when =project.el= loads.
+- Projects whose directories no longer exist are forgotten when the list is first read, and again before each prompt.
+  + Only local ones are checked, with =project.el='s own =project-prune-zombies-default=: asking about a remote one logs in, and a machine that does not answer would stall the start ([[id:8d3b7e15-6f42-4c09-a1e8-5b2d90c7f364][the guards]]).
+  + =M-x project-forget-zombie-projects= still asks about every project, remote ones included.
 - =SPC p t= opens the directory where projects live (=kittymacs-project-directory=).
 - =SPC p R= remembers every project under a directory you name.
 
@@ -131,10 +133,11 @@
                              (project-vc-dir "VC-Dir")
                              (magit-project-status "Magit status" ?G)))
   (project-vc-extra-root-markers '(".dir-locals.el" ".project.el" "package.json" "requirements.txt" "autogen.sh"))
+  (project-prune-zombie-projects '((list-first-read . project-prune-zombies-default)
+                                   (prompt . project-prune-zombies-default)))
   :config
   (when (executable-find "rg")
-    (setopt xref-search-program 'ripgrep))
-  (project-forget-zombie-projects))
+    (setopt xref-search-program 'ripgrep)))
 
 #+end_src
 
