@@ -11,6 +11,7 @@
 (require 'kittymacs-platform)
 
 (defvar kittymacs-msys2-root)
+(defvar kittymacs-remote-windows-file-note)
 (defvar ghostel-shell)
 (defvar ghostel-environment)
 (defvar ghostel-buffer-name)

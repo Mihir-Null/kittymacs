@@ -412,6 +412,37 @@ pipe want different ones.  Signals after LIMIT seconds."
            (with-current-buffer (ghostel)
              (string-replace "\n" " " (wsl-backend-terminal-facts "tramp-facts" "\n" 45)))))
      (error (format "failed: %s" (error-message-string err))))))
+;;; A Windows-side file through the backend
+
+(declare-function kittymacs-remote-reopen-natively "kittymacs-remote" ())
+
+(wsl-backend-check
+ "a file under /mnt/ says so once, and reopens natively" 60
+ (lambda ()
+   (let* ((file (format "/wslm:%s:/mnt/c/Windows/win.ini" wsl-backend-distribution))
+          (messages (lambda ()
+                      (with-current-buffer "*Messages*"
+                        (how-many "through WSL is slow" (point-min) (point-max)))))
+          (before (funcall messages))
+          (buffer (find-file-noselect file))
+          (said (- (funcall messages) before)))
+     (unless (= said 1) (error "It spoke %d times" said))
+     (kill-buffer buffer)
+     (setq buffer (find-file-noselect file))
+     (unless (= (- (funcall messages) before) 1) (error "It spoke again"))
+     (let ((reading-seconds
+            (car (benchmark-run 5
+                   (let ((remote-file-name-inhibit-cache t))
+                     (with-temp-buffer (insert-file-contents file)))))))
+       (with-current-buffer buffer (kittymacs-remote-reopen-natively))
+       (let ((native (get-file-buffer "c:/Windows/win.ini")))
+         (unless native (error "No buffer on the native file"))
+         (when (buffer-live-p buffer) (error "The buffer through Tramp is still there"))
+         (prog1 (format "five reads through WSL %.3f s, natively %.3f s"
+                        reading-seconds
+                        (car (benchmark-run 5
+                               (with-temp-buffer (insert-file-contents "c:/Windows/win.ini")))))
+           (kill-buffer native)))))))
 
 ;; This check would pass if connecting could never fail.  So a distribution that
 ;; does not exist must not look like one that answers.

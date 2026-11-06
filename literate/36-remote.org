@@ -457,6 +457,54 @@ done
 
 "$client" --quiet --no-wait --alternate-editor=runemacs.exe "$@" ||
   fail "neither a running Emacs nor runemacs.exe answered. Start Windows Emacs, and try again."
+** Windows-side files through a backend
+
+- A file under =/mnt/= on a WSL backend lives on Windows, so opening it this way crosses to Linux and back on every read, for the same file Emacs could open directly.
+- So opening one says so, once per file per session, in a message, and =SPC o w= (=kittymacs-remote-reopen-natively=) offers the way back.
+  + It offers and does nothing by itself: the buffer stays, as this may be what you wanted, and a prompt in the middle of =find-file= would stop whatever opened the file.
+  + =SPC o w= replaces the buffer with the native file, =c:/Users/me/a.txt=, in place of =/wslm:Ubuntu-24.04:/mnt/c/Users/me/a.txt=, and =find-alternate-file= asks first if it has unsaved changes.
+- The check reads the name, with one regular expression, so it never connects, and a file that is not on a WSL backend pays one match.
+- =kittymacs-remote-windows-file-note= holds what the message adds for a Windows-side file, set by whichever module helps with those ([[id:5d07c1e4-92ab-4f36-b8d1-6a3e0c47f2d9][a fallback for Windows-side files]]).
+
+#+begin_src emacs-lisp
+(defvar kittymacs-remote-windows-file-note nil
+  "What the message about a Windows-side file adds, or nil.")
+
+(defvar kittymacs-remote--windows-files-noted nil
+  "The Windows-side files this session has already spoken about.")
+
+(defun kittymacs-remote--windows-file (file)
+  "Return what Windows calls FILE, a name on a WSL backend under /mnt/, or nil.
+This reads the name, and never connects."
+  (when (string-match (format "\\`/%s:[^:]*:/mnt/\\([a-z]\\)\\(/.*\\)?\\'"
+                              (regexp-quote kittymacs-remote-wsl-method))
+                      file)
+    (concat (match-string 1 file) ":" (or (match-string 2 file) "/"))))
+
+(defun kittymacs--remote-note-windows-file ()
+  "Say once that this buffer's file would be quicker opened on Windows."
+  (when-let* ((buffer-file-name)
+              (native (kittymacs-remote--windows-file buffer-file-name)))
+    (unless (member buffer-file-name kittymacs-remote--windows-files-noted)
+      (push buffer-file-name kittymacs-remote--windows-files-noted)
+      (message "This file is on Windows, and reading it through WSL is slow.  %s reopens it as %s.%s"
+               (substitute-command-keys "\\[kittymacs-remote-reopen-natively]")
+               native
+               (if kittymacs-remote-windows-file-note
+                   (concat "  " kittymacs-remote-windows-file-note)
+                 "")))))
+
+(defun kittymacs-remote-reopen-natively ()
+  "Replace this buffer's Windows-side file with the native file."
+  (interactive)
+  (let ((native (and buffer-file-name (kittymacs-remote--windows-file buffer-file-name))))
+    (unless native
+      (user-error "This buffer is not a Windows-side file on a WSL backend"))
+    (find-alternate-file native)))
+
+(add-hook 'find-file-hook #'kittymacs--remote-note-windows-file)
+(keymap-set kittymacs-open-map "w" (cons "reopen a Windows file natively" #'kittymacs-remote-reopen-natively))
+
 #+end_src
 
 * Connection-local defaults
@@ -705,5 +753,6 @@ Host vm
 - =SPC o e= in that buffer opens a terminal on that machine, even with a local terminal open.
   + On a =wsl= backend =htop= draws its full screen, and =tty= names a =/dev/pts/= device.
 - =kittymacs-open .= in a WSL shell opens that folder in Windows Emacs, with Emacs running or not, and =kittymacs-open /mnt/c/Users= opens it with no Tramp.
+- On a =wsl= backend, =C-x C-f /wslm:DISTRIBUTION:/mnt/c/Windows/win.ini=: a message says it is slow, once, and =SPC o w= opens =c:/Windows/win.ini=.
 - Open a remote file and cut the network: Emacs keeps responding while you are idle; =C-g= ends a command that was waiting.
 - =just test-packages= and =just test-minimal= run [[file:../tests/kittymacs-remote-tests.el][the remote tests]], with a Tramp method that needs no ssh.

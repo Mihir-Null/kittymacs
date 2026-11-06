@@ -254,6 +254,29 @@ The job in .github/workflows/wsl-backend.yml runs it against real WSL2."
 
 (ert-deftest kittymacs-remote-reconnect-gets-out-of-a-hung-connection ()
   (should (equal (kittymacs-remote-test--value 'hung 'reconnect-hung) " [here]")))
+(ert-deftest kittymacs-remote-windows-file-reads-the-name ()
+  (should (equal (kittymacs-remote-test--value 'working 'windows-file-names)
+                 '("c:/Users/me/a.txt" "d:/" nil nil nil nil))))
+
+(ert-deftest kittymacs-remote-windows-file-speaks-once ()
+  (should (kittymacs-remote-test--value 'working 'windows-file-hook))
+  (let ((said (kittymacs-remote-test--value 'working 'windows-file-said)))
+    (should (= (length said) 1))
+    (should (string-search "slow" (car said)))
+    (should (string-search "c:/once.txt" (car said))))
+  (should-not (kittymacs-remote-test--value 'working 'windows-file-silent))
+  (should (string-search "An extra word."
+                         (car (kittymacs-remote-test--value 'working 'windows-file-note)))))
+
+(ert-deftest kittymacs-remote-windows-file-reopens-when-asked ()
+  (should (equal (kittymacs-remote-test--value 'working 'windows-file-reopen)
+                 '(reopened "c:/a.txt")))
+  (should (eq (kittymacs-remote-test--value 'working 'windows-file-reopen-elsewhere) 'refused)))
+
+(ert-deftest kittymacs-remote-windows-file-check-does-not-connect ()
+  (should (= (length (kittymacs-remote-test--value 'unreachable 'windows-file-unreachable)) 1))
+  (should-not (kittymacs-remote-test--value 'unreachable 'login-ran))
+  (should (eq (kittymacs-remote-test--value 'hung 'windows-file) 'done)))
 
 (ert-deftest kittymacs-remote-connect-opens-the-project ()
   (let ((opened (kittymacs-remote-test--value 'working 'connect)))

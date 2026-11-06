@@ -226,6 +226,8 @@ again later, and one that does not is gone."
         (kittymacs-backend-reconnect "here")
         (let ((default-directory (kittymacs-backend-root "here")))
           (kittymacs-remote-mode-line))))
+      (kittymacs-remote-start-probe 'windows-file
+        (kittymacs-remote-start--windows-file-notes "/wslm:Fake-24.04:/mnt/c/hung.txt")))
     (kittymacs-remote-fixture-resume)))
 
 (defun kittymacs-remote-start--wait (predicate)
@@ -265,6 +267,53 @@ while True:
 (defun kittymacs-remote-start--tool ()
   "Install a program in the Nix profile of the fixture's remote side."
   (kittymacs-remote-fixture--script ".nix-profile/bin/kfake" "echo fake-tool-ran"))
+
+(defun kittymacs-remote-start--windows-file-notes (file)
+  "Run the note for FILE twice, as opening it twice would, and return what it said.
+Only the note: other functions on `find-file-hook' read the file, as they may."
+  (let (said)
+    (cl-letf (((symbol-function 'message)
+               (lambda (format-string &rest args)
+                 (push (apply #'format format-string args) said))))
+      (with-temp-buffer
+        (setq buffer-file-name file)
+        (kittymacs--remote-note-windows-file)
+        (kittymacs--remote-note-windows-file)
+        (setq buffer-file-name nil)))
+    said))
+
+(defun kittymacs-remote-start--windows-file ()
+  "A file under /mnt/ on a WSL backend: one message, and no connection."
+  (kittymacs-remote-start-value 'windows-file-names
+    (mapcar #'kittymacs-remote--windows-file
+            '("/wslm:Fake-24.04:/mnt/c/Users/me/a.txt"
+              "/wslm:Fake-24.04:/mnt/d"
+              "/wslm:Fake-24.04:/mnt/wsl/a"
+              "/wslm:Fake-24.04:/home/me/mnt/c/a"
+              "/ssh:build:/mnt/c/a"
+              "/mnt/c/a")))
+  (kittymacs-remote-start-value 'windows-file-hook
+    (and (memq #'kittymacs--remote-note-windows-file find-file-hook) t))
+  (kittymacs-remote-start-value 'windows-file-said
+    (kittymacs-remote-start--windows-file-notes "/wslm:Fake-24.04:/mnt/c/once.txt"))
+  (kittymacs-remote-start-value 'windows-file-silent
+    (kittymacs-remote-start--windows-file-notes "/wslm:Fake-24.04:/home/me/a.txt"))
+  (kittymacs-remote-start-value 'windows-file-note
+    (let ((kittymacs-remote-windows-file-note "An extra word."))
+      (kittymacs-remote-start--windows-file-notes "/wslm:Fake-24.04:/mnt/c/noted.txt")))
+  (kittymacs-remote-start-value 'windows-file-reopen
+    (let ((file (make-temp-file "kittymacs-windows-")))
+      (cl-letf (((symbol-function 'find-alternate-file)
+                 (lambda (name) (setq file (list 'reopened name)))))
+        (with-temp-buffer
+          (setq buffer-file-name "/wslm:Fake-24.04:/mnt/c/a.txt")
+          (kittymacs-remote-reopen-natively)
+          (setq buffer-file-name nil)))
+      file))
+  (kittymacs-remote-start-value 'windows-file-reopen-elsewhere
+    (with-temp-buffer
+      (condition-case _ (kittymacs-remote-reopen-natively)
+        (user-error 'refused)))))
 
 (defun kittymacs-remote-start--local ()
   "Report what the guards do to a local buffer: nothing."
@@ -382,6 +431,7 @@ while True:
 (defun kittymacs-remote-start--working ()
   "A connection that answers: backends, and each program a person would run."
   (kittymacs-remote-start--local)
+  (kittymacs-remote-start--windows-file)
   (kittymacs-remote-start--project)
   (kittymacs-remote-start--tool)
   (kittymacs-remote-start--terminal)
@@ -556,6 +606,10 @@ while True:
          (kittymacs-backends '(("gone" :transport khang :host "unreachable" :root "/"))))
      (kittymacs-remote-start-value 'status-unreachable
        (substring-no-properties (kittymacs-remote-mode-line))))))
+   ;; The method whose login never answers, as if it were the WSL one.
+   (let ((kittymacs-remote-wsl-method "khang"))
+     (kittymacs-remote-start-value 'windows-file-unreachable
+       (kittymacs-remote-start--windows-file-notes "/khang:unreachable:/mnt/c/a.txt")))))
 
 (kittymacs-remote-start-report 'login-ran (file-exists-p (kittymacs-remote-fixture-login-marker)))
 ;; Now ask on purpose, so the test knows this machine really would have stalled.
