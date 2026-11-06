@@ -27,6 +27,7 @@
 (defvar tramp-connection-timeout)
 (defvar ghostel-buffer-name)
 (defvar eshell-buffer-name)
+(defvar ghostel-macos-login-shell)
 (defconst kittymacs-remote-start-limit 3 "Seconds a probe may take before it counts as stalled.")
 
 (defun kittymacs-remote-start-report (key value)
@@ -354,6 +355,8 @@ while True:
     (let* ((bin (kittymacs-remote-fixture-wsl-exe))
            (exec-path (cons bin exec-path))
            (root (kittymacs-backend-root "wsl"))
+           ;; It wraps a local shell in login(1) on a Mac, and `wsl.exe' is never there.
+           (ghostel-macos-login-shell nil)
            (spawn (lambda (program args _environment remote)
                     (list program args remote default-directory))))
       (cl-letf (((symbol-function 'ghostel--spawn-pty) spawn))
