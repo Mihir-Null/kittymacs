@@ -52,9 +52,11 @@ function Invoke-Row {
         [string]$Phases,
         [int]$Rounds,
         [int]$Minutes,
-        [switch]$Graphical
+        [switch]$Graphical,
+        [switch]$WindowsPath
     )
-    $row = "$Transport-$Boot-$(if ($Graphical) { 'gui' } else { 'batch' })"
+    $row = "$Transport-$Boot-$(if ($Graphical) { 'gui' } else { 'batch' })$(if ($WindowsPath) { '-windows-path' })"
+    $env:TRIAL_WINDOWS_PATH = if ($WindowsPath) { '1' } else { $null }
     "::group::$row"
     $env:TRIAL_TRANSPORT = $Transport
     $env:TRIAL_BOOT = $Boot
@@ -95,6 +97,8 @@ $looking = if ($quick) { 1 } else { 3 }
 
 Invoke-Row -Transport rpc -Boot plain -Phases $all -Rounds $timing -Minutes 30
 Invoke-Row -Transport wslm -Boot plain -Phases $all -Rounds $timing -Minutes 30
+# The seam without its PATH, since the first full run found it costs every write.
+Invoke-Row -Transport rpc -Boot plain -Phases 'connect files magit trace' -Rounds $looking -Minutes 10 -WindowsPath
 Invoke-Row -Transport rpc -Boot plain -Phases $look -Rounds $looking -Minutes 10 -Graphical
 Invoke-Row -Transport wslm -Boot plain -Phases $look -Rounds $looking -Minutes 10 -Graphical
 Invoke-Row -Transport rpc -Boot config -Phases $real -Rounds 1 -Minutes 12

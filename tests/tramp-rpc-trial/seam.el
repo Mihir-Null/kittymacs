@@ -7,6 +7,9 @@
 ;;
 ;; `make-process' is replaced only around one function, and only for its ssh
 ;; command, so a timer that starts a local process meanwhile is left alone.
+;;
+;; PATH, because wsl.exe appends the Windows PATH, and the server searches it for
+;; each program it starts.  The wslm row sets the same one, for its own reason.
 
 ;;; Code:
 (require 'cl-lib)
@@ -15,6 +18,10 @@
 (setq tramp-rpc-use-controlmaster nil
       tramp-rpc-use-direct-ssh-pty nil
       tramp-rpc-deploy-never-deploy t)
+
+(defvar trial-seam-path
+  "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/run/current-system/sw/bin "
+  "What goes before the server's command.  An empty string keeps wsl.exe's PATH.")
 
 (defun trial-seam-start-server (original vec binary-path &optional sudo-password)
   "Call ORIGINAL on VEC, BINARY-PATH and SUDO-PASSWORD, through wsl.exe and not ssh."
@@ -26,7 +33,7 @@
                          (plist-put arguments :command
                                     (list "wsl.exe" "-d" (tramp-file-name-host vec)
                                           "--exec" "/bin/sh" "-c"
-                                          (concat "exec " binary-path)))))
+                                          (concat trial-seam-path "exec " binary-path)))))
                  (apply real arguments))))
       (funcall original vec binary-path sudo-password))))
 

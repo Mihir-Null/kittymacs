@@ -37,6 +37,7 @@
 (defvar kittymacs-host-directories nil)
 (defvar tramp-rpc-deploy-remote-binary-path)
 (defvar tramp-rpc-protocol-revision)
+(defvar trial-seam-path)
 (defvar explicit-shell-file-name)
 (declare-function tramp-cleanup-connection "tramp-cmds" (vec &optional keep-debug keep-password keep-processes))
 (declare-function tramp-dissect-file-name "tramp" (name &optional nodefault))
@@ -319,6 +320,7 @@ Git for Windows's `cat', since GNU's Emacs ships none."
   (require 'tramp)
   (setq exec-path (append exec-path (list (getenv "TRIAL_CAT"))))
   (load (expand-file-name "seam" trial-here) nil t)
+  (when (getenv "TRIAL_WINDOWS_PATH") (setq trial-seam-path ""))
   (setq tramp-rpc-deploy-remote-binary-path (getenv "TRIAL_SERVER")))
 
 (if trial-config-p (trial-start-config) (trial-start-plain))
@@ -845,12 +847,17 @@ those, and never tries the write that tramp-rpc sets no limit on."
 What the calls leave unexplained is spent in Emacs."
   (let* (calls
          (advice (lambda (original &rest arguments)
-                   (let ((began (float-time)))
-                     (prog1 (apply original arguments)
-                       (push (format "%s %.3f"
+                   (let ((began (float-time)) (finished nil))
+                     (unwind-protect
+                         (prog1 (apply original arguments) (setq finished t))
+                       (push (format "%s%s %.3f"
                                      (if (stringp (cadr arguments))
-                                         (cadr arguments)
+                                         (format "%s%s" (cadr arguments)
+                                                 (if (equal (cadr arguments) "process.run")
+                                                     (format " %s" (alist-get 'cmd (nth 2 arguments)))
+                                                   ""))
                                        "batch")
+                                     (if finished "" " FAILED")
                                      (- (float-time) began))
                              calls))))))
     (dolist (name '(tramp-rpc--call tramp-rpc--call-batch))
