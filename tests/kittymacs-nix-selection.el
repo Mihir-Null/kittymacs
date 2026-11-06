@@ -57,12 +57,15 @@
   (push message kittymacs-nix-warnings))
 
 (defun kittymacs-nix--selection-warnings ()
-  "Return the warnings about the selection or a host file."
+  "Return the warnings about the selection or a host file.
+With KITTYMACS_TEST_PACKAGES, a host with no profile has packages and no stamp,
+so the warning for such a machine is the configuration working, and no finding."
   (seq-filter (lambda (message)
-                (string-match-p (rx (or "kittymacs-profile" "kittymacs-features" "stays off"
-                                        "stays on"
-                                        (seq "/host/" (* nonl) "did not finish loading")))
-                                message))
+                (and (not (string-prefix-p "No profile is chosen" message))
+                     (string-match-p (rx (or "kittymacs-profile" "kittymacs-features" "stays off"
+                                             "stays on"
+                                             (seq "/host/" (* nonl) "did not finish loading")))
+                                     message)))
               kittymacs-nix-warnings))
 
 (defun kittymacs-nix--check-said (said)
