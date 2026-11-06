@@ -353,6 +353,10 @@ names what was asked for and cannot be had."
 - A failed install is a warning, because the rest of the editor still works without one package.
   + =kittymacs-features--failed= remembers it, so the declaration that follows does not try again and warn a second time.
 - A package left behind by a feature now off stays installed: =M-x package-delete= removes it, and leftover files do nothing.
+- While a package installs, the installer drops one warning: Embark's reminder to install =embark-consult=.
+  + =package-install= compiles in the running Emacs, and that loads Embark and Consult, so the reminder fires moments before =embark-consult= arrives.
+  + The order of the catalogue's list cannot prevent this, because Emacs installs a package's dependencies before the package, whichever the list names first.
+  + A failed install still warns, because every other warning passes, and the reminder returns on the next start that loads Embark and Consult.
 
 #+begin_src emacs-lisp
 (defvar use-package-ensure-function)
@@ -368,13 +372,22 @@ names what was asked for and cannot be had."
                                 (kittymacs-features--property feature :vc)))
               (kittymacs-features-enabled)))
 
+(defun kittymacs-features--hide-embark-reminder (show type message &rest args)
+  "Call SHOW with TYPE, MESSAGE and ARGS, unless MESSAGE is Embark's reminder."
+  (unless (equal message "The package embark-consult should be installed if you use both Embark and Consult")
+    (apply show type message args)))
+
 (defun kittymacs-features-install ()
   "Install what the features that are on need and this machine lacks.
 A package that cannot be installed warns, and the rest carry on."
   (dolist (package (kittymacs-features-packages))
     (unless (package-installed-p package)
       (condition-case-unless-debug err
-          (funcall use-package-ensure-function package '(t) nil)
+          (unwind-protect
+              (progn
+                (advice-add 'display-warning :around #'kittymacs-features--hide-embark-reminder)
+                (funcall use-package-ensure-function package '(t) nil))
+            (advice-remove 'display-warning #'kittymacs-features--hide-embark-reminder))
         (error
          (kittymacs-features--warn "Could not install %s: %s"
                                    package (error-message-string err))))
@@ -404,4 +417,5 @@ A package that cannot be installed warns, and the rest carry on."
 - Add =(setopt kittymacs-features '(no-such-feature))= to =private.el= and restart: a warning names it, and everything else starts.
 - =(setopt kittymacs-features '(jump))= on a machine without Avy: the next start installs it, and =SPC j j= works.
 - =just test= runs [[file:../tests/kittymacs-features-tests.el][the features tests]], which need no packages.
+- CI's =startup= job fails if =just install= prints Embark's reminder, which it can only do when its package cache starts empty.
 - =ls var/started-on-default= on a machine that started with nothing: the file is there, and =M-: (kittymacs-features-profile)= says =minimal=.
