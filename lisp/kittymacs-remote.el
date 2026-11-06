@@ -12,6 +12,7 @@
 (defvar tramp-remote-path)
 (declare-function connection-local-set-profile-variables "files-x" (profile variables))
 (declare-function connection-local-set-profiles "files-x" (criteria &rest profiles))
+(declare-function tramp-cleanup-connection "tramp-cmds" (vec &optional keep-debug keep-password keep-processes))
 (declare-function tramp-direct-async-process-p "tramp" (&rest args))
 (declare-function tramp-dissect-file-name "tramp" (name &optional nodefault))
 (declare-function tramp-file-name-host "tramp" (vec))
@@ -142,8 +143,54 @@ PATH is nil where the machine does not have the tool."
         (princ (format "%-20s %s\n" tool (or path "not found")))))
     tools))
 
+(defun kittymacs-backend-reconnect (name)
+  "Drop the connection to the backend called NAME, and open a new one.
+Interactively, NAME is this buffer's backend, or else one you choose."
+  (interactive (list (or (kittymacs-remote--buffer-backend)
+                         (kittymacs-remote--read-backend))))
+  (let ((root (kittymacs-backend-root name)))
+    (kittymacs-remote--apply-backend name)
+    (tramp-cleanup-connection (tramp-dissect-file-name root))
+    (unless (file-directory-p root)
+      (user-error "Backend %s has no directory %s" name root))
+    (message "Reconnected to %s" name)))
+
 (keymap-set kittymacs-open-map "b" (cons "backend: open its project" #'kittymacs-backend-connect))
 (keymap-set kittymacs-open-map "B" (cons "backend: what it has" #'kittymacs-backend-doctor))
+(keymap-set kittymacs-open-map "R" (cons "backend: reconnect" #'kittymacs-backend-reconnect))
+(defun kittymacs-remote--prefix (backend)
+  "Return the start of a file name on BACKEND, without looking anything up."
+  (let ((transport (or (plist-get backend :transport) 'ssh)))
+    (format "/%s:%s:"
+            (if (eq transport 'wsl) kittymacs-remote-wsl-method transport)
+            (or (plist-get backend :host) ""))))
+
+(defun kittymacs-remote--buffer-backend ()
+  "Return the name of the backend this buffer belongs to, or nil.  It never connects."
+  (when-let* ((kittymacs-backends)
+              (remote (and default-directory (file-remote-p default-directory))))
+    (car (seq-find (lambda (backend)
+                     (equal remote (kittymacs-remote--prefix (cdr backend))))
+                   kittymacs-backends))))
+
+(defvar kittymacs-remote-mode-line-map
+  (let ((map (make-sparse-keymap)))
+    (keymap-set map "<mode-line> <mouse-1>" #'kittymacs-backend-reconnect)
+    map)
+  "The keys of the backend's name in the mode line.")
+
+(defun kittymacs-remote-mode-line ()
+  "Return the mode line's text for this buffer's backend, or nil.  It never connects."
+  (when-let* ((name (kittymacs-remote--buffer-backend)))
+    (let ((connected (file-remote-p default-directory nil t)))
+      (propertize (format " [%s%s]" name (if connected "" "?"))
+                  'face (unless connected 'warning)
+                  'mouse-face 'mode-line-highlight
+                  'local-map kittymacs-remote-mode-line-map
+                  'help-echo (format "Backend %s, %s.  mouse-1: reconnect" name
+                                     (if connected "connected" "not connected"))))))
+
+(add-to-list 'mode-line-misc-info '(:eval (kittymacs-remote-mode-line)))
 (defconst kittymacs-remote-wsl-method "wslm"
   "The Tramp method behind the `wsl' transport.")
 

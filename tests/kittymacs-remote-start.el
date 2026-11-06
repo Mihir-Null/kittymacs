@@ -210,7 +210,19 @@ again later, and one that does not is gone."
                 doom-modeline-env--command-args '("--version")
                 doom-modeline-env--parser #'identity
                 doom-modeline--project-root nil)
-          (doom-modeline-update-env))))
+          (doom-modeline-update-env)))
+      ;; Directly: `format-mode-line' returns nothing in batch.
+      (kittymacs-remote-start-report
+       'status-installed (and (member '(:eval (kittymacs-remote-mode-line)) mode-line-misc-info) t))
+      (kittymacs-remote-start-probe 'status (kittymacs-remote-mode-line))
+      (let ((default-directory (concat (file-remote-p default-directory) "~/"))
+            (kittymacs-backends
+             `(("home" :transport kmock :host ,(file-remote-p default-directory 'host) :root "~/"))))
+        (kittymacs-remote-start-probe 'status-home (kittymacs-remote-mode-line)))
+      (kittymacs-remote-start-value 'reconnect-hung
+        (kittymacs-backend-reconnect "here")
+        (let ((default-directory (kittymacs-backend-root "here")))
+          (kittymacs-remote-mode-line))))
     (kittymacs-remote-fixture-resume)))
 
 (defun kittymacs-remote-start--wait (predicate)
@@ -373,6 +385,29 @@ while True:
         (lambda () (interactive) (setq opened project-current-directory-override)))
       (kittymacs-backend-connect "here")
       opened))
+  (kittymacs-remote-start-value 'status-names
+    (let ((here (kittymacs-backend-root "here"))
+          (status (lambda (directory)
+                    (let ((default-directory directory))
+                      (substring-no-properties (or (kittymacs-remote-mode-line) "none"))))))
+      (list (funcall status here)
+            (funcall status "/kmock:not-a-backend:/")
+            (funcall status "/ssh:nobody-connected-here:/")
+            (funcall status temporary-file-directory)
+            (let ((kittymacs-backends nil))
+              (funcall status here))
+            (let ((kittymacs-backends '(("never" :transport wsl :host "Never-24.04" :root "/"))))
+              (funcall status "/wslm:Never-24.04:/")))))
+  (kittymacs-remote-start-value 'reconnect
+    (let* ((root (kittymacs-backend-root "here"))
+           (vec (tramp-dissect-file-name root))
+           (before (tramp-get-connection-process vec)))
+      (kittymacs-backend-reconnect "here")
+      (let ((after (tramp-get-connection-process vec)))
+        (list (process-live-p before) (and (process-live-p after) t) (eq before after)))))
+  (kittymacs-remote-start-value 'reconnect-typo
+    (condition-case err (kittymacs-backend-reconnect "typo")
+      (user-error 'refused)))
   (kittymacs-remote-start-value 'connect-typo
     (condition-case err (kittymacs-backend-connect "typo")
       (user-error 'refused)))
@@ -469,7 +504,12 @@ while True:
   ('working (kittymacs-remote-start--working))
   ('unreachable
    (kittymacs-remote-start-value 'projects (project-known-project-roots))
-   (kittymacs-remote-start-value 'recentf (bound-and-true-p recentf-list))))
+   (kittymacs-remote-start-value 'recentf (bound-and-true-p recentf-list))
+   ;; The machine that never answers: the status must say so without a login.
+   (let ((default-directory "/khang:unreachable:/")
+         (kittymacs-backends '(("gone" :transport khang :host "unreachable" :root "/"))))
+     (kittymacs-remote-start-value 'status-unreachable
+       (substring-no-properties (kittymacs-remote-mode-line))))))
 
 (kittymacs-remote-start-report 'login-ran (file-exists-p (kittymacs-remote-fixture-login-marker)))
 ;; Now ask on purpose, so the test knows this machine really would have stalled.

@@ -203,6 +203,28 @@ job in .github/workflows/wsl-backend.yml covers them on real WSL2."
   (should (equal (kittymacs-remote-test--value 'working 'wsl-direct-process)
                  '(0 "wsl-direct-ran\n"))))
 
+(ert-deftest kittymacs-remote-status-names-the-backend ()
+  (should (equal (kittymacs-remote-test--value 'working 'status-names)
+                 ;; Named and connected; no backend's; another; local; no backends set;
+                 ;; a backend this Emacs has not connected to.
+                 '(" [here]" "none" "none" "none" "none" " [never?]"))))
+
+(ert-deftest kittymacs-remote-status-never-connects ()
+  (should (equal (kittymacs-remote-test--value 'unreachable 'status-unreachable) " [gone?]"))
+  (should-not (kittymacs-remote-test--value 'unreachable 'login-ran)))
+
+(ert-deftest kittymacs-remote-status-does-not-wait-on-a-hung-connection ()
+  (should (kittymacs-remote-test--value 'hung 'status-installed))
+  (should (eq (kittymacs-remote-test--value 'hung 'status) 'done))
+  (should (eq (kittymacs-remote-test--value 'hung 'status-home) 'done)))
+
+(ert-deftest kittymacs-remote-reconnect-replaces-the-connection ()
+  (should (equal (kittymacs-remote-test--value 'working 'reconnect) '(nil t nil)))
+  (should (eq (kittymacs-remote-test--value 'working 'reconnect-typo) 'refused)))
+
+(ert-deftest kittymacs-remote-reconnect-gets-out-of-a-hung-connection ()
+  (should (equal (kittymacs-remote-test--value 'hung 'reconnect-hung) " [here]")))
+
 (ert-deftest kittymacs-remote-connect-opens-the-project ()
   (let ((opened (kittymacs-remote-test--value 'working 'connect)))
     (should (stringp opened))
