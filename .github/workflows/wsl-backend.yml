@@ -13,6 +13,8 @@ on:
       - tests/wsl-backend/**
       - literate/36-remote.org
       - lisp/kittymacs-remote.el
+      - literate/34-terminal.org
+      - lisp/kittymacs-terminal.el
 
 permissions:
   contents: read

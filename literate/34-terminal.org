@@ -51,6 +51,10 @@
 (declare-function ghostel-readonly-enter "ghostel" ())
 (declare-function ghostel "ghostel" (&optional arg))
 (declare-function ghostel-project "ghostel" (&optional arg))
+;; Without these a `let' would bind them lexically, and neither program would see
+;; the name, when the first terminal of a session is on another machine.
+(defvar ghostel-buffer-name)
+(defvar eshell-buffer-name)
 ;; The Eshell fallback below: `kittymacs-shell' is loaded before this module
 ;; by `init.el', but this module does not require it.
 (declare-function kittymacs-eshell-project "kittymacs-shell" ())
@@ -114,7 +118,7 @@ commonly built without the dynamic module support ghostel needs.
   + Turn it on per machine in =private.el=.
 - Native Windows sets no =$SHELL=, so there the terminal runs the shell [[id:afa6b7fd-742a-4c15-86a6-32e3e8027b0e][the platform chapter]] picked instead of ghostel's =/bin/sh= fallback.
   + It talks to Windows ConPTY directly, so nothing translates paths or substitutes a POSIX helper.
-  + A Linux shell on Windows is a backend's: =SPC o e= or =M-x shell= in one of its buffers ([[id:3c9e7a52-1d84-4f6b-a0c3-8e5d27b1f96a][a WSL distribution]]).
+  + A Linux shell on Windows is a backend's: =SPC o e= in one of its buffers ([[id:6b1d7f30-2e94-4a58-9c07-d3f81e5a2b64][a terminal in the distribution]]).
 - A shell inside the terminal can call listed Emacs commands by name, such as =ghostel_cmd find-file README.md=.
   + This adds =magit-status=, =find-file-other-frame= and =treemacs-find-file= to =ghostel-eval-cmds=.
   + Only the listed commands can be reached, and every argument is a string.
@@ -280,6 +284,10 @@ The buffer becomes read-only, so Meow's grammar can select its output."
 - =SPC o e= and =SPC o p= are thin wrappers over =ghostel= and =ghostel-project=, for two reasons:
   1. The native module is downloaded on first use; a user who declines would otherwise meet =Symbol's function definition is void: ghostel--new= instead of a sentence saying what is missing and which command installs it.
   2. Where =kittymacs-terminal-ghostel= is nil (by default on Android), they open Eshell instead.
+- =SPC o e= in a remote buffer opens a terminal on that machine, in a buffer named for it, such as =*ghostel@ssh:build*=.
+  + Both programs reuse the buffer that has their name, so a local terminal already open would otherwise answer the key, on the wrong machine.
+  + =ghostel= and =eshell= read that name from a variable, and =let= works before either has loaded, as this module declares both.
+  + =SPC o p= already has a buffer per project and machine, because =ghostel-project= folds the machine into the name.
 
 #+begin_src emacs-lisp
 (defun kittymacs-terminal--without-module (error)
@@ -289,15 +297,26 @@ The buffer becomes read-only, so Meow's grammar can select its output."
     (user-error "The terminal needs its native module: %s"
                 (substitute-command-keys "\\[ghostel-download-module]"))))
 
+(defun kittymacs-terminal--remote-name (program)
+  "Return the name of PROGRAM's buffer on this buffer's machine, or nil if local.
+This never connects."
+  (when-let* ((remote (file-remote-p default-directory)))
+    (format "*%s@%s*" program (substring remote 1 -1))))
+
 (defun kittymacs-terminal-open (&optional arg)
-  "Open a terminal.  With prefix ARG, open another one.
+  "Open a terminal on this buffer's machine.  With prefix ARG, open another one.
 Ghostel offers to fetch its native module the first time; declining that
 offer leaves the terminal unavailable, so say so in words.  Where ghostel
 is not used at all, Eshell answers this key instead."
   (interactive "P")
   (if (not kittymacs-terminal-ghostel)
-      (eshell arg)
-    (condition-case error (ghostel arg)
+      (if-let* ((name (kittymacs-terminal--remote-name "eshell")))
+          (let ((eshell-buffer-name name)) (eshell arg))
+        (eshell arg))
+    (condition-case error
+        (if-let* ((name (kittymacs-terminal--remote-name "ghostel")))
+            (let ((ghostel-buffer-name name)) (ghostel arg))
+          (ghostel arg))
       (void-function (kittymacs-terminal--without-module error)))))
 
 (defun kittymacs-terminal-project (&optional arg)

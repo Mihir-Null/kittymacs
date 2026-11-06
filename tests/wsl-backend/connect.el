@@ -185,6 +185,85 @@ Tramp suspends timers while it waits unless told not to, and the limit is a time
      (mapconcat (lambda (tool) (format "%s=%s" (car tool) (if (cdr tool) "yes" "no")))
                 tools " "))))
 
+;;; The terminal
+
+(declare-function ghostel "ghostel" (&optional arg))
+(declare-function ghostel--download-module "ghostel-module-install" (dir &optional version latest-release))
+(declare-function ghostel--load-module "ghostel-module-install" (&optional prompt-user))
+(declare-function ghostel--module-directory "ghostel-module-install" ())
+(declare-function ghostel--resolve-shell-spec "ghostel-shell" ())
+(declare-function ghostel-send-string "ghostel" (string))
+(declare-function kittymacs-terminal-open "kittymacs-terminal" (&optional arg))
+(defvar ghostel-buffer-name)
+(defvar ghostel-use-native-pty)
+(defvar ghostel-module-auto-install)
+
+(defun wsl-backend-terminal-facts (file newline limit)
+  "Have this buffer's terminal write what it is to FILE, and return that text.
+FILE is under the backend's root, and NEWLINE ends the command, since a pty and a
+pipe want different ones.  Signals after LIMIT seconds."
+  (ghostel-send-string
+   (format "{ tty; stty size; echo \"login=$0 pwd=$PWD distro=$WSL_DISTRO_NAME term=$TERM shell=$SHELL\"; } > %s 2>&1%s"
+           file newline))
+  (let ((remote (wsl-backend-file file))
+        (end (+ (float-time) limit))
+        (remote-file-name-inhibit-cache t))
+    (while (and (< (float-time) end) (not (file-exists-p remote)))
+      (accept-process-output nil 0.5))
+    (accept-process-output nil 1)
+    (unless (file-exists-p remote)
+      (error "No %s after %d s; the terminal shows: %s" file limit
+             (string-trim (buffer-substring-no-properties (point-min) (point-max)))))
+    (with-temp-buffer
+      (insert-file-contents remote)
+      (buffer-string))))
+
+(wsl-backend-check
+ "the terminal's native module loads" 180
+ (lambda ()
+   (require 'ghostel)
+   (let ((directory (ghostel--module-directory)))
+     (unless (ghostel--download-module directory)
+       (error "The download failed: see the log"))
+     (ghostel--load-module)
+     (unless (fboundp 'ghostel--new)
+       (error "The module did not load"))
+     (format "%s" (directory-files directory nil "\\`[^.]")))))
+
+(wsl-backend-check
+ "SPC o e: a login shell on a real pty, in the project" 90
+ (lambda ()
+   (let* ((default-directory (wsl-backend-root))
+          (buffer (kittymacs-terminal-open)))
+     (with-current-buffer buffer
+       (unless (equal (file-remote-p default-directory) (file-remote-p (wsl-backend-root)))
+         (error "The terminal's buffer left the backend: %s" default-directory))
+       (let ((facts (wsl-backend-terminal-facts "terminal-facts" "\r" 60)))
+         (wsl-backend-expect "/dev/pts/" facts)
+         (wsl-backend-expect "login=-bash" facts)
+         (wsl-backend-expect "pwd=/home/backend/project" facts)
+         (wsl-backend-expect (format "distro=%s" wsl-backend-distribution) facts)
+         (string-replace "\n" " " facts))))))
+
+(wsl-backend-check
+ "Tramp finds the login shell" 60
+ (lambda ()
+   (let ((default-directory (wsl-backend-root)))
+     (wsl-backend-expect "/bin/bash" (format "%S" (ghostel--resolve-shell-spec))))))
+
+;; For the record, and it fails nothing: this is why `SPC o e' does not take this path.
+(wsl-backend-check
+ "a terminal through Tramp, for the record" 120
+ (lambda ()
+   (condition-case err
+       (with-timeout (90 "no answer in 90 s")
+         (let* ((default-directory (wsl-backend-root))
+                (ghostel-use-native-pty nil)
+                (ghostel-buffer-name "*through Tramp*"))
+           (with-current-buffer (ghostel)
+             (string-replace "\n" " " (wsl-backend-terminal-facts "tramp-facts" "\n" 45)))))
+     (error (format "failed: %s" (error-message-string err))))))
+
 ;; This check would pass if connecting could never fail.  So a distribution that
 ;; does not exist must not look like one that answers.
 (wsl-backend-check

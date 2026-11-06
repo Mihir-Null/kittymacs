@@ -25,6 +25,8 @@
 (defvar kittymacs-remote-start-results nil "The alist this scenario reports.")
 (defvar kittymacs-remote-start-scenario (intern (getenv "KITTYMACS_REMOTE_SCENARIO")))
 (defvar tramp-connection-timeout)
+(defvar ghostel-buffer-name)
+(defvar eshell-buffer-name)
 (defconst kittymacs-remote-start-limit 3 "Seconds a probe may take before it counts as stalled.")
 
 (defun kittymacs-remote-start-report (key value)
@@ -322,11 +324,52 @@ while True:
         (condition-case _ (file-exists-p name)
           (error nil))))))
 
+(defun kittymacs-remote-start--terminal ()
+  "What `SPC o e' opens: on a remote machine, that machine's, in a buffer of its own."
+  (kittymacs-remote-start-value 'terminal-eshell
+    ;; The local one first, as it would be: Eshell then has a buffer it could reuse.
+    (let* ((kittymacs-terminal-ghostel nil)
+           (open (lambda (directory)
+                   (with-temp-buffer
+                     (setq default-directory directory)
+                     (kittymacs-terminal-open))))
+           (local (funcall open temporary-file-directory))
+           (remote (funcall open (kittymacs-backend-root "here"))))
+      (list (buffer-name local) (buffer-name remote)
+            (buffer-local-value 'default-directory remote))))
+  (when kittymacs-terminal-ghostel
+    (kittymacs-remote-start-value 'terminal-slots
+      (cl-letf (((symbol-function 'ghostel)
+                 (lambda (&optional _) (bound-and-true-p ghostel-buffer-name))))
+        (list (let ((default-directory temporary-file-directory)
+                    (ghostel-buffer-name "the-local-name"))
+                (kittymacs-terminal-open))
+              (let ((default-directory (kittymacs-backend-root "here")))
+                (kittymacs-terminal-open))))))
+  (when (locate-library "ghostel")
+    (require 'ghostel)
+    (kittymacs-remote-start-value 'terminal-login-shell
+      (assoc kittymacs-remote-wsl-method ghostel-tramp-shells))
+    ;; The real start, up to the spawn, which needs the native module.
+    (let* ((bin (kittymacs-remote-fixture-wsl-exe))
+           (exec-path (cons bin exec-path))
+           (root (kittymacs-backend-root "wsl"))
+           (spawn (lambda (program args _environment remote)
+                    (list program args remote default-directory))))
+      (cl-letf (((symbol-function 'ghostel--spawn-pty) spawn))
+        (with-temp-buffer
+          (setq default-directory root)
+          (kittymacs-remote-start-value 'terminal-wsl-spawn (ghostel--start-process))
+          (kittymacs-remote-start-value 'terminal-wsl-directory default-directory)
+          (setq default-directory (kittymacs-backend-root "here"))
+          (kittymacs-remote-start-value 'terminal-other-spawn (ghostel--start-process)))))))
+
 (defun kittymacs-remote-start--working ()
   "A connection that answers: backends, and each program a person would run."
   (kittymacs-remote-start--local)
   (kittymacs-remote-start--project)
   (kittymacs-remote-start--tool)
+  (kittymacs-remote-start--terminal)
   (kittymacs-remote-fixture--script "project/sub/kfake-here" "echo here")
   (kittymacs-remote-start-value 'backend-root (kittymacs-backend-root "here"))
   (kittymacs-remote-start-value 'backend-tramp-method (kittymacs-backend-root "tramp"))

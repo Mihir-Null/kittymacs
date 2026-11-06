@@ -246,7 +246,7 @@ PATH is nil where the machine does not have the tool."
   + A non-ASCII argument gets its encoding doubled: 11 bytes became 23.
   + Tramp refuses a direct command over =PIPE_BUF= with =Command too long=.
   + =:direct-async nil= passes both, though in the same run a 1 MiB write into a process arrived wrong through it.
-- A Linux shell comes from the backend: =M-x shell= or =SPC o e= in one of its buffers runs =:shell=, or =/bin/sh= without one.
+- =M-x shell= in one of the backend's buffers runs =:shell=, or =/bin/sh= without one, and =SPC o e= there runs a login shell ([[id:6b1d7f30-2e94-4a58-9c07-d3f81e5a2b64][a terminal in the distribution]]).
 - [[file:../tests/wsl-backend/connect.el][A small job]] connects to real WSL2 on a hosted Windows runner when this chapter changes.
 
 #+begin_src emacs-lisp
@@ -277,6 +277,50 @@ PATH is nil where the machine does not have the tool."
     (user-error "A wsl backend needs :host, the distribution's name in `wsl --list'"))
   (kittymacs-remote--add-wsl-method)
   (kittymacs-remote--tramp-root kittymacs-remote-wsl-method backend))
+
+#+end_src
+
+** A terminal in the distribution :decision:
+:PROPERTIES:
+:ID: 6b1d7f30-2e94-4a58-9c07-d3f81e5a2b64
+:END:
+
+- =SPC o e= and =SPC o p= in a =wsl= backend's buffer open a terminal in the distribution, because that is where its programs are.
+- The terminal runs =wsl.exe= locally, as a Windows terminal would, and does not go through Tramp.
+  + =wsl.exe -d DISTRIBUTION --cd DIRECTORY= with no command starts the account's login shell.
+  + Ghostel gives a local program a real console through ConPTY, and =wsl.exe= turns that into a Linux pty, with a size that follows the window.
+  + Through Tramp the process would come from Emacs, which has no pty on Windows, so the shell's streams would be pipes: no line editing, and no full-screen program.
+    =ssh= hides that by asking the far side for a pty, and =wsl.exe= has no such option.
+- =kittymacs--remote-wsl-terminal= does this around =ghostel--start-process=, a private function, so every way of opening a terminal gets it, =consult-ghostel= included.
+  + The =wslm= name in the buffer's directory says which distribution, with no connection.
+  + Making the directory absolute is the one step that can ask the machine, for =~=, and Tramp caches that.
+  + The program starts from a local directory, and the buffer keeps its backend directory, so =SPC f f= in the terminal still looks in Linux.
+- Moving with =cd= needs the shell to report its directory, because ghostel's scripts cannot reach a shell that =wsl.exe= started: the account's own =OSC 7= works.
+- Off =ghostel-use-native-pty=, or for any Tramp start of the method, the login shell still applies: =ghostel-tramp-shells= has the method as =login-shell=, as =ssh= does, or it would run =:shell= or =/bin/sh=.
+- It runs only when you open a terminal, so a dead connection stops nothing unasked.
+
+#+begin_src emacs-lisp
+(defvar ghostel-shell)
+(defvar ghostel-tramp-shells)
+(defvar ghostel-use-native-pty)
+
+(defun kittymacs--remote-wsl-terminal (original)
+  "Call ORIGINAL, which starts a terminal, running `wsl.exe' for a `wsl' backend.
+Anywhere else it calls ORIGINAL unchanged, after one test that never connects."
+  (if (not (and ghostel-use-native-pty
+                (equal (file-remote-p default-directory 'method)
+                       kittymacs-remote-wsl-method)))
+      (funcall original)
+    (let ((ghostel-shell (list "wsl.exe"
+                               "-d" (file-remote-p default-directory 'host)
+                               "--cd" (file-local-name (expand-file-name default-directory))))
+          (default-directory temporary-file-directory))
+      (funcall original))))
+
+(with-eval-after-load 'ghostel
+  (advice-add 'ghostel--start-process :around #'kittymacs--remote-wsl-terminal))
+(with-eval-after-load 'ghostel-shell
+  (add-to-list 'ghostel-tramp-shells (list kittymacs-remote-wsl-method 'login-shell)))
 
 #+end_src
 
@@ -522,5 +566,7 @@ Host vm
 - On a remote machine with Nix, =C-x C-f /ssh:host:~/=, then =M-: (executable-find "rg" t)= in that buffer: it names the Nix profile's =rg=.
   + On Android with the virtual machine, =host= is =vm=.
 - =M-x shell= in that buffer runs =/bin/sh= there, or the backend's =:shell=.
+- =SPC o e= in that buffer opens a terminal on that machine, even with a local terminal open.
+  + On a =wsl= backend =htop= draws its full screen, and =tty= names a =/dev/pts/= device.
 - Open a remote file and cut the network: Emacs keeps responding while you are idle; =C-g= ends a command that was waiting.
 - =just test-packages= and =just test-minimal= run [[file:../tests/kittymacs-remote-tests.el][the remote tests]], with a Tramp method that needs no ssh.

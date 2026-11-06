@@ -171,6 +171,27 @@ PATH is nil where the machine does not have the tool."
     (user-error "A wsl backend needs :host, the distribution's name in `wsl --list'"))
   (kittymacs-remote--add-wsl-method)
   (kittymacs-remote--tramp-root kittymacs-remote-wsl-method backend))
+(defvar ghostel-shell)
+(defvar ghostel-tramp-shells)
+(defvar ghostel-use-native-pty)
+
+(defun kittymacs--remote-wsl-terminal (original)
+  "Call ORIGINAL, which starts a terminal, running `wsl.exe' for a `wsl' backend.
+Anywhere else it calls ORIGINAL unchanged, after one test that never connects."
+  (if (not (and ghostel-use-native-pty
+                (equal (file-remote-p default-directory 'method)
+                       kittymacs-remote-wsl-method)))
+      (funcall original)
+    (let ((ghostel-shell (list "wsl.exe"
+                               "-d" (file-remote-p default-directory 'host)
+                               "--cd" (file-local-name (expand-file-name default-directory))))
+          (default-directory temporary-file-directory))
+      (funcall original))))
+
+(with-eval-after-load 'ghostel
+  (advice-add 'ghostel--start-process :around #'kittymacs--remote-wsl-terminal))
+(with-eval-after-load 'ghostel-shell
+  (add-to-list 'ghostel-tramp-shells (list kittymacs-remote-wsl-method 'login-shell)))
 (defun kittymacs-remote--apply-backend (name)
   "Set the connection-local variables of the backend called NAME."
   (let* ((backend (kittymacs-remote--backend name))

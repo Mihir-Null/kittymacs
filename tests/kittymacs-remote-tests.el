@@ -203,6 +203,37 @@ job in .github/workflows/wsl-backend.yml covers them on real WSL2."
   (should (equal (kittymacs-remote-test--value 'working 'wsl-direct-process)
                  '(0 "wsl-direct-ran\n"))))
 
+(ert-deftest kittymacs-remote-terminal-opens-on-that-machine ()
+  "A local terminal already open must not answer the key in a remote buffer."
+  (pcase-let ((`(,local ,remote ,directory)
+               (kittymacs-remote-test--value 'working 'terminal-eshell)))
+    (should (equal local "*eshell*"))
+    (should (string-prefix-p "*eshell@kmock:" remote))
+    (should (string-prefix-p "/kmock:" directory)))
+  (when (kittymacs-remote-test--ran-p 'working 'terminal-slots)
+    (pcase-let ((`(,local ,remote) (kittymacs-remote-test--value 'working 'terminal-slots)))
+      (should (equal local "the-local-name"))
+      (should (string-prefix-p "*ghostel@kmock:" remote)))))
+
+(ert-deftest kittymacs-remote-wsl-terminal-runs-wsl-exe ()
+  "The real `ghostel--start-process', up to the spawn: wsl.exe, local, in the directory.
+The job in .github/workflows/wsl-backend.yml runs it against real WSL2."
+  (skip-unless (kittymacs-remote-test--ran-p 'working 'terminal-wsl-spawn))
+  (pcase-let ((`(,program ,args ,remote ,directory)
+               (kittymacs-remote-test--value 'working 'terminal-wsl-spawn)))
+    (should (equal program "wsl.exe"))
+    (should (equal args '("-d" "Fake-24.04" "--cd" "/tmp/")))
+    (should-not remote)
+    (should-not (file-remote-p directory)))
+  ;; The buffer stays on the backend, so finding a file there looks in Linux.
+  (should (equal (kittymacs-remote-test--value 'working 'terminal-wsl-directory)
+                 "/wslm:Fake-24.04:/tmp/"))
+  ;; No other machine runs it: a kmock terminal still spawns through Tramp.
+  (should (nth 2 (kittymacs-remote-test--value 'working 'terminal-other-spawn)))
+  ;; If Tramp ever starts it: the login shell, not `:shell' or /bin/sh.
+  (should (equal (kittymacs-remote-test--value 'working 'terminal-login-shell)
+                 '("wslm" login-shell))))
+
 (ert-deftest kittymacs-remote-connect-opens-the-project ()
   (let ((opened (kittymacs-remote-test--value 'working 'connect)))
     (should (stringp opened))
