@@ -473,6 +473,21 @@ Only the note: other functions on `find-file-hook' read the file, as they may."
       (kittymacs-backend-doctor "here")))
   (kittymacs-remote-start-value 'doctor-buffer
     (with-current-buffer "*kittymacs backend*" (buffer-string)))
+  (kittymacs-remote-start-value 'setup-advice
+    (mapcar
+     #'kittymacs-remote--setup-advice
+     '((("git" . "/g") ("nix" . "/n"))
+       (("git" . "/g") ("rg") ("nix" . "/n") ("claude-agent-acp"))
+       (("git" . "/g") ("rg") ("fd") ("nix") ("claude-agent-acp"))
+       (("git" . "/g") ("nix") ("claude-agent-acp"))
+       (("git" . "/g") ("nix")))))
+  (kittymacs-remote-start-value 'own-profile
+    (connection-local-set-profile-variables
+     'kittymacs-test-settings '((shell-command-switch . "-lc")))
+    (connection-local-set-profiles
+     '(:application tramp :protocol "kmock" :machine "elsewhere") 'kittymacs-test-settings)
+    (let ((default-directory "/kmock:elsewhere:/"))
+      (with-connection-local-variables shell-command-switch)))
   (kittymacs-remote-start-value 'connect
     (let ((project-switch-commands 'kittymacs-remote-start--opened)
           opened)

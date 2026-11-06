@@ -135,6 +135,9 @@ Tramp's existence check quotes the name, so it never sees a home directory."
 - =SPC o R= (=kittymacs-backend-reconnect=) drops the connection and opens a new one, for the buffer's backend, or for one it asks you to name.
   + That is the way out of a connection that has stopped answering.
   + It does not touch a terminal that runs =wsl.exe= itself.
+  + For what is missing it says what to run on that machine, and it never installs anything itself.
+  + With Nix there, that is one line, for [[id:d25a5063-1439-4ae0-8fbe-b0162d05a0e0][the flake's]] =packages.backend=, which is pinned by the flake's lock; without Nix, it is a plain list.
+  + A tool that package does not hold, such as =claude-agent-acp= or a language server you added, gets its name alone.
 - These keys live in this chapter because the feature does, and it is core, so they are always there; [[file:../tests/kittymacs-lint-tests.el][the lint]] holds them here.
 
 #+begin_src emacs-lisp
@@ -211,6 +214,32 @@ PATH is nil where the machine does not have the tool."
     (mapcar (lambda (tool) (cons tool (executable-find tool t)))
             kittymacs-backend-tools)))
 
+(defconst kittymacs-remote-backend-package-tools
+  '("git" "rg" "fd" "direnv" "inotifywait")
+  "Which of `kittymacs-backend-tools' the flake's `packages.backend' installs.")
+
+(defun kittymacs-remote--setup-advice (tools)
+  "Return what to run for what TOOLS, the doctor's alist, lacks, or nil.
+This only says it: nothing here installs anything."
+  (let* ((missing (mapcar #'car (seq-remove #'cdr tools)))
+         (nix (cdr (assoc "nix" tools)))
+         (packaged (seq-filter (lambda (tool) (member tool kittymacs-remote-backend-package-tools))
+                               missing))
+         (others (seq-difference missing (cons "nix" packaged)))
+         (install "nix profile install github:Mihir-Null/kittymacs#backend"))
+    (when (or packaged others)
+      (concat
+       "\nTo get what is missing, on that machine:\n\n"
+       (cond ((not packaged) "")
+             (nix (format "  %s\n\n" install))
+             (t (format "  %s\n\nfrom its package manager, or, with Nix, which it does not have yet:\n\n  %s\n\n"
+                        (string-join packaged " ") install)))
+       (if others
+           (format "Those are separate: %s\n\n" (string-join others " "))
+         "")
+       "Tramp reads the machine's PATH once per connection, so then reconnect with\n"
+       "M-x tramp-cleanup-connection.\n"))))
+
 (defun kittymacs-backend-doctor (name)
   "Report which tools the backend called NAME has, and return them as an alist."
   (interactive (list (kittymacs-remote--read-backend)))
@@ -226,7 +255,9 @@ PATH is nil where the machine does not have the tool."
       (princ (format "Project  %s (%s)\n" root (if exists "exists" "MISSING")))
       (princ (format "Processes start %s\n\n" (if direct "directly" "through Tramp's shell")))
       (pcase-dolist (`(,tool . ,path) tools)
-        (princ (format "%-20s %s\n" tool (or path "not found")))))
+        (princ (format "%-20s %s\n" tool (or path "not found"))))
+      (when-let* ((advice (kittymacs-remote--setup-advice tools)))
+        (princ advice)))
     tools))
 
 (defun kittymacs-backend-reconnect (name)
@@ -563,6 +594,42 @@ This reads the name, and never connects."
 
 #+end_src
 
+* A backend's environment
+:PROPERTIES:
+:ID: 7c2e9b14-5a38-4f06-b1d7-e60a2c8f43d5
+:END:
+
+- A program on a backend needs that backend's variables, so each must say where they come from.
+- VS Code's WSL extension runs one server, so =~/.vscode-server/server-env-setup= sets its environment once, and every process inherits it.
+  + Here each program starts on its own, so there is no one place, and this is what each reads.
+
+| Started by                                 | =PATH=                | another variable in =~/.profile= | =tramp-remote-process-environment= |
+|--------------------------------------------+-----------------------+----------------------------------+------------------------------------|
+| Magit, =process-file=, a Tramp-run process | the =PATH= search     | no                               | yes                                |
+| Eglot, =compile=, a direct process         | the =PATH= search     | no                               | yes                                |
+| =M-x shell=                                | the =PATH= search     | no                               | yes                                |
+| =SPC o e= on a =wsl= backend               | the login shell's own | yes                              | no                                 |
+
+- [[file:../tests/wsl-backend/connect.el][The job on real WSL2]] measures the first three rows, so a change in Tramp shows there.
+- =~/.profile= on the machine is the nearest parallel, for =PATH=: one file, on the machine, for that machine.
+  + [[*Where a remote program is found]] asks =sh -l= for its =PATH=, and Tramp passes the answer to each process.
+  + =sh= reads it, so it uses POSIX syntax and not Bash's.
+  + Tramp's own shell is not a login shell, so any other variable there reaches only the terminal.
+- =tramp-remote-process-environment= sets a variable for every program but that terminal, on the next connection.
+  + It is one list for every machine, so it suits what is the same everywhere.
+- Connection-local variables are per machine, and they hold Emacs's settings for that machine rather than a program's environment.
+  + =:shell= is one: =M-x shell= and =shell-command= there read it.
+  + A backend has the profile =kittymacs-backend-NAME=, and yours goes beside it.
+  + =:application tramp= makes it per connection, and =:machine= is the distribution, for a =wsl= backend.
+  + Tramp does not read =tramp-remote-process-environment= this way, so nothing here holds a variable for one machine's programs alone.
+
+#+begin_src emacs-lisp :tangle no
+(connection-local-set-profile-variables
+ 'my-ubuntu-settings '((shell-command-switch . "-lc")))
+(connection-local-set-profiles
+ '(:application tramp :protocol "wslm" :machine "Ubuntu-24.04") 'my-ubuntu-settings)
+#+end_src
+
 * The guards :decision:
 :PROPERTIES:
 :ID: 8d3b7e15-6f42-4c09-a1e8-5b2d90c7f364
@@ -754,5 +821,6 @@ Host vm
   + On a =wsl= backend =htop= draws its full screen, and =tty= names a =/dev/pts/= device.
 - =kittymacs-open .= in a WSL shell opens that folder in Windows Emacs, with Emacs running or not, and =kittymacs-open /mnt/c/Users= opens it with no Tramp.
 - On a =wsl= backend, =C-x C-f /wslm:DISTRIBUTION:/mnt/c/Windows/win.ini=: a message says it is slow, once, and =SPC o w= opens =c:/Windows/win.ini=.
+- =SPC o B= on a machine that lacks =rg= says what to run there, and nothing installs itself.
 - Open a remote file and cut the network: Emacs keeps responding while you are idle; =C-g= ends a command that was waiting.
 - =just test-packages= and =just test-minimal= run [[file:../tests/kittymacs-remote-tests.el][the remote tests]], with a Tramp method that needs no ssh.

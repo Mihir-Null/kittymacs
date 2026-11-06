@@ -300,6 +300,19 @@ With AFTER, only those between that string and the next closing bracket."
         (push (match-string 1) matches))
       (nreverse matches))))
 
+(ert-deftest kittymacs-startup-the-doctor-knows-what-the-package-holds ()
+  "`SPC o B' offers `packages.backend' for what the package really installs."
+  (let ((installed (kittymacs-startup-test--nix-matches
+                    "\"\\([^\"]+\\)\"" "lib.elem entry.command ["))
+        (said (with-temp-buffer
+                (insert-file-contents (expand-file-name "lisp/kittymacs-remote.el" kittymacs-startup-test-root))
+                (search-forward "(defconst kittymacs-remote-backend-package-tools")
+                (goto-char (match-beginning 0))
+                (eval (nth 2 (read (current-buffer))) t))))
+    (should installed)
+    ;; inotify-tools is added by name, on Linux, so its command is not in that list.
+    (should (equal said (append installed '("inotifywait"))))))
+
 (ert-deftest kittymacs-startup-the-doctors-agree-on-what-they-share ()
   "`SPC o B' looks for what a backend installs, named as `nix run .#doctor' names it.
 The lists differ on purpose: the Nix chapter's \"The apps\" says why."

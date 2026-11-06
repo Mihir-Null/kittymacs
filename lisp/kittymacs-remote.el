@@ -126,6 +126,32 @@ PATH is nil where the machine does not have the tool."
     (mapcar (lambda (tool) (cons tool (executable-find tool t)))
             kittymacs-backend-tools)))
 
+(defconst kittymacs-remote-backend-package-tools
+  '("git" "rg" "fd" "direnv" "inotifywait")
+  "Which of `kittymacs-backend-tools' the flake's `packages.backend' installs.")
+
+(defun kittymacs-remote--setup-advice (tools)
+  "Return what to run for what TOOLS, the doctor's alist, lacks, or nil.
+This only says it: nothing here installs anything."
+  (let* ((missing (mapcar #'car (seq-remove #'cdr tools)))
+         (nix (cdr (assoc "nix" tools)))
+         (packaged (seq-filter (lambda (tool) (member tool kittymacs-remote-backend-package-tools))
+                               missing))
+         (others (seq-difference missing (cons "nix" packaged)))
+         (install "nix profile install github:Mihir-Null/kittymacs#backend"))
+    (when (or packaged others)
+      (concat
+       "\nTo get what is missing, on that machine:\n\n"
+       (cond ((not packaged) "")
+             (nix (format "  %s\n\n" install))
+             (t (format "  %s\n\nfrom its package manager, or, with Nix, which it does not have yet:\n\n  %s\n\n"
+                        (string-join packaged " ") install)))
+       (if others
+           (format "Those are separate: %s\n\n" (string-join others " "))
+         "")
+       "Tramp reads the machine's PATH once per connection, so then reconnect with\n"
+       "M-x tramp-cleanup-connection.\n"))))
+
 (defun kittymacs-backend-doctor (name)
   "Report which tools the backend called NAME has, and return them as an alist."
   (interactive (list (kittymacs-remote--read-backend)))
@@ -141,7 +167,9 @@ PATH is nil where the machine does not have the tool."
       (princ (format "Project  %s (%s)\n" root (if exists "exists" "MISSING")))
       (princ (format "Processes start %s\n\n" (if direct "directly" "through Tramp's shell")))
       (pcase-dolist (`(,tool . ,path) tools)
-        (princ (format "%-20s %s\n" tool (or path "not found")))))
+        (princ (format "%-20s %s\n" tool (or path "not found"))))
+      (when-let* ((advice (kittymacs-remote--setup-advice tools)))
+        (princ advice)))
     tools))
 
 (defun kittymacs-backend-reconnect (name)

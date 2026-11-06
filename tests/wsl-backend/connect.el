@@ -443,6 +443,85 @@ pipe want different ones.  Signals after LIMIT seconds."
                         (car (benchmark-run 5
                                (with-temp-buffer (insert-file-contents "c:/Windows/win.ini")))))
            (kill-buffer native)))))))
+;;; Where a program's variables come from: what \"A backend's environment\" says
+
+(defvar tramp-remote-process-environment)
+
+(defun wsl-backend-environment-report (text)
+  "Return which of the variables TEXT shows, as a string for the report."
+  (format "profile=%s list=%s connection-local=%s path=%s"
+          (if (string-search "profile-value" text) "yes" "no")
+          (if (string-search "list-value" text) "yes" "no")
+          (if (string-search "local-value" text) "yes" "no")
+          (if (string-search "from-profile" text) "yes" "no")))
+
+(wsl-backend-check
+ "the environment, as the chapter's table says" 120
+ (lambda ()
+   (let* ((default-directory (wsl-backend-root))
+          (remote (file-remote-p default-directory))
+          (command (concat "echo \"$KITTYMACS_PROFILE_VAR $KITTYMACS_LIST_VAR "
+                           "$KITTYMACS_LOCAL_VAR $PATH\"; echo done"))
+          (tramp-remote-process-environment
+           (cons "KITTYMACS_LIST_VAR=list-value" tramp-remote-process-environment)))
+     (make-directory (concat remote "~/from-profile") t)
+     ;; Unix line ends: a file this Emacs writes on Windows would get CRLF.
+     (let ((coding-system-for-write 'utf-8-unix))
+       (with-temp-file (concat remote "~/.profile")
+         (insert "export KITTYMACS_PROFILE_VAR=profile-value\n"
+                 "PATH=\"$HOME/from-profile:$PATH\"\nexport PATH\n")))
+     (connection-local-set-profile-variables
+      'wsl-backend-settings
+      `((tramp-remote-process-environment
+         . ("KITTYMACS_LOCAL_VAR=local-value" ,@tramp-remote-process-environment))))
+     (connection-local-set-profiles
+      `(:application tramp :protocol "wslm" :machine ,wsl-backend-distribution)
+      'wsl-backend-settings)
+     (wsl-backend-disconnect)
+     (let* ((through-shell
+             (with-temp-buffer
+               (process-file "/bin/sh" nil t nil "-c" command)
+               (buffer-string)))
+            (direct
+             (let* ((buffer (generate-new-buffer " *environment*"))
+                    (process (make-process :name "environment" :buffer buffer :noquery t
+                                           :file-handler t :connection-type 'pipe
+                                           :command (list "/bin/sh" "-c" command))))
+               (wsl-backend-wait-for process "done" 30)))
+            (shell
+             (let* ((buffer (shell (generate-new-buffer-name "*environment shell*")))
+                    (process (get-buffer-process buffer)))
+               (process-send-string process (concat command "; exit\n"))
+               (wsl-backend-wait-for process "done" 30)))
+            (reports (mapcar #'wsl-backend-environment-report (list through-shell direct shell))))
+       ;; The chapter's table: a change in Tramp must show here.
+       (dolist (report reports)
+         (wsl-backend-expect "profile=no list=yes connection-local=no path=yes" report))
+       (format "process-file, a direct process and M-x shell: %s" (car reports))))))
+
+(wsl-backend-check
+ "the doctor says what to run" 60
+ (lambda ()
+   (kittymacs-backend-doctor "wsl")
+   (let ((text (with-current-buffer "*kittymacs backend*" (buffer-string))))
+     (wsl-backend-expect "does not have yet" text)
+     (wsl-backend-expect "nix profile install" text)
+     (wsl-backend-expect "rg fd direnv inotifywait" text))))
+
+;; For the record: what a new file on the backend gets from Emacs on Windows.
+(wsl-backend-check
+ "line ends of a new file on the backend, for the record" 60
+ (lambda ()
+   (let* ((file (wsl-backend-file "line-ends"))
+          (buffer (find-file-noselect file)))
+     (with-current-buffer buffer
+       (insert "one\ntwo\n")
+       (save-buffer)
+       (kill-buffer))
+     (let ((default-directory (wsl-backend-root)))
+       (with-temp-buffer
+         (process-file "/usr/bin/od" nil t nil "-c" "line-ends")
+         (string-trim (buffer-string)))))))
 
 ;; This check would pass if connecting could never fail.  So a distribution that
 ;; does not exist must not look like one that answers.

@@ -277,6 +277,25 @@ The job in .github/workflows/wsl-backend.yml runs it against real WSL2."
   (should (= (length (kittymacs-remote-test--value 'unreachable 'windows-file-unreachable)) 1))
   (should-not (kittymacs-remote-test--value 'unreachable 'login-ran))
   (should (eq (kittymacs-remote-test--value 'hung 'windows-file) 'done)))
+(ert-deftest kittymacs-remote-doctor-says-what-to-run ()
+  "It reports the machine's tools and what to run, and it runs nothing."
+  (let ((buffer (kittymacs-remote-test--value 'working 'doctor-buffer)))
+    (should (string-search "no-such-tool-anywhere" buffer))
+    (should (string-search "Those are separate: no-such-tool-anywhere" buffer)))
+  (pcase-let ((`(,nothing ,with-nix ,without-nix ,separate-only ,only-nix)
+               (kittymacs-remote-test--value 'working 'setup-advice)))
+    (should-not nothing)
+    (should (string-search "nix profile install github:Mihir-Null/kittymacs#backend" with-nix))
+    (should (string-search "separate: claude-agent-acp" with-nix))
+    ;; Without Nix, a plain list comes first, and Nix itself is not on it.
+    (should (string-search "  rg fd\n" without-nix))
+    (should-not (string-search "  rg fd nix" without-nix))
+    (should (string-search "does not have yet" without-nix))
+    (should-not (string-search "nix profile" separate-only))
+    (should-not only-nix)))
+
+(ert-deftest kittymacs-remote-own-profile-applies-as-documented ()
+  (should (equal (kittymacs-remote-test--value 'working 'own-profile) "-lc")))
 
 (ert-deftest kittymacs-remote-connect-opens-the-project ()
   (let ((opened (kittymacs-remote-test--value 'working 'connect)))
