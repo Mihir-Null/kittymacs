@@ -1,9 +1,9 @@
 name: WSL backend
 
 # Native Windows Emacs against a real WSL2 distribution, through `:transport wsl':
-# it connects, runs process-file, opens a file and reports.  It stays out of
-# ci.yml, and nothing waits for it, so an ordinary pull request pays nothing, and a
-# hosted runner's bad day cannot hold up a merge.
+# it connects, runs process-file, opens a file, times a 1 MiB write and reports.
+# It stays out of ci.yml, and nothing waits for it, so an ordinary pull request pays
+# nothing, and a hosted runner's bad day cannot hold up a merge.
 
 on:
   workflow_dispatch:
@@ -11,7 +11,9 @@ on:
     paths:
       - .github/workflows/wsl-backend.yml
       - tests/wsl-backend/**
+      - literate/30-platform.org
       - literate/36-remote.org
+      - lisp/kittymacs-platform.el
       - lisp/kittymacs-remote.el
 
 permissions:
