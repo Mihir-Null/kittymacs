@@ -35,7 +35,8 @@
 
 (defmacro kittymacs-onboard-test-with-machine (&rest body)
   "Run BODY on an empty machine: a temporary `private.el', host directory and store.
-Inside, `root', `private' and `host' name them."
+Inside, `root', `private' and `host' name them.  Most tests count what the `full'
+profile turns on, so it is named here, whatever the configuration's default is."
   (declare (indent 0))
   `(let* ((root (file-name-as-directory (make-temp-file "kittymacs-onboard-" t)))
           (private (expand-file-name "lisp/private.el" root))
@@ -43,6 +44,8 @@ Inside, `root', `private' and `host' name them."
           (kittymacs-onboard-private-file private)
           (kittymacs-onboard-host-directories (list host))
           (kittymacs-onboard-store-directory (expand-file-name "no-store/" root))
+          (kittymacs-onboard-var-directory (expand-file-name "var/" root))
+          (package-directory-list nil)
           (kittymacs-default-profile 'full)
           (system-type 'gnu/linux))
      (ignore host)
@@ -557,6 +560,55 @@ quits as a minibuffer would."
         (should-not (kittymacs-onboard--older-selected state))
         (should-not (kittymacs-onboard--older-excluded state))))))
 
+;;; Where a machine with no choice starts
+
+(defun kittymacs-onboard-test--install-a-package (var)
+  "Leave one installed package under the directory VAR, as a start would."
+  (let ((directory (expand-file-name "elpa/meow-1.0/" var)))
+    (make-directory directory t)
+    (with-temp-file (expand-file-name "meow-pkg.el" directory)
+      (insert "(define-package \"meow\" \"1.0\" \"Modal.\")\n"))))
+
+(defconst kittymacs-onboard-test-default kittymacs-default-profile
+  "The configuration's own default, kept before any test binds another.")
+
+(defmacro kittymacs-onboard-test-with-default (&rest body)
+  "Run BODY on an empty machine, with the configuration's own default."
+  (declare (indent 0))
+  `(kittymacs-onboard-test-with-machine
+     (let ((kittymacs-default-profile kittymacs-onboard-test-default))
+       ,@body)))
+
+(ert-deftest kittymacs-onboard-a-new-machine-is-offered-the-default ()
+  (kittymacs-onboard-test-with-default
+    (let ((state (kittymacs-onboard--initial-state)))
+      (should (eq (kittymacs-onboard--profile state) 'minimal))
+      (should (string-search "starts at minimal, the default"
+                             (kittymacs-onboard--render-profile state '(1 . 1)))))))
+
+(ert-deftest kittymacs-onboard-a-machine-kept-on-full-is-offered-full ()
+  "Packages on disk with no stamp: pressing RET must not shrink this machine."
+  (kittymacs-onboard-test-with-default
+    (kittymacs-onboard-test--install-a-package kittymacs-onboard-var-directory)
+    (let ((state (kittymacs-onboard--initial-state)))
+      (should (eq (kittymacs-onboard--profile state) 'full))
+      (should (string-search "so it stays at full"
+                             (kittymacs-onboard--render-profile state '(1 . 1)))))
+    (should-not (file-exists-p (expand-file-name "started-on-default"
+                                                 kittymacs-onboard-var-directory)))))
+
+(ert-deftest kittymacs-onboard-a-private-file-with-no-profile-is-offered-full ()
+  (kittymacs-onboard-test-with-default
+    (kittymacs-onboard-test--write-bytes private ";;; -*- lexical-binding: t; -*-\n")
+    (should (eq (kittymacs-onboard--profile (kittymacs-onboard--initial-state)) 'full))))
+
+(ert-deftest kittymacs-onboard-a-machine-that-started-on-the-default-is-offered-it ()
+  (kittymacs-onboard-test-with-default
+    (kittymacs-onboard-test--install-a-package kittymacs-onboard-var-directory)
+    (kittymacs-onboard-test--write-bytes
+     (expand-file-name "started-on-default" kittymacs-onboard-var-directory) "Stamp.\n")
+    (should (eq (kittymacs-onboard--profile (kittymacs-onboard--initial-state)) 'minimal))))
+
 ;;; Reading what the machine chose
 
 (defconst kittymacs-onboard-test-nix-file
@@ -917,8 +969,9 @@ quits as a minibuffer would."
 
 ;;; A real terminal
 
-(defun kittymacs-onboard-test--pty (keys wait-for)
+(defun kittymacs-onboard-test--pty (keys wait-for &optional prepare)
   "Run onboarding on a pty in a copy of the modules; send KEYS once WAIT-FOR shows.
+Call PREPARE with the directory first, if given.
 Return its exit status, what it drew, and the directory it ran in, as a list."
   (let* ((root (file-name-as-directory (make-temp-file "kittymacs-onboard-pty-" t)))
          (lisp (expand-file-name "lisp/" root))
@@ -933,11 +986,16 @@ Return its exit status, what it drew, and the directory it ran in, as a list."
     (make-directory lisp)
     (dolist (file '("kittymacs-onboard.el" "kittymacs-catalogue.el" "kittymacs-features.el"))
       (copy-file (expand-file-name file lisp-source) (expand-file-name file lisp)))
+    (when prepare
+      (funcall prepare root))
     (let ((process (make-process
                     :name "onboard" :buffer buffer :noquery t :sentinel #'ignore
                     :connection-type 'pty
                     :command (list (expand-file-name invocation-name invocation-directory)
                                    "-nw" "-Q"
+                                   ;; A Nix Emacs may carry packages, and this
+                                   ;; machine must stay the one PREPARE made.
+                                   "--eval" "(setq package-directory-list nil)"
                                    "-l" (expand-file-name "kittymacs-onboard.el" lisp)
                                    "-f" "kittymacs-onboard-main")))
           (limit (+ (float-time) 60))
@@ -981,6 +1039,37 @@ Return its exit status, what it drew, and the directory it ran in, as a list."
           (should (equal status 2))
           (should-not (file-exists-p (expand-file-name "lisp/private.el" root)))
           (should (string-search "wrote nothing" screen)))
+      (delete-directory root t))))
+
+(ert-deftest kittymacs-onboard-a-real-terminal-says-where-a-new-machine-starts ()
+  (skip-unless (not (memq system-type '(windows-nt ms-dos))))
+  (pcase-let* ((returns (make-string (length (kittymacs-onboard--groups)) ?\r))
+               (`(,status ,screen ,root)
+                (kittymacs-onboard-test--pty (concat "\r" returns "\rw") "Where to start"))
+               (file (expand-file-name "lisp/private.el" root)))
+    (unwind-protect
+        (progn
+          (should (equal status 0))
+          (should (string-search "starts at minimal, the default" screen))
+          (should (equal (kittymacs-onboard-test--value file 'kittymacs-profile) '('minimal))))
+      (delete-directory root t))))
+
+(ert-deftest kittymacs-onboard-a-real-terminal-keeps-a-machine-on-full ()
+  "RET on the first screen, on a machine the rule keeps on `full', writes `full'."
+  (skip-unless (not (memq system-type '(windows-nt ms-dos))))
+  (pcase-let* ((returns (make-string (length (kittymacs-onboard--groups)) ?\r))
+               (`(,status ,screen ,root)
+                (kittymacs-onboard-test--pty
+                 ;; `full' has Puni, so the structural-editing screen waits for an answer.
+                 (concat "\r" returns "Y\r\rw") "Where to start"
+                 (lambda (root)
+                   (kittymacs-onboard-test--install-a-package (expand-file-name "var/" root)))))
+               (file (expand-file-name "lisp/private.el" root)))
+    (unwind-protect
+        (progn
+          (should (equal status 0))
+          (should (string-search "so it stays at full" screen))
+          (should (equal (kittymacs-onboard-test--value file 'kittymacs-profile) '('full))))
       (delete-directory root t))))
 
 ;;; kittymacs-onboard-tests.el ends here

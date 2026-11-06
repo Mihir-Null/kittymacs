@@ -24,13 +24,13 @@
 | =:packages= | what it installs; each package belongs to exactly one feature          |
 | =:vc=       | which of those its chapter's declaration installs from Git             |
 | =:module=   | the chapter's module that declares those packages                      |
-| =:profile=  | =minimal= for everyone, =full= for what kittymacs ships today, =optional= for what stays off even then |
+| =:profile=  | =minimal= for everyone, =full= for what that profile adds, =optional= for what stays off even then |
 | =:deps=     | features it cannot work without                                        |
 | =:not-on=   | values of =system-type= where it does not apply                        |
 | =:summary=  | one sentence: what you get                                             |
 | =:example=  | one sentence: how you notice it                                        |
 
-- =minimal= is the default that later changes move to; =full= stays exactly what a machine has today.
+- =minimal= is the default on a new machine, and =full= is what a machine had before that default ([[id:2ea4f7b0-6c19-4d85-93f2-c07a1be58d36][A machine with no choice keeps what it has]]).
 - =:not-on= lists exceptions rather than systems, because nearly every feature runs everywhere.
 - =:vc= is a subset of =:packages=, so a list of everything stays one property.
 - The builder writes =nix/features.json= from this list, by reading it and never evaluating it ([[id:d702f35a-3b2f-4cb5-9b4c-c176f0711db0][the builder]]).

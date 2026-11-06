@@ -9,8 +9,8 @@
 
 - Fonts, theme, mode line, icons and highlights:
   + Google Sans Code with Nerd Font icons when it is installed, the platform font otherwise;
-  + the Sonokai theme, tracked in this repository, with a light theme one toggle away (=SPC t t=);
-  + a compact mode line, from =doom-modeline=;
+  + by default the built-in Modus theme and Emacs's own mode line, with a light theme one toggle away (=SPC t t=);
+  + with the =doom-look= feature, the Sonokai theme, tracked in this repository, and a compact mode line from =doom-modeline=;
   + icons in completion, Corfu and Dired that switch off automatically when the icon font is missing, so a fresh machine never shows boxes.
 - Loads before anything is drawn, so the first frame already has the right font and colours; leans only on [[id:3fd783cd-deb8-48aa-bb44-0d9b16535365][the defaults chapter]].
 - Four features live here, each behind a =when=: =icons=, =doom-look=, =ui-polish= and =focus-mode=, with their keys.
@@ -25,8 +25,8 @@
   + =kittymacs-prose-font-family= :: the proportional font Org sets prose in, =Google Sans Flex=; the platform's sans if it is absent.
   + =kittymacs-nerd-font= :: the icon font, =Symbols Nerd Font Mono=.
   + =kittymacs-icons= :: =auto= (a graphical frame and an installed icon font), =t= for a terminal set up with a Nerd Font, or =nil= for no icons.
-  + =kittymacs-theme= :: the default theme, =doom-sonokai=.
-  + =kittymacs-light-theme= :: the other theme =SPC t t= toggles to, =doom-one-light=.
+  + =kittymacs-theme= :: the dark theme, =doom-sonokai=; without =doom-look= a =doom-= theme gives way to the built-in =modus-vivendi=.
+  + =kittymacs-light-theme= :: the other theme =SPC t t= toggles to, =doom-one-light=; without =doom-look= a =doom-= theme gives way to =modus-operandi=.
   + =kittymacs-line-numbers-in-programming= :: line numbers in programming buffers, =t=.
 
 #+begin_src emacs-lisp
@@ -68,11 +68,13 @@ Use t for a terminal configured with a Nerd Font, or nil to disable icons."
   :type '(choice (const auto) (const t) (const nil)))
 
 (defcustom kittymacs-theme 'doom-sonokai
-  "Default theme."
+  "The dark theme.
+A `doom-' theme needs the `doom-look' feature; without it, `modus-vivendi'."
   :type 'symbol)
 
 (defcustom kittymacs-light-theme 'doom-one-light
-  "Theme used by `kittymacs-toggle-theme'."
+  "The theme `kittymacs-toggle-theme' switches to.
+A `doom-' theme needs the `doom-look' feature; without it, `modus-operandi'."
   :type 'symbol)
 
 (defcustom kittymacs-line-numbers-in-programming t
@@ -160,13 +162,14 @@ Use t for a terminal configured with a Nerd Font, or nil to disable icons."
 
 * Theme
 
-- Sonokai is a tracked port in =lisp/themes/=, so it does not depend on a package update.
+- With =doom-look= off, as it is by default, the built-in Modus themes show: =modus-vivendi= and, on =SPC t t=, =modus-operandi=.
+- With =doom-look= on, Sonokai shows, from a tracked port in =lisp/themes/=, so it does not depend on a package update.
 - Loading a theme disables the previous one first, so themes never stack.
   + doom-themes' Org settings are reapplied after each load, while doom-themes is there.
 - =SPC t t= toggles between =kittymacs-theme= and =kittymacs-light-theme=; =SPC t T= chooses any theme.
 - Anything that must be recomputed when colours change hangs on Emacs's own =enable-theme-functions=.
 - The theme loads by itself, not from doom-themes' =:config=, so this section works when doom-themes is absent.
-  + A =doom-= theme needs that package, Sonokai's port too, so without it =kittymacs-theme= falls back to the built-in =modus-vivendi= and =kittymacs-light-theme= to =modus-operandi=.
+  + A =doom-= theme needs that package, Sonokai's port too, which is what =kittymacs--theme-or-builtin= asks.
   + A theme that still fails to load is a warning, and the rest of the chapter loads.
 - The =doom-look= feature gates the =doom-themes= form below and the =doom-modeline= one in [[*Mode line and tabs]], and nothing else has to change; [[file:../tests/kittymacs-theme-tests.el][the theme tests]] run the chapter without them.
 
@@ -226,8 +229,9 @@ Use t for a terminal configured with a Nerd Font, or nil to disable icons."
 
 * Mode line and tabs
 
-- =doom-modeline= is compact and shows the Meow state; its icons follow =kittymacs-icons=.
-  + Nothing else here refers to it, so without it the frame has Emacs's own mode line.
+- By default the frame has Emacs's own mode line.
+- With =doom-look= on, =doom-modeline= is compact and shows the Meow state; its icons follow =kittymacs-icons=.
+  + Nothing else here refers to it, so turning the feature off is all it takes to get the built-in one back.
 - The built-in tab bar appears once a second workspace exists and borrows the mode line's faces.
 - =SPC t H= hides the current buffer's mode line with =hide-mode-line-mode=, handy for a screenshot or a presentation; pressing it again brings it back.
 
@@ -408,4 +412,5 @@ Use t for a terminal configured with a Nerd Font, or nil to disable icons."
 - =SPC f f=: icons beside the candidates, or none at all on a machine without the icon font.
 - Set =kittymacs-icons= to =nil= in =private.el= to run without icon fonts.
 - =just test-packages=: the verifier toggles the theme both ways and checks that Sonokai comes back alone, and that =doom-modeline-mode= is on.
+- =just test-minimal=: the same verifier checks that Modus comes back alone, and that neither doom package loaded.
   + The theme tests leave out doom-themes and doom-modeline, and check that the Modus themes load and toggle instead.

@@ -7,17 +7,19 @@
 (require 'kittymacs-catalogue)
 
 (defvar kittymacs-lisp-dir)
+(defvar kittymacs-var-dir)
 (defvar package-alist)
 (defvar package-activated-list)
 
-(defconst kittymacs-default-profile 'full
-  "The profile of a machine that chose none.")
+(defconst kittymacs-default-profile 'minimal
+  "The profile of a machine that chose none and started out on the default.")
 
 (defcustom kittymacs-profile nil
   "Where this machine's features start: `minimal' or `full'.
 `full' leaves out the features the catalogue marks `optional'.  Nil means no
-choice yet, so `kittymacs-default-profile' decides.  Set it with `setopt' in a
-host file or private.el: Customize's file loads after every chapter has asked."
+choice yet, so `kittymacs-default-profile' decides, unless this machine ran
+kittymacs before that default existed.  Set it with `setopt' in a host file or
+private.el: Customize's file loads after every chapter has asked."
   :type '(choice (const :tag "Not chosen" nil) (const minimal) (const full))
   :group 'kittymacs)
 
@@ -39,11 +41,43 @@ Set it where `kittymacs-profile' is set, for the same reason."
   (display-warning 'kittymacs (apply #'format message args) :warning))
 
 (defun kittymacs-features--in-use-p ()
-  "Return non-nil on a machine that has run kittymacs before."
+  "Return non-nil on a machine with signs of having run kittymacs."
   (or (bound-and-true-p package-alist)
       (bound-and-true-p package-activated-list)
       (and (boundp 'kittymacs-lisp-dir)
-           (file-exists-p (expand-file-name "private.el" kittymacs-lisp-dir)))))
+           (file-exists-p (expand-file-name "private.el" kittymacs-lisp-dir)))
+      (and (boundp 'kittymacs-var-dir)
+           (file-directory-p kittymacs-var-dir)
+           (directory-files-recursively
+            kittymacs-var-dir "" nil
+            (lambda (directory) (not (equal (file-name-nondirectory directory) "elpa")))))))
+
+(defun kittymacs-features--stamp-file ()
+  "Return the file saying this machine started on the default, or nil.
+Nil where nothing has named the var directory, as under `emacs -Q'."
+  (and (boundp 'kittymacs-var-dir)
+       (expand-file-name "started-on-default" kittymacs-var-dir)))
+
+(defun kittymacs-features--kept-on-full-p ()
+  "Return non-nil on a machine that a missing choice keeps on `full'.
+Only reads, so onboarding can ask."
+  (let ((stamp (kittymacs-features--stamp-file)))
+    (and (not (and stamp (file-exists-p stamp)))
+         (kittymacs-features--in-use-p))))
+
+(defun kittymacs-features--write-stamp ()
+  "Record that this machine started on the default, unless that is known."
+  (when-let* ((stamp (kittymacs-features--stamp-file)))
+    (unless (file-exists-p stamp)
+      (condition-case err
+          (progn
+            (make-directory (file-name-directory stamp) t)
+            (write-region "This machine started on the default profile.\n" nil stamp nil 'silent))
+        (file-error
+         (kittymacs-features--warn
+          "Could not write %s: %s
+Without it, the next start takes this machine's packages for an older machine's, and moves it to `full'."
+          stamp (error-message-string err)))))))
 
 (defun kittymacs-features--choose-profile ()
   "Return the profile to start from, warning when it is not the one asked for."
@@ -51,13 +85,13 @@ Set it where `kittymacs-profile' is set, for the same reason."
     (kittymacs-features--warn "kittymacs-profile is %S, which is neither `minimal' nor `full'; ignoring it"
                               kittymacs-profile))
   (cond ((memq kittymacs-profile '(minimal full)) kittymacs-profile)
-        ((eq kittymacs-default-profile 'full) 'full)
-        ((kittymacs-features--in-use-p)
+        ((kittymacs-features--kept-on-full-p)
          (kittymacs-features--warn
-          "No profile is chosen and this machine has run kittymacs, so it stays on `full'.
-Set `kittymacs-profile' to `full' or `minimal' in private.el to choose, and to end this warning.")
+          "No profile is chosen and this machine ran kittymacs before `minimal' became the default, so it stays on `full'.
+Press SPC C o to choose, or set `kittymacs-profile' to `full' or `minimal' in private.el.  Either ends this warning.")
          'full)
-        (t kittymacs-default-profile)))
+        (t (kittymacs-features--write-stamp)
+           kittymacs-default-profile)))
 (defun kittymacs-exwm-session-p ()
   "Return non-nil when the program starting Emacs asked for EXWM, on X."
   (and (eq window-system 'x) (equal (getenv "KITTYMACS_EXWM") "1")))

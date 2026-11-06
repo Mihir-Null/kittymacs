@@ -36,11 +36,13 @@ Use t for a terminal configured with a Nerd Font, or nil to disable icons."
   :type '(choice (const auto) (const t) (const nil)))
 
 (defcustom kittymacs-theme 'doom-sonokai
-  "Default theme."
+  "The dark theme.
+A `doom-' theme needs the `doom-look' feature; without it, `modus-vivendi'."
   :type 'symbol)
 
 (defcustom kittymacs-light-theme 'doom-one-light
-  "Theme used by `kittymacs-toggle-theme'."
+  "The theme `kittymacs-toggle-theme' switches to.
+A `doom-' theme needs the `doom-look' feature; without it, `modus-operandi'."
   :type 'symbol)
 
 (defcustom kittymacs-line-numbers-in-programming t

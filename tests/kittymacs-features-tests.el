@@ -18,6 +18,7 @@
 (require 'kittymacs-features)
 
 (defvar kittymacs-lisp-dir)
+(defvar kittymacs-var-dir)
 (defvar package-alist)
 (defvar package-activated-list)
 (defvar kittymacs-language-packages)
@@ -49,12 +50,14 @@ Nothing the older options set is bound, and no machine has run kittymacs yet."
   (mapcar #'car (seq-filter (lambda (entry) (eq (plist-get (cdr entry) :profile) profile))
                             kittymacs-catalogue)))
 
-(ert-deftest kittymacs-features-default-to-full ()
-  "The default stays `full' until a later change moves it."
+(ert-deftest kittymacs-features-default-to-minimal ()
+  "A machine with no choice and no sign of use gets the small default."
   (kittymacs-features-test-with () warnings
-    (should (eq (kittymacs-features-profile) 'full))
+    (should (eq (kittymacs-features-profile) 'minimal))
     (should-not warnings)
-    (should (kittymacs-feature-p 'jump))
+    (should (kittymacs-feature-p 'meow))
+    (should-not (kittymacs-feature-p 'jump))
+    (should-not (kittymacs-feature-p 'doom-look))
     (should-not (kittymacs-feature-p 'jupyter))))
 
 (ert-deftest kittymacs-features-minimal-turns-on-the-minimal-features-alone ()
@@ -91,7 +94,9 @@ Nothing the older options set is bound, and no machine has run kittymacs yet."
     (should-not warnings)))
 
 (ert-deftest kittymacs-features-excluding-a-feature-takes-what-needs-it-quietly ()
-  (kittymacs-features-test-with ((kittymacs-features-excluded '(icons))) warnings
+  (kittymacs-features-test-with ((kittymacs-profile 'full)
+                                 (kittymacs-features-excluded '(icons)))
+      warnings
     (dolist (feature '(icons doom-look file-tree))
       (should-not (kittymacs-feature-p feature)))
     (should (kittymacs-feature-p 'jump))
@@ -102,7 +107,9 @@ Nothing the older options set is bound, and no machine has run kittymacs yet."
   (let ((kittymacs-catalogue '((a :profile full)
                                (b :profile full :deps (a))
                                (c :profile full :deps (b)))))
-    (kittymacs-features-test-with ((kittymacs-features-excluded '(a))) warnings
+    (kittymacs-features-test-with ((kittymacs-profile 'full)
+                                   (kittymacs-features-excluded '(a)))
+        warnings
       (should-not (kittymacs-features-enabled))
       (should-not warnings))))
 
@@ -146,7 +153,7 @@ Nothing the older options set is bound, and no machine has run kittymacs yet."
   (kittymacs-features-test-with ((kittymacs-features 'jump)
                                  (kittymacs-profile 'everything))
       warnings
-    (should (eq (kittymacs-features-profile) 'full))
+    (should (eq (kittymacs-features-profile) 'minimal))
     (should (= (length warnings) 2))))
 
 (ert-deftest kittymacs-features-not-on-rules-a-feature-out-without-a-warning ()
@@ -157,10 +164,10 @@ Nothing the older options set is bound, and no machine has run kittymacs yet."
     (should-not (kittymacs-feature-p 'terminal))
     (should-not (kittymacs-feature-p 'window-manager))
     (should-not warnings))
-  (kittymacs-features-test-with ((system-type 'darwin)) warnings
+  (kittymacs-features-test-with ((kittymacs-profile 'full) (system-type 'darwin)) warnings
     (should (kittymacs-feature-p 'terminal))
     (should-not warnings))
-  (kittymacs-features-test-with ((system-type 'windows-nt)) _warnings
+  (kittymacs-features-test-with ((kittymacs-profile 'full) (system-type 'windows-nt)) _warnings
     (should-not (kittymacs-feature-p 'shell-path))))
 
 ;;; The options that came before the catalogue
@@ -195,7 +202,9 @@ Nothing the older options set is bound, and no machine has run kittymacs yet."
     (should (kittymacs-feature-p 'window-manager))))
 
 (ert-deftest kittymacs-features-the-terminal-option-works-both-ways ()
-  (kittymacs-features-test-with ((kittymacs-terminal-ghostel nil)) warnings
+  (kittymacs-features-test-with ((kittymacs-profile 'full)
+                                 (kittymacs-terminal-ghostel nil))
+      warnings
     (should-not (kittymacs-feature-p 'terminal))
     (should-not warnings))
   (kittymacs-features-test-with ((kittymacs-profile 'minimal)
@@ -206,31 +215,133 @@ Nothing the older options set is bound, and no machine has run kittymacs yet."
 
 ;;; A machine with no choice
 
-(ert-deftest kittymacs-features-a-machine-in-use-keeps-full-after-the-default-moves ()
-  "The rule for the day the default becomes `minimal': nobody shrinks unannounced."
-  (let ((kittymacs-default-profile 'minimal)
-        (root (make-temp-file "kittymacs-features-" t)))
-    (unwind-protect
-        (let ((kittymacs-lisp-dir (file-name-as-directory root)))
-          (kittymacs-features-test-with () warnings
-            (should (eq (kittymacs-features-profile) 'minimal))
-            (should-not warnings))
-          (kittymacs-features-test-with ((package-alist '((meow)))) warnings
-            (should (eq (kittymacs-features-profile) 'full))
-            (should (= (length warnings) 1))
-            (should (string-match-p "No profile is chosen" (car warnings))))
-          ;; A start from the quickstart file activates packages and leaves the list empty.
-          (kittymacs-features-test-with ((package-activated-list '(meow))) warnings
-            (should (eq (kittymacs-features-profile) 'full))
-            (should (= (length warnings) 1)))
-          (with-temp-file (expand-file-name "private.el" root) (insert ";; Mine.\n"))
-          (kittymacs-features-test-with () warnings
-            (should (eq (kittymacs-features-profile) 'full))
-            (should (= (length warnings) 1)))
-          (kittymacs-features-test-with ((kittymacs-profile 'minimal)) warnings
-            (should (eq (kittymacs-features-profile) 'minimal))
-            (should-not warnings)))
-      (delete-directory root t))))
+(defmacro kittymacs-features-test-on-machine (&rest body)
+  "Run BODY with empty `lisp/' and `var/' directories, which `root' and `stamp' name."
+  (declare (indent 0))
+  `(let* ((root (file-name-as-directory (make-temp-file "kittymacs-features-" t)))
+          (kittymacs-lisp-dir (expand-file-name "lisp/" root))
+          (kittymacs-var-dir (expand-file-name "var/" root))
+          (stamp (expand-file-name "started-on-default" kittymacs-var-dir)))
+     (make-directory kittymacs-lisp-dir)
+     (unwind-protect (progn ,@body)
+       (when (file-directory-p kittymacs-var-dir)
+         (set-file-modes kittymacs-var-dir #o755))
+       (delete-directory root t))))
+
+(ert-deftest kittymacs-features-a-machine-from-before-the-default-keeps-full ()
+  "Nobody shrinks unannounced, and the warning says how to choose."
+  (kittymacs-features-test-on-machine
+    (kittymacs-features-test-with ((package-alist '((meow)))) warnings
+      (should (eq (kittymacs-features-profile) 'full))
+      (should (= (length warnings) 1))
+      (should (string-match-p "No profile is chosen" (car warnings)))
+      (should (string-search "SPC C o" (car warnings))))
+    (should-not (file-exists-p stamp))
+    ;; A start from the quickstart file activates packages and leaves the list empty.
+    (kittymacs-features-test-with ((package-activated-list '(meow))) warnings
+      (should (eq (kittymacs-features-profile) 'full))
+      (should (= (length warnings) 1)))
+    (should-not (file-exists-p stamp))
+    (with-temp-file (expand-file-name "private.el" kittymacs-lisp-dir) (insert ";; Mine.\n"))
+    (kittymacs-features-test-with () warnings
+      (should (eq (kittymacs-features-profile) 'full))
+      (should (= (length warnings) 1)))
+    (should-not (file-exists-p stamp))))
+
+(ert-deftest kittymacs-features-a-choice-needs-no-rule-and-no-stamp ()
+  (kittymacs-features-test-on-machine
+    (with-temp-file (expand-file-name "private.el" kittymacs-lisp-dir) (insert ";; Mine.\n"))
+    (dolist (profile '(minimal full))
+      (kittymacs-features-test-with ((kittymacs-profile profile)
+                                     (package-alist '((meow))))
+          warnings
+        (should (eq (kittymacs-features-profile) profile))
+        (should-not warnings)))
+    (should-not (file-exists-p stamp))))
+
+(ert-deftest kittymacs-features-a-new-machine-stays-on-the-default ()
+  "The second start has packages from the first, and must not read them as use."
+  (kittymacs-features-test-on-machine
+    (kittymacs-features-test-with () warnings
+      (should (eq (kittymacs-features-profile) 'minimal))
+      (should-not warnings))
+    (should (file-exists-p stamp))
+    (kittymacs-features-test-with ((package-alist '((meow)))) warnings
+      (should (eq (kittymacs-features-profile) 'minimal))
+      (should-not warnings))
+    ;; The same second start, from a quickstart file.
+    (kittymacs-features-test-with ((package-activated-list '(meow))) warnings
+      (should (eq (kittymacs-features-profile) 'minimal))
+      (should-not warnings))))
+
+(ert-deftest kittymacs-features-a-first-start-whose-installs-failed-stays-on-the-default ()
+  "The stamp is written before the installer runs, so it survives a failure."
+  (kittymacs-features-test-on-machine
+    (kittymacs-features-test-with () _warnings
+      (kittymacs-features-resolve))
+    (kittymacs-features-test-with () warnings
+      (should (eq (kittymacs-features-profile) 'minimal))
+      (should-not warnings))))
+
+(ert-deftest kittymacs-features-a-private-file-added-later-does-not-move-a-new-machine ()
+  (kittymacs-features-test-on-machine
+    (kittymacs-features-test-with () _warnings
+      (kittymacs-features-resolve))
+    (with-temp-file (expand-file-name "private.el" kittymacs-lisp-dir) (insert ";; Mine.\n"))
+    (kittymacs-features-test-with ((package-alist '((meow)))) warnings
+      (should (eq (kittymacs-features-profile) 'minimal))
+      (should-not warnings))))
+
+(ert-deftest kittymacs-features-a-deleted-var-can-only-err-towards-full ()
+  "With `var/' gone, a private.el is the one sign left, and it means `full'."
+  (kittymacs-features-test-on-machine
+    (kittymacs-features-test-with () _warnings
+      (kittymacs-features-resolve))
+    (delete-directory kittymacs-var-dir t)
+    (with-temp-file (expand-file-name "private.el" kittymacs-lisp-dir) (insert ";; Mine.\n"))
+    (kittymacs-features-test-with () warnings
+      (should (eq (kittymacs-features-profile) 'full))
+      (should (= (length warnings) 1)))))
+
+(ert-deftest kittymacs-features-a-machine-that-deleted-its-packages-keeps-full ()
+  "The README's cure for a broken package must not shrink an older machine."
+  (kittymacs-features-test-on-machine
+    (make-directory (expand-file-name "cache/" kittymacs-var-dir) t)
+    (with-temp-file (expand-file-name "cache/recentf" kittymacs-var-dir) (insert "()\n"))
+    (kittymacs-features-test-with () warnings
+      (should (eq (kittymacs-features-profile) 'full))
+      (should (= (length warnings) 1)))
+    (should-not (file-exists-p stamp))))
+
+(ert-deftest kittymacs-features-what-a-first-start-finds-under-var-is-no-sign ()
+  "The defaults make two empty directories, and `just install' fetches the archive index."
+  (kittymacs-features-test-on-machine
+    (make-directory (expand-file-name "cache/" kittymacs-var-dir) t)
+    (make-directory (expand-file-name "etc/" kittymacs-var-dir) t)
+    (make-directory (expand-file-name "elpa/archives/gnu/" kittymacs-var-dir) t)
+    (with-temp-file (expand-file-name "elpa/archives/gnu/archive-contents" kittymacs-var-dir)
+      (insert "(1)\n"))
+    (kittymacs-features-test-with () warnings
+      (should (eq (kittymacs-features-profile) 'minimal))
+      (should-not warnings))
+    (should (file-exists-p stamp))))
+
+(ert-deftest kittymacs-features-a-stamp-that-cannot-be-written-says-so ()
+  (skip-unless (and (not (memq system-type '(windows-nt ms-dos))) (/= (user-uid) 0)))
+  (kittymacs-features-test-on-machine
+    (make-directory kittymacs-var-dir)
+    (set-file-modes kittymacs-var-dir #o555)
+    (kittymacs-features-test-with () warnings
+      (should (eq (kittymacs-features-profile) 'minimal))
+      (should (= (length warnings) 1))
+      (should (string-search "Could not write" (car warnings))))))
+
+(ert-deftest kittymacs-features-asking-whether-a-machine-is-kept-writes-nothing ()
+  "Onboarding asks, and asking must not make a machine new."
+  (kittymacs-features-test-on-machine
+    (kittymacs-features-test-with () _warnings
+      (should-not (kittymacs-features--kept-on-full-p)))
+    (should-not (file-exists-p stamp))))
 
 (ert-deftest kittymacs-features-resolve-happens-once-unless-asked-again ()
   (kittymacs-features-test-with ((kittymacs-features '(no-such-feature))) warnings

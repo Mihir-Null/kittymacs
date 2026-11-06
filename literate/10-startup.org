@@ -561,7 +561,7 @@ Set before init.el loads to change them, because they are read during init.")
 - =C-h v package-check-signature=: =nil= means no native =gpg= was found ([[*GNU ELPA's signature check needs a native gpg]]).
 - =SPC C p= opens =private.el=, created from the example the first time; =SPC C u= opens the Customize file.
 - After editing this chapter, =just tangle= rewrites both files; =just tangle-check= proves they match.
-- =just install= starts the configuration once in batch, installing every package; =just test-packages= replays a real startup and fails on any warning.
+- =just install= starts the configuration once in batch, installing what its profile needs; =just test-packages= replays a real startup under =full= and fails on any warning.
 - =just quickstart=, then restart: =M-: kittymacs-quickstart-loaded= is =t= and =M-: package-alist= is =nil=. =just quickstart-remove=, then restart: the first is =nil= and the second lists the packages.
 - =just test= runs [[file:../tests/kittymacs-quickstart-tests.el][the quickstart tests]], and =just test-quickstart= replays a real startup from the file.
 

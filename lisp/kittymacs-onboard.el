@@ -16,6 +16,11 @@
 (require 'kittymacs-features)
 
 (defvar kittymacs-host-directories)
+(defvar kittymacs-lisp-dir)
+(defvar kittymacs-var-dir)
+(defvar package-alist)
+(defvar package-user-dir)
+(declare-function package-load-all-descriptors "package" ())
 
 (defvar kittymacs-onboard-private-file
   (expand-file-name "private.el" kittymacs-onboard--directory)
@@ -27,6 +32,10 @@
     (list "/etc/kittymacs/conf.d/"
           (expand-file-name "kittymacs/conf.d/" (or (getenv "XDG_CONFIG_HOME") "~/.config"))))
   "The host layer's directories, in the order `init.el' reads them.")
+
+(defvar kittymacs-onboard-var-directory
+  (expand-file-name "../var/" kittymacs-onboard--directory)
+  "Where a start of this checkout keeps its packages and its stamp.")
 
 (defvar kittymacs-onboard-store-directory "/nix/store/"
   "Files under here are never written, whatever their modes say.")
@@ -711,15 +720,18 @@ A name the catalogue lacks goes in NOTES."
       (format "This starts at %s, chosen in %s."
               (kittymacs-onboard--profile state)
               (file-name-nondirectory (plist-get setting :file)))
-    (format "Nothing here has chosen yet, so this starts at %s, the default."
-            (kittymacs-onboard--profile state))))
+    (if (eq (kittymacs-onboard--profile state) kittymacs-default-profile)
+        (format "Nothing here has chosen yet, so this starts at %s, the default."
+                kittymacs-default-profile)
+      (format "Nothing here has chosen yet, and this machine ran kittymacs before %s became the default, so it stays at %s."
+              kittymacs-default-profile (kittymacs-onboard--profile state)))))
 
 (defun kittymacs-onboard--render-profile (state place)
   "Return the first screen for STATE, with PLACE as in the title."
   (concat
    (kittymacs-onboard--screen-title place "Where to start")
    "\nNothing changes until the last screen, and C-g quits at any point.\n\n"
-   (format "  m  minimal: the %d features every machine gets.\n"
+   (format "  m  minimal: the %d features every machine gets, and where a new machine starts.\n"
            (length (kittymacs-features--compute 'minimal nil nil)))
    (format "  f  full: those and %d more.\n"
            (- (length (kittymacs-features--compute 'full nil nil))
@@ -1026,6 +1038,17 @@ literate/20-catalogue.org names every feature, and lisp/private.example.el shows
 A change takes effect at the next start."
           kittymacs-onboard-private-file))
 
+(defun kittymacs-onboard--profile-without-choice ()
+  "Return the profile a start here would use with no choice, without starting.
+Under `-Q' nothing has looked for packages or named these directories."
+  (require 'package)
+  (let ((kittymacs-lisp-dir (file-name-directory kittymacs-onboard-private-file))
+        (kittymacs-var-dir kittymacs-onboard-var-directory)
+        (package-user-dir (expand-file-name "elpa/" kittymacs-onboard-var-directory))
+        (package-alist nil))
+    (package-load-all-descriptors)
+    (if (kittymacs-features--kept-on-full-p) 'full kittymacs-default-profile)))
+
 (defun kittymacs-onboard--initial-state ()
   "Return the state for what this machine has chosen already.
 Refuse if `private.el' cannot be understood."
@@ -1034,7 +1057,8 @@ Refuse if `private.el' cannot be understood."
          (settings (append (kittymacs-onboard--host-settings notes) private))
          (values (kittymacs-onboard--final-values settings notes))
          (profile (alist-get 'kittymacs-profile values))
-         (profile (if (memq profile '(minimal full)) profile kittymacs-default-profile))
+         (profile (if (memq profile '(minimal full)) profile
+                    (kittymacs-onboard--profile-without-choice)))
          (older (kittymacs-onboard--older-selection values))
          (modes (let ((found (assq 'kittymacs-structural-editing-modes values)))
                   (and found (listp (cdr found)) found)))
