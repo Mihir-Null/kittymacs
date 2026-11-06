@@ -3,9 +3,27 @@
 ;; Needs no packages.  tests/fake-tramp-rpc stands for tramp-rpc, and a stand-in
 ;; for `make-process' and `call-process' for wsl.exe.  The real package runs only in
 ;; the hosted job: tests/wsl-backend/rpc.el.
+;;
+;; Nothing here may install it either, even with the code under test broken, which
+;; once fetched and compiled the real package.  So every way to install records the
+;; call and does nothing, here and in each process these tests start.  Recording
+;; and not signalling, because `use-package' turns an error into a warning.
 (require 'ert)
 (require 'cl-lib)
 (require 'seq)
+
+(defconst kittymacs-rpc-test-no-installs
+  '(progn
+     (require 'package)
+     (require 'use-package)
+     (setq package-user-dir (make-temp-file "rpc-test-elpa-" t))
+     (defvar kittymacs-rpc-test-installs nil "Each call that would have installed something.")
+     (dolist (function '(use-package-vc-install package-vc-install package-install
+                         package-vc--unpack package-refresh-contents))
+       (advice-add function :override
+                   (lambda (&rest arguments) (push arguments kittymacs-rpc-test-installs) nil))))
+  "What stops any install, in this process and each one the tests start.")
+(eval kittymacs-rpc-test-no-installs t)
 
 (defconst kittymacs-rpc-test-root
   (expand-file-name ".." (file-name-directory (or load-file-name buffer-file-name))))
@@ -36,6 +54,7 @@
                          "-L" (expand-file-name "lisp" kittymacs-rpc-test-root)
                          "-L" (expand-file-name "tests/fake-tramp-rpc" kittymacs-rpc-test-root)
                          "--eval" "(defvar kittymacs-cache-dir temporary-file-directory)"
+                         "--eval" (format "%S" kittymacs-rpc-test-no-installs)
                          (seq-mapcat (lambda (form) (list "--eval" (format "%S" form))) forms))))
       (unless (eql status 0) (error "Exit %s: %s" status (buffer-string)))
       (let ((lines (split-string (buffer-string) "\n" t)))
@@ -366,58 +385,42 @@
   (should (equal
            (kittymacs-rpc-test--in-fresh-emacs
             '(progn
-               (require 'package)
-               (require 'use-package)
-               (dolist (function '(use-package-vc-install package-vc-install package-install))
-                 (advice-add function :override
-                             (lambda (&rest arguments) (error "Installed: %S" arguments))))
                (load "kittymacs-remote-rpc" nil t)
-               (princ (format "\n%S\n" (list (featurep 'tramp) (featurep 'tramp-rpc))))))
-           "(nil nil)")))
+               (princ (format "\n%S\n" (list (featurep 'tramp) (featurep 'tramp-rpc)
+                                              kittymacs-rpc-test-installs)))))
+           "(nil nil nil)"))
+  (kittymacs-rpc-test--with-module
+    (should-not kittymacs-rpc-test-installs)))
 
 (ert-deftest kittymacs-rpc-compiling-the-module-installs-nothing ()
   "`use-package' installs a `:vc' package while it compiles, so `just compile' would."
   (should (equal
            (kittymacs-rpc-test--in-fresh-emacs
             `(progn
-               (require 'package)
-               (require 'use-package)
                (setq byte-compile-dest-file-function
                      (lambda (file)
                        (expand-file-name (concat (file-name-nondirectory file) "c")
                                          temporary-file-directory)))
-               (dolist (function '(use-package-vc-install package-vc-install package-install))
-                 (advice-add function :override
-                             (lambda (&rest arguments) (error "Installed: %S" arguments))))
-               (princ (format "\n%S\n"
-                              (and (byte-compile-file
-                                    ,(expand-file-name "lisp/kittymacs-remote-rpc.el"
-                                                       kittymacs-rpc-test-root))
-                                   'compiled)))))
-           "compiled")))
+               (let ((compiled (byte-compile-file
+                                ,(expand-file-name "lisp/kittymacs-remote-rpc.el"
+                                                   kittymacs-rpc-test-root))))
+                 (princ (format "\n%S\n" (list (and compiled t) kittymacs-rpc-test-installs))))))
+           "(t nil)")))
 
 (ert-deftest kittymacs-rpc-on-windows-a-start-declares-the-pins-and-loads-neither ()
   "The one test that lifts `system-type', with every way to install replaced."
   (let ((outcome
          (kittymacs-rpc-test--in-fresh-emacs
           '(progn
-             (require 'package)
-             (require 'use-package)
-             (setq package-vc-selected-packages nil)
-             (defvar kittymacs-rpc-asked nil)
-             (advice-add 'use-package-vc-install :override
-                         (lambda (arg &rest _) (push arg kittymacs-rpc-asked)))
-             (dolist (function '(package-vc-install package-install))
-               (advice-add function :override
-                           (lambda (&rest arguments) (error "Installed: %S" arguments))))
              (let ((system-type 'windows-nt))
                (load "kittymacs-remote-rpc" nil t))
              (princ (format "\n%S\n"
                             (list (featurep 'tramp) (featurep 'tramp-rpc)
                                   (mapcar (lambda (asked)
-                                            (list (car asked) (plist-get (cadr asked) :lisp-dir)
-                                                  (caddr asked)))
-                                          (reverse kittymacs-rpc-asked)))))))))
+                                            (let ((arg (car asked)))
+                                              (list (car arg) (plist-get (cadr arg) :lisp-dir)
+                                                    (caddr arg))))
+                                          (reverse kittymacs-rpc-test-installs)))))))))
     (should (equal (car (read-from-string outcome))
                    '(nil nil
                          ((msgpack nil "5353a7b2da854c843cbec4536996242001f63471")
