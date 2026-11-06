@@ -233,6 +233,8 @@ PATH is nil where the machine does not have the tool."
   + [[id:afa6b7fd-742a-4c15-86a6-32e3e8027b0e][The platform chapter]] sets it to the local shell, so a remote =M-x shell= would ask the remote machine for a program that may exist only here, such as a store path or =pwsh.exe=.
   + Emacs reads it with =with-connection-local-variables=, so a profile for every Tramp connection fixes it: =/bin/sh=, which is what Tramp's own profile gives =shell-file-name=.
   + A local buffer does not read the profile, and it is not even defined until Tramp loads.
+- A Mac makes a poor backend, because Tramp refuses a command longer than the remote's =PIPE_BUF=.
+  + That is 512 bytes on macOS and 4096 on Linux, and each command carries the =PATH= above, so a long =PATH= on a Mac stops =compile= and Eglot with "Command too long".
 - A backend adds its own profile, which wins over that one, since the newer entry comes first.
   + =:shell= sets =shell-file-name= and =explicit-shell-file-name=, so =M-x shell= and =shell-command= there agree.
 - =tramp-direct-async-process= is on for a backend whose transport supports it, which Tramp's method table says.
