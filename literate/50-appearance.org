@@ -230,6 +230,13 @@ A `doom-' theme needs the `doom-look' feature; without it, `modus-operandi'."
 * Mode line and tabs
 
 - By default the frame has Emacs's own mode line.
+- With =doom-look= off, the routine minor modes collapse into one =…=.
+  + A new reader cannot act on =WK=, =ElDoc= or =Wrap=, and that list hid what they can act on.
+  + Emacs's own =mode-line-collapse-minor-modes= does it, so this adds no package.
+  + What stays visible changes what keys do or reports a problem: the Meow state, =overwrite-mode=, a keyboard macro in progress, Flymake's counts, and envrc.
+  + envrc stays only while it has something to say: =none= hides, and =on=, =error= and =denied= show.
+  + Clicking the =…= lists the hidden modes, and =SPC h m= describes every mode that is on.
+  + A value set in =private.el= or Customize wins.
 - With =doom-look= on, =doom-modeline= is compact and shows the Meow state; its icons follow =kittymacs-icons=.
   + Nothing else here refers to it, so turning the feature off is all it takes to get the built-in one back.
   + Its language version stays off in a remote buffer ([[id:8d3b7e15-6f42-4c09-a1e8-5b2d90c7f364][the guards]]): finding it searches the remote project, and it runs the local program, so it would be slow and wrong. The guard is here because only this declaration may name the package.
@@ -239,6 +246,14 @@ A `doom-' theme needs the `doom-look' feature; without it, `modus-operandi'."
 #+begin_src emacs-lisp
 ;; The remote chapter's, which loads later than this one.
 (declare-function kittymacs-remote-buffer-p "kittymacs-remote" (&rest _))
+
+(defvar envrc-lighter)
+(unless (or (kittymacs-feature-p 'doom-look) mode-line-collapse-minor-modes)
+  (setq mode-line-collapse-minor-modes
+        '(not meow-normal-mode meow-insert-mode meow-motion-mode meow-keypad-mode
+              meow-beacon-mode overwrite-mode defining-kbd-macro flymake-mode envrc-mode)
+        ;; `defcustom' keeps this when envrc loads.
+        envrc-lighter '(:eval (unless (eq envrc--status 'none) (envrc--lighter)))))
 
 (when (kittymacs-feature-p 'doom-look)
   (use-package doom-modeline
@@ -396,6 +411,23 @@ A `doom-' theme needs the `doom-look' feature; without it, `modus-operandi'."
 
 #+end_src
 
+* The first words in the scratch buffer
+
+- With =home-page= off, nothing else greets a new reader: the first frame is an empty =*scratch*=.
+- A comment there says to press =SPC= for the menu and =SPC C o= to choose features.
+- Only the first start shows it, so the text never replaces anything a person wrote:
+  + a file at =kittymacs-scratch-file= means Emacs has started before, and [[id:3fd783cd-deb8-48aa-bb44-0d9b16535365][the defaults chapter]] restores that text;
+  + clearing the comment stays cleared, because the empty buffer saves to that file too.
+- A value set in =private.el= wins.
+
+#+begin_src emacs-lisp
+(unless (or (kittymacs-feature-p 'home-page)
+            initial-scratch-message
+            (file-exists-p kittymacs-scratch-file))
+  (setq initial-scratch-message ";; SPC opens the menu.  SPC C o chooses features.\n\n"))
+
+#+end_src
+
 * Programming buffers
 
 - Line numbers and a highlighted current line in code; neither in prose.
@@ -422,5 +454,7 @@ A `doom-' theme needs the `doom-look' feature; without it, `modus-operandi'."
 - =SPC f f=: icons beside the candidates, or none at all on a machine without the icon font.
 - Set =kittymacs-icons= to =nil= in =private.el= to run without icon fonts.
 - =just test-packages=: the verifier toggles the theme both ways and checks that Sonokai comes back alone, and that =doom-modeline-mode= is on.
+- =just test-packages= and =just test-minimal=: =kittymacs-check-first-look= fails if the collapse follows anything but =doom-look=, or the =*scratch*= comment anything but =home-page=.
+  + Batch =format-mode-line= returns nothing, so it reads the option that decides; look at a real frame for the text.
 - =just test-minimal=: the same verifier checks that Modus comes back alone, and that neither doom package loaded.
   + The theme tests leave out doom-themes and doom-modeline, and check that the Modus themes load and toggle instead.

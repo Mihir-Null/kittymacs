@@ -10,6 +10,8 @@
 (defvar kittymacs-leader-map)
 (defvar kittymacs-localleader-alist)
 (defvar kittymacs-user-map)
+(defvar kittymacs-scratch-file)
+(declare-function kittymacs--save-scratch "kittymacs-defaults" ())
 (declare-function kittymacs-feature-p "kittymacs-features" (feature))
 (declare-function kittymacs-features-enabled "kittymacs-features" ())
 (declare-function kittymacs-features-profile "kittymacs-features" ())
@@ -149,9 +151,33 @@ A menu under `SPC m' may name a command of a library that is not loaded yet, so
                        (not (string-suffix-p "-autoloads" name)))))
               features))
 
+(defun kittymacs-check-first-look ()
+  "Return what is wrong with the first frame under the features that are on.
+Batch `format-mode-line' returns nothing, so this reads the option it obeys."
+  (let ((collapse mode-line-collapse-minor-modes)
+        (pointer initial-scratch-message)
+        (key (keymap-lookup kittymacs-leader-map "C o")))
+    (kittymacs--save-scratch)
+    (append
+     (when (file-exists-p kittymacs-scratch-file)
+       (list "A batch start saved *scratch*, so a new user would miss the pointer"))
+     (if (kittymacs-feature-p 'doom-look)
+         (when collapse (list "doom-look is on, and the minor modes are collapsed"))
+       (unless (and (eq (car-safe collapse) 'not)
+                    (memq 'meow-normal-mode collapse)
+                    (not (memq 'eldoc-mode collapse)))
+         (list (format "The routine minor modes are not hidden: %S" collapse))))
+     (if (kittymacs-feature-p 'home-page)
+         (when pointer (list "home-page is on, and *scratch* has a message"))
+       (unless (and (stringp pointer)
+                    (string-match-p "\\`;; SPC .* SPC C o .*\n\n\\'" pointer)
+                    (commandp (kittymacs-check--binding key)))
+         (list (format "*scratch* has no valid pointer: %S, SPC C o is %S" pointer key)))))))
+
 (defun kittymacs-check-start ()
   "Return what is wrong after any start: dead keys, empty groups, Org and Tramp."
   (append
+   (kittymacs-check-first-look)
    (mapcar (lambda (binding) (format "SPC %s is not a command" binding))
            (kittymacs-check-uncallable-bindings kittymacs-leader-map []))
    (mapcar (lambda (group) (format "SPC %s is an empty group" group))
