@@ -231,13 +231,22 @@ names what was asked for and cannot be had."
                                 (kittymacs-features--property feature :vc)))
               (kittymacs-features-enabled)))
 
+(defun kittymacs-features--hide-embark-reminder (show type message &rest args)
+  "Call SHOW with TYPE, MESSAGE and ARGS, unless MESSAGE is Embark's reminder."
+  (unless (equal message "The package embark-consult should be installed if you use both Embark and Consult")
+    (apply show type message args)))
+
 (defun kittymacs-features-install ()
   "Install what the features that are on need and this machine lacks.
 A package that cannot be installed warns, and the rest carry on."
   (dolist (package (kittymacs-features-packages))
     (unless (package-installed-p package)
       (condition-case-unless-debug err
-          (funcall use-package-ensure-function package '(t) nil)
+          (unwind-protect
+              (progn
+                (advice-add 'display-warning :around #'kittymacs-features--hide-embark-reminder)
+                (funcall use-package-ensure-function package '(t) nil))
+            (advice-remove 'display-warning #'kittymacs-features--hide-embark-reminder))
         (error
          (kittymacs-features--warn "Could not install %s: %s"
                                    package (error-message-string err))))
