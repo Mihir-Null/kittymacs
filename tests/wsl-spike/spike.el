@@ -298,16 +298,22 @@ WSL forwards localhost by default, and the address changes at each boot."
                (tramp-remote-shell-args ("-c"))
                (tramp-completion-use-cache nil)))
 
-;; The wsl row changed in one way, and so not a measure of the template.  wsl.exe
-;; relays stdout and stderr separately, and an interactive sh prompts on stderr, so
-;; a prompt can overtake the output before it, and Tramp never sees a prompt at the
-;; end.  This row merges them on the Linux side.  A group with an empty element is
-;; dropped, so a direct process, which expands %l to nothing, runs without it.
+;; The wsl row changed in two ways, and so not a measure of the template.
+;; - wsl.exe relays stdout and stderr separately, and an interactive sh prompts on
+;;   stderr, so a prompt can overtake the output before it, and Tramp never sees a
+;;   prompt at the end.  This row merges them on the Linux side.
+;; - wsl.exe appends the Windows PATH, and Tramp writes PATH=... unquoted, so a
+;;   directory such as "Program Files (x86)" is a syntax error once
+;;   `tramp-own-remote-path' reads it.  This row starts from a Linux PATH.
+;; A group with an empty element is dropped, so a direct process, which expands %l
+;; to nothing, runs without either.
 (add-to-list 'tramp-methods
              `("wslm"
                ,@(assq-delete-all 'tramp-login-args (copy-alist (cdr (assoc "wsl" tramp-methods))))
                (tramp-login-args (("-d" "%h") ("--exec")
-                                  ("/bin/sh" "-c" "\"exec" "%l" "2>&1\"")))))
+                                  ("/bin/sh" "-c"
+                                   "\"PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+                                   "exec" "%l" "2>&1\"")))))
 
 ;; Tramp's ssh row changed in one way, and so not Tramp's own: -t -t.  Windows has
 ;; no terminal to give ssh.exe, and without one the remote shell never prompts.
@@ -422,10 +428,9 @@ take the whole login timeout."
                   (save-excursion
                     (goto-char (point-min))
                     (or (search-forward "Unstaged changes" nil t)
-                        (format "no unstaged changes shown; the buffer said: %s; git said: %s"
+                        (format "no unstaged changes shown; the buffer said: %s"
                                 (buffer-substring-no-properties
-                                 (point-min) (min (point-max) (+ (point-min) 300)))
-                                (spike-sync '("git" "-C" "repo" "status" "--short"))))))
+                                 (point-min) (min (point-max) (+ (point-min) 300)))))))
            (kill-buffer buffer)))))))
 
 (defvar spike-eglot-failures 0 "How many Eglot starts have failed in a row.")
@@ -481,24 +486,26 @@ take the whole login timeout."
                          (lambda () (eglot-shutdown server) t)))))
     (kill-buffer buffer)))
 
+(defun spike-set-direct (on)
+  "Apply the backend with direct processes ON or off, through the real module."
+  (setf (alist-get "spike" kittymacs-backends nil nil #'equal)
+        (append (seq-take (cdr (assoc "spike" kittymacs-backends)) 6)
+                (unless on '(:direct-async nil))))
+  (kittymacs-remote--apply-backend "spike")
+  (spike-disconnect))
+
 (defun spike-phase-eglot ()
   "Eglot as a backend gets it, then with Tramp's slower process start."
   (let ((default-directory spike-prefix))
     (spike-record "probe: direct async on" 1 0.0 t
                   (format "%S" (tramp-direct-async-process-p))))
   (spike-eglot-rounds "backend default" 5)
-  (setf (alist-get "spike" kittymacs-backends nil nil #'equal)
-        (append (cdr (assoc "spike" kittymacs-backends)) '(:direct-async nil)))
-  (kittymacs-remote--apply-backend "spike")
-  (spike-disconnect)
+  (spike-set-direct nil)
   (let ((default-directory spike-prefix))
     (spike-record "probe: direct async off" 1 0.0 t
                   (format "%S" (tramp-direct-async-process-p))))
   (spike-eglot-rounds "direct async off" 3)
-  (setf (alist-get "spike" kittymacs-backends nil nil #'equal)
-        (seq-take (cdr (assoc "spike" kittymacs-backends)) 6))
-  (kittymacs-remote--apply-backend "spike")
-  (spike-disconnect))
+  (spike-set-direct t))
 
 (defun spike-phase-doctor ()
   "The real module's report on this backend."
@@ -550,13 +557,16 @@ Send it the bytes STDIN, then end of file.  Return (STATUS . BYTES)."
       (or (and (equal status 0) (equal bytes expected))
           (format "exit %S, said %s, wanted %s" status (spike-show bytes) (spike-show expected))))))
 
+(defvar spike-async-label ""
+  "Which way asynchronous processes start, for the names of the probes.")
+
 (defun spike-both (label command expected)
   "Check COMMAND prints EXPECTED, through `process-file' and through a process."
   (unless (spike-measure (format "probe: %s, process-file" label) 1 30
                          (spike-expect #'spike-sync command expected))
     ;; A shell left stalled would fail every probe after this one.
     (spike-disconnect))
-  (spike-measure (format "probe: %s, async process" label) 1 30
+  (spike-measure (format "probe: %s, async process%s" label spike-async-label) 1 30
                  (spike-expect (lambda (c) (spike-async 25 c)) command expected)))
 
 (defun spike-phase-risks ()
@@ -588,6 +598,17 @@ Send it the bytes STDIN, then end of file.  Return (STATUS . BYTES)."
                      (spike-write accented content)
                      (list :detail (spike-show (cdr (spike-sync
                                                      (list "sh" "-c" (format "ls %s/spike | grep txt | od -An -tx1 | head -3" spike-home)))))))))
+  (spike-pipes)
+  ;; A direct process is a different path from a shell's, so both get measured.
+  (let ((default-directory spike-prefix))
+    (when (tramp-direct-async-process-p)
+      (let ((spike-async-label ", direct off"))
+        (spike-set-direct nil)
+        (spike-pipes)
+        (spike-set-direct t)))))
+
+(defun spike-pipes ()
+  "Program output, arguments and bytes, through each way of running a program."
   ;; CRLF in program output, and that nothing adds a CR.
   (spike-both "CRLF output" '("printf" "a\\r\\nb\\r\\n") "a\r\nb\r\n")
   (spike-both "LF output" '("printf" "a\\nb\\n") "a\nb\n")
@@ -607,13 +628,13 @@ Send it the bytes STDIN, then end of file.  Return (STATUS . BYTES)."
   (let* ((blob (spike-blob 1048576))
          (hash (secure-hash 'sha256 blob)))
     (spike-write (spike-name "spike/blob.bin") blob)
-    (spike-measure "probe: 1 MiB out of an async process" 1 90
+    (spike-measure (format "probe: 1 MiB out of an async process%s" spike-async-label) 1 90
                    (lambda ()
                      (pcase-let ((`(,status . ,bytes)
                                   (spike-async 80 (list "cat" (concat spike-home "/spike/blob.bin")))))
                        (or (and (equal status 0) (equal (secure-hash 'sha256 bytes) hash))
                            (format "exit %S, %d bytes back" status (length bytes))))))
-    (spike-measure "probe: 1 MiB into an async process" 1 90
+    (spike-measure (format "probe: 1 MiB into an async process%s" spike-async-label) 1 90
                    (lambda ()
                      (pcase-let ((`(,status . ,bytes) (spike-async 80 '("sha256sum") blob)))
                        (or (and (equal status 0) (string-prefix-p hash bytes))

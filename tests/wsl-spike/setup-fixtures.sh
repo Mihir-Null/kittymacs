@@ -7,7 +7,7 @@ cd "$HOME"
 mkdir -p spike many cproj
 
 git clone --quiet --depth 200 https://github.com/magit/magit.git repo
-printf '\n;; edited\n' >> repo/README.md
+printf '\n# edited\n' >> repo/Makefile
 git -C repo config user.name spike
 git -C repo config user.email spike@example.org
 
