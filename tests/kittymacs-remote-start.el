@@ -301,8 +301,26 @@ Only the note: other functions on `find-file-hook' read the file, as they may."
     (unwind-protect
         (progn
           (kittymacs-remote-start-value 'newlines-new
-            (kittymacs-remote-start--newlines-saved
-             (kittymacs-remote-fixture-name "newlines-new") "one\ntwo\n"))
+            (if (eq system-type 'darwin)
+                (let* ((file (kittymacs-remote-fixture-name "newlines-new"))
+                       (local (file-local-name file))
+                       (buffer (find-file-noselect file))
+                       (saved (with-current-buffer buffer
+                                (insert "one\ntwo\n")
+                                (condition-case err (progn (save-buffer) 'saved) (error err)))))
+                  (list :saved saved
+                        :modified (buffer-modified-p buffer)
+                        :coding (buffer-local-value 'buffer-file-coding-system buffer)
+                        :disk (file-exists-p local)
+                        :cached (file-exists-p file)
+                        :uncached (let ((remote-file-name-inhibit-cache t)) (file-exists-p file))
+                        :inhibit remote-file-name-inhibit-cache
+                        :read (condition-case err
+                                  (with-temp-buffer (insert-file-contents-literally file) (buffer-string))
+                                (error err))
+                        :dir (directory-files (file-name-directory local))))
+              (kittymacs-remote-start--newlines-saved
+               (kittymacs-remote-fixture-name "newlines-new") "one\ntwo\n")))
           (kittymacs-remote-start-value 'newlines-existing
             (let ((file (kittymacs-remote-fixture-name "newlines-existing")))
               (let ((coding-system-for-write 'no-conversion))
