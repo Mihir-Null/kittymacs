@@ -142,8 +142,15 @@ jobs:
           path: var/elpa
           key: elpa-3-${{ matrix.profile }}-${{ runner.os }}-${{ matrix.emacs }}-${{ hashFiles('lisp/*.el', 'early-init.el', 'init.el') }}
           restore-keys: ${{ matrix.profile == 'full' && format('elpa-3-full-{0}-{1}-', runner.os, matrix.emacs) || '' }}
+      # A first start must not tell a new user to install what it is installing.
+      # Only an empty cache tests this: minimal's when the key above changes, and
+      # every run's in the weekly schedule.
       - name: Install packages by starting the configuration
-        run: just install
+        run: |
+          just install 2>&1 | tee install.log
+          if grep -F "embark-consult should be installed" install.log; then
+            exit 1
+          fi
       # Errors fail the step; warnings are printed and do not, because most
       # of them name a function that a module calls from a package, or from
       # another module, that it does not load while compiling.  Installing

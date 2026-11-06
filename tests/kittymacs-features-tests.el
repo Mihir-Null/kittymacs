@@ -427,4 +427,22 @@ A request installs the package it names."
           (should (= (length warnings) 1))
           (should (string-match-p "Could not install avy: Offline" (car warnings))))))))
 
+(ert-deftest kittymacs-features-installer-hides-only-embarks-reminder ()
+  "Only that one message goes, and only while a package installs."
+  (let ((reminder "The package embark-consult should be installed if you use both Embark and Consult"))
+    (kittymacs-features-test-with ((kittymacs-profile 'minimal)) warnings
+      (let ((kittymacs-features--failed nil)
+            (installed (copy-sequence (kittymacs-features-packages)))
+            (use-package-ensure-function
+             (lambda (&rest _)
+               (display-warning 'emacs reminder)
+               (display-warning 'emacs "Another warning"))))
+        (setq installed (delq 'embark installed))
+        (cl-letf (((symbol-function 'package-installed-p)
+                   (lambda (package &rest _) (memq package installed))))
+          (kittymacs-features-install)
+          (should (equal warnings '("Another warning")))
+          (display-warning 'emacs reminder)
+          (should (equal (car warnings) reminder)))))))
+
 ;;; kittymacs-features-tests.el ends here
