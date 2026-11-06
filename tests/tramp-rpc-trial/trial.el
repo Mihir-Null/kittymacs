@@ -828,13 +828,16 @@ those, and never tries the write that tramp-rpc sets no limit on."
                          1 75 (lambda () (trial-write name large)))
         (advice-remove 'tramp-rpc--call 'trial-stop))
       (trial-stop-helper "CONT")
-      (trial-measure (format "hang: what the frame left, %s" label) 1 60
-                     (lambda ()
-                       (let ((bytes (trial-read name)))
-                         (list :detail
-                               (cond ((equal bytes large) "all of the new bytes")
-                                     ((equal bytes small) "all of the old bytes")
-                                     (t (format "neither: %d bytes" (length bytes))))))))
+      ;; Read twice, since the stopped server may still be finishing the first time.
+      (dolist (when '("at once" "5 s later"))
+        (when (equal when "5 s later") (sleep-for 5))
+        (trial-measure (format "hang: what the frame left, %s, %s" label when) 1 60
+                       (lambda ()
+                         (let ((bytes (trial-read name)))
+                           (list :detail
+                                 (cond ((equal bytes large) "all of the new bytes")
+                                       ((equal bytes small) "all of the old bytes")
+                                       (t (format "neither: %d bytes" (length bytes)))))))))
       (trial-measure (format "hang: 4 KiB round trip after the frame, %s" label) 1 60
                      (lambda ()
                        (trial-write name small)
