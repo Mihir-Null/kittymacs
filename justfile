@@ -76,6 +76,7 @@ install:
       -l tests/kittymacs-test-selection.el \
       -l early-init.el --eval '(package-refresh-contents)' -l init.el \
       --eval '(when (kittymacs-feature-p (quote linked-notes)) (require (quote org-roam)))' \
+      -f kittymacs-quickstart--settle \
       --eval '(princ (format "%d packages active\n" (length package-activated-list)))'
 
 # Byte-compile every module, to catch errors a load would hit. The .elc
@@ -121,13 +122,19 @@ test-features:
 test-quickstart:
     KITTYMACS_TEST_PROFILE="${KITTYMACS_TEST_PROFILE:-full}" KITTYMACS_TEST_QUICKSTART=1 KITTYMACS_TEST_PACKAGES={{quote(packages)}} emacs -Q --batch -l tests/verify-config.el
 
-# Let this machine start from one file instead of scanning var/elpa. Not -Q: a
-# Nix Emacs's site-start.el sets the package-directory-list a real start hashes.
-# "The quickstart file" in literate/10-startup.org explains it.
+# A machine with nothing: starts in a temporary copy, from its first install on,
+# and asserts what each one leaves for the next. Needs the network.
+test-new-machine:
+    emacs -Q --batch -l tests/kittymacs-new-machine.el
+
+# Let this machine start from one file instead of scanning var/elpa, which a new
+# machine does without asking. Not -Q: a Nix Emacs's site-start.el sets the
+# package-directory-list a real start hashes. "The quickstart file" in
+# literate/10-startup.org explains it.
 quickstart:
     emacs --batch --eval '(setq user-emacs-directory (file-name-as-directory (expand-file-name ".")))' -l early-init.el -f kittymacs-quickstart-write
 
-# Delete it again; the next start scans, as a machine that never wrote one does.
+# Delete it, and keep it off; every start scans until `just quickstart` runs again.
 quickstart-remove:
     {{emacs}} -l early-init.el -f kittymacs-quickstart-remove
 

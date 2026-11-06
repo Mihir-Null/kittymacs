@@ -44,7 +44,8 @@
 | =test-minimal=    | the minimal profile's packages | leader, theme and remote tests, and the verifier, which also checks the directory holds exactly those |
 | =test-features=   | every feature's packages | one real start per feature, off in turn and on in turn                 |
 | =test-quickstart= | installed packages | the startup verifier, starting from a quickstart file it writes first        |
-| =quickstart=, =quickstart-remove= | installed packages | write the file that starts this machine without scanning =var/elpa=, or delete it |
+| =test-new-machine= | Emacs, network | a machine with nothing, start by start: the quickstart file comes, a new feature installs, removing it lasts |
+| =quickstart=, =quickstart-remove= | installed packages | write the file that starts this machine without scanning =var/elpa=, or delete it and keep it off |
 | =size=            | Emacs              | count the code and prose against =tests/budgets.eld=                         |
 | =budget-check=    | Emacs, Git history | fail if a budget rose against the merge base with no stated reason           |
 | =bench=           | installed packages | start Emacs many times and report what startup costs                         |
@@ -210,6 +211,7 @@
   + =startup= job :: a fresh clone runs =just install=, =just compile= and =just test-packages= on Emacs 31.1 on Linux, plus informational macOS and Windows runs.
     A second Linux run installs the minimal profile and runs =just test-minimal=: it has a package cache of its own that nothing older can seed, so leftovers cannot hide a removal, and the verifier fails on a package too many or too few.
     Every run then ends with =just test-quickstart=, which fails if the start ignored [[id:7b4e2f19-6d03-4a58-9c21-e8f05d7a3c64][the quickstart file]] or lost a package to it.
+    The minimal, macOS and Windows runs also run =just test-new-machine=, the only check that starts with no profile chosen, which is what makes a machine new.
   + =features= job :: =just test-features= after installing every feature's packages: one real start per feature ([[*Testing a selection]]).
   + =nix= job :: =just nix-check= in =nix develop=, then the home-manager module's clone options read as a device would see them.
     =eval= checks the flake twice: on its own nixpkgs-unstable, and on the stable release in the justfile's =stable= variable, since a host that makes the flake follow its nixpkgs evaluates it there; move =stable= to each new release.

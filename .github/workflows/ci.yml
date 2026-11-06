@@ -10,7 +10,8 @@ name: CI
 #      Emacs 31.1, the oldest it supports?  And on macOS, and on Windows,
 #      the machine this is written on?  And does the minimal profile, on Linux,
 #      install exactly what it needs and start?  And from a quickstart file?
-#      (startup: just install, compile, test-packages or test-minimal, test-quickstart)
+#      (startup: just install, compile, test-packages or test-minimal, test-quickstart,
+#       test-new-machine)
 #      Does Emacs still start with each feature off, and with each on?
 #                                               (features: just test-features)
 #   3. Does the Nix flake still evaluate, on unstable and on the stable
@@ -171,6 +172,11 @@ jobs:
         run: just test-minimal
       - name: The startup verifier again, starting from a quickstart file
         run: just test-quickstart
+      # The verifier's job sets a profile, so it never counts as new. Linux needs
+      # it once; the macOS and Windows rows have no minimal row of their own.
+      - name: A new machine, start by start
+        if: matrix.profile == 'minimal' || matrix.system != 'Linux'
+        run: just test-new-machine
 
   # One real start per feature: off in turn from full, on in turn from minimal.
   # Each start activates only what its selection needs, so leftovers in this
