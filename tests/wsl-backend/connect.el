@@ -13,6 +13,7 @@
 ;;; Code:
 (require 'cl-lib)
 (require 'package)
+(require 'seq)
 
 (defvar tramp-connection-timeout)
 (defvar tramp-dont-suspend-timers nil)
@@ -88,6 +89,122 @@ Tramp suspends timers while it waits unless told not to, and the limit is a time
    (run-hooks 'after-init-hook 'delayed-warnings-hook 'emacs-startup-hook)
    (when (featurep 'tramp) (error "The start loaded Tramp"))
    (format "%s, %s" (emacs-version) system-type)))
+
+;;; Opening from the WSL side
+
+;; First, while Tramp has not loaded, as for someone who has not connected yet.
+
+(declare-function server-start "server" (&optional leave-dead inhibit-prompt))
+(defvar server-auth-dir)
+
+(defun wsl-backend-linux-path (file)
+  "Return what the distribution calls the Windows FILE."
+  (with-temp-buffer
+    (unless (eql 0 (call-process "wsl.exe" nil t nil "-d" wsl-backend-distribution
+                                 "--exec" "wslpath" "-a"
+                                 (string-replace "\\" "/" (expand-file-name file))))
+      (error "wslpath failed: %s" (buffer-string)))
+    (string-trim (buffer-string))))
+
+(defun wsl-backend-open (name)
+  "Run `kittymacs-open' on NAME in the distribution, and return its output and status.
+It waits with `accept-process-output', since this Emacs must answer the client."
+  (let* ((script (wsl-backend-linux-path
+                  (expand-file-name "nix/kittymacs-open.sh" wsl-backend-source)))
+         (buffer (generate-new-buffer " *kittymacs-open*"))
+         (process (make-process :name "kittymacs-open" :buffer buffer :noquery t
+                                :connection-type 'pipe
+                                :command (list "wsl.exe" "-d" wsl-backend-distribution
+                                               "--cd" "~" "--exec" "sh" script name)))
+         (end (+ (float-time) 45)))
+    (while (and (process-live-p process) (< (float-time) end))
+      (accept-process-output nil 0.2))
+    (list (process-status process) (process-exit-status process)
+          (with-current-buffer buffer (buffer-string)))))
+
+(defun wsl-backend-wait-for-buffer (file limit)
+  "Wait up to LIMIT seconds for a buffer visiting FILE, and return it."
+  (let ((end (+ (float-time) limit)) buffer)
+    (while (and (< (float-time) end)
+                (not (setq buffer (seq-find (lambda (b)
+                                              (string-suffix-p file (or (buffer-file-name b) "")))
+                                            (buffer-list)))))
+      (accept-process-output nil 0.2))
+    buffer))
+
+(wsl-backend-check
+ "emacsclient.exe is what WSL finds" 60
+ (lambda ()
+   (with-temp-buffer
+     (unless (eql 0 (call-process "wsl.exe" nil t nil "-d" wsl-backend-distribution
+                                  "--exec" "sh" "-c" "command -v emacsclient.exe"))
+       (error "It is not on the PATH: %s" (buffer-string)))
+     (string-trim (buffer-string)))))
+
+;; Where the client looks for the server, since this start's own directory is a
+;; temporary one.
+(setq server-auth-dir (expand-file-name "~/.emacs.d/server/"))
+(require 'server)
+(server-start)
+
+(wsl-backend-check
+ "kittymacs-open: a Linux file opens on the backend, Tramp loading for it" 75
+ (lambda ()
+   (when (featurep 'tramp) (error "Tramp has already loaded"))
+   (let ((outcome (wsl-backend-open "project/file")))
+     (unless (eql 0 (nth 1 outcome))
+       (error "kittymacs-open: %S" outcome))
+     (let ((buffer (wsl-backend-wait-for-buffer "project/file" 30)))
+       (unless buffer (error "No buffer; kittymacs-open said %S" outcome))
+       (prog1 (wsl-backend-expect (format "/wslm:%s:/home/backend/project/file"
+                                          wsl-backend-distribution)
+                                  (buffer-file-name buffer))
+         (kill-buffer buffer))))))
+
+(wsl-backend-check
+ "kittymacs-open: a folder opens in Dired on the backend" 75
+ (lambda ()
+   (let* ((outcome (wsl-backend-open "project"))
+          (end (+ (float-time) 30))
+          (buffer nil))
+     (while (and (< (float-time) end)
+                 (not (setq buffer (seq-find (lambda (b)
+                                               (with-current-buffer b
+                                                 (and (derived-mode-p 'dired-mode)
+                                                      (file-remote-p default-directory))))
+                                             (buffer-list)))))
+       (accept-process-output nil 0.2))
+     (unless buffer (error "No Dired buffer; kittymacs-open said %S" outcome))
+     (prog1 (buffer-local-value 'default-directory buffer)
+       (with-current-buffer buffer
+         (wsl-backend-expect "file" (buffer-string)))
+       (kill-buffer buffer)))))
+
+(wsl-backend-check
+ "kittymacs-open: a Windows-side file opens natively" 75
+ (lambda ()
+   (let* ((file (make-temp-file "kittymacs-open-"))
+          (outcome (wsl-backend-open (wsl-backend-linux-path file))))
+     (unless (eql 0 (nth 1 outcome))
+       (error "kittymacs-open: %S" outcome))
+     (let ((buffer (wsl-backend-wait-for-buffer (file-name-nondirectory file) 30)))
+       (unless buffer (error "No buffer; kittymacs-open said %S" outcome))
+       (when (file-remote-p (buffer-file-name buffer))
+         (error "It went through Tramp: %s" (buffer-file-name buffer)))
+       (prog1 (buffer-file-name buffer)
+         (kill-buffer buffer))))))
+
+;; For the record: emacsclient.exe reads its arguments in the Windows code page.
+(wsl-backend-check
+ "kittymacs-open: a non-ASCII name, for the record" 75
+ (lambda ()
+   (let* ((name "caf\u00e9.txt")
+          (outcome (wsl-backend-open name))
+          (buffer (wsl-backend-wait-for-buffer name 15)))
+     (format "%S, %s" outcome
+             (if buffer (buffer-file-name buffer)
+               (format "no buffer; these are open: %S"
+                       (delq nil (mapcar #'buffer-file-name (buffer-list)))))))))
 
 ;;; The transport
 
@@ -184,100 +301,6 @@ Tramp suspends timers while it waits unless told not to, and the limit is a time
    (let ((tools (kittymacs-backend-doctor "wsl")))
      (mapconcat (lambda (tool) (format "%s=%s" (car tool) (if (cdr tool) "yes" "no")))
                 tools " "))))
-
-;;; Opening from the WSL side
-
-(declare-function server-start "server" (&optional leave-dead inhibit-prompt))
-(defvar server-auth-dir)
-
-(defun wsl-backend-linux-path (file)
-  "Return what the distribution calls the Windows FILE."
-  (with-temp-buffer
-    (unless (eql 0 (call-process "wsl.exe" nil t nil "-d" wsl-backend-distribution
-                                 "--exec" "wslpath" "-a"
-                                 (string-replace "\\" "/" (expand-file-name file))))
-      (error "wslpath failed: %s" (buffer-string)))
-    (string-trim (buffer-string))))
-
-(defun wsl-backend-open (name)
-  "Run `kittymacs-open' on NAME in the distribution, and return its output and status.
-It waits with `accept-process-output', since this Emacs must answer the client."
-  (let* ((script (wsl-backend-linux-path
-                  (expand-file-name "nix/kittymacs-open.sh" wsl-backend-source)))
-         (buffer (generate-new-buffer " *kittymacs-open*"))
-         (process (make-process :name "kittymacs-open" :buffer buffer :noquery t
-                                :connection-type 'pipe
-                                :command (list "wsl.exe" "-d" wsl-backend-distribution
-                                               "--cd" "~" "--exec" "sh" script name)))
-         (end (+ (float-time) 45)))
-    (while (and (process-live-p process) (< (float-time) end))
-      (accept-process-output nil 0.2))
-    (list (process-status process) (process-exit-status process)
-          (with-current-buffer buffer (buffer-string)))))
-
-(defun wsl-backend-wait-for-buffer (file limit)
-  "Wait up to LIMIT seconds for a buffer visiting FILE, and return it."
-  (let ((end (+ (float-time) limit)) buffer)
-    (while (and (< (float-time) end)
-                (not (setq buffer (seq-find (lambda (b)
-                                              (string-suffix-p file (or (buffer-file-name b) "")))
-                                            (buffer-list)))))
-      (accept-process-output nil 0.2))
-    buffer))
-
-(wsl-backend-check
- "emacsclient.exe is what WSL finds" 60
- (lambda ()
-   (with-temp-buffer
-     (unless (eql 0 (call-process "wsl.exe" nil t nil "-d" wsl-backend-distribution
-                                  "--exec" "sh" "-c" "command -v emacsclient.exe"))
-       (error "It is not on the PATH: %s" (buffer-string)))
-     (string-trim (buffer-string)))))
-
-;; Where the client looks for the server, since this start's own directory is a
-;; temporary one.
-(setq server-auth-dir (expand-file-name "~/.emacs.d/server/"))
-(require 'server)
-(server-start)
-
-(wsl-backend-check
- "kittymacs-open: a Linux file opens on the backend" 75
- (lambda ()
-   (let ((outcome (wsl-backend-open "project/file")))
-     (unless (eql 0 (nth 1 outcome))
-       (error "kittymacs-open: %S" outcome))
-     (let ((buffer (wsl-backend-wait-for-buffer "project/file" 30)))
-       (unless buffer (error "No buffer; kittymacs-open said %S" outcome))
-       (prog1 (wsl-backend-expect (format "/wslm:%s:/home/backend/project/file"
-                                          wsl-backend-distribution)
-                                  (buffer-file-name buffer))
-         (kill-buffer buffer))))))
-
-(wsl-backend-check
- "kittymacs-open: a Windows-side file opens natively" 75
- (lambda ()
-   (let* ((file (make-temp-file "kittymacs-open-"))
-          (outcome (wsl-backend-open (wsl-backend-linux-path file))))
-     (unless (eql 0 (nth 1 outcome))
-       (error "kittymacs-open: %S" outcome))
-     (let ((buffer (wsl-backend-wait-for-buffer (file-name-nondirectory file) 30)))
-       (unless buffer (error "No buffer; kittymacs-open said %S" outcome))
-       (when (file-remote-p (buffer-file-name buffer))
-         (error "It went through Tramp: %s" (buffer-file-name buffer)))
-       (prog1 (buffer-file-name buffer)
-         (kill-buffer buffer))))))
-
-;; For the record: emacsclient.exe reads its arguments in the Windows code page.
-(wsl-backend-check
- "kittymacs-open: a non-ASCII name, for the record" 75
- (lambda ()
-   (let* ((name "caf\u00e9.txt")
-          (outcome (wsl-backend-open name))
-          (buffer (wsl-backend-wait-for-buffer name 15)))
-     (format "%S, %s" outcome
-             (if buffer (buffer-file-name buffer)
-               (format "no buffer; these are open: %S"
-                       (delq nil (mapcar #'buffer-file-name (buffer-list)))))))))
 
 ;; This check would pass if connecting could never fail.  So a distribution that
 ;; does not exist must not look like one that answers.
