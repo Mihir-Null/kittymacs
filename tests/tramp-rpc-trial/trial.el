@@ -103,7 +103,7 @@
                        (replace-regexp-in-string
                         "[\r\n]+" " / "
                         (let ((text (format "%s" (plist-get r :detail))))
-                          (if (> (length text) 900) (substring text 0 900) text)))))))))
+                          (if (> (length text) 2400) (substring text 0 2400) text)))))))))
 
 (when-let* ((directory (getenv "TRIAL_SUMMARISE")))
   (trial-summarise directory)
@@ -712,14 +712,22 @@ The real remote buffer is current, so this is what the guards exist for."
                   (format "stalled: %S; slow errors: %S" stalled failed))))
 
 (defun trial-idle-wait (label buffer)
-  "Show BUFFER and wait 5 s for real: anything that blocks makes the wait longer."
+  "Show BUFFER and idle for 5 s, and report the longest stretch nothing could run.
+A graphical Emacs has input pending that ends `sit-for' at once, so discard it."
   (switch-to-buffer buffer)
-  (let ((began (float-time)))
+  (let* ((began (float-time)) (longest 0.0) (steps 0))
     (with-timeout (40 (trial-log "the idle wait passed 40 s"))
-      (let ((tramp-dont-suspend-timers t)) (sit-for 5)))
+      (let ((tramp-dont-suspend-timers t))
+        (while (< (- (float-time) began) 5)
+          (discard-input)
+          (let ((step (float-time)))
+            (sit-for 0.2)
+            (cl-incf steps)
+            (setq longest (max longest (- (float-time) step))))
+          (sleep-for 0.01))))
     (trial-record (format "probe: a 5 s idle wait, %s" label) 1 (- (float-time) began)
-                  (< (- (float-time) began) 7)
-                  (format "%S" (buffer-name)))))
+                  (< longest 2)
+                  (format "%S; %d steps; longest %.3f s" (buffer-name) steps longest))))
 
 (defun trial-open-unsaved ()
   "Visit a remote file with unsaved text, and return the buffer."
@@ -796,7 +804,39 @@ after 30 s and a 10 s probe, so its limit here is longer than step 15's 25 s."
                        (lambda ()
                          (trial-write name small)
                          (or (equal (trial-read name) small) "bytes differ")))))
+    (when trial-rpc-p (trial-stop-during-write))
     (trial-disconnect)))
+
+(defun trial-stop-during-write ()
+  "Stop the server just before the frame of a 1 MiB write goes out.
+Small calls come first in a write, so stopping it earlier times out on one of
+those, and never tries the write that tramp-rpc sets no limit on."
+  (let ((large (trial-blob 1048576))
+        (small (trial-blob 4096))
+        (name (trial-name "spike/hung-write.bin"))
+        (remote-file-name-inhibit-cache t)
+        (stop (lambda (_vec method &rest _)
+                (when (equal method "file.write") (trial-stop-helper "STOP")))))
+    (pcase-dolist (`(,label . ,size) trial-pipes)
+      (trial-set-pipe size)
+      (trial-write name small)
+      (advice-add 'tramp-rpc--call :before stop '((name . trial-stop)))
+      (unwind-protect
+          (trial-measure (format "hang: server stopped just before the write's frame, %s" label)
+                         1 75 (lambda () (trial-write name large)))
+        (advice-remove 'tramp-rpc--call 'trial-stop))
+      (trial-stop-helper "CONT")
+      (trial-measure (format "hang: what the frame left, %s" label) 1 60
+                     (lambda ()
+                       (let ((bytes (trial-read name)))
+                         (list :detail
+                               (cond ((equal bytes large) "all of the new bytes")
+                                     ((equal bytes small) "all of the old bytes")
+                                     (t (format "neither: %d bytes" (length bytes))))))))
+      (trial-measure (format "hang: 4 KiB round trip after the frame, %s" label) 1 60
+                     (lambda ()
+                       (trial-write name small)
+                       (or (equal (trial-read name) small) "bytes differ"))))))
 
 ;;; Where the time goes, on tramp-rpc
 
@@ -834,9 +874,61 @@ What the calls leave unexplained is spent in Emacs."
           (remote-file-name-inhibit-cache t))
       (dotimes (_ 2)
         (trial-trace "trace: write 4 KiB" (lambda () (trial-write name small))))
-      (trial-trace "trace: read 4 KiB" (lambda () (trial-read name))))
+      (trial-trace "trace: read 4 KiB" (lambda () (trial-read name)))
+      (trial-breakdown "breakdown: 5 writes of 4 KiB"
+                       (lambda () (dotimes (_ 5) (trial-write name small)))))
     (dotimes (_ 2)
-      (trial-trace "trace: Magit status" #'trial-magit-status))))
+      (trial-trace "trace: Magit status" #'trial-magit-status))
+    (trial-breakdown "breakdown: 3 Magit statuses"
+                     (lambda () (dotimes (_ 3) (trial-magit-status))))))
+
+(defconst trial-timed-functions
+  '(sleep-for sit-for accept-process-output call-process make-process
+    process-send-string tramp-rpc--call tramp-flush-file-properties
+    tramp-flush-directory-properties tramp-rpc--invalidate-cache-for-path
+    file-locked-p lock-file unlock-file)
+  "What might wait, in Emacs or in another program, outside an RPC's own time.")
+
+(defun trial-breakdown (op function)
+  "Call FUNCTION once as OP, and record where its time went.
+Wall time and calls for each of `trial-timed-functions', and the functions that
+held the most CPU samples, counting each sample once for each function on its stack."
+  (let ((totals (make-hash-table)) (samples (make-hash-table)) advices)
+    (dolist (name trial-timed-functions)
+      (when (fboundp name)
+        (let ((advice (lambda (original &rest arguments)
+                        (let ((began (float-time)))
+                          (unwind-protect (apply original arguments)
+                            (let ((entry (gethash name totals (cons 0 0.0))))
+                              (puthash name (cons (1+ (car entry))
+                                                  (+ (cdr entry) (- (float-time) began)))
+                                       totals)))))))
+          (push name advices)
+          (advice-add name :around advice '((name . trial-breakdown))))))
+    (profiler-cpu-start 1000000)
+    (unwind-protect
+        (trial-measure op 1 120 (lambda () (funcall function) t))
+      (profiler-cpu-stop)
+      (dolist (name advices) (advice-remove name 'trial-breakdown)))
+    (condition-case err
+        (maphash (lambda (stack count)
+                   (dolist (frame (delete-dups (seq-filter #'symbolp (append stack nil))))
+                     (when frame
+                       (puthash frame (+ count (gethash frame samples 0)) samples))))
+                 (profiler-cpu-log))
+      (error (trial-log "the profile could not be read: %s" (error-message-string err))))
+    (let (wall top)
+      (maphash (lambda (name entry) (push (list name (car entry) (cdr entry)) wall)) totals)
+      (maphash (lambda (name count) (push (cons name count) top)) samples)
+      (setq wall (sort wall (lambda (a b) (> (nth 2 a) (nth 2 b))))
+            top (sort top (lambda (a b) (> (cdr a) (cdr b)))))
+      (trial-record (concat op ": wall") 1 0.0 t
+                    (mapconcat (lambda (row) (format "%s %d calls %.3f s"
+                                                     (nth 0 row) (nth 1 row) (nth 2 row)))
+                               wall ", "))
+      (trial-record (concat op ": CPU samples") 1 0.0 t
+                    (mapconcat (lambda (row) (format "%s %d" (car row) (cdr row)))
+                               (seq-take top 40) ", ")))))
 
 (defun trial-phase-shutdown ()
   "`wsl --shutdown' in the middle of a session, with an open file and a process."

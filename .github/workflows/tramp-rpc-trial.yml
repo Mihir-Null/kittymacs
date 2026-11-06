@@ -26,7 +26,6 @@ jobs:
     runs-on: windows-latest
     timeout-minutes: 150
     env:
-      TRIAL_QUICK: "1"
       KITTYMACS_TEST_PACKAGES: ${{ github.workspace }}/var/elpa
       KITTYMACS_TEST_PROFILE: full
     steps:
