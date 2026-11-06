@@ -199,7 +199,7 @@ This reads the name, and never connects."
                  "")))))
 
 (defun kittymacs-remote-reopen-natively ()
-  "Replace this buffer's Windows-side file, opened through WSL, with the native file."
+  "Replace this buffer's Windows-side file with the native file."
   (interactive)
   (let ((native (and buffer-file-name (kittymacs-remote--windows-file buffer-file-name))))
     (unless native
