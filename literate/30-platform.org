@@ -142,6 +142,14 @@ denies access and every lookup below quietly returns nil."
 - On Windows it borrows Unix tools, last on =exec-path=: Magit's hunk refinement, Ediff and diff-hl call =diff=, =diff3= and =patch= by name, and Windows has none.
   + They come from Git for Windows (=Git/usr/bin=, or beside =git= itself).
   + As they go last, every native program still wins; =PATH= is left alone, so subprocesses see no change.
+- On Windows it sets =w32-pipe-buffer-size= to 1 MiB, because a large write to a subprocess otherwise spends seconds waiting.
+  + Emacs's own source shows why: the default pipe holds 4 KiB, and each time it fills, Emacs waits up to 20 ms before writing more.
+  + On a hosted runner, Tramp's 1 MiB write over =wslm= fell from 4.43 s to 0.43 s, and 1 MiB into a direct process from 3.06 s to 0.175 s.
+  + Small operations did not change, and 8 MiB gained nothing more.
+  + Emacs reads the variable each time it makes a pipe, so a process started earlier keeps its small pipes. Only =private.el= and host files can start one before this function runs, and every module that starts a process loads after it.
+  + Idle pipes cost nothing measurable: with 20 idle subprocesses, Emacs's working set was 39.9 MB with the setting off and on.
+  + Only data waiting in a pipe takes memory, in the kernel and up to 1 MiB per pipe: 20 full pipes took 21 MB, and gave it back when the processes ended.
+  + The variable exists only on Windows, so the branch below is what guards it. It is a plain =setq=, which loads nothing.
 - It hands over to [[*macOS]] and [[*Android]].
 
 #+begin_src emacs-lisp
@@ -174,6 +182,8 @@ Git for Windows ships `diff', `diff3' and `patch' beside its own `git'."
                      (and git (expand-file-name "../usr/bin" git))
                      git)))))
 
+(defvar w32-pipe-buffer-size)
+
 (defun kittymacs-platform-apply ()
   "Apply the currently configured portable platform defaults."
   (when-let* ((shell (kittymacs--platform-shell)))
@@ -181,6 +191,7 @@ Git for Windows ships `diff', `diff3' and `patch' beside its own `git'."
             explicit-shell-file-name (car shell))
     (setq shell-command-switch (cdr shell)))
   (when (eq system-type 'windows-nt)
+    (setq w32-pipe-buffer-size (* 1024 1024))
     (when-let* ((tools (kittymacs--windows-unix-tools)))
       (add-to-list 'exec-path tools t)))
   (when (eq system-type 'darwin)
@@ -552,6 +563,7 @@ A checker that fails is reported once instead of breaking the buffer."
 - [[file:../tests/kittymacs-platform-tests.el][The platform tests]] run every system's branch on any machine:
   + the shell and the modifiers on macOS, the Keychain, the locale only when missing, the Trash in its three ways, a quiet title-bar sync without a display;
   + Git's Unix tools last on =exec-path= on Windows, and nothing changed without them;
+  + the 1 MiB pipe on Windows, and no such variable set elsewhere;
   + Termux's shell first, the system shell without it, text conversion following Meow;
   + the file manager for each desktop;
   + Ispell told its dictionary before it is asked, a broken checker reported once, never aborting Ispell.
