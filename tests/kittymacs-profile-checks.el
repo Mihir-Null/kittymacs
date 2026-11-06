@@ -19,6 +19,7 @@
 (defconst kittymacs-check-chapter-features
   '((file-tree . kittymacs-treemacs)
     (msys2-fallback . kittymacs-msys2)
+    (wsl-rpc . kittymacs-remote-rpc)
     (home-page . kittymacs-dashboard)
     (org-extras . kittymacs-org-extras)
     (linked-notes . kittymacs-org-roam)
