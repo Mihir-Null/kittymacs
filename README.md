@@ -156,9 +156,9 @@ winget install GNU.Emacs GnuPG.Gpg4win Git.Git BurntSushi.ripgrep.MSVC sharkdp.f
   ```
 
   Never recursively delete a junction or its target: that deletes the clone.
-- **Linux programs run on a WSL2 backend,** while Emacs stays on Windows. Install a distribution with `wsl --install Ubuntu-24.04`, name it as a backend with `:transport wsl` (see [Configure](#configure)), and press `SPC o b`. The `wsl-backend` [Nix template](#nix) sets up its tools, and `SPC o B` says what it has.
+- **Linux programs run on a WSL2 backend,** while Emacs stays on Windows. Install a distribution with `wsl --install Ubuntu-24.04`, name it as a backend with `:transport wsl` (see [Configure](#configure)), and press `SPC o b`. The `wsl-backend` [Nix template](#nix) sets up its tools, and `SPC o B` says what it has. `SPC o e` in one of its buffers opens a terminal in the distribution, on your login shell. In a WSL shell, `kittymacs-open .` opens that folder in Windows Emacs, as `code .` does in VS Code, and starts Emacs if it is not running. It comes with `packages.backend`.
 - **A spell checker and a C compiler** are optional, and kittymacs looks for them on `PATH`. Without a compiler for Tree-sitter grammars, files open in their classic modes.
-- **A fallback for Windows-side files.** A WSL2 backend is the normal way, and where file I/O across WSL would ruin performance, the optional `msys2-fallback` feature offers MSYS2's shell on `SPC o m`, plus its Hunspell and compiler, from `C:\msys64` or `kittymacs-msys2-root`. Each start warns while it is on, and with it off nothing looks for MSYS2. See [its chapter](literate/37-msys2.org).
+- **A fallback for Windows-side files.** A WSL2 backend is the normal way, and where file I/O across WSL would ruin performance, the optional `msys2-fallback` feature offers MSYS2's shell on `SPC o m`, plus its Hunspell and compiler, from `C:\msys64` or `kittymacs-msys2-root`. Each start warns while it is on, and with it off nothing looks for MSYS2. See [its chapter](literate/37-msys2.org). A file under `/mnt/` opened through a WSL backend says it is slow, once, and `SPC o w` reopens it natively.
 - PowerShell is the default shell. The terminal talks to Windows' ConPTY directly, with no POSIX helper.
 
 ### Android
@@ -323,7 +323,7 @@ In Normal state, Meow selects first and acts second: `w` selects a word, `x` a l
           '(("build" :transport ssh :host "build.example.org" :root "~/src/project/")))
   ```
 
-  `SPC o b` opens the project there, and `SPC o B` lists which tools the machine has. `:transport` is `ssh`, `wsl` for a WSL2 distribution from native Windows Emacs, or any other method Tramp offers. Give an ssh machine a key or a `ControlMaster` line in `~/.ssh/config`, because a backend starts its processes directly, and that path cannot ask for a password; `:direct-async nil` turns it off. Two things stop on a remote file so that a dead connection cannot stall Emacs: automatic saving and auto-save files, so save with `C-x C-s`, and a crash loses what you typed since. [The remote chapter](literate/36-remote.org) has the rest.
+  `SPC o b` opens the project there, and `SPC o B` lists which tools the machine has, and what to run for those it lacks. [A backend's environment](literate/36-remote.org) says where its programs' variables come from. A buffer there shows `[name]` in the mode line, with a `?` when nothing is connected, and clicking it, or `SPC o R`, reconnects. `:transport` is `ssh`, `wsl` for a WSL2 distribution from native Windows Emacs, or any other method Tramp offers. Give an ssh machine a key or a `ControlMaster` line in `~/.ssh/config`, because a backend starts its processes directly, and that path cannot ask for a password; `:direct-async nil` turns it off. Two things stop on a remote file so that a dead connection cannot stall Emacs: automatic saving and auto-save files, so save with `C-x C-s`, and a crash loses what you typed since. [The remote chapter](literate/36-remote.org) has the rest.
 - **To change the configuration itself**, edit its chapter in `literate/`, then `SPC C t` to regenerate the Lisp and restart. See [Develop](#develop).
 
 ## Update

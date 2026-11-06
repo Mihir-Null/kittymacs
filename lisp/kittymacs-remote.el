@@ -8,10 +8,12 @@
 (require 'kittymacs-leader)
 
 (defvar agent-shell-path-resolver-function)
+(defvar kittymacs-remote-wsl-method)
 (defvar tramp-methods)
 (defvar tramp-remote-path)
 (declare-function connection-local-set-profile-variables "files-x" (profile variables))
 (declare-function connection-local-set-profiles "files-x" (criteria &rest profiles))
+(declare-function tramp-cleanup-connection "tramp-cmds" (vec &optional keep-debug keep-password keep-processes))
 (declare-function tramp-direct-async-process-p "tramp" (&rest args))
 (declare-function tramp-dissect-file-name "tramp" (name &optional nodefault))
 (declare-function tramp-file-name-host "tramp" (vec))
@@ -124,6 +126,32 @@ PATH is nil where the machine does not have the tool."
     (mapcar (lambda (tool) (cons tool (executable-find tool t)))
             kittymacs-backend-tools)))
 
+(defconst kittymacs-remote-backend-package-tools
+  '("git" "rg" "fd" "direnv" "inotifywait")
+  "Which of `kittymacs-backend-tools' the flake's `packages.backend' installs.")
+
+(defun kittymacs-remote--setup-advice (tools)
+  "Return what to run for what TOOLS, the doctor's alist, lacks, or nil.
+This only says it: nothing here installs anything."
+  (let* ((missing (mapcar #'car (seq-remove #'cdr tools)))
+         (nix (cdr (assoc "nix" tools)))
+         (packaged (seq-filter (lambda (tool) (member tool kittymacs-remote-backend-package-tools))
+                               missing))
+         (others (seq-difference missing (cons "nix" packaged)))
+         (install "nix profile install github:Mihir-Null/kittymacs#backend"))
+    (when (or packaged others)
+      (concat
+       "\nTo get what is missing, on that machine:\n\n"
+       (cond ((not packaged) "")
+             (nix (format "  %s\n\n" install))
+             (t (format "  %s\n\nfrom its package manager, or, with Nix, which it does not have yet:\n\n  %s\n\n"
+                        (string-join packaged " ") install)))
+       (if others
+           (format "Those are separate: %s\n\n" (string-join others " "))
+         "")
+       "Tramp reads the machine's PATH once per connection, so then reconnect with\n"
+       "M-x tramp-cleanup-connection.\n"))))
+
 (defun kittymacs-backend-doctor (name)
   "Report which tools the backend called NAME has, and return them as an alist."
   (interactive (list (kittymacs-remote--read-backend)))
@@ -139,11 +167,60 @@ PATH is nil where the machine does not have the tool."
       (princ (format "Project  %s (%s)\n" root (if exists "exists" "MISSING")))
       (princ (format "Processes start %s\n\n" (if direct "directly" "through Tramp's shell")))
       (pcase-dolist (`(,tool . ,path) tools)
-        (princ (format "%-20s %s\n" tool (or path "not found")))))
+        (princ (format "%-20s %s\n" tool (or path "not found"))))
+      (when-let* ((advice (kittymacs-remote--setup-advice tools)))
+        (princ advice)))
     tools))
+
+(defun kittymacs-backend-reconnect (name)
+  "Drop the connection to the backend called NAME, and open a new one.
+Interactively, NAME is this buffer's backend, or else one you choose."
+  (interactive (list (or (kittymacs-remote--buffer-backend)
+                         (kittymacs-remote--read-backend))))
+  (let ((root (kittymacs-backend-root name)))
+    (kittymacs-remote--apply-backend name)
+    (tramp-cleanup-connection (tramp-dissect-file-name root))
+    (unless (file-directory-p root)
+      (user-error "Backend %s has no directory %s" name root))
+    (message "Reconnected to %s" name)))
 
 (keymap-set kittymacs-open-map "b" (cons "backend: open its project" #'kittymacs-backend-connect))
 (keymap-set kittymacs-open-map "B" (cons "backend: what it has" #'kittymacs-backend-doctor))
+(keymap-set kittymacs-open-map "R" (cons "backend: reconnect" #'kittymacs-backend-reconnect))
+(defun kittymacs-remote--prefix (backend)
+  "Return the start of a file name on BACKEND, without looking anything up."
+  (let ((transport (or (plist-get backend :transport) 'ssh)))
+    (format "/%s:%s:"
+            (if (eq transport 'wsl) kittymacs-remote-wsl-method transport)
+            (or (plist-get backend :host) ""))))
+
+(defun kittymacs-remote--buffer-backend ()
+  "Return the name of this buffer's backend, or nil.  It never connects."
+  (when-let* ((kittymacs-backends)
+              (remote (and default-directory (file-remote-p default-directory))))
+    (car (seq-find (lambda (backend)
+                     (equal remote (kittymacs-remote--prefix (cdr backend))))
+                   kittymacs-backends))))
+
+(defvar kittymacs-remote-mode-line-map
+  (let ((map (make-sparse-keymap)))
+    (keymap-set map "<mode-line> <mouse-1>" #'kittymacs-backend-reconnect)
+    map)
+  "The keys of the backend's name in the mode line.")
+
+(defun kittymacs-remote-mode-line ()
+  "Return the mode line's text for this buffer's backend, or nil.
+It never connects."
+  (when-let* ((name (kittymacs-remote--buffer-backend)))
+    (let ((connected (file-remote-p default-directory nil t)))
+      (propertize (format " [%s%s]" name (if connected "" "?"))
+                  'face (unless connected 'warning)
+                  'mouse-face 'mode-line-highlight
+                  'local-map kittymacs-remote-mode-line-map
+                  'help-echo (format "Backend %s, %s.  mouse-1: reconnect" name
+                                     (if connected "connected" "not connected"))))))
+
+(add-to-list 'mode-line-misc-info '(:eval (kittymacs-remote-mode-line)))
 (defconst kittymacs-remote-wsl-method "wslm"
   "The Tramp method behind the `wsl' transport.")
 
@@ -171,6 +248,64 @@ PATH is nil where the machine does not have the tool."
     (user-error "A wsl backend needs :host, the distribution's name in `wsl --list'"))
   (kittymacs-remote--add-wsl-method)
   (kittymacs-remote--tramp-root kittymacs-remote-wsl-method backend))
+(defvar ghostel-shell)
+(defvar ghostel-tramp-shells)
+(defvar ghostel-use-native-pty)
+
+(defun kittymacs--remote-wsl-terminal (original)
+  "Call ORIGINAL, which starts a terminal, running `wsl.exe' for a `wsl' backend.
+Anywhere else it calls ORIGINAL unchanged, after one test that never connects."
+  (if (not (and ghostel-use-native-pty
+                (equal (file-remote-p default-directory 'method)
+                       kittymacs-remote-wsl-method)))
+      (funcall original)
+    (let ((ghostel-shell (list "wsl.exe"
+                               "-d" (file-remote-p default-directory 'host)
+                               "--cd" (file-local-name (expand-file-name default-directory))))
+          (default-directory temporary-file-directory))
+      (funcall original))))
+
+(with-eval-after-load 'ghostel
+  (advice-add 'ghostel--start-process :around #'kittymacs--remote-wsl-terminal))
+(with-eval-after-load 'ghostel-shell
+  (add-to-list 'ghostel-tramp-shells (list kittymacs-remote-wsl-method 'login-shell)))
+(defvar kittymacs-remote-windows-file-note nil
+  "What the message about a Windows-side file adds, or nil.")
+
+(defvar kittymacs-remote--windows-files-noted nil
+  "The Windows-side files this session has already spoken about.")
+
+(defun kittymacs-remote--windows-file (file)
+  "Return what Windows calls FILE, a name on a WSL backend under /mnt/, or nil.
+This reads the name, and never connects."
+  (when (string-match (format "\\`/%s:[^:]*:/mnt/\\([a-z]\\)\\(/.*\\)?\\'"
+                              (regexp-quote kittymacs-remote-wsl-method))
+                      file)
+    (concat (match-string 1 file) ":" (or (match-string 2 file) "/"))))
+
+(defun kittymacs--remote-note-windows-file ()
+  "Say once that this buffer's file would be quicker opened on Windows."
+  (when-let* ((buffer-file-name)
+              (native (kittymacs-remote--windows-file buffer-file-name)))
+    (unless (member buffer-file-name kittymacs-remote--windows-files-noted)
+      (push buffer-file-name kittymacs-remote--windows-files-noted)
+      (message "This file is on Windows, and reading it through WSL is slow.  %s reopens it as %s.%s"
+               (substitute-command-keys "\\[kittymacs-remote-reopen-natively]")
+               native
+               (if kittymacs-remote-windows-file-note
+                   (concat "  " kittymacs-remote-windows-file-note)
+                 "")))))
+
+(defun kittymacs-remote-reopen-natively ()
+  "Replace this buffer's Windows-side file with the native file."
+  (interactive)
+  (let ((native (and buffer-file-name (kittymacs-remote--windows-file buffer-file-name))))
+    (unless native
+      (user-error "This buffer is not a Windows-side file on a WSL backend"))
+    (find-alternate-file native)))
+
+(add-hook 'find-file-hook #'kittymacs--remote-note-windows-file)
+(keymap-set kittymacs-open-map "w" (cons "reopen a Windows file natively" #'kittymacs-remote-reopen-natively))
 (defun kittymacs-remote--apply-backend (name)
   "Set the connection-local variables of the backend called NAME."
   (let* ((backend (kittymacs-remote--backend name))

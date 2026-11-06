@@ -15,6 +15,9 @@ on:
       - literate/36-remote.org
       - lisp/kittymacs-platform.el
       - lisp/kittymacs-remote.el
+      - literate/34-terminal.org
+      - lisp/kittymacs-terminal.el
+      - nix/kittymacs-open.sh
 
 permissions:
   contents: read
@@ -61,8 +64,10 @@ jobs:
           KITTYMACS_TEST_PACKAGES: ${{ github.workspace }}/var/elpa
           KITTYMACS_TEST_PROFILE: full
         run: just install
+      # Past the limit in run.ps1, so a run that its kill cannot end still stops here.
       - name: Connect, run a process, open a file
         shell: pwsh
+        timeout-minutes: 20
         run: tests/wsl-backend/run.ps1
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         if: always()

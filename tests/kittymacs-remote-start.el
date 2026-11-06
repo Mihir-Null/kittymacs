@@ -25,6 +25,9 @@
 (defvar kittymacs-remote-start-results nil "The alist this scenario reports.")
 (defvar kittymacs-remote-start-scenario (intern (getenv "KITTYMACS_REMOTE_SCENARIO")))
 (defvar tramp-connection-timeout)
+(defvar ghostel-buffer-name)
+(defvar eshell-buffer-name)
+(defvar ghostel-macos-login-shell)
 (defconst kittymacs-remote-start-limit 3 "Seconds a probe may take before it counts as stalled.")
 
 (defun kittymacs-remote-start-report (key value)
@@ -210,7 +213,21 @@ again later, and one that does not is gone."
                 doom-modeline-env--command-args '("--version")
                 doom-modeline-env--parser #'identity
                 doom-modeline--project-root nil)
-          (doom-modeline-update-env))))
+          (doom-modeline-update-env)))
+      ;; Directly: `format-mode-line' returns nothing in batch.
+      (kittymacs-remote-start-report
+       'status-installed (and (member '(:eval (kittymacs-remote-mode-line)) mode-line-misc-info) t))
+      (kittymacs-remote-start-probe 'status (kittymacs-remote-mode-line))
+      (let ((default-directory (concat (file-remote-p default-directory) "~/"))
+            (kittymacs-backends
+             `(("home" :transport kmock :host ,(file-remote-p default-directory 'host) :root "~/"))))
+        (kittymacs-remote-start-probe 'status-home (kittymacs-remote-mode-line)))
+      (kittymacs-remote-start-value 'reconnect-hung
+        (kittymacs-backend-reconnect "here")
+        (let ((default-directory (kittymacs-backend-root "here")))
+          (kittymacs-remote-mode-line)))
+      (kittymacs-remote-start-probe 'windows-file
+        (kittymacs-remote-start--windows-file-notes "/wslm:Fake-24.04:/mnt/c/hung.txt")))
     (kittymacs-remote-fixture-resume)))
 
 (defun kittymacs-remote-start--wait (predicate)
@@ -250,6 +267,53 @@ while True:
 (defun kittymacs-remote-start--tool ()
   "Install a program in the Nix profile of the fixture's remote side."
   (kittymacs-remote-fixture--script ".nix-profile/bin/kfake" "echo fake-tool-ran"))
+
+(defun kittymacs-remote-start--windows-file-notes (file)
+  "Run the note for FILE twice, as opening it twice would, and return what it said.
+Only the note: other functions on `find-file-hook' read the file, as they may."
+  (let (said)
+    (cl-letf (((symbol-function 'message)
+               (lambda (format-string &rest args)
+                 (push (apply #'format format-string args) said))))
+      (with-temp-buffer
+        (setq buffer-file-name file)
+        (kittymacs--remote-note-windows-file)
+        (kittymacs--remote-note-windows-file)
+        (setq buffer-file-name nil)))
+    said))
+
+(defun kittymacs-remote-start--windows-file ()
+  "A file under /mnt/ on a WSL backend: one message, and no connection."
+  (kittymacs-remote-start-value 'windows-file-names
+    (mapcar #'kittymacs-remote--windows-file
+            '("/wslm:Fake-24.04:/mnt/c/Users/me/a.txt"
+              "/wslm:Fake-24.04:/mnt/d"
+              "/wslm:Fake-24.04:/mnt/wsl/a"
+              "/wslm:Fake-24.04:/home/me/mnt/c/a"
+              "/ssh:build:/mnt/c/a"
+              "/mnt/c/a")))
+  (kittymacs-remote-start-value 'windows-file-hook
+    (and (memq #'kittymacs--remote-note-windows-file find-file-hook) t))
+  (kittymacs-remote-start-value 'windows-file-said
+    (kittymacs-remote-start--windows-file-notes "/wslm:Fake-24.04:/mnt/c/once.txt"))
+  (kittymacs-remote-start-value 'windows-file-silent
+    (kittymacs-remote-start--windows-file-notes "/wslm:Fake-24.04:/home/me/a.txt"))
+  (kittymacs-remote-start-value 'windows-file-note
+    (let ((kittymacs-remote-windows-file-note "An extra word."))
+      (kittymacs-remote-start--windows-file-notes "/wslm:Fake-24.04:/mnt/c/noted.txt")))
+  (kittymacs-remote-start-value 'windows-file-reopen
+    (let ((file (make-temp-file "kittymacs-windows-")))
+      (cl-letf (((symbol-function 'find-alternate-file)
+                 (lambda (name) (setq file (list 'reopened name)))))
+        (with-temp-buffer
+          (setq buffer-file-name "/wslm:Fake-24.04:/mnt/c/a.txt")
+          (kittymacs-remote-reopen-natively)
+          (setq buffer-file-name nil)))
+      file))
+  (kittymacs-remote-start-value 'windows-file-reopen-elsewhere
+    (with-temp-buffer
+      (condition-case _ (kittymacs-remote-reopen-natively)
+        (user-error 'refused)))))
 
 (defun kittymacs-remote-start--local ()
   "Report what the guards do to a local buffer: nothing."
@@ -322,11 +386,55 @@ while True:
         (condition-case _ (file-exists-p name)
           (error nil))))))
 
+(defun kittymacs-remote-start--terminal ()
+  "What `SPC o e' opens: on a remote machine, that machine's, in a buffer of its own."
+  (kittymacs-remote-start-value 'terminal-eshell
+    ;; The local one first, as it would be: Eshell then has a buffer it could reuse.
+    (let* ((kittymacs-terminal-ghostel nil)
+           (open (lambda (directory)
+                   (with-temp-buffer
+                     (setq default-directory directory)
+                     (kittymacs-terminal-open))))
+           (local (funcall open temporary-file-directory))
+           (remote (funcall open (kittymacs-backend-root "here"))))
+      (list (buffer-name local) (buffer-name remote)
+            (buffer-local-value 'default-directory remote))))
+  (when kittymacs-terminal-ghostel
+    (kittymacs-remote-start-value 'terminal-slots
+      (cl-letf (((symbol-function 'ghostel)
+                 (lambda (&optional _) (bound-and-true-p ghostel-buffer-name))))
+        (list (let ((default-directory temporary-file-directory)
+                    (ghostel-buffer-name "the-local-name"))
+                (kittymacs-terminal-open))
+              (let ((default-directory (kittymacs-backend-root "here")))
+                (kittymacs-terminal-open))))))
+  (when (locate-library "ghostel")
+    (require 'ghostel)
+    (kittymacs-remote-start-value 'terminal-login-shell
+      (assoc kittymacs-remote-wsl-method ghostel-tramp-shells))
+    ;; The real start, up to the spawn, which needs the native module.
+    (let* ((bin (kittymacs-remote-fixture-wsl-exe))
+           (exec-path (cons bin exec-path))
+           (root (kittymacs-backend-root "wsl"))
+           ;; It wraps a local shell in login(1) on a Mac, and `wsl.exe' is never there.
+           (ghostel-macos-login-shell nil)
+           (spawn (lambda (program args _environment remote)
+                    (list program args remote default-directory))))
+      (cl-letf (((symbol-function 'ghostel--spawn-pty) spawn))
+        (with-temp-buffer
+          (setq default-directory root)
+          (kittymacs-remote-start-value 'terminal-wsl-spawn (ghostel--start-process))
+          (kittymacs-remote-start-value 'terminal-wsl-directory default-directory)
+          (setq default-directory (kittymacs-backend-root "here"))
+          (kittymacs-remote-start-value 'terminal-other-spawn (ghostel--start-process)))))))
+
 (defun kittymacs-remote-start--working ()
   "A connection that answers: backends, and each program a person would run."
   (kittymacs-remote-start--local)
+  (kittymacs-remote-start--windows-file)
   (kittymacs-remote-start--project)
   (kittymacs-remote-start--tool)
+  (kittymacs-remote-start--terminal)
   (kittymacs-remote-fixture--script "project/sub/kfake-here" "echo here")
   (kittymacs-remote-start-value 'backend-root (kittymacs-backend-root "here"))
   (kittymacs-remote-start-value 'backend-tramp-method (kittymacs-backend-root "tramp"))
@@ -365,6 +473,21 @@ while True:
       (kittymacs-backend-doctor "here")))
   (kittymacs-remote-start-value 'doctor-buffer
     (with-current-buffer "*kittymacs backend*" (buffer-string)))
+  (kittymacs-remote-start-value 'setup-advice
+    (mapcar
+     #'kittymacs-remote--setup-advice
+     '((("git" . "/g") ("nix" . "/n"))
+       (("git" . "/g") ("rg") ("nix" . "/n") ("claude-agent-acp"))
+       (("git" . "/g") ("rg") ("fd") ("nix") ("claude-agent-acp"))
+       (("git" . "/g") ("nix") ("claude-agent-acp"))
+       (("git" . "/g") ("nix")))))
+  (kittymacs-remote-start-value 'own-profile
+    (connection-local-set-profile-variables
+     'kittymacs-test-settings '((shell-command-switch . "-lc")))
+    (connection-local-set-profiles
+     '(:application tramp :protocol "kmock" :machine "elsewhere") 'kittymacs-test-settings)
+    (let ((default-directory "/kmock:elsewhere:/"))
+      (with-connection-local-variables shell-command-switch)))
   (kittymacs-remote-start-value 'connect
     (let ((project-switch-commands 'kittymacs-remote-start--opened)
           opened)
@@ -373,6 +496,29 @@ while True:
         (lambda () (interactive) (setq opened project-current-directory-override)))
       (kittymacs-backend-connect "here")
       opened))
+  (kittymacs-remote-start-value 'status-names
+    (let ((here (kittymacs-backend-root "here"))
+          (status (lambda (directory)
+                    (let ((default-directory directory))
+                      (substring-no-properties (or (kittymacs-remote-mode-line) "none"))))))
+      (list (funcall status here)
+            (funcall status "/kmock:not-a-backend:/")
+            (funcall status "/ssh:nobody-connected-here:/")
+            (funcall status temporary-file-directory)
+            (let ((kittymacs-backends nil))
+              (funcall status here))
+            (let ((kittymacs-backends '(("never" :transport wsl :host "Never-24.04" :root "/"))))
+              (funcall status "/wslm:Never-24.04:/")))))
+  (kittymacs-remote-start-value 'reconnect
+    (let* ((root (kittymacs-backend-root "here"))
+           (vec (tramp-dissect-file-name root))
+           (before (tramp-get-connection-process vec)))
+      (kittymacs-backend-reconnect "here")
+      (let ((after (tramp-get-connection-process vec)))
+        (list (process-live-p before) (and (process-live-p after) t) (eq before after)))))
+  (kittymacs-remote-start-value 'reconnect-typo
+    (condition-case err (kittymacs-backend-reconnect "typo")
+      (user-error 'refused)))
   (kittymacs-remote-start-value 'connect-typo
     (condition-case err (kittymacs-backend-connect "typo")
       (user-error 'refused)))
@@ -469,7 +615,16 @@ while True:
   ('working (kittymacs-remote-start--working))
   ('unreachable
    (kittymacs-remote-start-value 'projects (project-known-project-roots))
-   (kittymacs-remote-start-value 'recentf (bound-and-true-p recentf-list))))
+   (kittymacs-remote-start-value 'recentf (bound-and-true-p recentf-list))
+   ;; The machine that never answers: the status must say so without a login.
+   (let ((default-directory "/khang:unreachable:/")
+         (kittymacs-backends '(("gone" :transport khang :host "unreachable" :root "/"))))
+     (kittymacs-remote-start-value 'status-unreachable
+       (substring-no-properties (kittymacs-remote-mode-line))))
+   ;; The method whose login never answers, as if it were the WSL one.
+   (let ((kittymacs-remote-wsl-method "khang"))
+     (kittymacs-remote-start-value 'windows-file-unreachable
+       (kittymacs-remote-start--windows-file-notes "/khang:unreachable:/mnt/c/a.txt")))))
 
 (kittymacs-remote-start-report 'login-ran (file-exists-p (kittymacs-remote-fixture-login-marker)))
 ;; Now ask on purpose, so the test knows this machine really would have stalled.

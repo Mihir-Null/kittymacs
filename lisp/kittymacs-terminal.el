@@ -20,6 +20,10 @@
 (declare-function ghostel-readonly-enter "ghostel" ())
 (declare-function ghostel "ghostel" (&optional arg))
 (declare-function ghostel-project "ghostel" (&optional arg))
+;; Without these a `let' would bind them lexically, and neither program would see
+;; the name, when the first terminal of a session is on another machine.
+(defvar ghostel-buffer-name)
+(defvar eshell-buffer-name)
 ;; The Eshell fallback below: `kittymacs-shell' is loaded before this module
 ;; by `init.el', but this module does not require it.
 (declare-function kittymacs-eshell-project "kittymacs-shell" ())
@@ -155,15 +159,26 @@ The buffer becomes read-only, so Meow's grammar can select its output."
     (user-error "The terminal needs its native module: %s"
                 (substitute-command-keys "\\[ghostel-download-module]"))))
 
+(defun kittymacs-terminal--remote-name (program)
+  "Return the name of PROGRAM's buffer on this buffer's machine, or nil if local.
+This never connects."
+  (when-let* ((remote (file-remote-p default-directory)))
+    (format "*%s@%s*" program (substring remote 1 -1))))
+
 (defun kittymacs-terminal-open (&optional arg)
-  "Open a terminal.  With prefix ARG, open another one.
+  "Open a terminal on this buffer's machine.  With prefix ARG, open another one.
 Ghostel offers to fetch its native module the first time; declining that
 offer leaves the terminal unavailable, so say so in words.  Where ghostel
 is not used at all, Eshell answers this key instead."
   (interactive "P")
   (if (not kittymacs-terminal-ghostel)
-      (eshell arg)
-    (condition-case error (ghostel arg)
+      (if-let* ((name (kittymacs-terminal--remote-name "eshell")))
+          (let ((eshell-buffer-name name)) (eshell arg))
+        (eshell arg))
+    (condition-case error
+        (if-let* ((name (kittymacs-terminal--remote-name "ghostel")))
+            (let ((ghostel-buffer-name name)) (ghostel arg))
+          (ghostel arg))
       (void-function (kittymacs-terminal--without-module error)))))
 
 (defun kittymacs-terminal-project (&optional arg)

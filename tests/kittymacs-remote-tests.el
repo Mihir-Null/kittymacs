@@ -203,6 +203,100 @@ job in .github/workflows/wsl-backend.yml covers them on real WSL2."
   (should (equal (kittymacs-remote-test--value 'working 'wsl-direct-process)
                  '(0 "wsl-direct-ran\n"))))
 
+(ert-deftest kittymacs-remote-terminal-opens-on-that-machine ()
+  "A local terminal already open must not answer the key in a remote buffer."
+  (pcase-let ((`(,local ,remote ,directory)
+               (kittymacs-remote-test--value 'working 'terminal-eshell)))
+    (should (equal local "*eshell*"))
+    (should (string-prefix-p "*eshell@kmock:" remote))
+    (should (string-prefix-p "/kmock:" directory)))
+  (when (kittymacs-remote-test--ran-p 'working 'terminal-slots)
+    (pcase-let ((`(,local ,remote) (kittymacs-remote-test--value 'working 'terminal-slots)))
+      (should (equal local "the-local-name"))
+      (should (string-prefix-p "*ghostel@kmock:" remote)))))
+
+(ert-deftest kittymacs-remote-wsl-terminal-runs-wsl-exe ()
+  "The real `ghostel--start-process', up to the spawn: wsl.exe, local, in the directory.
+The job in .github/workflows/wsl-backend.yml runs it against real WSL2."
+  (skip-unless (kittymacs-remote-test--ran-p 'working 'terminal-wsl-spawn))
+  (pcase-let ((`(,program ,args ,remote ,directory)
+               (kittymacs-remote-test--value 'working 'terminal-wsl-spawn)))
+    (should (equal program "wsl.exe"))
+    (should (equal args '("-d" "Fake-24.04" "--cd" "/tmp/")))
+    (should-not remote)
+    (should-not (file-remote-p directory)))
+  ;; The buffer stays on the backend, so finding a file there looks in Linux.
+  (should (equal (kittymacs-remote-test--value 'working 'terminal-wsl-directory)
+                 "/wslm:Fake-24.04:/tmp/"))
+  ;; No other machine runs it: a kmock terminal still spawns through Tramp.
+  (should (nth 2 (kittymacs-remote-test--value 'working 'terminal-other-spawn)))
+  ;; If Tramp ever starts it: the login shell, not `:shell' or /bin/sh.
+  (should (equal (kittymacs-remote-test--value 'working 'terminal-login-shell)
+                 '("wslm" login-shell))))
+(ert-deftest kittymacs-remote-status-names-the-backend ()
+  (should (equal (kittymacs-remote-test--value 'working 'status-names)
+                 ;; Named and connected; no backend's; another; local; no backends set;
+                 ;; a backend this Emacs has not connected to.
+                 '(" [here]" "none" "none" "none" "none" " [never?]"))))
+
+(ert-deftest kittymacs-remote-status-never-connects ()
+  (should (equal (kittymacs-remote-test--value 'unreachable 'status-unreachable) " [gone?]"))
+  (should-not (kittymacs-remote-test--value 'unreachable 'login-ran)))
+
+(ert-deftest kittymacs-remote-status-does-not-wait-on-a-hung-connection ()
+  (should (kittymacs-remote-test--value 'hung 'status-installed))
+  (should (eq (kittymacs-remote-test--value 'hung 'status) 'done))
+  (should (eq (kittymacs-remote-test--value 'hung 'status-home) 'done)))
+
+(ert-deftest kittymacs-remote-reconnect-replaces-the-connection ()
+  (should (equal (kittymacs-remote-test--value 'working 'reconnect) '(nil t nil)))
+  (should (eq (kittymacs-remote-test--value 'working 'reconnect-typo) 'refused)))
+
+(ert-deftest kittymacs-remote-reconnect-gets-out-of-a-hung-connection ()
+  (should (equal (kittymacs-remote-test--value 'hung 'reconnect-hung) " [here]")))
+(ert-deftest kittymacs-remote-windows-file-reads-the-name ()
+  (should (equal (kittymacs-remote-test--value 'working 'windows-file-names)
+                 '("c:/Users/me/a.txt" "d:/" nil nil nil nil))))
+
+(ert-deftest kittymacs-remote-windows-file-speaks-once ()
+  (should (kittymacs-remote-test--value 'working 'windows-file-hook))
+  (let ((said (kittymacs-remote-test--value 'working 'windows-file-said)))
+    (should (= (length said) 1))
+    (should (string-search "slow" (car said)))
+    (should (string-search "c:/once.txt" (car said))))
+  (should-not (kittymacs-remote-test--value 'working 'windows-file-silent))
+  (should (string-search "An extra word."
+                         (car (kittymacs-remote-test--value 'working 'windows-file-note)))))
+
+(ert-deftest kittymacs-remote-windows-file-reopens-when-asked ()
+  (should (equal (kittymacs-remote-test--value 'working 'windows-file-reopen)
+                 '(reopened "c:/a.txt")))
+  (should (eq (kittymacs-remote-test--value 'working 'windows-file-reopen-elsewhere) 'refused)))
+
+(ert-deftest kittymacs-remote-windows-file-check-does-not-connect ()
+  (should (= (length (kittymacs-remote-test--value 'unreachable 'windows-file-unreachable)) 1))
+  (should-not (kittymacs-remote-test--value 'unreachable 'login-ran))
+  (should (eq (kittymacs-remote-test--value 'hung 'windows-file) 'done)))
+(ert-deftest kittymacs-remote-doctor-says-what-to-run ()
+  "It reports the machine's tools and what to run, and it runs nothing."
+  (let ((buffer (kittymacs-remote-test--value 'working 'doctor-buffer)))
+    (should (string-search "no-such-tool-anywhere" buffer))
+    (should (string-search "Those are separate: no-such-tool-anywhere" buffer)))
+  (pcase-let ((`(,nothing ,with-nix ,without-nix ,separate-only ,only-nix)
+               (kittymacs-remote-test--value 'working 'setup-advice)))
+    (should-not nothing)
+    (should (string-search "nix profile install github:Mihir-Null/kittymacs#backend" with-nix))
+    (should (string-search "separate: claude-agent-acp" with-nix))
+    ;; Without Nix, a plain list comes first, and Nix itself is not on it.
+    (should (string-search "  rg fd\n" without-nix))
+    (should-not (string-search "  rg fd nix" without-nix))
+    (should (string-search "does not have yet" without-nix))
+    (should-not (string-search "nix profile" separate-only))
+    (should-not only-nix)))
+
+(ert-deftest kittymacs-remote-own-profile-applies-as-documented ()
+  (should (equal (kittymacs-remote-test--value 'working 'own-profile) "-lc")))
+
 (ert-deftest kittymacs-remote-connect-opens-the-project ()
   (let ((opened (kittymacs-remote-test--value 'working 'connect)))
     (should (stringp opened))
