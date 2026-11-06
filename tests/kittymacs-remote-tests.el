@@ -254,6 +254,16 @@ The job in .github/workflows/wsl-backend.yml runs it against real WSL2."
 
 (ert-deftest kittymacs-remote-reconnect-gets-out-of-a-hung-connection ()
   (should (equal (kittymacs-remote-test--value 'hung 'reconnect-hung) " [here]")))
+(ert-deftest kittymacs-remote-a-new-file-gets-unix-newlines ()
+  (should (equal (kittymacs-remote-test--value 'working 'newlines-new) "one\ntwo\n"))
+  (should (equal (kittymacs-remote-test--value 'working 'newlines-named) "one\n")))
+
+(ert-deftest kittymacs-remote-an-existing-file-keeps-its-newlines ()
+  (should (equal (kittymacs-remote-test--value 'working 'newlines-existing) "a\r\nb\r\nc\r\n")))
+
+(ert-deftest kittymacs-remote-a-local-file-keeps-the-default-newlines ()
+  (should (equal (kittymacs-remote-test--value 'working 'newlines-local) "one\r\n")))
+
 (ert-deftest kittymacs-remote-windows-file-reads-the-name ()
   (should (equal (kittymacs-remote-test--value 'working 'windows-file-names)
                  '("c:/Users/me/a.txt" "d:/" nil nil nil nil))))
