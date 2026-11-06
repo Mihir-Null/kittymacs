@@ -244,7 +244,8 @@ nix-matrix-on name *FLAGS:
         echo "FAIL {{name}} mustFail.$case evaluated"
         exit 1
       fi
-      grep -F 'and programs.kittymacs.package is Emacs' "$errors" > /dev/null
+      says=$(evaluate --raw "./nix/eval-matrix#mustFailSays.$case")
+      grep -F "$says" "$errors" > /dev/null
       echo "ok {{name}} mustFail.$case"
     done
     version=$(evaluate --raw ./nix/eval-matrix#defaultEmacsVersion)
