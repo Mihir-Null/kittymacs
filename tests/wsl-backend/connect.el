@@ -207,9 +207,11 @@ Tramp suspends timers while it waits unless told not to, and the limit is a time
           (tramp-remote-process-environment
            (cons "KITTYMACS_LIST_VAR=list-value" tramp-remote-process-environment)))
      (make-directory (concat remote "~/from-profile") t)
-     (with-temp-file (concat remote "~/.profile")
-       (insert "export KITTYMACS_PROFILE_VAR=profile-value\n"
-               "PATH=\"$HOME/from-profile:$PATH\"\nexport PATH\n"))
+     ;; Unix line ends: a file this Emacs writes on Windows would get CRLF.
+     (let ((coding-system-for-write 'utf-8-unix))
+       (with-temp-file (concat remote "~/.profile")
+         (insert "export KITTYMACS_PROFILE_VAR=profile-value\n"
+                 "PATH=\"$HOME/from-profile:$PATH\"\nexport PATH\n")))
      (connection-local-set-profile-variables
       'wsl-backend-settings
       `((tramp-remote-process-environment
@@ -234,14 +236,6 @@ Tramp suspends timers while it waits unless told not to, and the limit is a time
                (process-send-string process (concat command "; exit\n"))
                (wsl-backend-wait-for process "done" 30)))
             (reports (mapcar #'wsl-backend-environment-report (list through-shell direct shell))))
-       (message "environment: process-file saw %S; ~/.profile is %S; sh -l says %S"
-                through-shell
-                (with-temp-buffer
-                  (insert-file-contents (concat remote "~/.profile"))
-                  (buffer-string))
-                (with-temp-buffer
-                  (process-file "/bin/sh" nil t nil "-l" "-c" "echo \"$HOME $PATH\"")
-                  (buffer-string)))
        ;; The chapter's table: a change in Tramp must show here.
        (dolist (report reports)
          (wsl-backend-expect "profile=no list=yes connection-local=no path=yes" report))
@@ -255,6 +249,21 @@ Tramp suspends timers while it waits unless told not to, and the limit is a time
      (wsl-backend-expect "does not have yet" text)
      (wsl-backend-expect "nix profile install" text)
      (wsl-backend-expect "rg fd direnv inotifywait" text))))
+
+;; For the record: what a new file on the backend gets from Emacs on Windows.
+(wsl-backend-check
+ "line ends of a new file on the backend, for the record" 60
+ (lambda ()
+   (let* ((file (wsl-backend-file "line-ends"))
+          (buffer (find-file-noselect file)))
+     (with-current-buffer buffer
+       (insert "one\ntwo\n")
+       (save-buffer)
+       (kill-buffer))
+     (let ((default-directory (wsl-backend-root)))
+       (with-temp-buffer
+         (process-file "/usr/bin/od" nil t nil "-c" "line-ends")
+         (string-trim (buffer-string)))))))
 
 ;; This check would pass if connecting could never fail.  So a distribution that
 ;; does not exist must not look like one that answers.
