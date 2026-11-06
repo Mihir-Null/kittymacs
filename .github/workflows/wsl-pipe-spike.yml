@@ -1,0 +1,51 @@
+name: WSL pipe spike
+
+# A spike, not to merge.  Is stdout through wsl.exe, from native Windows Emacs, fit
+# for length-prefixed binary frames, and how fast can any helper over that pipe be?
+# It runs only code in tests/wsl-pipe-spike, and no RPC helper.
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - .github/workflows/wsl-pipe-spike.yml
+      - tests/wsl-pipe-spike/**
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  pipe:
+    name: Frames through wsl.exe
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: Vampire/setup-wsl@4c48163d9f981914dd8caa0fc335fe19cca5bff4 # v7.2.0
+        with:
+          distribution: Ubuntu-24.04
+          wsl-version: 2
+      # GNU's own Windows build, as ci.yml installs it.
+      - name: Install Emacs from GNU
+        shell: bash
+        run: |
+          tmp=$(cygpath -u "$RUNNER_TEMP")
+          curl -sSfL -o "$tmp/emacs.zip" \
+            "https://ftp.gnu.org/gnu/emacs/windows/emacs-31/emacs-31.1.zip"
+          7z x -y "-o$(cygpath -w "$tmp/emacs")" "$(cygpath -w "$tmp/emacs.zip")" > /dev/null
+          emacs_exe=$(find "$tmp/emacs" -path '*/bin/emacs.exe' | head -n 1)
+          test -n "$emacs_exe"
+          cygpath -w "$(dirname "$emacs_exe")" >> "$GITHUB_PATH"
+      - name: Measure
+        shell: pwsh
+        timeout-minutes: 22
+        run: tests/wsl-pipe-spike/run.ps1
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        if: always()
+        with:
+          name: wsl-pipe-results
+          path: wsl-pipe-results
