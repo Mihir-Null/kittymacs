@@ -15,7 +15,7 @@
 
 param(
     [string]$Distribution = 'Ubuntu-24.04',
-    [string[]]$Transports = @('wsl', 'sshx', 'ssh'),
+    [string[]]$Transports = @('wslm', 'sshtt', 'sshx', 'wsl', 'ssh'),
     [string]$Results = 'wsl-spike-results',
     [string]$Packages = 'var/elpa',
     [int]$LimitMinutes = 30
