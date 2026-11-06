@@ -20,6 +20,7 @@
 (defvar kittymacs-lisp-dir)
 (defvar kittymacs-var-dir)
 (defvar package-alist)
+(defvar package-activated-list)
 (defvar kittymacs-language-packages)
 (defvar kittymacs-notebooks-jupyter)
 (defvar kittymacs-exwm)
@@ -35,6 +36,7 @@ Nothing the older options set is bound, and no machine has run kittymacs yet."
          (kittymacs-features--enabled 'unresolved)
          (kittymacs-features--profile nil)
          (package-alist nil)
+         (package-activated-list nil)
          (system-type 'gnu/linux)
          (window-system nil)
          (,warnings nil))
@@ -235,6 +237,11 @@ Nothing the older options set is bound, and no machine has run kittymacs yet."
       (should (string-match-p "No profile is chosen" (car warnings)))
       (should (string-search "SPC C o" (car warnings))))
     (should-not (file-exists-p stamp))
+    ;; A start from the quickstart file activates packages and leaves the list empty.
+    (kittymacs-features-test-with ((package-activated-list '(meow))) warnings
+      (should (eq (kittymacs-features-profile) 'full))
+      (should (= (length warnings) 1)))
+    (should-not (file-exists-p stamp))
     (with-temp-file (expand-file-name "private.el" kittymacs-lisp-dir) (insert ";; Mine.\n"))
     (kittymacs-features-test-with () warnings
       (should (eq (kittymacs-features-profile) 'full))
@@ -260,6 +267,10 @@ Nothing the older options set is bound, and no machine has run kittymacs yet."
       (should-not warnings))
     (should (file-exists-p stamp))
     (kittymacs-features-test-with ((package-alist '((meow)))) warnings
+      (should (eq (kittymacs-features-profile) 'minimal))
+      (should-not warnings))
+    ;; The same second start, from a quickstart file.
+    (kittymacs-features-test-with ((package-activated-list '(meow))) warnings
       (should (eq (kittymacs-features-profile) 'minimal))
       (should-not warnings))))
 

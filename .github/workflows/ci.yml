@@ -9,8 +9,8 @@ name: CI
 #   2. Does a fresh clone install its packages, byte-compile and start, on
 #      Emacs 31.1, the oldest it supports?  And on macOS, and on Windows,
 #      the machine this is written on?  And does the minimal profile, on Linux,
-#      install exactly what it needs and start?
-#                      (startup: just install, compile, test-packages or test-minimal)
+#      install exactly what it needs and start?  And from a quickstart file?
+#      (startup: just install, compile, test-packages or test-minimal, test-quickstart)
 #      Does Emacs still start with each feature off, and with each on?
 #                                               (features: just test-features)
 #   3. Does the Nix flake still evaluate, on unstable and on the stable
@@ -161,6 +161,8 @@ jobs:
       - name: Leader and theme tests, and the verifier on exactly these packages
         if: matrix.profile == 'minimal'
         run: just test-minimal
+      - name: The startup verifier again, starting from a quickstart file
+        run: just test-quickstart
 
   # One real start per feature: off in turn from full, on in turn from minimal.
   # Each start activates only what its selection needs, so leftovers in this
