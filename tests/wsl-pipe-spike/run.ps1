@@ -10,7 +10,7 @@ param(
 $ErrorActionPreference = 'Stop'
 $here = $PSScriptRoot
 
-& "$here/../wsl-spike/prove-wsl2.ps1" -Distribution $Distribution
+& "$here/../wsl-backend/prove-wsl2.ps1" -Distribution $Distribution
 
 wsl.exe -d $Distribution -u root --exec sh -c 'command -v python3 >/dev/null || { apt-get update -qq && apt-get install -y -qq python3; }'
 if ($LASTEXITCODE -ne 0) { throw 'No python3 in the distribution' }

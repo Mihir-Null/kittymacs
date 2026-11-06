@@ -1,0 +1,84 @@
+name: tramp-rpc trial
+
+# A trial, not to merge.  Does tramp-rpc 0.16.0 run over wsl.exe, from native Windows
+# Emacs, and how does it compare with wslm in the same job?  Its code runs on this
+# runner and in this runner's distribution, and nowhere else.
+#
+# Nothing here holds a secret.  Credentials are off both checkouts, its code runs
+# after every cache has been read, and no cache is written.
+
+on:
+  pull_request:
+    paths:
+      - .github/workflows/tramp-rpc-trial.yml
+      - tests/tramp-rpc-trial/**
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  trial:
+    name: tramp-rpc and wslm over wsl.exe
+    runs-on: windows-latest
+    timeout-minutes: 150
+    env:
+      TRIAL_QUICK: "1"
+      KITTYMACS_TEST_PACKAGES: ${{ github.workspace }}/var/elpa
+      KITTYMACS_TEST_PROFILE: full
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: Vampire/setup-wsl@4c48163d9f981914dd8caa0fc335fe19cca5bff4 # v7.2.0
+        with:
+          distribution: Ubuntu-24.04
+          wsl-version: 2
+      # GNU's own Windows build, as ci.yml installs it.
+      - name: Install Emacs from GNU
+        shell: bash
+        run: |
+          tmp=$(cygpath -u "$RUNNER_TEMP")
+          curl -sSfL -o "$tmp/emacs.zip" \
+            "https://ftp.gnu.org/gnu/emacs/windows/emacs-31/emacs-31.1.zip"
+          7z x -y "-o$(cygpath -w "$tmp/emacs")" "$(cygpath -w "$tmp/emacs.zip")" > /dev/null
+          emacs_exe=$(find "$tmp/emacs" -path '*/bin/emacs.exe' | head -n 1)
+          test -n "$emacs_exe"
+          cygpath -w "$(dirname "$emacs_exe")" >> "$GITHUB_PATH"
+      - uses: taiki-e/install-action@c509219cf42fba86913069efd0ade2458c59337b # v2
+        with:
+          tool: just
+      # Read the cache ci.yml fills, and write nothing back.
+      - name: Restore the package directory
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
+        with:
+          path: var/elpa
+          key: elpa-3-full-Windows-31.1-${{ hashFiles('lisp/*.el', 'early-init.el', 'init.el') }}
+          restore-keys: elpa-3-full-Windows-31.1-
+      - name: Install packages by starting the configuration
+        shell: bash
+        run: just install
+      - name: Check out tramp-rpc 0.16.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          repository: ArthurHeymans/emacs-tramp-rpc
+          ref: 543b3bf30b8a80b8cd0200c98d00f22a4e0220ac
+          path: .trial/tramp-rpc
+          persist-credentials: false
+      - name: Refuse anything but the pinned commit
+        shell: bash
+        run: |
+          actual=$(git -C .trial/tramp-rpc rev-parse HEAD)
+          echo "tramp-rpc at $actual"
+          test "$actual" = 543b3bf30b8a80b8cd0200c98d00f22a4e0220ac
+      - name: Run every row
+        shell: pwsh
+        run: tests/tramp-rpc-trial/run.ps1
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        if: always()
+        with:
+          name: tramp-rpc-trial-results
+          path: tramp-rpc-trial-results

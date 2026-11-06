@@ -4,12 +4,9 @@ name: WSL pipe spike
 # for length-prefixed binary frames, and how fast can any helper over that pipe be?
 # It runs only code in tests/wsl-pipe-spike, and no RPC helper.
 
+# It has answered, so it no longer runs on each push to this pull request.
 on:
   workflow_dispatch:
-  pull_request:
-    paths:
-      - .github/workflows/wsl-pipe-spike.yml
-      - tests/wsl-pipe-spike/**
 
 permissions:
   contents: read
