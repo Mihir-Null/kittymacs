@@ -542,6 +542,37 @@ This reads the name, and never connects."
 
 #+end_src
 
+** Newlines in a file saved on a backend
+
+- Linux programs read Unix newlines, and a script with =\r\n= fails there with a confusing error, so a file Emacs starts on a backend gets Unix ones.
+- Emacs on Windows writes =\r\n= unless a file shows otherwise, and a new file shows nothing.
+  + An existing file with no newline in it shows nothing either.
+  + So does a buffer with no file that =C-x C-w= saves to a backend, which is why the second hook is there.
+- =kittymacs--remote-unix-newlines= sets =unix= for those, on any remote machine.
+  + A file with line endings keeps them, so a Windows-style file on the backend stays that way.
+  + Only the line ending changes, because =undecided-unix= takes its encoding from the buffer.
+  + It reads the name and the buffer, and never connects.
+- Off Windows the default is already Unix, so this changes nothing there.
+
+#+begin_src emacs-lisp
+(defun kittymacs--remote-unix-newlines ()
+  "Give a remote file that shows no line ending of its own Unix newlines.
+A file with line endings keeps them.  This never connects."
+  (when (and buffer-file-name
+             (file-remote-p buffer-file-name)
+             (or (not (local-variable-p 'buffer-file-coding-system))
+                 (not (save-excursion
+                        (save-restriction
+                          (widen)
+                          (goto-char (point-min))
+                          (search-forward "\n" nil t))))))
+    (set-buffer-file-coding-system 'undecided-unix nil t)))
+
+(add-hook 'find-file-hook #'kittymacs--remote-unix-newlines)
+(add-hook 'after-set-visited-file-name-hook #'kittymacs--remote-unix-newlines)
+
+#+end_src
+
 * Connection-local defaults
 
 - Connection-local variables hold a value for one kind of connection, so a remote buffer can differ from a local one.
@@ -825,6 +856,7 @@ Host vm
   + On a =wsl= backend =htop= draws its full screen, and =tty= names a =/dev/pts/= device.
 - =kittymacs-open .= in a WSL shell opens that folder in Windows Emacs, with Emacs running or not, and =kittymacs-open /mnt/c/Users= opens it with no Tramp.
 - On a =wsl= backend, =C-x C-f /wslm:DISTRIBUTION:/mnt/c/Windows/win.ini=: a message says it is slow, once, and =SPC o w= opens =c:/Windows/win.ini=.
+- From Windows Emacs, =C-x C-f= a new file on a backend, save two lines, and =file= there says it has no CRLF.
 - =SPC o B= on a machine that lacks =rg= says what to run there, and nothing installs itself.
 - Open a remote file and cut the network: Emacs keeps responding while you are idle; =C-g= ends a command that was waiting.
 - =just test-packages= and =just test-minimal= run [[file:../tests/kittymacs-remote-tests.el][the remote tests]], with a Tramp method that needs no ssh.

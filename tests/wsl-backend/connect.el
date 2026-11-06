@@ -443,6 +443,52 @@ pipe want different ones.  Signals after LIMIT seconds."
                         (car (benchmark-run 5
                                (with-temp-buffer (insert-file-contents "c:/Windows/win.ini")))))
            (kill-buffer native)))))))
+;;; Newlines in a file saved on a backend
+
+(defun wsl-backend-bytes (file)
+  "Return FILE's bytes, with nothing decoded."
+  (with-temp-buffer
+    (set-buffer-multibyte nil)
+    (insert-file-contents-literally file)
+    (buffer-string)))
+
+(defun wsl-backend-save-new (file)
+  "Open FILE, which does not exist, save two lines in it, and return its bytes."
+  (with-current-buffer (find-file-noselect file)
+    (insert "one\ntwo\n")
+    (save-buffer)
+    (kill-buffer))
+  (prog1 (wsl-backend-bytes file) (delete-file file)))
+
+(wsl-backend-check
+ "a new file has Unix newlines, and an existing one keeps its own" 90
+ (lambda ()
+   (let ((unix "one\ntwo\n")
+         (without (let ((find-file-hook (remq 'kittymacs--remote-unix-newlines find-file-hook)))
+                    (wsl-backend-save-new (wsl-backend-file "new-without"))))
+         (windows (wsl-backend-file "windows"))
+         (named (wsl-backend-file "named")))
+     (unless (equal (wsl-backend-save-new (wsl-backend-file "new")) unix)
+       (error "A new file has other newlines"))
+     (with-current-buffer (generate-new-buffer "no file yet")
+       (insert unix)
+       (write-file named)
+       (kill-buffer))
+     (unless (equal (wsl-backend-bytes named) unix)
+       (error "A buffer saved to a new name has %S" (wsl-backend-bytes named)))
+     (delete-file named)
+     (let ((coding-system-for-write 'no-conversion))
+       (write-region "a\r\nb\r\n" nil windows))
+     (with-current-buffer (find-file-noselect windows)
+       (goto-char (point-max))
+       (insert "c\n")
+       (save-buffer)
+       (kill-buffer))
+     (unless (equal (wsl-backend-bytes windows) "a\r\nb\r\nc\r\n")
+       (error "An existing file has %S" (wsl-backend-bytes windows)))
+     (delete-file windows)
+     (format "without this, a new file has %S" without))))
+
 ;;; Where a program's variables come from: what \"A backend's environment\" says
 
 (defvar tramp-remote-process-environment)

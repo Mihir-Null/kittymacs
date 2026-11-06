@@ -306,6 +306,21 @@ This reads the name, and never connects."
 
 (add-hook 'find-file-hook #'kittymacs--remote-note-windows-file)
 (keymap-set kittymacs-open-map "w" (cons "reopen a Windows file natively" #'kittymacs-remote-reopen-natively))
+(defun kittymacs--remote-unix-newlines ()
+  "Give a remote file that shows no line ending of its own Unix newlines.
+A file with line endings keeps them.  This never connects."
+  (when (and buffer-file-name
+             (file-remote-p buffer-file-name)
+             (or (not (local-variable-p 'buffer-file-coding-system))
+                 (not (save-excursion
+                        (save-restriction
+                          (widen)
+                          (goto-char (point-min))
+                          (search-forward "\n" nil t))))))
+    (set-buffer-file-coding-system 'undecided-unix nil t)))
+
+(add-hook 'find-file-hook #'kittymacs--remote-unix-newlines)
+(add-hook 'after-set-visited-file-name-hook #'kittymacs--remote-unix-newlines)
 (defun kittymacs-remote--apply-backend (name)
   "Set the connection-local variables of the backend called NAME."
   (let* ((backend (kittymacs-remote--backend name))

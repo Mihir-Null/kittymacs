@@ -282,6 +282,52 @@ Only the note: other functions on `find-file-hook' read the file, as they may."
         (setq buffer-file-name nil)))
     said))
 
+(defun kittymacs-remote-start--newlines-bytes (file)
+  "Return the bytes of FILE, read from the disk.
+This machine is its own remote.  On macOS Tramp's cache can still say a file it
+just saved does not exist, and these tests are about what reached the disk."
+  (with-temp-buffer
+    (set-buffer-multibyte nil)
+    (insert-file-contents-literally (file-local-name file))
+    (buffer-string)))
+
+(defun kittymacs-remote-start--newlines-saved (file text)
+  "Open FILE, add TEXT at its end, save it, and return its bytes."
+  (with-current-buffer (find-file-noselect file)
+    (goto-char (point-max))
+    (insert text)
+    (save-buffer)
+    (kill-buffer))
+  (kittymacs-remote-start--newlines-bytes file))
+
+(defun kittymacs-remote-start--newlines ()
+  "What each kind of file saves with, under Windows's default of `dos'."
+  (let ((default (default-value 'buffer-file-coding-system)))
+    (setq-default buffer-file-coding-system 'utf-8-dos)
+    (unwind-protect
+        (progn
+          (kittymacs-remote-start-value 'newlines-new
+            (kittymacs-remote-start--newlines-saved
+             (kittymacs-remote-fixture-name "newlines-new") "one\ntwo\n"))
+          (kittymacs-remote-start-value 'newlines-existing
+            (let ((file (kittymacs-remote-fixture-name "newlines-existing")))
+              (let ((coding-system-for-write 'no-conversion))
+                (write-region "a\r\nb\r\n" nil file))
+              (kittymacs-remote-start--newlines-saved file "c\n")))
+          (kittymacs-remote-start-value 'newlines-local
+            (let ((file (make-temp-file "kittymacs-newlines-")))
+              (delete-file file)
+              (prog1 (kittymacs-remote-start--newlines-saved file "one\n")
+                (delete-file file))))
+          (kittymacs-remote-start-value 'newlines-named
+            (let ((file (kittymacs-remote-fixture-name "newlines-named")))
+              (with-current-buffer (generate-new-buffer "no file yet")
+                (insert "one\n")
+                (write-file file)
+                (kill-buffer))
+              (kittymacs-remote-start--newlines-bytes file))))
+      (setq-default buffer-file-coding-system default))))
+
 (defun kittymacs-remote-start--windows-file ()
   "A file under /mnt/ on a WSL backend: one message, and no connection."
   (kittymacs-remote-start-value 'windows-file-names
@@ -612,7 +658,10 @@ Only the note: other functions on `find-file-hook' read the file, as they may."
 (setq tramp-verbose 0)
 (pcase kittymacs-remote-start-scenario
   ('hung (kittymacs-remote-start--hung))
-  ('working (kittymacs-remote-start--working))
+  ('working
+   (kittymacs-remote-start--working)
+   ;; Last: its connection would otherwise fix the PATH before the fake tools exist.
+   (kittymacs-remote-start--newlines))
   ('unreachable
    (kittymacs-remote-start-value 'projects (project-known-project-roots))
    (kittymacs-remote-start-value 'recentf (bound-and-true-p recentf-list))
