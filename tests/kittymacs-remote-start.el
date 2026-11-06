@@ -620,7 +620,7 @@ Only the note: other functions on `find-file-hook' read the file, as they may."
    (let ((default-directory "/khang:unreachable:/")
          (kittymacs-backends '(("gone" :transport khang :host "unreachable" :root "/"))))
      (kittymacs-remote-start-value 'status-unreachable
-       (substring-no-properties (kittymacs-remote-mode-line))))))
+       (substring-no-properties (kittymacs-remote-mode-line))))
    ;; The method whose login never answers, as if it were the WSL one.
    (let ((kittymacs-remote-wsl-method "khang"))
      (kittymacs-remote-start-value 'windows-file-unreachable
