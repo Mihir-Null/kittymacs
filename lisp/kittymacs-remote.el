@@ -8,6 +8,7 @@
 (require 'kittymacs-leader)
 
 (defvar agent-shell-path-resolver-function)
+(defvar kittymacs-remote-wsl-method)
 (defvar tramp-methods)
 (defvar tramp-remote-path)
 (declare-function connection-local-set-profile-variables "files-x" (profile variables))
@@ -166,7 +167,7 @@ Interactively, NAME is this buffer's backend, or else one you choose."
             (or (plist-get backend :host) ""))))
 
 (defun kittymacs-remote--buffer-backend ()
-  "Return the name of the backend this buffer belongs to, or nil.  It never connects."
+  "Return the name of this buffer's backend, or nil.  It never connects."
   (when-let* ((kittymacs-backends)
               (remote (and default-directory (file-remote-p default-directory))))
     (car (seq-find (lambda (backend)
@@ -180,7 +181,8 @@ Interactively, NAME is this buffer's backend, or else one you choose."
   "The keys of the backend's name in the mode line.")
 
 (defun kittymacs-remote-mode-line ()
-  "Return the mode line's text for this buffer's backend, or nil.  It never connects."
+  "Return the mode line's text for this buffer's backend, or nil.
+It never connects."
   (when-let* ((name (kittymacs-remote--buffer-backend)))
     (let ((connected (file-remote-p default-directory nil t)))
       (propertize (format " [%s%s]" name (if connected "" "?"))
