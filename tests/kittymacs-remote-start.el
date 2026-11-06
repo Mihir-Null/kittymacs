@@ -282,6 +282,15 @@ Only the note: other functions on `find-file-hook' read the file, as they may."
         (setq buffer-file-name nil)))
     said))
 
+(defun kittymacs-remote-start--newlines-bytes (file)
+  "Return the bytes of FILE, read from the disk.
+This machine is its own remote.  On macOS Tramp's cache can still say a file it
+just saved does not exist, and these tests are about what reached the disk."
+  (with-temp-buffer
+    (set-buffer-multibyte nil)
+    (insert-file-contents-literally (file-local-name file))
+    (buffer-string)))
+
 (defun kittymacs-remote-start--newlines-saved (file text)
   "Open FILE, add TEXT at its end, save it, and return its bytes."
   (with-current-buffer (find-file-noselect file)
@@ -289,10 +298,7 @@ Only the note: other functions on `find-file-hook' read the file, as they may."
     (insert text)
     (save-buffer)
     (kill-buffer))
-  (with-temp-buffer
-    (set-buffer-multibyte nil)
-    (insert-file-contents-literally file)
-    (buffer-string)))
+  (kittymacs-remote-start--newlines-bytes file))
 
 (defun kittymacs-remote-start--newlines ()
   "What each kind of file saves with, under Windows's default of `dos'."
@@ -301,26 +307,8 @@ Only the note: other functions on `find-file-hook' read the file, as they may."
     (unwind-protect
         (progn
           (kittymacs-remote-start-value 'newlines-new
-            (if (eq system-type 'darwin)
-                (let* ((file (kittymacs-remote-fixture-name "newlines-new"))
-                       (local (file-local-name file))
-                       (buffer (find-file-noselect file))
-                       (saved (with-current-buffer buffer
-                                (insert "one\ntwo\n")
-                                (condition-case err (progn (save-buffer) 'saved) (error err)))))
-                  (list :saved saved
-                        :modified (buffer-modified-p buffer)
-                        :coding (buffer-local-value 'buffer-file-coding-system buffer)
-                        :disk (file-exists-p local)
-                        :cached (file-exists-p file)
-                        :uncached (let ((remote-file-name-inhibit-cache t)) (file-exists-p file))
-                        :inhibit remote-file-name-inhibit-cache
-                        :read (condition-case err
-                                  (with-temp-buffer (insert-file-contents-literally file) (buffer-string))
-                                (error err))
-                        :dir (directory-files (file-name-directory local))))
-              (kittymacs-remote-start--newlines-saved
-               (kittymacs-remote-fixture-name "newlines-new") "one\ntwo\n")))
+            (kittymacs-remote-start--newlines-saved
+             (kittymacs-remote-fixture-name "newlines-new") "one\ntwo\n"))
           (kittymacs-remote-start-value 'newlines-existing
             (let ((file (kittymacs-remote-fixture-name "newlines-existing")))
               (let ((coding-system-for-write 'no-conversion))
@@ -337,10 +325,7 @@ Only the note: other functions on `find-file-hook' read the file, as they may."
                 (insert "one\n")
                 (write-file file)
                 (kill-buffer))
-              (with-temp-buffer
-                (set-buffer-multibyte nil)
-                (insert-file-contents-literally file)
-                (buffer-string)))))
+              (kittymacs-remote-start--newlines-bytes file))))
       (setq-default buffer-file-coding-system default))))
 
 (defun kittymacs-remote-start--windows-file ()
