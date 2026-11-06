@@ -87,5 +87,5 @@
  (module-lines/private.example . 103)
  (org-loaded-at-start . 0)
  (packages-activated . 20)
- (prose-lines . 16307)
+ (prose-lines . 16248)
 )
