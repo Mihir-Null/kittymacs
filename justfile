@@ -58,6 +58,7 @@ test:
     emacs -Q --batch -l tests/kittymacs-bench-tests.el -f ert-run-tests-batch-and-exit
     emacs -Q --batch -l tests/kittymacs-catalogue-tests.el -f ert-run-tests-batch-and-exit
     emacs -Q --batch -l tests/kittymacs-features-tests.el -f ert-run-tests-batch-and-exit
+    emacs -Q --batch -l tests/kittymacs-quickstart-tests.el -f ert-run-tests-batch-and-exit
     emacs -Q --batch -l tests/kittymacs-onboard-tests.el -f ert-run-tests-batch-and-exit
 
 # 3. Everything that needs only Emacs. Run before every commit.
@@ -101,6 +102,22 @@ test-minimal:
 # every feature's packages: `KITTYMACS_TEST_PROFILE=every just install`.
 test-features:
     KITTYMACS_TEST_PACKAGES={{quote(packages)}} emacs -Q --batch -l tests/kittymacs-feature-probes.el
+
+# The startup verifier again, this time starting from a quickstart file it
+# writes first. It fails if the file was ignored. KITTYMACS_TEST_PROFILE chooses
+# the profile, as for test-minimal.
+test-quickstart:
+    KITTYMACS_TEST_QUICKSTART=1 KITTYMACS_TEST_PACKAGES={{quote(packages)}} emacs -Q --batch -l tests/verify-config.el
+
+# Let this machine start from one file instead of scanning var/elpa. Not -Q: a
+# Nix Emacs's site-start.el sets the package-directory-list a real start hashes.
+# "The quickstart file" in literate/10-startup.org explains it.
+quickstart:
+    emacs --batch --eval '(setq user-emacs-directory (file-name-as-directory (expand-file-name ".")))' -l early-init.el -f kittymacs-quickstart-write
+
+# Delete it again; the next start scans, as a machine that never wrote one does.
+quickstart-remove:
+    {{emacs}} -l early-init.el -f kittymacs-quickstart-remove
 
 # Write a private.el with the onboarding screens for several selections, then
 # start the verifier on each. Needs what `KITTYMACS_TEST_PROFILE=every just install`

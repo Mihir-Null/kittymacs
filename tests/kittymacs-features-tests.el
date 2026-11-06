@@ -19,6 +19,7 @@
 
 (defvar kittymacs-lisp-dir)
 (defvar package-alist)
+(defvar package-activated-list)
 (defvar kittymacs-language-packages)
 (defvar kittymacs-notebooks-jupyter)
 (defvar kittymacs-exwm)
@@ -34,6 +35,7 @@ Nothing the older options set is bound, and no machine has run kittymacs yet."
          (kittymacs-features--enabled 'unresolved)
          (kittymacs-features--profile nil)
          (package-alist nil)
+         (package-activated-list nil)
          (system-type 'gnu/linux)
          (window-system nil)
          (,warnings nil))
@@ -217,6 +219,10 @@ Nothing the older options set is bound, and no machine has run kittymacs yet."
             (should (eq (kittymacs-features-profile) 'full))
             (should (= (length warnings) 1))
             (should (string-match-p "No profile is chosen" (car warnings))))
+          ;; A start from the quickstart file activates packages and leaves the list empty.
+          (kittymacs-features-test-with ((package-activated-list '(meow))) warnings
+            (should (eq (kittymacs-features-profile) 'full))
+            (should (= (length warnings) 1)))
           (with-temp-file (expand-file-name "private.el" root) (insert ";; Mine.\n"))
           (kittymacs-features-test-with () warnings
             (should (eq (kittymacs-features-profile) 'full))

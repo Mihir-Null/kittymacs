@@ -8,6 +8,7 @@
 
 (defvar kittymacs-lisp-dir)
 (defvar package-alist)
+(defvar package-activated-list)
 
 (defconst kittymacs-default-profile 'full
   "The profile of a machine that chose none.")
@@ -40,6 +41,7 @@ Set it where `kittymacs-profile' is set, for the same reason."
 (defun kittymacs-features--in-use-p ()
   "Return non-nil on a machine that has run kittymacs before."
   (or (bound-and-true-p package-alist)
+      (bound-and-true-p package-activated-list)
       (and (boundp 'kittymacs-lisp-dir)
            (file-exists-p (expand-file-name "private.el" kittymacs-lisp-dir)))))
 

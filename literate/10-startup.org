@@ -197,6 +197,102 @@
   (setq w32-get-true-file-attributes nil
         inhibit-compacting-font-caches t))
 
+#+end_src
+
+** The quickstart file :decision:
+:PROPERTIES:
+:ID: 7b4e2f19-6d03-4a58-9c21-e8f05d7a3c64
+:END:
+
+- A start pays for reading every installed package's description, and the archive index, before it can activate anything.
+  + Emacs's own =package-quickstart-refresh= writes one file holding what those activations would do, so a start can load that instead.
+  + [[file:../ARCHITECTURE.md][ARCHITECTURE.md]] has what it saves.
+- Having the file is the opt-in: =just quickstart= or =M-x kittymacs-quickstart-write= writes it, and =just quickstart-remove= or =M-x kittymacs-quickstart-remove= deletes every one.
+  + No option decides this, because packages activate before host files and =private.el= load.
+  + A machine with no file calls =package-initialize= as it always has, and adds nothing to =after-init-hook=.
+- A hash in the file's name covers =emacs-version=, =package-user-dir= and =package-directory-list=, so a file written for anything else is never loaded.
+  + Each directory goes through =file-truename=, because a Nix profile keeps its path while its contents move to another store path.
+  + The version counts because which packages activate depends on what Emacs has built in.
+  + The file lives in =var/cache/=, so deleting that directory only loses the speed.
+- =just quickstart= leaves out =-Q=, because a Nix Emacs's =site-start.el= sets =package-directory-list=, and =-Q= would hash a different list from a real start.
+- A file is loaded only while its compiled form is newer than every package directory.
+  + Installing, upgrading or removing a package changes the directory's time, from this Emacs, another one or a shell, so a stale file is detected and the start scans instead.
+  + Only a change made inside a package's own directory goes unseen; =just quickstart= after one.
+- From =after-init-hook=, a machine with a quickstart file of any name keeps the right one current.
+  + It writes the file if this start could not load one: an install, a removal, or a Nix switch that moved the store paths.
+  + It sets =package-quickstart=, so Emacs refreshes the file after each later install, upgrade and removal, =:vc= packages included.
+  + During =init.el= that option stays nil: refreshing there would call =package-initialize= a second time, which warns.
+- A file that cannot load does not stop startup: =package-activate-all= demotes the error and scans, and =kittymacs-activate-packages= deletes the compiled file so the hook writes a new one.
+  + A file naming a package that has gone only adds a directory that does not exist to =load-path=: a declaration that loads the package at startup warns, as it would after a failed install, and the start goes on.
+- A start from the file has the same packages active, and knows less about them until something asks:
+  + =package-alist= and the archive index stay empty until a package command fills them, and each one does ([[id:5c1e7a94-8f30-4d26-b7a1-3e92d06f4c18][the features chapter]] reads =package-activated-list= as well);
+  + =package-installed-p= answers from =package-activated-list= rather than from what is on disk, so =kittymacs-ensure-package= asks =package-initialize= before it believes a package is missing;
+  + the file loads the =info= library when a package ships a manual, because it must add that directory to =Info-directory-list=, and the scan's =finder-inf= waits for the first question about a built-in package.
+
+#+begin_src emacs-lisp
+(defvar kittymacs-quickstart-loaded nil
+  "Non-nil when this start activated its packages from the quickstart file.")
+
+(defun kittymacs-quickstart-file ()
+  "Return the quickstart file's name for this Emacs and these package directories."
+  (expand-file-name
+   (format "package-quickstart-%s.el"
+           (sha1 (prin1-to-string
+                  (cons emacs-version
+                        (mapcar #'file-truename
+                                (cons package-user-dir package-directory-list))))))
+   kittymacs-cache-dir))
+
+(defun kittymacs-quickstart--written ()
+  "Return every quickstart file here, whatever directories it was written for."
+  (and (file-directory-p kittymacs-cache-dir)
+       (directory-files kittymacs-cache-dir t "\\`package-quickstart-[0-9a-f]+\\.elc?\\'")))
+
+(defun kittymacs-quickstart--current-p (file)
+  "Return non-nil when FILE is compiled, and newer than every package directory."
+  (let ((compiled (concat file "c")))
+    (not (memq nil (mapcar (lambda (directory) (file-newer-than-file-p compiled directory))
+                           (cons package-user-dir package-directory-list))))))
+
+(defun kittymacs-activate-packages ()
+  "Activate the installed packages, from the quickstart file when it is current.
+With no such file, `package-initialize' does what it always did."
+  (let ((file (kittymacs-quickstart-file)))
+    (if (not (kittymacs-quickstart--current-p file))
+        (package-initialize)
+      (setq kittymacs-quickstart-loaded t)
+      (let ((package-quickstart-file file))
+        (package-activate-all))
+      ;; Only a scan fills this: the file did not load, so have it written again.
+      (when package-alist
+        (delete-file (concat file "c"))))))
+
+(defun kittymacs-quickstart-remove ()
+  "Delete every quickstart file, so that the next start scans the package directories."
+  (interactive)
+  (setq package-quickstart nil)
+  (mapc #'delete-file (kittymacs-quickstart--written)))
+
+(defun kittymacs-quickstart-write ()
+  "Write the quickstart file for this Emacs and these package directories.
+Having it is what turns it on; see the startup chapter."
+  (interactive)
+  (require 'package)
+  (kittymacs-quickstart-remove)
+  (make-directory kittymacs-cache-dir t)
+  (setq package-quickstart-file (kittymacs-quickstart-file)
+        package-quickstart t)
+  ;; An autoloads file may name a function only its package defines.
+  (let ((warning-suppress-types (cons '(bytecomp) warning-suppress-types)))
+    (package-quickstart-refresh)))
+
+(defun kittymacs-quickstart--keep-current ()
+  "Keep this machine's quickstart file right from now on; it has written one before."
+  (setq package-quickstart-file (kittymacs-quickstart-file)
+        package-quickstart t)
+  (unless (kittymacs-quickstart--current-p package-quickstart-file)
+    (kittymacs-quickstart-write)))
+
 ;;; early-init.el ends here
 #+end_src
 
@@ -216,6 +312,7 @@
   + frames policy goes last.
 - Files from outside this repository are read along the way: [[*Host files][host files]] and then =private.el= right after the platform chapter, the Customize file at the end; [[*Machine-specific settings]] says why there.
 - =kittymacs-features-resolve= runs straight after them, so everything later asks a settled question, and =kittymacs-features-install= right after that ([[id:5c1e7a94-8f30-4d26-b7a1-3e92d06f4c18][the features chapter]]).
+- =kittymacs-activate-packages= comes first, before anything can need a package ([[*The quickstart file]]).
 - The archive index is fetched only when a package has to be installed, by =kittymacs-ensure-package= ([[*A stale archive index]]); a start that installs nothing touches no network.
 - A chapter that is one feature and nothing else loads only when that feature is on: Treemacs, the dashboard, Org extras, Org-roam, reading, notebooks, agents and suggestions.
   + Mixed chapters always load, and put a =when= around each optional package and its keys.
@@ -242,7 +339,7 @@
 (when (< emacs-major-version 31)
   (error "kittymacs needs Emacs 31.1 or later; this is Emacs %s" emacs-version))
 (add-to-list 'load-path kittymacs-lisp-dir)
-(package-initialize)
+(kittymacs-activate-packages)
 (require 'use-package)
 (setopt use-package-enable-imenu-support t)
 
@@ -255,23 +352,32 @@ The `use-package-ensure-function' of kittymacs.  Before the session's
 first install it refreshes the cached archive index, whose tarballs may
 be gone; then `use-package-ensure-elpa' installs.  STATE and NO-REFRESH
 are passed through.  A package the installer already failed on is left
-alone, since it warned once."
+alone, since it warned once.  A start from the quickstart file knows only
+what that file activated, so it reads the package directories before it
+believes that a package is missing."
   (unless (memq name (bound-and-true-p kittymacs-features--failed))
-    (unless (or kittymacs--archives-refreshed
-                (seq-every-p (lambda (ensure)
-                               (let ((package (if (eq ensure t) (use-package-as-symbol name) ensure)))
-                                 (or (null package)
-                                     (package-installed-p (if (consp package) (car package) package)))))
-                             args))
-      (setq kittymacs--archives-refreshed t)
-      (condition-case-unless-debug err
-          (package-refresh-contents)
-        (error
-         (display-warning 'kittymacs
-                          (format "Could not refresh the package archives: %s
+    (let ((installed-p
+           (lambda ()
+             (seq-every-p (lambda (ensure)
+                            (let ((package (if (eq ensure t) (use-package-as-symbol name) ensure)))
+                              (or (null package)
+                                  (package-installed-p (if (consp package) (car package) package)))))
+                          args))))
+      (unless (or kittymacs--archives-refreshed
+                  (funcall installed-p)
+                  (and (bound-and-true-p kittymacs-quickstart-loaded)
+                       (not (bound-and-true-p package--initialized))
+                       (progn (package-initialize t)
+                              (funcall installed-p))))
+        (setq kittymacs--archives-refreshed t)
+        (condition-case-unless-debug err
+            (package-refresh-contents)
+          (error
+           (display-warning 'kittymacs
+                            (format "Could not refresh the package archives: %s
 Installing from the cached index, which may name tarballs that are gone."
-                                  (error-message-string err))
-                          :warning))))
+                                    (error-message-string err))
+                            :warning)))))
     (use-package-ensure-elpa name args state no-refresh)))
 
 (setopt use-package-ensure-function #'kittymacs-ensure-package)
@@ -308,6 +414,9 @@ caught, so it shows a backtrace."
                                             function (error-message-string err))
                                     :error)))))
             depth))
+
+(when (kittymacs-quickstart--written)
+  (kittymacs-after-init #'kittymacs-quickstart--keep-current 99))
 
 (defun kittymacs-load-user-file (file)
   "Load FILE, which a host or the user wrote; on an error, warn and carry on.
@@ -453,6 +562,8 @@ Set before init.el loads to change them, because they are read during init.")
 - =SPC C p= opens =private.el=, created from the example the first time; =SPC C u= opens the Customize file.
 - After editing this chapter, =just tangle= rewrites both files; =just tangle-check= proves they match.
 - =just install= starts the configuration once in batch, installing every package; =just test-packages= replays a real startup and fails on any warning.
+- =just quickstart=, then restart: =M-: kittymacs-quickstart-loaded= is =t= and =M-: package-alist= is =nil=. =just quickstart-remove=, then restart: the first is =nil= and the second lists the packages.
+- =just test= runs [[file:../tests/kittymacs-quickstart-tests.el][the quickstart tests]], and =just test-quickstart= replays a real startup from the file.
 
 #+begin_src sh :tangle no
 just tangle-check     # early-init.el and init.el match this chapter
