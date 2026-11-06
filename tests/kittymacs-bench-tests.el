@@ -84,6 +84,15 @@
     (should (> (alist-get 'prose-lines size) 0))
     (should (alist-get 'module-lines/init size))))
 
+(ert-deftest kittymacs-bench-org-lines-are-the-chapters-alone ()
+  "The prose count holds them, and the two Markdown pages on top."
+  (let ((size (kittymacs-bench-size)))
+    (should (> (alist-get 'org-lines size) 0))
+    (should (= (alist-get 'prose-lines size)
+               (+ (alist-get 'org-lines size)
+                  (kittymacs-bench--line-count (kittymacs-bench--path "ARCHITECTURE.md"))
+                  (kittymacs-bench--line-count (kittymacs-bench--path "README.md")))))))
+
 (ert-deftest kittymacs-bench-size-leaves-out-the-private-file ()
   (should-not (seq-some (lambda (file) (string-suffix-p "/private.el" file))
                         (kittymacs-bench--elisp-files))))
@@ -131,7 +140,7 @@
 (ert-deftest kittymacs-bench-budgets-name-only-metrics-this-harness-reports ()
   (let ((known (mapcar #'car (kittymacs-bench-size))))
     (dolist (entry (kittymacs-bench--budgets))
-      (when (string-match-p "\\`module-\\|\\`elisp-\\|\\`prose-\\|\\`declared-\\|\\`default-"
+      (when (string-match-p "\\`module-\\|\\`elisp-\\|\\`org-lines\\|\\`prose-\\|\\`declared-\\|\\`default-"
                             (symbol-name (car entry)))
         (should (memq (car entry) known))))))
 

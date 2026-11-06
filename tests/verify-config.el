@@ -175,6 +175,15 @@ Types the configuration deliberately silences are left out."
            (and (null (seq-difference counted loaded)) (null (seq-difference loaded counted)))
            (format "just size counts other modules than a start loads: only counted %S, only loaded %S"
                    (seq-difference counted loaded) (seq-difference loaded counted)))))
+      ;; A chapter's `require' must not search every package directory first.
+      (let ((package-dir (file-name-as-directory (expand-file-name package-user-dir))))
+        (kittymacs-verify-check
+         (not (seq-some (lambda (directory)
+                          (string-prefix-p package-dir (expand-file-name directory)))
+                        (seq-take-while (lambda (directory)
+                                          (not (file-equal-p directory kittymacs-lisp-dir)))
+                                        load-path)))
+         "A package directory comes before lisp/ on load-path"))
       (pcase-dolist (`(,feature . ,on) kittymacs-verify-expected)
         (kittymacs-verify-check (eq (kittymacs-feature-p feature) on)
                                 (format "kittymacs-feature-p says %s is %s"

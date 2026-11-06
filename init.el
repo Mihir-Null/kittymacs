@@ -5,8 +5,8 @@
 
 (when (< emacs-major-version 31)
   (error "kittymacs needs Emacs 31.1 or later; this is Emacs %s" emacs-version))
-(add-to-list 'load-path kittymacs-lisp-dir)
 (kittymacs-activate-packages)
+(add-to-list 'load-path kittymacs-lisp-dir)
 (require 'use-package)
 (setopt use-package-enable-imenu-support t)
 
