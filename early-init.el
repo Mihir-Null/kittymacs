@@ -61,7 +61,7 @@
   (startup-redirect-eln-cache (expand-file-name "eln-cache/" kittymacs-cache-dir))
   (setq native-comp-async-report-warnings-errors 'silent))
 
-(setq gc-cons-threshold most-positive-fixnum)
+(setq gc-cons-threshold (* 128 1024 1024))
 (add-hook 'emacs-startup-hook (lambda () (setq gc-cons-threshold (* 64 1024 1024))))
 
 ;; Size frames by the pixel, so a tiling window manager's tile is filled
