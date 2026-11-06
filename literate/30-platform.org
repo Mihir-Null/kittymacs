@@ -13,7 +13,7 @@
 - Leans on [[id:40302e33-d2b2-4c0b-9bc3-1f9e121307e1][startup]]: =init.el= loads =private.el= right after this module, then calls =kittymacs-platform-apply=.
 - Must not declare a package: [[file:../tests/kittymacs-platform-tests.el][the platform tests]] load it with none, and run every operating system's branch on any machine by binding =system-type=.
   + Nor does it force a font: inheriting the platform default makes first boot robust; [[id:0286f652-e861-4e61-9ca6-91e225c8939d][the appearance chapter]] chooses fonts.
-- PowerShell stays the ordinary Windows shell, and Linux programs come from a backend ([[id:3c9e7a52-1d84-4f6b-a0c3-8e5d27b1f96a][a WSL distribution]]), so Windows keeps no Unix layer of its own.
+- PowerShell stays the ordinary Windows shell, and Linux programs come from a backend ([[id:3c9e7a52-1d84-4f6b-a0c3-8e5d27b1f96a][a WSL distribution]]), so Windows needs no Unix layer of its own.
 
 * Where your files live
 
@@ -142,8 +142,6 @@ denies access and every lookup below quietly returns nil."
 - On Windows it borrows Unix tools, last on =exec-path=: Magit's hunk refinement, Ediff and diff-hl call =diff=, =diff3= and =patch= by name, and Windows has none.
   + They come from Git for Windows (=Git/usr/bin=, or beside =git= itself).
   + As they go last, every native program still wins; =PATH= is left alone, so subprocesses see no change.
-- It warns about a setting =private.el= still sets and kittymacs no longer reads, because a setting that silently does nothing looks like a bug.
-  + =kittymacs-msys2-root= is the one such setting: the start finishes, with a warning that names it, until you delete the line.
 - It hands over to [[*macOS]] and [[*Android]].
 
 #+begin_src emacs-lisp
@@ -176,16 +174,8 @@ Git for Windows ships `diff', `diff3' and `patch' beside its own `git'."
                      (and git (expand-file-name "../usr/bin" git))
                      git)))))
 
-(defun kittymacs--platform-warn-removed ()
-  "Warn about a setting that `private.el' still sets and nothing reads."
-  (when (boundp 'kittymacs-msys2-root)
-    (display-warning
-     'kittymacs
-     "`kittymacs-msys2-root' has no effect any more, so delete it from private.el.  Windows reaches Linux through a backend (SPC o b), and spelling and Tree-sitter builds look on PATH")))
-
 (defun kittymacs-platform-apply ()
   "Apply the currently configured portable platform defaults."
-  (kittymacs--platform-warn-removed)
   (when-let* ((shell (kittymacs--platform-shell)))
     (setopt shell-file-name (car shell)
             explicit-shell-file-name (car shell))

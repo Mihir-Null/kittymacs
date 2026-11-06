@@ -123,6 +123,9 @@
     (add-to-list 'load-path (expand-file-name "lisp" root))
     (load (expand-file-name "tests/kittymacs-profile-checks.el" kittymacs-probe-source) nil t)
     (require 'kittymacs-features)
+    (when-let* ((feature (plist-get spec :lift-not-on)))
+      (setf (alist-get feature kittymacs-catalogue)
+            (plist-put (copy-sequence (alist-get feature kittymacs-catalogue)) :not-on nil)))
     (package-load-all-descriptors)
     (kittymacs-probe--activate-only (kittymacs-probe--needed-packages spec))
     (advice-add 'package-initialize :before
@@ -167,6 +170,10 @@
   "Return every selection to try, each a property list with a `:name'."
   (append
    (list '(:name "minimal" :profile minimal)
+         ;; No Windows here, so the probe lifts the rule that keeps it off this system.
+         '(:name "msys2-fallback, as if on Windows" :profile minimal
+                 :features (msys2-fallback) :lift-not-on msys2-fallback
+                 :on (msys2-fallback) :warnings 1)
          '(:name "full" :profile full)
          '(:name "a name the catalogue lacks" :profile minimal
                  :features (no-such-feature) :warnings 1)

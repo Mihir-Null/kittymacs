@@ -233,7 +233,7 @@ PATH is nil where the machine does not have the tool."
 :ID: 3c9e7a52-1d84-4f6b-a0c3-8e5d27b1f96a
 :END:
 
-- Native Windows Emacs reaches Linux through a backend, so Windows keeps no Unix layer of its own.
+- Native Windows Emacs reaches Linux through a backend, so Windows needs no Unix layer of its own, apart from [[id:5d07c1e4-92ab-4f36-b8d1-6a3e0c47f2d9][a fallback for Windows-side files]].
 - =:transport wsl= connects through =wsl.exe=, and =:host= is the distribution's name in =wsl --list=, with no sshd and no key; [[file:../ARCHITECTURE.md][ARCHITECTURE.md]] has the decision and its numbers.
 - The Tramp method behind it is =wslm=, as in =/wslm:Ubuntu-24.04:~/src/project/=, because Tramp may ship a =wsl= method one day, and this row must not replace it.
 - Tramp's load adds the method where =wsl.exe= exists, so a start pays nothing, and elsewhere =:transport wsl= is an error that names =wsl.exe=.

@@ -369,8 +369,8 @@ which is what an unpaired installation looks like from Emacs."
         (should enabled)))))
 
 (ert-deftest kittymacs-platform-windows-looks-only-on-its-path ()
-  ;; Every file "exists" here, as it would in an old Unix layer on the disk, and
-  ;; none of it is on `exec-path'.
+  ;; Every file "exists" here, as a Unix layer on the disk would, and none of it
+  ;; is on `exec-path'.  Only an optional feature ever looks in such a place.
   (kittymacs-platform-test-with 'windows-nt '()
     (cl-letf (((symbol-function 'file-executable-p) (lambda (_) t)))
       (should-not (kittymacs-spell-checker))
@@ -384,20 +384,6 @@ which is what an unpaired installation looks like from Emacs."
               ((symbol-function 'file-executable-p)
                (lambda (file) (equal file (expand-file-name "/Git/usr/bin/diff.exe")))))
       (should (equal (kittymacs--windows-unix-tools) (expand-file-name "/Git/usr/bin"))))))
-
-(ert-deftest kittymacs-platform-warns-about-a-setting-it-no-longer-reads ()
-  (let (warnings)
-    (cl-letf (((symbol-function 'display-warning)
-               (lambda (_type text &rest _) (push text warnings))))
-      (kittymacs--platform-warn-removed)
-      (should-not warnings)
-      ;; What a `private.el' from before the change does, to a name nothing defines.
-      (set 'kittymacs-msys2-root "D:/Tools/msys64/")
-      (unwind-protect
-          (kittymacs--platform-warn-removed)
-        (makunbound 'kittymacs-msys2-root))
-      (should (= (length warnings) 1))
-      (should (string-match-p "kittymacs-msys2-root" (car warnings))))))
 
 (ert-deftest kittymacs-platform-a-broken-flyspell-is-reported-once ()
   (kittymacs-platform-test-with 'gnu/linux '("hunspell")

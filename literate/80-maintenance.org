@@ -339,6 +339,11 @@
 ;; Which completion sources may run on their own in a remote buffer.
 ;; (setopt kittymacs-remote-auto-capfs '(eglot-completion-at-point))
 
+;; A fallback for Windows-side files, where file I/O across WSL would ruin
+;; performance.  Each start warns.  See msys2-fallback in literate/37-msys2.org.
+;; (setopt kittymacs-features '(msys2-fallback)
+;;         kittymacs-msys2-root "D:/Tools/msys64/")
+
 ;; Terminal
 ;; Where the escape key goes while a full-screen program is drawing in the
 ;; terminal (`auto', `terminal' or `meow').

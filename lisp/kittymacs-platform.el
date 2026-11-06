@@ -85,16 +85,8 @@ Git for Windows ships `diff', `diff3' and `patch' beside its own `git'."
                      (and git (expand-file-name "../usr/bin" git))
                      git)))))
 
-(defun kittymacs--platform-warn-removed ()
-  "Warn about a setting that `private.el' still sets and nothing reads."
-  (when (boundp 'kittymacs-msys2-root)
-    (display-warning
-     'kittymacs
-     "`kittymacs-msys2-root' has no effect any more, so delete it from private.el.  Windows reaches Linux through a backend (SPC o b), and spelling and Tree-sitter builds look on PATH")))
-
 (defun kittymacs-platform-apply ()
   "Apply the currently configured portable platform defaults."
-  (kittymacs--platform-warn-removed)
   (when-let* ((shell (kittymacs--platform-shell)))
     (setopt shell-file-name (car shell)
             explicit-shell-file-name (car shell))
