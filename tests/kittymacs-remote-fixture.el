@@ -60,6 +60,23 @@ Each login adds one: Tramp opens another connection for an asynchronous process.
         (insert-file-contents file)
         (mapcar #'string-to-number (split-string (buffer-string)))))))
 
+(defun kittymacs-remote-fixture-wsl-exe ()
+  "Write a stand-in for `wsl.exe', and return the directory that holds it.
+It takes the arguments the real one takes, and appends a Windows `PATH' to the
+environment as the real one does, so a row that keeps it cannot connect."
+  (file-name-directory
+   (kittymacs-remote-fixture--script
+    "wsl/wsl.exe"
+    (concat "[ \"$1\" = -d ] && [ \"$3\" = --exec ] || exit 2\n"
+            "[ \"$2\" = Fake-24.04 ] || { echo \"There is no distribution called $2\"; exit 1; }\n"
+            "shift 3\n"
+            ;; It exists, as on Windows: Tramp drops a directory that does not.
+            "windows=\"$(dirname \"$0\")/Program Files (x86)\"\n"
+            "mkdir -p \"$windows\"\n"
+            "PATH=\"$PATH:$windows\"\n"
+            "export PATH\n"
+            "exec \"$@\""))))
+
 (defun kittymacs-remote-fixture-define-methods ()
   "Add the kmock and khang methods, when Tramp loads."
   (let* ((kmock (kittymacs-remote-fixture--script

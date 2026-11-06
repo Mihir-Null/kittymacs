@@ -47,7 +47,7 @@
   (push '(ns-transparent-titlebar . t) default-frame-alist))
 
 ;; GNU ELPA signs its archive index and Emacs verifies it with the first
-;; gpg on `exec-path'.  On Windows that is Git for Windows' MSYS gpg, which
+;; gpg on `exec-path'.  On Windows that is Git for Windows' POSIX gpg, which
 ;; cannot open a Windows keyring directory: every signature then fails and
 ;; the archives silently vanish.  Put Gpg4win's native gpg first when it is
 ;; installed; without one, skip the check rather than lose the archives.

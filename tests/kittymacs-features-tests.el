@@ -50,6 +50,32 @@ Nothing the older options set is bound, and no machine has run kittymacs yet."
   (mapcar #'car (seq-filter (lambda (entry) (eq (plist-get (cdr entry) :profile) profile))
                             kittymacs-catalogue)))
 
+(ert-deftest kittymacs-features-an-option-without-its-feature-warns ()
+  ;; What a `private.el' does to an option whose module has not loaded.
+  (set 'kittymacs-msys2-root "D:/Tools/msys64/")
+  (unwind-protect
+      (progn
+        (kittymacs-features-test-with ((system-type 'windows-nt) (kittymacs-profile 'minimal))
+            warnings
+          (kittymacs-features-resolve)
+          (should (= (length warnings) 1))
+          (should (string-match-p "kittymacs-msys2-root" (car warnings)))
+          (should (string-match-p "msys2-fallback" (car warnings))))
+        (kittymacs-features-test-with ((system-type 'windows-nt) (kittymacs-profile 'minimal)
+                                       (kittymacs-features '(msys2-fallback)))
+            warnings
+          (kittymacs-features-resolve)
+          (should-not warnings)
+          (should (kittymacs-feature-p 'msys2-fallback)))
+        ;; One private.el can serve several machines.
+        (kittymacs-features-test-with ((kittymacs-profile 'minimal)
+                                       (kittymacs-features '(msys2-fallback)))
+            warnings
+          (kittymacs-features-resolve)
+          (should-not warnings)
+          (should-not (kittymacs-feature-p 'msys2-fallback))))
+    (makunbound 'kittymacs-msys2-root)))
+
 (ert-deftest kittymacs-features-default-to-minimal ()
   "A machine with no choice and no sign of use gets the small default."
   (kittymacs-features-test-with () warnings

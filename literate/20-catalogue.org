@@ -21,12 +21,13 @@
 | Property    | Says                                                                   |
 |-------------+------------------------------------------------------------------------|
 | =:group=    | where onboarding shows it                                              |
-| =:packages= | what it installs; each package belongs to exactly one feature          |
+| =:packages= | what it installs, which may be nothing; each package belongs to exactly one feature |
 | =:vc=       | which of those its chapter's declaration installs from Git             |
 | =:module=   | the chapter's module that declares those packages                      |
 | =:profile=  | =minimal= for everyone, =full= for what that profile adds, =optional= for what stays off even then |
 | =:deps=     | features it cannot work without                                        |
 | =:not-on=   | values of =system-type= where it does not apply                        |
+| =:option=   | a setting that does nothing with the feature off, so setting it alone warns |
 | =:summary=  | one sentence: what you get                                             |
 | =:example=  | one sentence: how you notice it                                        |
 
@@ -194,6 +195,12 @@
      :not-on (android)
      :summary "A fast, real terminal inside Emacs."
      :example "=SPC o e= opens one that full-screen programs such as =htop= run in.")
+    (msys2-fallback
+     :group shells :packages () :module kittymacs-msys2 :profile optional :deps (terminal)
+     :not-on (gnu/linux gnu gnu/kfreebsd berkeley-unix darwin cygwin haiku android)
+     :option kittymacs-msys2-root
+     :summary "A fallback for Windows-side files: MSYS2's shell, spell checker and compiler."
+     :example "=SPC o m= opens its shell, and each start warns that a WSL2 backend is the normal way.")
     (eshell-highlight
      :group shells :packages (eshell-syntax-highlighting) :module kittymacs-shell :profile full
      :summary "Colours the Eshell command line as you type."

@@ -1897,7 +1897,7 @@ in
   + =nixos-26.05= has no Emacs 31, so a host that keeps the =follows= there stops at [[id:5c1e8b47-2f6a-4d93-b0e8-7a94d2c61f05][the assertion]], and that message says the same thing.
 - None sets =profile=, so a new host starts on the configuration's default until it chooses.
 - =wsl-backend= is the Linux side only: =backend.enable= with no Emacs and no checkout.
-  + The transport from Windows is not chosen yet, and a later step brings it, so nothing here assumes one.
+  + Emacs on Windows reaches it through =wsl.exe= ([[id:3c9e7a52-1d84-4f6b-a0c3-8e5d27b1f96a][a WSL distribution]]), so it needs no sshd and no key.
 
 ** home-manager
 :PROPERTIES:
@@ -2076,11 +2076,17 @@ in
 #+begin_src nix
 # Generated from literate/90-nix.org (the kittymacs repository).
 # The Linux side of a Windows setup: the headless tools, with no Emacs and no
-# fonts.  How Emacs on Windows reaches this side is not chosen yet, and a later
-# step brings it, so nothing here assumes a transport.
+# fonts.  Emacs on Windows reaches this side through wsl.exe, so it needs no sshd
+# and no key.
 # Change `me', /home/me and `system', then, inside the distribution:
 #
 #   nix run github:nix-community/home-manager -- switch --flake .#me
+#
+# To connect, name the distribution as `wsl --list' prints it, in private.el on
+# Windows, and press SPC o b:
+#
+#   (setopt kittymacs-backends
+#           '(("wsl" :transport wsl :host "Ubuntu-24.04" :root "~/src/project/")))
 {
   description = "The Linux side of a Windows setup, with kittymacs's headless tools";
 

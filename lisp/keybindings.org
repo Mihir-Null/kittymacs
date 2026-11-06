@@ -164,7 +164,6 @@ New editing surfaces are OS windows (frames); your window manager arranges them.
 | SPC o e | A real terminal                   | kittymacs-terminal-open             |
 | SPC o E | Pick a terminal                   | consult-ghostel                   |
 | SPC o p | Terminal at the project root      | kittymacs-terminal-project          |
-| SPC o m | MSYS2 terminal (Windows)          | kittymacs-terminal-msys2            |
 | SPC o t | Jump into the file tree           | treemacs-select-window            |
 | SPC o s | Eshell for this project           | kittymacs-eshell-project            |
 | SPC o b | Open a backend's project          | kittymacs-backend-connect           |
