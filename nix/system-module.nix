@@ -1,4 +1,5 @@
 # Generated from literate/90-nix.org; edit the Org source, then tangle.
+{ moduleName, packageNote }:
 {
   config,
   lib,
@@ -8,14 +9,15 @@
 
 let
   cfg = config.programs.kittymacs;
+  selection = import ./selection.nix { inherit lib; };
   tools = import ./tools.nix {
     inherit pkgs;
     emacs = cfg.package;
   };
-  emacs = if cfg.packagesFromNix then import ./packages.nix { emacs = cfg.package; } else cfg.package;
+  emacs = selection.emacsFor (selection.systemType pkgs) cfg;
 in
 {
-  options.programs.kittymacs = {
+  options.programs.kittymacs = selection.options // {
     enable = lib.mkEnableOption "kittymacs: Emacs with the tools its configuration looks for";
 
     package = lib.mkOption {
@@ -24,8 +26,7 @@ in
       defaultText = lib.literalExpression "pkgs.emacs";
       description = ''
         The Emacs to install, and to run when `daemon` is on.  kittymacs
-        needs 31.1 or later.  `pkgs.emacs` is nixpkgs' current release as
-        the Cocoa build; `pkgs.emacs-macport` is the Mitsuharu port.
+        needs 31.1 or later.  ${packageNote}
       '';
     };
 
@@ -47,9 +48,9 @@ in
       default = false;
       description = ''
         Start the Emacs server at login, so `emacsclient` opens files in
-        frames of one running Emacs.  This turns on nix-darwin's
-        `services.emacs` with `package`, a launchd agent.  Turn on this
-        option or the home-manager module's, not both.
+        frames of one running Emacs.  This turns on ${moduleName}'s
+        `services.emacs` with `package`.  Turn on this option or the
+        home-manager module's, not both.
       '';
     };
 
@@ -64,13 +65,22 @@ in
     };
   };
 
-  config = lib.mkIf cfg.enable {
-    environment.systemPackages = [
-      emacs
-    ]
-    ++ tools.programs
-    ++ lib.optional cfg.suggestions.enable cfg.suggestions.package;
-    fonts.packages = tools.fonts;
+  config = lib.mkIf (cfg.enable || cfg.backend.enable) {
+    assertions = selection.assertions {
+      inherit cfg;
+      usesPackage = !cfg.backend.enable || cfg.daemon;
+    };
+
+    environment.systemPackages =
+      if cfg.backend.enable then
+        tools.backendPrograms
+      else
+        [ emacs ] ++ tools.programs ++ lib.optional cfg.suggestions.enable cfg.suggestions.package;
+    fonts.packages = lib.optionals (!cfg.backend.enable) tools.fonts;
+
+    environment.etc = lib.mapAttrs' (
+      file: text: lib.nameValuePair "kittymacs/conf.d/${file}" { inherit text; }
+    ) (selection.hostLayer moduleName cfg);
 
     services.emacs = lib.mkIf cfg.daemon {
       enable = true;

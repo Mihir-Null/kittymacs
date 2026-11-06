@@ -10,24 +10,12 @@
 let
   cfg = config.programs.kittymacs;
   selection = import ./selection.nix { inherit lib; };
-  hostFile = selection.hostFile cfg;
+  hostLayer = selection.hostLayer "Home Manager" cfg;
   tools = import ./tools.nix {
     inherit pkgs;
     emacs = cfg.package;
   };
-  emacs =
-    if cfg.packagesFromNix then
-      import ./packages.nix {
-        emacs = cfg.package;
-        features = selection.enabled (
-          if pkgs.stdenv.hostPlatform.isDarwin then "darwin" else "gnu/linux"
-        ) cfg;
-        inherit (cfg) extraPackages;
-      }
-    else if cfg.extraPackages != null then
-      cfg.package.pkgs.withPackages cfg.extraPackages
-    else
-      cfg.package;
+  emacs = selection.emacsFor (selection.systemType pkgs) cfg;
   git = "${pkgs.git}/bin/git";
   coreutils = "${pkgs.coreutils}/bin";
 in
@@ -87,8 +75,8 @@ in
 
     installFonts = lib.mkOption {
       type = lib.types.bool;
-      default = cfg.installPackages;
-      defaultText = lib.literalExpression "config.programs.kittymacs.installPackages";
+      default = cfg.installPackages && !cfg.backend.enable;
+      defaultText = lib.literalExpression "with config.programs.kittymacs; installPackages && !backend.enable";
       description = ''
         Install the editing, prose and icon fonts, and turn on fontconfig.
         Turn off for a terminal-only Emacs, which has no use for either;
@@ -169,36 +157,38 @@ in
     };
   };
 
-  config = lib.mkIf cfg.enable {
-    assertions = [
-      {
-        assertion = !(cfg.hostFiles ? "10-nix");
-        message = ''programs.kittymacs.hostFiles."10-nix" is the file the selection options write; choose another name.'';
-      }
-    ];
+  config = lib.mkIf (cfg.enable || cfg.backend.enable) {
+    assertions = selection.assertions {
+      inherit cfg;
+      usesPackage = (cfg.installPackages && !cfg.backend.enable) || cfg.daemon;
+    };
 
-    home.packages =
-      (lib.optionals cfg.installPackages (
-        [ emacs ] ++ tools.programs ++ lib.optional cfg.suggestions.enable cfg.suggestions.package
-      ))
-      ++ (lib.optionals cfg.installFonts tools.fonts);
+    home = {
+      packages =
+        (lib.optionals cfg.installPackages (
+          if cfg.backend.enable then
+            tools.backendPrograms
+          else
+            [ emacs ] ++ tools.programs ++ lib.optional cfg.suggestions.enable cfg.suggestions.package
+        ))
+        ++ (lib.optionals cfg.installFonts tools.fonts);
+
+      file = lib.mkIf (config.xdg.configHome != "${config.home.homeDirectory}/.config") (
+        lib.mapAttrs' (
+          file: text: lib.nameValuePair ".config/kittymacs/conf.d/${file}" { inherit text; }
+        ) hostLayer
+      );
+    };
     fonts.fontconfig.enable = lib.mkIf cfg.installFonts (lib.mkDefault true);
 
     xdg.configFile = {
       emacs = lib.mkIf (cfg.source != null) {
         source = config.lib.file.mkOutOfStoreSymlink cfg.source;
       };
-      "kittymacs/conf.d/10-nix.el" = lib.mkIf (hostFile != null) { text = hostFile; };
     }
     // lib.mapAttrs' (
-      name: text:
-      lib.nameValuePair "kittymacs/conf.d/${name}.el" {
-        text = ''
-          ;;; -*- lexical-binding: t; -*-
-          ${text}
-        '';
-      }
-    ) cfg.hostFiles;
+      file: text: lib.nameValuePair "kittymacs/conf.d/${file}" { inherit text; }
+    ) hostLayer;
 
     home.activation = {
       cloneKittymacs = lib.mkIf (cfg.source != null && cfg.revision != null) (
@@ -260,7 +250,7 @@ in
         ''
       );
 
-      kittymacsDaemon = lib.mkIf (cfg.daemon && pkgs.stdenv.isLinux) (
+      kittymacsDaemon = lib.mkIf (cfg.daemon && pkgs.stdenv.hostPlatform.isLinux) (
         lib.hm.dag.entryAfter [ "reloadSystemd" ] ''
           systemctl=${config.systemd.user.systemctlPath}
           if [[ ! -v DRY_RUN ]] \
@@ -280,7 +270,7 @@ in
       extraOptions = lib.optional (cfg.initDirectory != null) "--init-directory=${cfg.initDirectory}";
     };
 
-    systemd.user.services.emacs = lib.mkIf (cfg.daemon && pkgs.stdenv.isLinux) {
+    systemd.user.services.emacs = lib.mkIf (cfg.daemon && pkgs.stdenv.hostPlatform.isLinux) {
       Unit = {
         StartLimitIntervalSec = 120;
         StartLimitBurst = 3;
