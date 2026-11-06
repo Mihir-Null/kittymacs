@@ -24,8 +24,8 @@ cannot pass, however slow the machine.")
 
 (defconst kittymacs-remote-test-memory-kb 3000000
   "The address space a scenario may use, in kilobytes.
-Startup holds the garbage collector off, so a start that waits on Tramp allocates
-about 200 MB a second until the machine runs out: this ends that start instead.")
+A start that waits on Tramp allocates about 200 MB a second.  Startup's threshold
+keeps that flat, and if a change ever undoes that, this ends the start instead.")
 
 (defvar kittymacs-remote-test-scenarios nil "Results of the scenarios run so far.")
 
