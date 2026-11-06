@@ -21,6 +21,7 @@
 (defvar meow-insert-exit-hook)
 (defvar android-pass-multimedia-buttons-to-system)
 (defvar auth-sources)
+(defvar w32-pipe-buffer-size)
 
 (defmacro kittymacs-platform-test-with (system executables &rest body)
   "Run BODY as SYSTEM with only EXECUTABLES findable and no global side effects."
@@ -31,6 +32,8 @@
          (enable-theme-functions nil)
          (auth-sources (bound-and-true-p auth-sources))
          (saved-global-map (current-global-map))
+         ;; A number, because real Windows Emacs refuses anything else here.
+         (w32-pipe-buffer-size 0)
          shell-file-name explicit-shell-file-name shell-command-switch
          delete-by-moving-to-trash trash-directory
          ns-command-modifier ns-option-modifier ns-right-option-modifier
@@ -396,6 +399,19 @@ which is what an unpaired installation looks like from Emacs."
         (kittymacs--flyspell-prog))
       (should kittymacs--spell-warned)
       (should (= reports 1)))))
+
+;;; The pipe buffer on Windows.
+
+(ert-deftest kittymacs-platform-windows-enlarges-the-pipe-buffer ()
+  (kittymacs-platform-test-with 'windows-nt '("pwsh.exe")
+    (kittymacs-platform-apply)
+    (should (= w32-pipe-buffer-size (* 1024 1024)))))
+
+(ert-deftest kittymacs-platform-only-windows-sets-the-pipe-buffer ()
+  (dolist (system '(darwin gnu/linux android))
+    (kittymacs-platform-test-with system '("bash")
+      (kittymacs-platform-apply)
+      (should (zerop w32-pipe-buffer-size)))))
 
 ;;; Unix tools on Windows.
 
