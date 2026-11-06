@@ -225,7 +225,7 @@ again later, and one that does not is gone."
       (kittymacs-remote-start-value 'reconnect-hung
         (kittymacs-backend-reconnect "here")
         (let ((default-directory (kittymacs-backend-root "here")))
-          (kittymacs-remote-mode-line))))
+          (kittymacs-remote-mode-line)))
       (kittymacs-remote-start-probe 'windows-file
         (kittymacs-remote-start--windows-file-notes "/wslm:Fake-24.04:/mnt/c/hung.txt")))
     (kittymacs-remote-fixture-resume)))

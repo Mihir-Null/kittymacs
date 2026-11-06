@@ -424,6 +424,8 @@ Anywhere else it calls ORIGINAL unchanged, after one test that never connects."
 (with-eval-after-load 'ghostel-shell
   (add-to-list 'ghostel-tramp-shells (list kittymacs-remote-wsl-method 'login-shell)))
 
+#+end_src
+
 ** Opening from a WSL shell
 :PROPERTIES:
 :ID: 9e4c2a61-7b05-4d13-8f6e-1a0d3c95b7e2
@@ -488,6 +490,8 @@ done
 
 "$client" --quiet --no-wait --alternate-editor=runemacs.exe "$@" ||
   fail "neither a running Emacs nor runemacs.exe answered. Start Windows Emacs, and try again."
+#+end_src
+
 ** Windows-side files through a backend
 
 - A file under =/mnt/= on a WSL backend lives on Windows, so opening it this way crosses to Linux and back on every read, for the same file Emacs could open directly.
