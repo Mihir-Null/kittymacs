@@ -2,7 +2,8 @@
 ;; Run by tests/wsl-backend/run.ps1, in a process it can kill.
 ;;
 ;; It starts the real configuration, so the remote module's guards and settings
-;; are in play, then uses `:transport wsl' as a person would.  A table goes to
+;; are in play, then uses `:transport wsl' as a person would, and reports how long
+;; a 1 MiB write takes through the pipe the start set up.  A table goes to
 ;; standard output, a line after it says PASS or FAIL, and the exit status agrees.
 ;;
 ;; The environment names the run:
@@ -19,6 +20,7 @@
 (defvar tramp-dont-suspend-timers nil)
 (defvar kittymacs-backends)
 (defvar kittymacs-host-directories nil)
+(defvar w32-pipe-buffer-size)
 (declare-function tramp-cleanup-connection "tramp-cmds" (vec &optional keep-debug keep-password keep-processes))
 (declare-function tramp-direct-async-process-p "tramp" (&rest args))
 (declare-function tramp-dissect-file-name "tramp" (name &optional nodefault))
@@ -273,6 +275,28 @@ It waits with `accept-process-output', since this Emacs must answer the client."
              (wsl-backend-expect "saved" (buffer-string))))
        (with-current-buffer buffer (set-buffer-modified-p nil))
        (kill-buffer buffer)))))
+
+;; Random bytes, because Tramp compresses a large file on its way, and a repeated
+;; byte would shrink until the pipe no longer mattered.
+(defconst wsl-backend-megabyte
+  (let ((bytes (make-string (* 1024 1024) 0)))
+    (dotimes (index (length bytes) bytes)
+      (aset bytes index (random 256)))))
+
+;; It reports the time and does not judge it, because hosted runners vary.  The
+;; limit only tells a stall from a slow write: this took 4.43 s with the small pipe.
+(wsl-backend-check
+ "write 1 MiB through the 1 MiB pipe" 120
+ (lambda ()
+   (unless (= w32-pipe-buffer-size (* 1024 1024))
+     (error "The start left w32-pipe-buffer-size at %d" w32-pipe-buffer-size))
+   (let ((file (wsl-backend-file "megabyte"))
+         (coding-system-for-write 'binary))
+     (write-region wsl-backend-megabyte nil file nil 'silent)
+     (let ((size (file-attribute-size (file-attributes file))))
+       (unless (eql size (length wsl-backend-megabyte))
+         (error "%s bytes arrived" size))
+       (format "%d bytes arrived" size)))))
 
 (wsl-backend-check
  "a direct process" 60
