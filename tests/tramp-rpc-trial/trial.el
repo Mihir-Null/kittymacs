@@ -422,7 +422,12 @@ Two failures in a row end it: failing is a result, and a third try adds nothing.
                            (let ((count (length (directory-files (trial-name "many") nil "\\`f"))))
                              (or (= count 200) (format "%d names" count)))))
           (trial-measure (format "file-attributes, %s" label) round 60
-                         (lambda () (and (file-attributes small-file) t))))))))
+                         (lambda () (and (file-attributes small-file) t))))))
+    ;; Does the lock file explain a small write?  The pipe is still 1 MiB here.
+    (let ((create-lockfiles nil))
+      (dotimes (i trial-rounds)
+        (trial-measure "write 4 KiB, no lock file, 1 MiB pipe" (1+ i) 60
+                       (lambda () (trial-write small-file small)))))))
 
 ;;; Processes
 
@@ -441,8 +446,9 @@ Send it the bytes STDIN, then end of file.  Return (STATUS . BYTES)."
       (process-send-eof process))
     (while (and (process-live-p process) (< (float-time) end))
       (accept-process-output process 0.1))
-    ;; A relay's output may still be on its way after the process ends.
-    (accept-process-output nil 0.2)
+    ;; A relay's output may still be on its way after the process ends: wait until
+    ;; 50 ms pass with none, which both rows pay.
+    (while (accept-process-output nil 0.05))
     (let ((live (process-live-p process)))
       (when live (delete-process process))
       (prog1 (cons (if live 'stalled (process-exit-status process))
@@ -550,15 +556,21 @@ Then an edit no Emacs saw, since tramp-rpc holds Magit's answers in a cache."
          (or (string-search "Unstaged changes" text)
              (format "no unstaged changes shown; the buffer said: %s"
                      (substring text 0 (min 300 (length text)))))))))
-  (trial-as-root 30 "touch" (concat trial-home "/repo/outside-edit"))
-  (trial-measure
-   "Magit status shows an outside edit" 1 120
-   (lambda ()
-     (let ((text (trial-magit-status)))
-       (or (string-search "outside-edit" text)
-           (format "not shown; the buffer said: %s"
-                   (substring text 0 (min 300 (length text))))))))
-  (trial-as-root 30 "rm" "-f" (concat trial-home "/repo/outside-edit")))
+  ;; Magit may leave a section's body out, so read its heading.
+  (let ((expect
+         (lambda (op wanted)
+           (trial-measure
+            op 1 120
+            (lambda ()
+              (let ((text (trial-magit-status)))
+                (or (eq wanted (and (string-search "Untracked files" text) t))
+                    (format "wanted untracked files %S; the buffer said: %s" wanted
+                            (substring text 0 (min 300 (length text)))))))))))
+    (funcall expect "Magit status, before an outside edit" nil)
+    (trial-as-root 30 "touch" (concat trial-home "/repo/outside-edit"))
+    (funcall expect "Magit status shows an outside new file" t)
+    (trial-as-root 30 "rm" "-f" (concat trial-home "/repo/outside-edit"))
+    (funcall expect "Magit status shows it gone" nil)))
 
 (defvar trial-eglot-failures 0 "How many Eglot starts have failed in a row.")
 
@@ -759,23 +771,72 @@ after 30 s and a 10 s probe, so its limit here is longer than step 15's 25 s."
       (trial-measure "hang: first answer after it resumes" 1 60 check))
     (with-current-buffer buffer (set-buffer-modified-p nil))
     (kill-buffer buffer)
-    ;; A write larger than the pipe blocks in Emacs's own write.
+    ;; A write larger than the pipe blocks in Emacs's own write, so try both pipes.
     (let ((large (trial-blob 1048576))
           (small (trial-blob 4096))
           (name (trial-name "spike/hung-write.bin")))
-      (trial-disconnect)
-      (file-exists-p (concat trial-prefix "/tmp"))
-      (unless trial-rpc-p
-        (setq trial-shell-pid (tramp-send-command-and-read (trial-vec) "echo $$")))
-      (trial-stop-helper "STOP")
-      (trial-measure "hang: write 1 MiB to a stopped helper" 1 45
-                     (lambda () (trial-write name large)))
-      (trial-stop-helper "CONT")
-      (trial-measure "hang: 4 KiB round trip after that write" 1 60
-                     (lambda ()
-                       (trial-write name small)
-                       (or (equal (trial-read name) small) "bytes differ"))))
+      (pcase-dolist (`(,label . ,size) trial-pipes)
+        (trial-set-pipe size)
+        (file-exists-p (concat trial-prefix "/tmp"))
+        (unless trial-rpc-p
+          (setq trial-shell-pid (tramp-send-command-and-read (trial-vec) "echo $$")))
+        (trial-write name small)
+        (trial-stop-helper "STOP")
+        (trial-measure (format "hang: write 1 MiB to a stopped helper, %s" label) 1 75
+                       (lambda () (trial-write name large)))
+        (trial-stop-helper "CONT")
+        (trial-measure (format "hang: what that write left, %s" label) 1 60
+                       (lambda ()
+                         (let ((bytes (trial-read name)))
+                           (list :detail
+                                 (cond ((equal bytes large) "all of the new bytes")
+                                       ((equal bytes small) "all of the old bytes")
+                                       (t (format "neither: %d bytes" (length bytes))))))))
+        (trial-measure (format "hang: 4 KiB round trip after that write, %s" label) 1 60
+                       (lambda ()
+                         (trial-write name small)
+                         (or (equal (trial-read name) small) "bytes differ")))))
     (trial-disconnect)))
+
+;;; Where the time goes, on tramp-rpc
+
+(defun trial-trace (op function)
+  "Call FUNCTION once as OP, and record each RPC it made and how long it took.
+What the calls leave unexplained is spent in Emacs."
+  (let* (calls
+         (advice (lambda (original &rest arguments)
+                   (let ((began (float-time)))
+                     (prog1 (apply original arguments)
+                       (push (format "%s %.3f"
+                                     (if (stringp (cadr arguments))
+                                         (cadr arguments)
+                                       "batch")
+                                     (- (float-time) began))
+                             calls))))))
+    (dolist (name '(tramp-rpc--call tramp-rpc--call-batch))
+      (advice-add name :around advice '((name . trial-trace))))
+    (let ((began (float-time)))
+      (unwind-protect
+          (trial-measure op 1 120
+                         (lambda ()
+                           (funcall function)
+                           (list :detail (format "total %.3f: %s" (- (float-time) began)
+                                                 (string-join (reverse calls) ", ")))))
+        (dolist (name '(tramp-rpc--call tramp-rpc--call-batch))
+          (advice-remove name 'trial-trace))))))
+
+(defun trial-phase-trace ()
+  "Why a small write costs what it does, and a Magit status."
+  (when trial-rpc-p
+    (trial-set-pipe 1048576)
+    (let ((small (trial-blob 4096))
+          (name (trial-name "spike/small.bin"))
+          (remote-file-name-inhibit-cache t))
+      (dotimes (_ 2)
+        (trial-trace "trace: write 4 KiB" (lambda () (trial-write name small))))
+      (trial-trace "trace: read 4 KiB" (lambda () (trial-read name))))
+    (dotimes (_ 2)
+      (trial-trace "trace: Magit status" #'trial-magit-status))))
 
 (defun trial-phase-shutdown ()
   "`wsl --shutdown' in the middle of a session, with an open file and a process."

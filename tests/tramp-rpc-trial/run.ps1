@@ -85,21 +85,21 @@ function Invoke-Row {
     "::endgroup::"
 }
 
-$all = 'connect files into magit eglot process shell risks hang shutdown badhost'
+$all = 'connect files into magit eglot process shell risks trace hang shutdown badhost'
 $look = 'connect files into magit eglot process shell'
 $real = 'connect kittymacs files magit eglot process hang shutdown'
 
-if ($quick) {
-    Invoke-Row -Transport rpc -Boot plain -Phases $all -Rounds 1 -Minutes 25
-} else {
-    Invoke-Row -Transport rpc -Boot plain -Phases $all -Rounds 5 -Minutes 30
-    Invoke-Row -Transport wslm -Boot plain -Phases $all -Rounds 5 -Minutes 30
-    Invoke-Row -Transport rpc -Boot plain -Phases $look -Rounds 3 -Minutes 10 -Graphical
-    Invoke-Row -Transport wslm -Boot plain -Phases $look -Rounds 3 -Minutes 10 -Graphical
-    Invoke-Row -Transport rpc -Boot config -Phases $real -Rounds 1 -Minutes 12
-    Invoke-Row -Transport wslm -Boot config -Phases $real -Rounds 1 -Minutes 12
-    Invoke-Row -Transport rpc -Boot config -Phases $real -Rounds 1 -Minutes 12 -Graphical
-}
+# A quick run has one round of every row, to find errors in this harness cheaply.
+$timing = if ($quick) { 1 } else { 5 }
+$looking = if ($quick) { 1 } else { 3 }
+
+Invoke-Row -Transport rpc -Boot plain -Phases $all -Rounds $timing -Minutes 30
+Invoke-Row -Transport wslm -Boot plain -Phases $all -Rounds $timing -Minutes 30
+Invoke-Row -Transport rpc -Boot plain -Phases $look -Rounds $looking -Minutes 10 -Graphical
+Invoke-Row -Transport wslm -Boot plain -Phases $look -Rounds $looking -Minutes 10 -Graphical
+Invoke-Row -Transport rpc -Boot config -Phases $real -Rounds 1 -Minutes 12
+Invoke-Row -Transport wslm -Boot config -Phases $real -Rounds 1 -Minutes 12
+Invoke-Row -Transport rpc -Boot config -Phases $real -Rounds 1 -Minutes 12 -Graphical
 
 $summary = Join-Path $resultsFull 'summary.md'
 $env:TRIAL_SUMMARISE = $resultsFull -replace '\\', '/'
