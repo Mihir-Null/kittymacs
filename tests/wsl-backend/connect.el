@@ -244,7 +244,7 @@ pipe want different ones.  Signals after LIMIT seconds."
          (while (and (< (float-time) end)
                      (not (string-match-p "project\\$ *$" (buffer-string))))
            (accept-process-output nil 0.5)))
-       (message "terminal: at the prompt, showing %S" (buffer-string))
+       (message "terminal: sending the command")
        (let ((facts (wsl-backend-terminal-facts "terminal-facts" "\r" 20)))
          (message "terminal: facts %S" facts)
          (wsl-backend-expect "/dev/pts/" facts)
