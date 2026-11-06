@@ -210,9 +210,18 @@
 - A start pays for reading every installed package's description, and the archive index, before it can activate anything.
   + Emacs's own =package-quickstart-refresh= writes one file holding what those activations would do, so a start can load that instead.
   + [[file:../ARCHITECTURE.md][ARCHITECTURE.md]] has what it saves.
-- Having the file is the opt-in: =just quickstart= or =M-x kittymacs-quickstart-write= writes it, and =just quickstart-remove= or =M-x kittymacs-quickstart-remove= deletes every one.
+- A new machine gets the file without asking, and any other machine scans until it asks.
+  + A new machine is one with the stamp =var/started-on-default=, so it started on the default profile, as [[id:2ea4f7b0-6c19-4d85-93f2-c07a1be58d36][the rule in the features chapter]] explains.
+  + A machine with no stamp calls =package-initialize= as it always has, and adds nothing to =after-init-hook=, until =just quickstart= or =M-x kittymacs-quickstart-write= writes the file.
   + No option decides this, because packages activate before host files and =private.el= load.
-  + A machine with no file calls =package-initialize= as it always has, and adds nothing to =after-init-hook=.
+- The file comes once the packages have settled, so the install that fills a new machine pays nothing for it.
+  + =just install= writes it as its last step, and a start writes it at its first idle moment after init, which leaves the second start to load it.
+  + A session that quits before going idle writes nothing, and the next start tries again.
+  + A session where a package failed to install writes nothing either, so a partial install leaves no file, and the next start retries the package.
+- =just quickstart-remove= or =M-x kittymacs-quickstart-remove= turns it off for good.
+  + The missing file cannot say so, because a new machine has no file either, so removing writes =var/quickstart-off= as well.
+  + =just quickstart= or =M-x kittymacs-quickstart-write= turns it on again, and deletes that marker.
+  + Deleting =var/= loses the marker along with the stamp, and the machine then counts as new.
 - A hash in the file's name covers =emacs-version=, =package-user-dir= and =package-directory-list=, so a file written for anything else is never loaded.
   + Each directory goes through =file-truename=, because a Nix profile keeps its path while its contents move to another store path.
   + The version counts because which packages activate depends on what Emacs has built in.
@@ -270,24 +279,46 @@ With no such file, `package-initialize' does what it always did."
       (when package-alist
         (delete-file (concat file "c"))))))
 
-(defun kittymacs-quickstart-remove ()
-  "Delete every quickstart file, so that the next start scans the package directories."
-  (interactive)
+(defun kittymacs-quickstart--off-file ()
+  "Return the file saying that this machine turned the quickstart file off."
+  (expand-file-name "quickstart-off" kittymacs-var-dir))
+
+(defun kittymacs-quickstart--delete ()
+  "Delete every quickstart file."
   (setq package-quickstart nil)
   (mapc #'delete-file (kittymacs-quickstart--written)))
 
+(defun kittymacs-quickstart-remove ()
+  "Delete every quickstart file, and keep this machine scanning until it asks again."
+  (interactive)
+  (kittymacs-quickstart--delete)
+  (make-directory kittymacs-var-dir t)
+  (write-region "kittymacs-quickstart-write turns the quickstart file on again.\n"
+                nil (kittymacs-quickstart--off-file) nil 'silent))
+
+(defvar warning-minimum-log-level)
+
+(defun kittymacs-quickstart--quietly (refresh)
+  "Call REFRESH with no compile warning, from this code or from Emacs's own refresh.
+An autoloads file may name a function only its package defines.  Batch prints
+whatever gets logged, so hiding it from the display would not be enough."
+  (require 'warnings)
+  (let ((warning-minimum-log-level :error))
+    (funcall refresh)))
+
+(advice-add 'package-quickstart-refresh :around #'kittymacs-quickstart--quietly)
+
 (defun kittymacs-quickstart-write ()
   "Write the quickstart file for this Emacs and these package directories.
-Having it is what turns it on; see the startup chapter."
+This also undoes `kittymacs-quickstart-remove'; see the startup chapter."
   (interactive)
   (require 'package)
-  (kittymacs-quickstart-remove)
+  (kittymacs-quickstart--delete)
+  (delete-file (kittymacs-quickstart--off-file))
   (make-directory kittymacs-cache-dir t)
   (setq package-quickstart-file (kittymacs-quickstart-file)
         package-quickstart t)
-  ;; An autoloads file may name a function only its package defines.
-  (let ((warning-suppress-types (cons '(bytecomp) warning-suppress-types)))
-    (package-quickstart-refresh)))
+  (package-quickstart-refresh))
 
 (defun kittymacs-quickstart--keep-current ()
   "Keep this machine's quickstart file right from now on; it has written one before."
@@ -295,6 +326,22 @@ Having it is what turns it on; see the startup chapter."
         package-quickstart t)
   (unless (kittymacs-quickstart--current-p package-quickstart-file)
     (kittymacs-quickstart-write)))
+
+(defun kittymacs-quickstart--wanted-p ()
+  "Return non-nil on a new machine that has no quickstart file and has not refused one."
+  (and (file-exists-p (kittymacs-features--stamp-file))
+       (not (file-exists-p (kittymacs-quickstart--off-file)))
+       (not (kittymacs-quickstart--written))))
+
+(defun kittymacs-quickstart--settle ()
+  "Write the file on a new machine, unless this session failed to install a package."
+  (when (and (kittymacs-quickstart--wanted-p)
+             (not kittymacs-features--failed))
+    (kittymacs-quickstart-write)))
+
+(defun kittymacs-quickstart--settle-when-idle ()
+  "Call `kittymacs-quickstart--settle' once this start has gone idle."
+  (run-with-idle-timer 2 nil #'kittymacs-quickstart--settle))
 
 ;;; early-init.el ends here
 #+end_src
@@ -459,6 +506,8 @@ Set before init.el loads to change them, because they are read during init.")
     (kittymacs-load-user-file private)))
 (kittymacs-features-resolve)
 (kittymacs-features-install)
+(when (kittymacs-quickstart--wanted-p)
+  (kittymacs-after-init #'kittymacs-quickstart--settle-when-idle 99))
 (kittymacs-platform-apply)
 (kittymacs-require-module 'kittymacs-basics)
 (kittymacs-require-module 'kittymacs-ui)
@@ -567,8 +616,8 @@ Set before init.el loads to change them, because they are read during init.")
 - =SPC C p= opens =private.el=, created from the example the first time; =SPC C u= opens the Customize file.
 - After editing this chapter, =just tangle= rewrites both files; =just tangle-check= proves they match.
 - =just install= starts the configuration once in batch, installing what its profile needs; =just test-packages= replays a real startup under =full= and fails on any warning.
-- =just quickstart=, then restart: =M-: kittymacs-quickstart-loaded= is =t= and =M-: package-alist= is =nil=. =just quickstart-remove=, then restart: the first is =nil= and the second lists the packages.
-- =just test= runs [[file:../tests/kittymacs-quickstart-tests.el][the quickstart tests]], and =just test-quickstart= replays a real startup from the file.
+- =just quickstart=, then restart: =M-: kittymacs-quickstart-loaded= is =t= and =M-: package-alist= is =nil=. =just quickstart-remove=, then restart twice: the first is =nil= and the second lists the packages.
+- =just test= runs [[file:../tests/kittymacs-quickstart-tests.el][the quickstart tests]], =just test-quickstart= replays a real startup from the file, and =just test-new-machine= follows a new machine from its first start on.
 
 #+begin_src sh :tangle no
 just tangle-check     # early-init.el and init.el match this chapter

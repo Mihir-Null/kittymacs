@@ -168,6 +168,64 @@ Return the last form's value.  Fail if that Emacs did not exit cleanly."
     (should-not (directory-files (expand-file-name "var/cache/" root) nil "quickstart"))
     (should-not (plist-get (kittymacs-quickstart-test--activate root) :loaded))))
 
+;;; A new machine gets the file without asking
+
+(defconst kittymacs-quickstart-test--settle
+  `(progn
+     (add-to-list 'load-path ,(expand-file-name "lisp" kittymacs-quickstart-test-root))
+     (require 'kittymacs-features)
+     (kittymacs-quickstart--settle)
+     (and (kittymacs-quickstart--written) t))
+  "What a start does once it has gone idle; says whether a file exists afterwards.")
+
+(defun kittymacs-quickstart-test--stamp (root)
+  "Mark the machine in ROOT as one that started on the default profile."
+  (kittymacs-quickstart-test--write (expand-file-name "var/started-on-default" root) "Stamp.\n"))
+
+(ert-deftest kittymacs-quickstart-a-new-machine-gets-the-file ()
+  (kittymacs-quickstart-test-with root
+    (kittymacs-quickstart-test--stamp root)
+    (should (kittymacs-quickstart-test--start root kittymacs-quickstart-test--settle))
+    (should (plist-get (kittymacs-quickstart-test--activate root) :loaded))))
+
+(ert-deftest kittymacs-quickstart-a-machine-with-no-stamp-gets-no-file ()
+  (kittymacs-quickstart-test-with root
+    (dotimes (_ 2)
+      (should-not (kittymacs-quickstart-test--start root kittymacs-quickstart-test--settle)))
+    (should-not (plist-get (kittymacs-quickstart-test--activate root) :loaded))))
+
+(ert-deftest kittymacs-quickstart-a-failed-install-leaves-no-file ()
+  (kittymacs-quickstart-test-with root
+    (kittymacs-quickstart-test--stamp root)
+    (should-not (kittymacs-quickstart-test--start
+                 root '(defvar kittymacs-features--failed '(foo))
+                 kittymacs-quickstart-test--settle))))
+
+(ert-deftest kittymacs-quickstart-removing-it-lasts-until-asked ()
+  (kittymacs-quickstart-test-with root
+    (kittymacs-quickstart-test--stamp root)
+    (kittymacs-quickstart-test--start root kittymacs-quickstart-test--settle)
+    (kittymacs-quickstart-test--start root '(kittymacs-quickstart-remove))
+    (dotimes (_ 2)
+      (should-not (kittymacs-quickstart-test--start root kittymacs-quickstart-test--settle)))
+    (kittymacs-quickstart-test--write-file root)
+    (should-not (file-exists-p (expand-file-name "var/quickstart-off" root)))
+    (should (plist-get (kittymacs-quickstart-test--activate root) :loaded))))
+
+(ert-deftest kittymacs-quickstart-writing-it-logs-no-compile-warning ()
+  "From this code, and from the refresh Emacs runs after a later install."
+  (kittymacs-quickstart-test-with root
+    (kittymacs-quickstart-test--write
+     (expand-file-name "var/elpa/foo-1.0/foo-autoloads.el" root)
+     ";;; -*- lexical-binding: t -*-\n(defun foo-noisy () (foo-defined-nowhere))\n")
+    (let ((log '(if (get-buffer byte-compile-log-buffer)
+                    (with-current-buffer byte-compile-log-buffer (buffer-string))
+                  "")))
+      (should-not (string-search
+                   "foo-defined-nowhere"
+                   (kittymacs-quickstart-test--start
+                    root '(kittymacs-quickstart-write) '(package--quickstart-maybe-refresh) log))))))
+
 ;;; A file for something else
 
 (ert-deftest kittymacs-quickstart-a-file-for-other-directories-is-never-loaded ()

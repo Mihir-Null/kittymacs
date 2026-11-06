@@ -89,6 +89,7 @@ Set it where `kittymacs-profile' is set, for the same reason."
 - Those signs alone cannot tell the two apart, because a new machine has its packages from its second start on.
   + It would then count as in use, move to =full= and install everything.
   + So a start that finds no choice and no sign writes the stamp =var/started-on-default=, and the rule reads the stamp first.
+  + The stamp also tells [[id:7b4e2f19-6d03-4a58-9c21-e8f05d7a3c64][the quickstart file]] that this machine is new.
 - Writing it before the installer runs covers a first start whose installs fail: the next start finds the stamp, stays on =minimal= and tries again.
 - A value that is neither =minimal= nor =full= warns and counts as no choice, because a typo in a setting must not cost the editor.
 - The rule can only err towards =full=, which installs more and warns, and never towards taking something away:

@@ -122,24 +122,46 @@ With no such file, `package-initialize' does what it always did."
       (when package-alist
         (delete-file (concat file "c"))))))
 
-(defun kittymacs-quickstart-remove ()
-  "Delete every quickstart file, so that the next start scans the package directories."
-  (interactive)
+(defun kittymacs-quickstart--off-file ()
+  "Return the file saying that this machine turned the quickstart file off."
+  (expand-file-name "quickstart-off" kittymacs-var-dir))
+
+(defun kittymacs-quickstart--delete ()
+  "Delete every quickstart file."
   (setq package-quickstart nil)
   (mapc #'delete-file (kittymacs-quickstart--written)))
 
+(defun kittymacs-quickstart-remove ()
+  "Delete every quickstart file, and keep this machine scanning until it asks again."
+  (interactive)
+  (kittymacs-quickstart--delete)
+  (make-directory kittymacs-var-dir t)
+  (write-region "kittymacs-quickstart-write turns the quickstart file on again.\n"
+                nil (kittymacs-quickstart--off-file) nil 'silent))
+
+(defvar warning-minimum-log-level)
+
+(defun kittymacs-quickstart--quietly (refresh)
+  "Call REFRESH with no compile warning, from this code or from Emacs's own refresh.
+An autoloads file may name a function only its package defines.  Batch prints
+whatever gets logged, so hiding it from the display would not be enough."
+  (require 'warnings)
+  (let ((warning-minimum-log-level :error))
+    (funcall refresh)))
+
+(advice-add 'package-quickstart-refresh :around #'kittymacs-quickstart--quietly)
+
 (defun kittymacs-quickstart-write ()
   "Write the quickstart file for this Emacs and these package directories.
-Having it is what turns it on; see the startup chapter."
+This also undoes `kittymacs-quickstart-remove'; see the startup chapter."
   (interactive)
   (require 'package)
-  (kittymacs-quickstart-remove)
+  (kittymacs-quickstart--delete)
+  (delete-file (kittymacs-quickstart--off-file))
   (make-directory kittymacs-cache-dir t)
   (setq package-quickstart-file (kittymacs-quickstart-file)
         package-quickstart t)
-  ;; An autoloads file may name a function only its package defines.
-  (let ((warning-suppress-types (cons '(bytecomp) warning-suppress-types)))
-    (package-quickstart-refresh)))
+  (package-quickstart-refresh))
 
 (defun kittymacs-quickstart--keep-current ()
   "Keep this machine's quickstart file right from now on; it has written one before."
@@ -147,5 +169,21 @@ Having it is what turns it on; see the startup chapter."
         package-quickstart t)
   (unless (kittymacs-quickstart--current-p package-quickstart-file)
     (kittymacs-quickstart-write)))
+
+(defun kittymacs-quickstart--wanted-p ()
+  "Return non-nil on a new machine that has no quickstart file and has not refused one."
+  (and (file-exists-p (kittymacs-features--stamp-file))
+       (not (file-exists-p (kittymacs-quickstart--off-file)))
+       (not (kittymacs-quickstart--written))))
+
+(defun kittymacs-quickstart--settle ()
+  "Write the file on a new machine, unless this session failed to install a package."
+  (when (and (kittymacs-quickstart--wanted-p)
+             (not kittymacs-features--failed))
+    (kittymacs-quickstart-write)))
+
+(defun kittymacs-quickstart--settle-when-idle ()
+  "Call `kittymacs-quickstart--settle' once this start has gone idle."
+  (run-with-idle-timer 2 nil #'kittymacs-quickstart--settle))
 
 ;;; early-init.el ends here
