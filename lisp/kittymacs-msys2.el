@@ -10,6 +10,7 @@
 (defvar ghostel-shell)
 (defvar ghostel-environment)
 (defvar ghostel-buffer-name)
+(defvar kittymacs-remote-windows-file-note)
 (declare-function ghostel "ghostel" (&optional arg))
 
 (defcustom kittymacs-msys2-root
@@ -59,6 +60,7 @@ With prefix ARG, create another one instead of reusing the existing buffer."
       (ghostel arg))))
 
 (keymap-set kittymacs-open-map "m" (cons "MSYS2 terminal" #'kittymacs-terminal-msys2))
+(setq kittymacs-remote-windows-file-note "MSYS2's tools work on it there, and SPC o m is its shell.")
 
 (kittymacs-msys2-apply)
 

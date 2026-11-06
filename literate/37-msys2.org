@@ -30,6 +30,9 @@
   + [[id:afa6b7fd-742a-4c15-86a6-32e3e8027b0e][The spell checker]] then finds =hunspell=, Git for Windows' absence no longer costs =diff=, and Tree-sitter builds find =gcc=.
   + UCRT64 comes first, because a compiler from =usr/bin= builds against the POSIX layer, and a grammar must load into native Emacs.
 - It sets =DICPATH= when you have not, since MSYS2's Hunspell looks for its dictionaries there.
+- This is the fallback's trigger: opening a file under =/mnt/= through a WSL backend warns that it is slow ([[id:3c9e7a52-1d84-4f6b-a0c3-8e5d27b1f96a][a WSL distribution]]), and that message offers the native file.
+  + With the feature on, it adds that this module's tools work there, through =kittymacs-remote-windows-file-note=, so no other chapter names it.
+  + With it off, the offer is the native file alone, and this chapter is where to read about the rest.
 - =SPC o m= opens an MSYS2 UCRT64 login shell in a terminal, which is why the feature depends on =terminal=.
   + =MSYSTEM= selects the environment and =CHERE_INVOKING= keeps the directory you were in, both for the child process only.
   + It binds ghostel's options with =let=, which works before ghostel has loaded because this module declares them.
@@ -47,6 +50,7 @@
 (defvar ghostel-shell)
 (defvar ghostel-environment)
 (defvar ghostel-buffer-name)
+(defvar kittymacs-remote-windows-file-note)
 (declare-function ghostel "ghostel" (&optional arg))
 
 (defcustom kittymacs-msys2-root
@@ -96,6 +100,7 @@ With prefix ARG, create another one instead of reusing the existing buffer."
       (ghostel arg))))
 
 (keymap-set kittymacs-open-map "m" (cons "MSYS2 terminal" #'kittymacs-terminal-msys2))
+(setq kittymacs-remote-windows-file-note "MSYS2's tools work on it there, and SPC o m is its shell.")
 
 (kittymacs-msys2-apply)
 
@@ -107,5 +112,6 @@ With prefix ARG, create another one instead of reusing the existing buffer."
 
 - With the feature off, =M-: (featurep 'kittymacs-msys2)= is =nil=, and =SPC o m= is unbound.
 - With it on, a start warns once, and =SPC o m= opens a UCRT64 shell.
+- With it on, =C-x C-f /wslm:DISTRIBUTION:/mnt/c/Windows/win.ini= warns too, and says the shell and tools are here.
 - =M-: (executable-find "hunspell")= names the one under the root, unless a native one comes first.
 - =just test= runs [[file:../tests/kittymacs-msys2-tests.el][the fallback's tests]] on any machine, and =just test-features= starts with it on, as if on Windows.

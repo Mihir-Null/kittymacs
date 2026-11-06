@@ -185,6 +185,38 @@ Tramp suspends timers while it waits unless told not to, and the limit is a time
      (mapconcat (lambda (tool) (format "%s=%s" (car tool) (if (cdr tool) "yes" "no")))
                 tools " "))))
 
+;;; A Windows-side file through the backend
+
+(declare-function kittymacs-remote-reopen-natively "kittymacs-remote" ())
+
+(wsl-backend-check
+ "a file under /mnt/ says so once, and reopens natively" 60
+ (lambda ()
+   (let* ((file (format "/wslm:%s:/mnt/c/Windows/win.ini" wsl-backend-distribution))
+          (messages (lambda ()
+                      (with-current-buffer "*Messages*"
+                        (how-many "through WSL is slow" (point-min) (point-max)))))
+          (before (funcall messages))
+          (buffer (find-file-noselect file))
+          (said (- (funcall messages) before)))
+     (unless (= said 1) (error "It spoke %d times" said))
+     (kill-buffer buffer)
+     (setq buffer (find-file-noselect file))
+     (unless (= (- (funcall messages) before) 1) (error "It spoke again"))
+     (with-current-buffer buffer
+       (let ((reading-seconds
+              (car (benchmark-run 5
+                     (let ((remote-file-name-inhibit-cache t))
+                       (with-temp-buffer (insert-file-contents file)))))))
+         (kittymacs-remote-reopen-natively)
+         (when (file-remote-p buffer-file-name)
+           (error "Still through Tramp: %s" buffer-file-name))
+         (prog1 (format "%s; five reads through WSL %.3f s, natively %.3f s"
+                        buffer-file-name reading-seconds
+                        (car (benchmark-run 5
+                               (with-temp-buffer (insert-file-contents buffer-file-name)))))
+           (kill-buffer)))))))
+
 ;; This check would pass if connecting could never fail.  So a distribution that
 ;; does not exist must not look like one that answers.
 (wsl-backend-check

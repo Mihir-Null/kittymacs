@@ -171,6 +171,42 @@ PATH is nil where the machine does not have the tool."
     (user-error "A wsl backend needs :host, the distribution's name in `wsl --list'"))
   (kittymacs-remote--add-wsl-method)
   (kittymacs-remote--tramp-root kittymacs-remote-wsl-method backend))
+(defvar kittymacs-remote-windows-file-note nil
+  "What the message about a Windows-side file adds, or nil.")
+
+(defvar kittymacs-remote--windows-files-noted nil
+  "The Windows-side files this session has already spoken about.")
+
+(defun kittymacs-remote--windows-file (file)
+  "Return what Windows calls FILE, a name on a WSL backend under /mnt/, or nil.
+This reads the name, and never connects."
+  (when (string-match (format "\\`/%s:[^:]*:/mnt/\\([a-z]\\)\\(/.*\\)?\\'"
+                              (regexp-quote kittymacs-remote-wsl-method))
+                      file)
+    (concat (match-string 1 file) ":" (or (match-string 2 file) "/"))))
+
+(defun kittymacs--remote-note-windows-file ()
+  "Say once that this buffer's file would be quicker opened on Windows."
+  (when-let* ((native (kittymacs-remote--windows-file buffer-file-name)))
+    (unless (member buffer-file-name kittymacs-remote--windows-files-noted)
+      (push buffer-file-name kittymacs-remote--windows-files-noted)
+      (message "This file is on Windows, and reading it through WSL is slow.  %s reopens it as %s.%s"
+               (substitute-command-keys "\\[kittymacs-remote-reopen-natively]")
+               native
+               (if kittymacs-remote-windows-file-note
+                   (concat "  " kittymacs-remote-windows-file-note)
+                 "")))))
+
+(defun kittymacs-remote-reopen-natively ()
+  "Replace this buffer's Windows-side file, opened through WSL, with the native file."
+  (interactive)
+  (let ((native (and buffer-file-name (kittymacs-remote--windows-file buffer-file-name))))
+    (unless native
+      (user-error "This buffer is not a Windows-side file on a WSL backend"))
+    (find-alternate-file native)))
+
+(add-hook 'find-file-hook #'kittymacs--remote-note-windows-file)
+(keymap-set kittymacs-open-map "w" (cons "reopen a Windows file natively" #'kittymacs-remote-reopen-natively))
 (defun kittymacs-remote--apply-backend (name)
   "Set the connection-local variables of the backend called NAME."
   (let* ((backend (kittymacs-remote--backend name))
