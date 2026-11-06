@@ -8,7 +8,8 @@ server=$1
 version=$2
 
 # {"version": "2.0", "id": 1, "method": "system.info"}, 36 bytes.
-answer=$(printf '\0\0\0\044\203\247version\2432.0\242id\001\246method\253system.info' |
+# It stops at the end of its input, perhaps before it answers, so that stays open.
+answer=$( { printf '\0\0\0\044\203\247version\2432.0\242id\001\246method\253system.info'; sleep 3; } |
   timeout 20 "$server" | tr -c '[:print:]' ' ')
 echo "$answer"
 
