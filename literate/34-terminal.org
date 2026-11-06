@@ -13,7 +13,7 @@
   + It knows what it printed: links are clickable, colours exact.
 - [[https://github.com/dakra/ghostel][ghostel]] by Daniel Kraus is the emulator: a thin Emacs Lisp layer over =libghostty-vt=, the engine behind [[https://ghostty.org/][Ghostty]].
   + This chapter chooses its settings, wires it to the packages already in use and teaches it Meow's states; the integration recipes follow ghostel's manual.
-- Leans on [[id:afa6b7fd-742a-4c15-86a6-32e3e8027b0e][the platform chapter]] (the system shell, =kittymacs-msys2-root=) and [[id:e5942eb0-4389-447d-9317-d9178adcaaae][the leader]]; falls back to Eshell from [[id:d2e0bc37-0bd4-4b28-a8ee-04f94ac451f8][the shells chapter]] without requiring it.
+- Leans on [[id:afa6b7fd-742a-4c15-86a6-32e3e8027b0e][the platform chapter]] (the system shell) and [[id:e5942eb0-4389-447d-9317-d9178adcaaae][the leader]]; falls back to Eshell from [[id:d2e0bc37-0bd4-4b28-a8ee-04f94ac451f8][the shells chapter]] without requiring it.
 - Read [[id:a1607a41-b741-428a-9de3-c16e7c8d3ecc][the editing chapter]] first, then [[*Meow in the terminal]]: here Meow's states decide who gets each key.
 
 * Where the native module lives :decision:
@@ -54,13 +54,6 @@
 ;; The Eshell fallback below: `kittymacs-shell' is loaded before this module
 ;; by `init.el', but this module does not require it.
 (declare-function kittymacs-eshell-project "kittymacs-shell" ())
-;; Ghostel's options, which `kittymacs-terminal-msys2' binds with `let'.  The
-;; first terminal of a session may be that one, before ghostel has loaded and
-;; declared them; without these a `let' would bind them lexically, and ghostel
-;; would never see the MSYS2 shell.
-(defvar ghostel-shell)
-(defvar ghostel-environment)
-(defvar ghostel-buffer-name)
 
 (defgroup kittymacs-terminal nil
   "The integrated terminal."
@@ -97,7 +90,7 @@ is what the terminal needs."
 - That is not worth an error on every start, so =kittymacs-terminal-ghostel= is nil there: ghostel is not installed and Eshell takes =SPC o e=.
   + The same goes for any machine without the =terminal= feature: the option follows the feature, whose =:not-on= names Android.
   + This chapter always loads, because =SPC o e= and =SPC o p= work on Eshell without the feature.
-  + Every key and hook that needs ghostel sits behind the option, so nothing here is left dead: =SPC o E=, =SPC o m=, =SPC m t=, =SPC m T= and ghostel's own =SPC m=.
+  + Every key and hook that needs ghostel sits behind the option, so nothing here is left dead: =SPC o E=, =SPC m t=, =SPC m T= and ghostel's own =SPC m=.
   + Eshell is Lisp, needs no module and no subprocess to start, and where Termux is paired it runs Termux's programs like any other shell.
   + A genuine loss, and the honest one to take: Eshell is not a terminal and will not run =htop= or a full-screen editor.
 
@@ -120,6 +113,8 @@ commonly built without the dynamic module support ghostel needs.
   + Convenient over SSH, unpleasant when the output you just =cat='d was hostile.
   + Turn it on per machine in =private.el=.
 - Native Windows sets no =$SHELL=, so there the terminal runs the shell [[id:afa6b7fd-742a-4c15-86a6-32e3e8027b0e][the platform chapter]] picked instead of ghostel's =/bin/sh= fallback.
+  + It talks to Windows ConPTY directly, so nothing translates paths or substitutes a POSIX helper.
+  + A Linux shell on Windows is a backend's: =SPC o e= or =M-x shell= in one of its buffers ([[id:3c9e7a52-1d84-4f6b-a0c3-8e5d27b1f96a][a WSL distribution]]).
 - A shell inside the terminal can call listed Emacs commands by name, such as =ghostel_cmd find-file README.md=.
   + This adds =magit-status=, =find-file-other-frame= and =treemacs-find-file= to =ghostel-eval-cmds=.
   + Only the listed commands can be reached, and every argument is a string.
@@ -313,39 +308,10 @@ is not used at all, Eshell answers this key instead."
     (condition-case error (ghostel-project arg)
       (void-function (kittymacs-terminal--without-module error)))))
 
-(defun kittymacs-terminal-msys2 (&optional arg)
-  "Open an MSYS2 UCRT64 login shell in a terminal.
-With prefix ARG, create another one instead of reusing the existing buffer."
-  (interactive "P")
-  (unless (eq system-type 'windows-nt)
-    (user-error "The MSYS2 terminal is for native Windows Emacs"))
-  (let ((bash (expand-file-name "usr/bin/bash.exe" kittymacs-msys2-root)))
-    (unless (file-executable-p bash)
-      (user-error "MSYS2 Bash not found at %s; set `kittymacs-msys2-root' in private.el"
-                  bash))
-    (let ((ghostel-shell (list bash "--login" "-i"))
-          (ghostel-environment (append '("MSYSTEM=UCRT64" "CHERE_INVOKING=1")
-                                       ghostel-environment))
-          (ghostel-buffer-name "*ghostel: msys2*"))
-      (ghostel arg))))
-
 (keymap-set kittymacs-open-map "e" (cons "terminal" #'kittymacs-terminal-open))
 (keymap-set kittymacs-open-map "p" (cons "project terminal" #'kittymacs-terminal-project))
-(when kittymacs-terminal-ghostel
-  (keymap-set kittymacs-open-map "m" (cons "MSYS2 terminal (Windows)" #'kittymacs-terminal-msys2)))
 
 #+end_src
-
-* MSYS2 on Windows :windows:
-:PROPERTIES:
-:ID: 09cab91d-8282-4581-b102-988f6b7675dd
-:END:
-
-- PowerShell stays the ordinary shell; =SPC o m= is the separate, explicit choice of an MSYS2 UCRT64 login shell, where a Windows machine keeps its Unix tools.
-  + =MSYSTEM= selects the environment and =CHERE_INVOKING= keeps the directory you were in, both for the child process only: Emacs's own environment is untouched.
-  + [[id:afa6b7fd-742a-4c15-86a6-32e3e8027b0e][The platform chapter]] owns =kittymacs-msys2-root=; set it in =private.el= if Bash is elsewhere.
-- Unlike the terminal this replaces, nothing here translates paths or substitutes a POSIX helper: ghostel talks to Windows ConPTY directly.
-- The command, =kittymacs-terminal-msys2=, is the last function in [[*Opening a terminal]]; it binds ghostel's options with =let=, which works before ghostel has loaded because the module header declares them.
 
 * Projects and Consult
 

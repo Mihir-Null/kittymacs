@@ -30,19 +30,9 @@
 (kittymacs-treesit--sync-grammar-directory)
 (setopt treesit-auto-install-grammar 'ask)
 (setopt treesit-enabled-modes t)
-(defun kittymacs-treesit--nix-source ()
-  "Return the pinned Nix recipe, with a local Windows compiler when present."
-  (let ((compiler
-         (when (and (eq system-type 'windows-nt)
-                    (boundp 'kittymacs-msys2-root))
-           (file-name-concat kittymacs-msys2-root "ucrt64" "bin" "gcc.exe"))))
-    (append
-     '(nix "https://github.com/nix-community/tree-sitter-nix"
-           :commit "ea1d87f7996be1329ef6555dcacfa63a69bd55c6")
-     (when (and compiler (file-executable-p compiler))
-       (list :cc compiler)))))
 (defcustom kittymacs-treesit-language-source-alist
-  `(,(kittymacs-treesit--nix-source))
+  '((nix "https://github.com/nix-community/tree-sitter-nix"
+         :commit "ea1d87f7996be1329ef6555dcacfa63a69bd55c6"))
   "Pinned grammar recipes for Tree-sitter modes that Emacs does not ship.
 
 Each entry has the shape accepted by `treesit-language-source-alist':

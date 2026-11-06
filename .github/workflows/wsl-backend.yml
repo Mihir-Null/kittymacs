@@ -1,16 +1,18 @@
-name: WSL spike
+name: WSL backend
 
-# Numbers for one decision: how native Windows Emacs reaches a WSL2 backend,
-# a wsl.exe Tramp method or ssh.  It measures and reports, and it decides nothing.
-# It stays out of ci.yml, and it runs only when its own files change, so an
-# ordinary pull request pays nothing for it.
+# Native Windows Emacs against a real WSL2 distribution, through `:transport wsl':
+# it connects, runs process-file, opens a file and reports.  It stays out of
+# ci.yml, and nothing waits for it, so an ordinary pull request pays nothing, and a
+# hosted runner's bad day cannot hold up a merge.
 
 on:
   workflow_dispatch:
   pull_request:
     paths:
-      - .github/workflows/wsl-spike.yml
-      - tests/wsl-spike/**
+      - .github/workflows/wsl-backend.yml
+      - tests/wsl-backend/**
+      - literate/36-remote.org
+      - lisp/kittymacs-remote.el
 
 permissions:
   contents: read
@@ -20,30 +22,10 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # WSL1 translates system calls and has no Linux kernel, so its numbers say
-  # nothing about a WSL2 backend.  Everything after this job needs it to pass.
-  runner:
-    name: The runner offers real WSL2
+  connect:
+    name: Connect to real WSL2
     runs-on: windows-latest
-    timeout-minutes: 20
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-      - uses: Vampire/setup-wsl@4c48163d9f981914dd8caa0fc335fe19cca5bff4 # v7.2.0
-        with:
-          distribution: Ubuntu-24.04
-          wsl-version: 2
-      - name: A distribution reports version 2, and a Linux kernel answers in it
-        shell: pwsh
-        run: tests/wsl-spike/prove-wsl2.ps1 -Distribution Ubuntu-24.04
-
-  measure:
-    name: Measure both transports
-    needs: runner
-    runs-on: windows-latest
-    timeout-minutes: 120
-    env:
-      KITTYMACS_TEST_PACKAGES: ${{ github.workspace }}/var/elpa
-      KITTYMACS_TEST_PROFILE: full
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - uses: Vampire/setup-wsl@4c48163d9f981914dd8caa0fc335fe19cca5bff4 # v7.2.0
@@ -73,13 +55,15 @@ jobs:
           restore-keys: elpa-3-full-Windows-31.1-
       - name: Install packages by starting the configuration
         shell: bash
+        env:
+          KITTYMACS_TEST_PACKAGES: ${{ github.workspace }}/var/elpa
+          KITTYMACS_TEST_PROFILE: full
         run: just install
-      - name: Measure
+      - name: Connect, run a process, open a file
         shell: pwsh
-        run: tests/wsl-spike/run.ps1
-      # Timings and error text.  The key is removed before this runs.
+        run: tests/wsl-backend/run.ps1
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         if: always()
         with:
-          name: wsl-spike-results
-          path: wsl-spike-results
+          name: wsl-backend-results
+          path: wsl-backend-results

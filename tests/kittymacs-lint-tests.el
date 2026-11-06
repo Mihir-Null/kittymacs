@@ -254,6 +254,20 @@ with a backtick.  `SPC m' is left out: a major mode's map decides what follows."
             (push (format "%s:%d: %s" (file-name-nondirectory file) line name) found)))))
     (should-not (reverse found))))
 
+(defun kittymacs-lint--msys2-history-p (file text)
+  "Return non-nil if TEXT, a line of FILE, is the upgrade note or the decision."
+  (or (string-prefix-p "- **Native Windows reaches Linux" text)
+      (and (member (file-name-nondirectory file) '("30-platform.org" "kittymacs-platform.el"))
+           (string-match-p "kittymacs-msys2-root" text))))
+
+(ert-deftest kittymacs-lint-msys2-is-only-history ()
+  (let (found)
+    (dolist (file (append (kittymacs-lint--pages) (kittymacs-lint--shipped-files)))
+      (pcase-dolist (`(,line . ,text) (kittymacs-lint--lines-matching "[Mm][Ss][Yy][Ss]" file))
+        (unless (kittymacs-lint--msys2-history-p file text)
+          (push (format "%s:%d" (file-name-nondirectory file) line) found))))
+    (should-not (reverse found))))
+
 ;;; Host names
 
 (defconst kittymacs-lint-host-name-regexp

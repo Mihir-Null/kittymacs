@@ -179,6 +179,30 @@ there too, and the log does not say why.  Linux runs all three."
   (should (string-match-p "no-such-transport" (kittymacs-remote-test--value 'working 'backend-typo)))
   (should (eq (kittymacs-remote-test--value 'working 'connect-typo) 'refused)))
 
+(ert-deftest kittymacs-remote-wsl-names-what-is-missing ()
+  (should (string-match-p "wsl\\.exe" (kittymacs-remote-test--value 'working 'wsl-refused)))
+  (should (string-match-p ":host" (kittymacs-remote-test--value 'working 'wsl-nameless))))
+
+(ert-deftest kittymacs-remote-wsl-connects-through-its-row ()
+  "Through a stand-in for `wsl.exe' that passes on a Windows `PATH'.
+The stand-in cannot relay the two streams separately, and a login shell that sets
+its own `PATH' hides the Windows one.  So this reads the row for those two, and the
+job in .github/workflows/wsl-backend.yml covers them on real WSL2."
+  (kittymacs-remote-test--skip-on-a-mac)
+  (should (equal (kittymacs-remote-test--value 'working 'wsl-root) "/wslm:Fake-24.04:/tmp/"))
+  (let ((login (kittymacs-remote-test--value 'working 'wsl-row-login)))
+    (should (string-match-p "PATH=/usr/local/sbin" login))
+    (should (string-match-p "2>&1" login)))
+  (should (eq (kittymacs-remote-test--value 'working 'wsl-connects) t))
+  (should (equal (kittymacs-remote-test--value 'working 'wsl-process-file) '(0 "wsl-ran\n")))
+  (should-not (kittymacs-remote-test--value 'working 'wsl-no-such-distribution)))
+
+(ert-deftest kittymacs-remote-wsl-starts-processes-directly ()
+  (kittymacs-remote-test--skip-on-a-mac)
+  (should (eq (kittymacs-remote-test--value 'working 'wsl-direct) t))
+  (should (equal (kittymacs-remote-test--value 'working 'wsl-direct-process)
+                 '(0 "wsl-direct-ran\n"))))
+
 (ert-deftest kittymacs-remote-connect-opens-the-project ()
   (let ((opened (kittymacs-remote-test--value 'working 'connect)))
     (should (stringp opened))

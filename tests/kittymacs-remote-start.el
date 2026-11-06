@@ -24,6 +24,7 @@
 
 (defvar kittymacs-remote-start-results nil "The alist this scenario reports.")
 (defvar kittymacs-remote-start-scenario (intern (getenv "KITTYMACS_REMOTE_SCENARIO")))
+(defvar tramp-connection-timeout)
 (defconst kittymacs-remote-start-limit 3 "Seconds a probe may take before it counts as stalled.")
 
 (defun kittymacs-remote-start-report (key value)
@@ -85,6 +86,8 @@
                                                 (\"slow\" :transport kmock :host \"elsewhere\" :root \"/\" :direct-async nil :shell \"/custom/shell\")
                                                 (\"typo\" :transport no-such-transport :host \"x\" :root \"/\")
                                                 (\"tramp\" :transport sshx :host \"build\" :root \"~/src/\")
+                                                (\"wsl\" :transport wsl :host \"Fake-24.04\" :root \"/tmp/\")
+                                                (\"wsl-nameless\" :transport wsl :root \"/tmp/\")
                                                 (\"default\" :host \"build\" :root \"~/src/\")))\n"
                   (system-name) kittymacs-remote-start-project)))
 
@@ -277,6 +280,48 @@ while True:
       (kittymacs-remote-start-value 'local-auto-save-file
         (progn (auto-save-mode 1) (and buffer-auto-save-file-name t))))))
 
+(defun kittymacs-remote-start--wsl ()
+  "The `wsl' transport: refused without `wsl.exe', and connecting through a stand-in."
+  (kittymacs-remote-start-value 'wsl-refused
+    (let ((exec-path nil))
+      (condition-case err (kittymacs-backend-root "wsl")
+        (user-error (cadr err)))))
+  (let* ((bin (kittymacs-remote-fixture-wsl-exe))
+         (exec-path (cons bin exec-path))
+         (process-environment
+          (cons (concat "PATH=" bin path-separator (getenv "PATH")) process-environment))
+         (root (kittymacs-backend-root "wsl")))
+    (kittymacs-remote-start-value 'wsl-root root)
+    (kittymacs-remote-start-value 'wsl-nameless
+      (condition-case err (kittymacs-backend-root "wsl-nameless")
+        (user-error (cadr err))))
+    (kittymacs-remote-start-value 'wsl-row-login
+      (prin1-to-string (assq 'tramp-login-args
+                             (assoc kittymacs-remote-wsl-method tramp-methods))))
+    (kittymacs-remote--apply-backend "wsl")
+    (let ((default-directory root))
+      (kittymacs-remote-start-value 'wsl-connects (file-directory-p root))
+      (kittymacs-remote-start-value 'wsl-direct (tramp-direct-async-process-p))
+      (kittymacs-remote-start-value 'wsl-process-file
+        (with-temp-buffer
+          (list (process-file "/bin/sh" nil t nil "-c" "echo wsl-ran")
+                (buffer-string))))
+      (kittymacs-remote-start-value 'wsl-direct-process
+        (let* ((buffer (generate-new-buffer " *wsl direct*"))
+               (process (make-process :name "wsl-direct" :buffer buffer :noquery t
+                                      :file-handler t :connection-type 'pipe
+                                      :command '("/bin/sh" "-c" "echo wsl-direct-ran")))
+               (end (+ (float-time) 20)))
+          (while (and (process-live-p process) (< (float-time) end))
+            (accept-process-output process 0.1))
+          (list (process-exit-status process)
+                (with-current-buffer buffer (buffer-string))))))
+    (kittymacs-remote-start-value 'wsl-no-such-distribution
+      (let ((tramp-connection-timeout 10)
+            (name (concat "/" kittymacs-remote-wsl-method ":Nosuch-24.04:/tmp")))
+        (condition-case _ (file-exists-p name)
+          (error nil))))))
+
 (defun kittymacs-remote-start--working ()
   "A connection that answers: backends, and each program a person would run."
   (kittymacs-remote-start--local)
@@ -286,6 +331,7 @@ while True:
   (kittymacs-remote-start-value 'backend-root (kittymacs-backend-root "here"))
   (kittymacs-remote-start-value 'backend-tramp-method (kittymacs-backend-root "tramp"))
   (kittymacs-remote-start-value 'backend-default-transport (kittymacs-backend-root "default"))
+  (kittymacs-remote-start--wsl)
   (kittymacs-remote-start-value 'backend-typo
     (condition-case err (kittymacs-backend-root "typo")
       (user-error (cadr err))))

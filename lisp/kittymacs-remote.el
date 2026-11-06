@@ -69,7 +69,8 @@ Add the language servers your projects there use."
   :group 'kittymacs)
 
 (defvar kittymacs-remote-transports
-  '((ssh . kittymacs-remote--tramp-root))
+  '((ssh . kittymacs-remote--tramp-root)
+    (wsl . kittymacs-remote--wsl-root))
   "How each transport names a directory on its machine, by the `:transport' key.
 A value is a function of the transport and the backend's plist.  A Tramp method
 needs no row: its name is the transport, handled as `ssh' is.")
@@ -143,6 +144,33 @@ PATH is nil where the machine does not have the tool."
 
 (keymap-set kittymacs-open-map "b" (cons "backend: open its project" #'kittymacs-backend-connect))
 (keymap-set kittymacs-open-map "B" (cons "backend: what it has" #'kittymacs-backend-doctor))
+(defconst kittymacs-remote-wsl-method "wslm"
+  "The Tramp method behind the `wsl' transport.")
+
+(defun kittymacs-remote--add-wsl-method ()
+  "Add the Tramp method behind the `wsl' transport, where `wsl.exe' exists."
+  (when (executable-find "wsl.exe")
+    (add-to-list 'tramp-methods
+                 `(,kittymacs-remote-wsl-method
+                   (tramp-login-program "wsl.exe")
+                   (tramp-login-args (("-d" "%h") ("--exec")
+                                      ("/bin/sh" "-c"
+                                       "\"PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/run/current-system/sw/bin"
+                                       "exec" "%l" "2>&1\"")))
+                   (tramp-direct-async ("/bin/sh" "-c"))
+                   (tramp-remote-shell "/bin/sh")
+                   (tramp-remote-shell-login ("-l"))
+                   (tramp-remote-shell-args ("-c"))
+                   (tramp-completion-use-cache nil)))))
+
+(defun kittymacs-remote--wsl-root (_transport backend)
+  "Return the root of BACKEND, a distribution reached through `wsl.exe'."
+  (unless (executable-find "wsl.exe")
+    (user-error "The wsl transport needs wsl.exe, and this machine has none"))
+  (unless (plist-get backend :host)
+    (user-error "A wsl backend needs :host, the distribution's name in `wsl --list'"))
+  (kittymacs-remote--add-wsl-method)
+  (kittymacs-remote--tramp-root kittymacs-remote-wsl-method backend))
 (defun kittymacs-remote--apply-backend (name)
   "Set the connection-local variables of the backend called NAME."
   (let* ((backend (kittymacs-remote--backend name))
@@ -166,6 +194,7 @@ PATH is nil where the machine does not have the tool."
 (defun kittymacs--remote-after-tramp ()
   "What waits for Tramp: the search path and the connection-local defaults."
   (kittymacs--remote-path-setup)
+  (kittymacs-remote--add-wsl-method)
   (connection-local-set-profile-variables
    'kittymacs-remote-shell '((explicit-shell-file-name . "/bin/sh")))
   (connection-local-set-profiles '(:application tramp) 'kittymacs-remote-shell)
