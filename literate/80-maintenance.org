@@ -233,7 +233,7 @@
   + Each must start with no warning, every =SPC= key callable, no empty group, no key naming a package that is off, and Org not loaded.
   + A feature that is on must also have loaded its chapter and bound the key its example quotes.
 - =KITTYMACS_PROBE_ONLY=, a regexp, narrows the probes to the names it matches.
-- =just test-quickstart= runs the verifier on the profile that =KITTYMACS_TEST_PROFILE= names, from a file it writes first.
+- =just test-quickstart= runs the verifier on the profile that =KITTYMACS_TEST_PROFILE= names, or =full=, from a file it writes first.
 - =just test-onboard-start= answers [[id:c8e2f1a7-4b60-49d3-8a15-7d3e96b0c421][the onboarding screens]] with scripted keys for several selections, and starts the verifier on each =private.el= they wrote.
   + =KITTYMACS_TEST_PRIVATE= names a file for the verifier to start its =private.el= with, and =KITTYMACS_TEST_EXPECT= an alist of what =kittymacs-feature-p= must answer.
   + It needs the same directory as the probes, and runs after them in CI's =features= job.
