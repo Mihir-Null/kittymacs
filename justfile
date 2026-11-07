@@ -60,6 +60,7 @@ test:
     emacs -Q --batch -l tests/kittymacs-platform-tests.el -f ert-run-tests-batch-and-exit
     emacs -Q --batch -l tests/kittymacs-msys2-tests.el -f ert-run-tests-batch-and-exit
     emacs -Q --batch -l tests/kittymacs-remote-rpc-tests.el -f ert-run-tests-batch-and-exit
+    emacs -Q --batch -l tests/kittymacs-exwm-tests.el -f ert-run-tests-batch-and-exit
     emacs -Q --batch -l tests/kittymacs-open-tests.el -f ert-run-tests-batch-and-exit
     emacs -Q --batch -l tests/kittymacs-treesit-tests.el -f ert-run-tests-batch-and-exit
     emacs -Q --batch -l tests/kittymacs-org-table-tests.el -f ert-run-tests-batch-and-exit

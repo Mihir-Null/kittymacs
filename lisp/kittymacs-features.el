@@ -259,6 +259,16 @@ A package that cannot be installed warns, and the rest carry on."
                                    package (error-message-string err))))
       (unless (package-installed-p package)
         (push package kittymacs-features--failed)))))
+
+(defun kittymacs-features--log-compile-warnings ()
+  "Write the compile warnings a start delayed to their log, with no window."
+  (let ((held (seq-filter (lambda (warning) (equal (nth 3 warning) "*Compile-Log*"))
+                          delayed-warnings-list))
+        (warning-suppress-types (cons '(bytecomp) warning-suppress-types)))
+    (setq delayed-warnings-list (seq-difference delayed-warnings-list held))
+    (dolist (warning (reverse held))
+      (apply #'display-warning warning))))
+(add-hook 'delayed-warnings-hook #'kittymacs-features--log-compile-warnings)
 (put 'kittymacs-org-roam-project 'safe-local-variable #'booleanp)
 (put 'kittymacs-org-roam-excluded-directories 'safe-local-variable #'list-of-strings-p)
 

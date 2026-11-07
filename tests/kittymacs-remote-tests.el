@@ -376,6 +376,29 @@ The job in .github/workflows/wsl-backend.yml runs it against real WSL2."
     (should (string-prefix-p "/kmock:" (plist-get agent :inbound)))
     (should (string-suffix-p ":/inbound/file" (plist-get agent :inbound)))))
 
+(ert-deftest kittymacs-remote-wsl-distribution-reads-only-the-name ()
+  "A name on no machine answers at once, so nothing connected to find out."
+  (kittymacs-remote-test--skip-on-a-mac)
+  (should (equal (kittymacs-remote-test--value 'working 'direnv-name-reading)
+                 '("Ubuntu-24.04" "Ubuntu-24.04" "Nowhere" nil nil nil nil))))
+
+(ert-deftest kittymacs-remote-direnv-is-on-for-wsl-alone ()
+  (kittymacs-remote-test--skip-on-a-mac)
+  (should (string-match-p "direnv is on"
+                          (kittymacs-remote-test--value 'working 'direnv-doctor-wsl)))
+  (should (string-match-p "direnv is off"
+                          (kittymacs-remote-test--value 'working 'direnv-doctor-here)))
+  (should-not (kittymacs-remote-test--value 'working 'direnv-other-machine)))
+
+(ert-deftest kittymacs-remote-direnv-reaches-each-kind-of-process ()
+  "With the real direnv, through the stand-in for `wsl.exe'."
+  (kittymacs-remote-test--skip-on-a-mac)
+  (skip-unless (kittymacs-remote-test--ran-p 'working 'direnv-mode))
+  (should (kittymacs-remote-test--value 'working 'direnv-mode))
+  (should (eq (kittymacs-remote-test--value 'working 'direnv-status) 'on))
+  (dolist (key '(direnv-process-file direnv-shell-command direnv-direct-process))
+    (should (equal (kittymacs-remote-test--value 'working key) "[reached]"))))
+
 (ert-deftest kittymacs-remote-envrc-is-already-safe ()
   (pcase-let ((`(,global ,local) (kittymacs-remote-test--value 'working 'envrc)))
     (when global (should-not local))))
