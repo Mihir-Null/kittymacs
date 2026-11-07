@@ -236,6 +236,16 @@
     "summary": "Frame padding, highlighted TODOs and numbers, and a flash on each edit.",
     "example": "=TODO= stands out in code, and pasted text flashes briefly."
   },
+  "smooth-scroll": {
+    "group": "look",
+    "packages": [
+      "ultra-scroll"
+    ],
+    "module": "kittymacs-smooth-scroll",
+    "profile": "optional",
+    "summary": "Scrolls by pixels on a graphical frame, and animates the page keys.",
+    "example": "=C-v= glides a page, and =SPC t S= compares it with plain scrolling."
+  },
   "focus-mode": {
     "group": "look",
     "packages": [

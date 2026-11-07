@@ -46,6 +46,7 @@
 | [[id:86fcd506-34c8-476d-8903-acbef46275bf][EXWM]]            | interface | Emacs as the X window manager, with LeopardWM's keys                               |
 | [[id:f1d045c2-e2dc-4514-ab17-dd982ed6be00][Frames]]          | interface | frames-only mode and its exceptions                                                |
 | [[id:0286f652-e861-4e61-9ca6-91e225c8939d][Appearance]]      | interface | fonts, theme, mode line, icons, highlighting                                       |
+| [[id:b4e91f6a-57ea-452d-9e74-8f9440b62cfa][Smooth scrolling]] | interface | a trial: pixel scrolling and animated page keys, off by default |
 | [[id:e73c0805-dc30-4671-a448-65a78921ec92][Dashboard]]       | interface | the home page                                                                      |
 | [[id:42b02bb4-ea68-4981-b427-35705bf162f4][Completion]]      | interface | Vertico, Orderless, Marginalia, Consult, Embark, Corfu, Cape, snippets             |
 | [[id:8545f3ea-11d0-420b-a823-22a344e56f1e][Help]]            | interface | Helpful, Info, Transient                                                           |
