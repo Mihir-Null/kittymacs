@@ -11,6 +11,12 @@
 #
 #   (setopt kittymacs-backends
 #           '(("wsl" :transport wsl :host "Ubuntu-24.04" :root "~/src/project/")))
+#
+# For `:transport wsl-rpc', turn on `backend.rpcServer' below, and see "tramp-rpc
+# through wsl.exe" in literate/36-remote.org.  A distribution without Nix builds
+# the same revision with one line, which needs Rust 1.88:
+#
+#   cargo install --locked --root ~/.local --git https://github.com/ArthurHeymans/emacs-tramp-rpc --rev 543b3bf30b8a80b8cd0200c98d00f22a4e0220ac tramp-rpc-server
 {
   description = "The Linux side of a Windows setup, with kittymacs's headless tools";
 
@@ -42,6 +48,7 @@
             };
             programs.home-manager.enable = true;
             programs.kittymacs.backend.enable = true;
+            # programs.kittymacs.backend.rpcServer = true;
           }
         ];
       };

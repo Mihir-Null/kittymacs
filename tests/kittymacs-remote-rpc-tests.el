@@ -361,6 +361,7 @@ That is `unset' if the hook left it alone, and it records any connecting."
         (should-not (plist-get report :cat))
         (should (string-search kittymacs-remote-rpc-revision (plist-get report :text)))
         (should (string-search "cargo install" (plist-get report :text)))
+        (should (string-search "kittymacs#rpc-server" (plist-get report :text)))
         (should (string-search "Git for Windows" (plist-get report :text)))))
     (cl-letf (((symbol-function 'call-process) (kittymacs-rpc-test--wsl "/nix/bin/tramp-rpc-server\n" 0)))
       (let ((report (kittymacs-remote-rpc-report '(:host "D"))))
@@ -430,6 +431,31 @@ That is `unset' if the hook left it alone, and it records any connecting."
     (should (equal (kittymacs--remote-rpc-own-names
                     '((("/wslm:Fake-24.04:/a" . (1 . 2))) proc t))
                    '((("/rpc:Fake-24.04:/a" . (1 . 2))) proc t)))))
+
+;;; The Nix package pairs with the Lisp, with no negotiation
+
+(defun kittymacs-rpc-test--nix-field (field)
+  "Return the value of the string FIELD in nix/tramp-rpc-server.nix."
+  (with-temp-buffer
+    (insert-file-contents (expand-file-name "nix/tramp-rpc-server.nix" kittymacs-rpc-test-root))
+    (unless (re-search-forward (format "^ *%s = \"\\([^\"]+\\)\";" field) nil t)
+      (error "No %s in the Nix package" field))
+    (match-string 1)))
+
+(ert-deftest kittymacs-rpc-the-nix-pin-is-the-lisp-pin ()
+  (kittymacs-rpc-test--with-module
+    (should (equal (kittymacs-rpc-test--nix-field "rev") kittymacs-remote-rpc-revision))
+    (should (equal (format "https://github.com/%s/%s" (kittymacs-rpc-test--nix-field "owner")
+                           (kittymacs-rpc-test--nix-field "repo"))
+                   kittymacs-remote-rpc-repository))
+    ;; The template's one line for a distribution without Nix.
+    (with-temp-buffer
+      (insert-file-contents (expand-file-name "nix/template-wsl-backend/flake.nix"
+                                              kittymacs-rpc-test-root))
+      (should (search-forward (concat "--rev " kittymacs-remote-rpc-revision) nil t)))
+    (should (string-search (format "version %s" (kittymacs-rpc-test--nix-field "version"))
+                           (documentation-property 'kittymacs-remote-rpc-revision
+                                                   'variable-documentation)))))
 
 ;;; The boundary: this package installs on Windows alone
 
