@@ -642,8 +642,16 @@ It waits with `accept-process-output', since this Emacs must answer the client."
   (rpc-check
    "a symbolic link stays one, and the file it names gets the bytes" 60
    (lambda ()
+     ;; This configuration visits the file it names, so that file is what gets replaced.
      (rpc-save-fixture "ln -s plain link")
-     (let ((before (rpc-save-facts "stat -c %i plain")))
+     (rpc-save-appending "link")
+     (rpc-expect "link\nold\nnew" (rpc-save-facts "test -L link && echo link; cat plain"))))
+  (rpc-check
+   "a link visited as itself is written in place" 60
+   (lambda ()
+     (rpc-save-fixture "ln -s plain link")
+     (let ((before (rpc-save-facts "stat -c %i plain"))
+           (find-file-visit-truename nil))
        (rpc-save-appending "link")
        (rpc-expect (format "link\n%s\nold\nnew" before)
                    (rpc-save-facts "test -L link && echo link; stat -c %i plain; cat plain")))))
