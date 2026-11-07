@@ -125,6 +125,20 @@
     (should-not (kittymacs-remote--wsl-distribution "c:/Users/me/a"))
     (should-not (kittymacs-remote--wsl-distribution nil))))
 
+;;; direnv
+
+(ert-deftest kittymacs-rpc-direnv-starts-on-a-pipe ()
+  "A pty merges direnv's stderr into the JSON that envrc reads."
+  (kittymacs-rpc-test--with-module
+    (let ((default-directory "/rpc:Fake-24.04:/home/me/")
+          seen)
+      (cl-letf (((symbol-function 'make-process)
+                 (lambda (&rest arguments) (setq seen arguments) nil)))
+        (kittymacs--remote-envrc-export (lambda () (make-process :name "direnv"))))
+      (should (eq (plist-get seen :connection-type) 'pipe))
+      (should (eq (plist-get seen :file-handler) t))
+      (should (equal (plist-get seen :name) "direnv")))))
+
 ;;; Saving
 
 (defun kittymacs-rpc-test--precious-after (file attributes)

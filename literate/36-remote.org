@@ -1115,6 +1115,7 @@ Not a symbolic link or a file with other names, which replacing would cut off."
   + A help buffer with that directory pays too.
 - envrc needs three corrections on such a machine, and all apply to these buffers alone.
   + It starts =direnv export= with =make-process= and no =:file-handler=, as its own "todo tramp?" says, so the program runs on this machine, in no project, and the buffer reads as =on= with nothing in it.
+    Started that way it must also ask for a pipe: tramp-rpc follows =process-connection-type= to a pty, which merges direnv's log into the JSON that envrc reads.
   + It keeps the result in =tramp-remote-process-environment=, which only a direct process reads, so the result also goes in the buffer's =process-environment=.
   + From Emacs 31 Tramp treats a buffer's own =process-environment= as this machine's, and passes none of it, so =tramp-local-environment-variable-p= says no for each variable direnv set.
 - =SPC o B= says whether this is on for a backend.
@@ -1144,7 +1145,7 @@ This reads the name, and never connects."
       (let ((make-process-original (symbol-function 'make-process)))
         (cl-letf (((symbol-function 'make-process)
                    (lambda (&rest args)
-                     (apply make-process-original :file-handler t args))))
+                     (apply make-process-original :file-handler t :connection-type 'pipe args))))
           (funcall export)))
     (funcall export)))
 

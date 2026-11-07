@@ -453,7 +453,7 @@ This reads the name, and never connects."
       (let ((make-process-original (symbol-function 'make-process)))
         (cl-letf (((symbol-function 'make-process)
                    (lambda (&rest args)
-                     (apply make-process-original :file-handler t args))))
+                     (apply make-process-original :file-handler t :connection-type 'pipe args))))
           (funcall export)))
     (funcall export)))
 
