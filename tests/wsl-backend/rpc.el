@@ -29,6 +29,7 @@
 (defvar ghostel-buffer-name)
 (defvar auto-revert-remote-files)
 (defvar envrc--status)
+(defvar envrc-debug)
 (declare-function envrc--get-current-env-or-run-direnv "envrc" (&optional force))
 (defvar auto-revert-use-notify)
 (defvar tramp-rpc-use-controlmaster)
@@ -670,13 +671,29 @@ It waits with `accept-process-output', since this Emacs must answer the client."
        (unless (eql 0 (car installed)) (error "Installing direnv: %s" (cdr installed))))
      (let ((made (rpc-wsl 30 nil (format "mkdir -p %1$s/direnv && cd %1$s/direnv && echo hello > file && echo 'export KITTYMACS_ENVRC_PROBE=reached' > .envrc && direnv allow" rpc-home))))
        (unless (eql 0 (car made)) (error "The project: %s" (cdr made))))
+     (setq envrc-debug t)
      (with-current-buffer (find-file-noselect (rpc-name "rpc" "direnv/file"))
        (let ((end (+ (float-time) 60))
              (report "echo [$KITTYMACS_ENVRC_PROBE]; echo done"))
          (while (and (memq envrc--status '(nil running none)) (< (float-time) end))
            (accept-process-output nil 0.2)
            (envrc--get-current-env-or-run-direnv))
-         (unless (eq envrc--status 'on) (error "envrc says %s" envrc--status))
+         (unless (eq envrc--status 'on)
+           (error "envrc says %s.  Its log: %s.  Its buffers: %s.  direnv export json by process-file: %s"
+                  envrc--status
+                  (if-let* ((log (get-buffer "*envrc-debug*")))
+                      (with-current-buffer log (buffer-string))
+                    "none")
+                  (mapconcat (lambda (buffer)
+                               (format "%s=%S" (buffer-name buffer)
+                                       (with-current-buffer buffer (buffer-string))))
+                             (seq-filter (lambda (buffer)
+                                           (string-prefix-p "*envrc" (buffer-name buffer)))
+                                         (buffer-list))
+                             " ")
+                  (with-temp-buffer
+                    (let ((status (process-file "direnv" nil t t "export" "json")))
+                      (format "exit %s, %S" status (buffer-string))))))
          ;; From this buffer, as a program would be: it is what holds the environment.
          (let* ((through-file
                  (let ((output (generate-new-buffer " *direnv through process-file*")))
