@@ -30,7 +30,8 @@
     (smooth-scroll . kittymacs-smooth-scroll)
     (hover-docs . kittymacs-hover-docs)
     (which-key-frame . kittymacs-which-key-frame)
-    (buffer-tabs . kittymacs-buffer-tabs))
+    (buffer-tabs . kittymacs-buffer-tabs)
+    (meow-state-cursor . kittymacs-meow-state-cursor))
   "The features `init.el' loads a whole chapter for, and that chapter's module.")
 
 (defun kittymacs-check--binding (binding)

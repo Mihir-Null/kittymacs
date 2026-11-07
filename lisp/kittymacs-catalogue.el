@@ -129,6 +129,10 @@
      :group look :packages (rainbow-mode) :module kittymacs-basics :profile full
      :summary "Paints colour names and codes in their own colour."
      :example "=SPC t r= shows =#ff0000= on a red background.")
+    (meow-state-cursor
+     :group look :packages () :module kittymacs-meow-state-cursor :profile optional :deps (meow)
+     :summary "Colours the cursor and the mode line's mark by Meow's state, from the theme."
+     :example "=i= changes the cursor's colour with its shape, and =SPC t c= compares it with one colour.")
 
     ;; Help
     (help-extras
