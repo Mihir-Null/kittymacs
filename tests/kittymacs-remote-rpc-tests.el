@@ -310,7 +310,7 @@ That is `unset' if the hook left it alone, and it records any connecting."
   (kittymacs-rpc-test--with-module
     (cl-letf (((symbol-function 'call-process)
                (kittymacs-rpc-test--wsl "U\0b\0u\0n\0t\0u\0\r\0\n\0D\0e\0b\0i\0a\0n\0\r\0\n\0" 0)))
-      (should (equal (kittymacs-remote-rpc--distributions) '("Ubuntu" "Debian")))
+      (should (equal (kittymacs-wsl-distributions) '("Ubuntu" "Debian")))
       (should-not (kittymacs-remote-rpc-preflight "a" '(:host "Debian")))
       (let ((failure (should-error (kittymacs-remote-rpc-preflight "a" '(:host "Fake-24.04"))
                                    :type 'user-error)))

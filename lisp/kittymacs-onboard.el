@@ -14,6 +14,7 @@
   (add-to-list 'load-path kittymacs-onboard--directory))
 
 (require 'kittymacs-features)
+(require 'kittymacs-wsl)
 
 (defvar kittymacs-host-directories)
 (defvar kittymacs-lisp-dir)
@@ -92,7 +93,7 @@
 (defun kittymacs-onboard--written-options ()
   "Return the options onboarding can write."
   (append kittymacs-onboard--selection-options
-          '(kittymacs-structural-editing-modes)
+          '(kittymacs-structural-editing-modes kittymacs-backends)
           (mapcar #'car kittymacs-onboard-options)))
 (define-error 'kittymacs-onboard-refused "Onboarding refused")
 
@@ -279,11 +280,15 @@ Refuse unless they read as what is outside the block and FORMS, in that place."
 PLACE is a function of a form's position, which says where the form sits."
   (let (settings)
     (pcase-dolist (`(,form ,position ,line) forms)
-      (pcase-dolist (`(,option ,value ,nested) (kittymacs-onboard--setters form))
-        (when (kittymacs-onboard--interesting-p option)
-          (push (list :option option :value value :nested nested :file file :line line
-                      :place (funcall place position))
-                settings))))
+      (let ((setters (kittymacs-onboard--setters form)))
+        (unless (or (assq 'kittymacs-backends setters)
+                    (not (memq 'kittymacs-backends (flatten-tree form))))
+          (push (list 'kittymacs-backends form t) setters))
+        (pcase-dolist (`(,option ,value ,nested) setters)
+          (when (kittymacs-onboard--interesting-p option)
+            (push (list :option option :value value :nested nested :file file :line line
+                        :place (funcall place position))
+                  settings)))))
     (nreverse settings)))
 
 (defun kittymacs-onboard--private-settings (file)
@@ -376,7 +381,8 @@ A name the catalogue lacks goes in NOTES."
                (:conc-name kittymacs-onboard--))
   "The answers so far."
   profile selected excluded older-selected older-excluded
-  answers extra-modes modes-in-block options settings notes before)
+  answers extra-modes modes-in-block options settings notes before
+  backends distributions)
 
 (defun kittymacs-onboard--floor ()
   "Return the features no answer can turn off."
@@ -532,6 +538,8 @@ A name the catalogue lacks goes in NOTES."
                (kittymacs-onboard--modes-in-block state))
        (list (kittymacs-onboard--setopt 'kittymacs-structural-editing-modes
                                         (kittymacs-onboard--chosen-modes state))))
+     (when-let* ((form (kittymacs-onboard--backends-form state)))
+       (list form))
      (seq-keep (lambda (row)
                  (when-let* ((answer (assq (car row) (kittymacs-onboard--options state))))
                    (kittymacs-onboard--option-form (car row) (cdr answer))))
@@ -885,6 +893,280 @@ A name the catalogue lacks goes in NOTES."
           ((or ?\r 'return 'right) (setq answer 'next))
           ((or ?b 'left) (setq answer 'back)))))
     answer))
+(defconst kittymacs-onboard-backend-transports '(ssh sshx docker)
+  "The transports the form offers on every machine.")
+
+(defconst kittymacs-onboard-wsl-transports '(wsl wsl-rpc)
+  "The transports the form also offers on native Windows with a distribution.")
+
+(defun kittymacs-onboard--read-distributions ()
+  "Return the distributions to offer: only native Windows has any."
+  (and (eq system-type 'windows-nt) (kittymacs-wsl-distributions)))
+
+(defun kittymacs-onboard--transports (state)
+  "Return the transports the form offers in STATE, the default first."
+  (if (kittymacs-onboard--distributions state)
+      (append kittymacs-onboard-wsl-transports kittymacs-onboard-backend-transports)
+    kittymacs-onboard-backend-transports))
+
+(defun kittymacs-onboard--transport-of (plist)
+  "Return the transport of the backend PLIST, with the remote chapter's default."
+  (or (plist-get plist :transport) 'ssh))
+
+(defun kittymacs-onboard--backends-well-formed-p (value)
+  "Return non-nil if VALUE has the shape `kittymacs-backends' takes."
+  (and (proper-list-p value)
+       (seq-every-p (lambda (entry)
+                      (and (consp entry)
+                           (stringp (car entry))
+                           (proper-list-p (cdr entry))
+                           (cl-evenp (length (cdr entry)))))
+                    value)))
+
+(defun kittymacs-onboard--backend-settings (state)
+  "Return the settings of `kittymacs-backends' in STATE."
+  (seq-filter (lambda (setting) (eq (plist-get setting :option) 'kittymacs-backends))
+              (kittymacs-onboard--settings state)))
+
+(defun kittymacs-onboard--backend-setting-opaque-p (setting)
+  "Return non-nil if only running SETTING could tell what it makes the backends."
+  (or (plist-get setting :nested)
+      (let ((known (kittymacs-onboard--literal (plist-get setting :value))))
+        (not (and known (kittymacs-onboard--backends-well-formed-p (car known)))))))
+
+(defun kittymacs-onboard--backends-lock (state)
+  "Return the setting that keeps this screen from changing the backends in STATE."
+  (seq-find (lambda (setting)
+              (or (eq (plist-get setting :place) 'after)
+                  (kittymacs-onboard--backend-setting-opaque-p setting)))
+            (kittymacs-onboard--backend-settings state)))
+
+(defun kittymacs-onboard--backends-value (settings)
+  "Return the backends that SETTINGS, read in order, come to."
+  (alist-get 'kittymacs-backends (kittymacs-onboard--final-values settings (list nil))))
+
+(defun kittymacs-onboard--backends-outside (state)
+  "Return the backends this machine would have in STATE without the block."
+  (kittymacs-onboard--backends-value
+   (seq-remove (lambda (setting) (eq (plist-get setting :place) 'block))
+               (kittymacs-onboard--backend-settings state))))
+
+(defun kittymacs-onboard--backends-form (state)
+  "Return the form the block holds for the backends in STATE, or nil."
+  (if (kittymacs-onboard--backends-lock state)
+      (when-let* ((held (seq-find (lambda (setting)
+                                    (and (eq (plist-get setting :place) 'block)
+                                         (not (plist-get setting :nested))))
+                                  (reverse (kittymacs-onboard--backend-settings state)))))
+        (list 'setopt 'kittymacs-backends (plist-get held :value)))
+    (unless (equal (kittymacs-onboard--backends state)
+                   (kittymacs-onboard--backends-outside state))
+      (kittymacs-onboard--setopt 'kittymacs-backends (kittymacs-onboard--backends state)))))
+
+(defun kittymacs-onboard--transport-label (transport)
+  "Return TRANSPORT for a person, labelled from the catalogue."
+  (format "%s%s" transport
+          (if (kittymacs-features--property transport :experimental) " (experimental)" "")))
+
+(defun kittymacs-onboard--backend-line (entry)
+  "Return the line that describes the backend ENTRY."
+  (format "%s: %s, %s, %s"
+          (car entry)
+          (kittymacs-onboard--transport-label (kittymacs-onboard--transport-of (cdr entry)))
+          (or (plist-get (cdr entry) :host) "no host")
+          (or (plist-get (cdr entry) :root) "no directory")))
+
+(defun kittymacs-onboard--backends-source (state)
+  "Return what the screen says about a setting of the backends outside the block."
+  (let ((lock (kittymacs-onboard--backends-lock state))
+        (outside (seq-find (lambda (setting) (not (eq (plist-get setting :place) 'block)))
+                           (reverse (kittymacs-onboard--backend-settings state)))))
+    (cond
+     ((and lock (kittymacs-onboard--backend-setting-opaque-p lock))
+      (format "%s line %d sets this in a way only running it could tell, so onboarding leaves it alone.  Edit it there.\n\n"
+              (file-name-nondirectory (plist-get lock :file)) (plist-get lock :line)))
+     (lock
+      (format "%s line %d sets this after the block, so it beats anything here.  Edit it there.\n\n"
+              (file-name-nondirectory (plist-get lock :file)) (plist-get lock :line)))
+     (outside
+      (format "%s line %d sets these, and they stay as they are unless you change them here.\nA change writes the whole list to the block, which then beats that line.\n\n"
+              (file-name-nondirectory (plist-get outside :file)) (plist-get outside :line)))
+     (t ""))))
+
+(defun kittymacs-onboard--render-backends (state place cursor note)
+  "Return the backends screen for STATE: PLACE, row CURSOR and NOTE."
+  (let ((lock (kittymacs-onboard--backends-lock state))
+        (backends (kittymacs-onboard--backends state))
+        (index -1))
+    (concat
+     (kittymacs-onboard--screen-title place "A backend, if you work on another machine")
+     (if lock
+         "\nRET next.  b back.  C-g quit.\n"
+       "\nSPC changes a line.  d removes it.  n, p move.  RET next.  b back.  C-g quit.\n")
+     (if note (concat note "\n") "")
+     "\nA backend is a machine that runs your programs while this Emacs is the screen.\n"
+     "SPC o b opens its project, and SPC o B says what it has.\n"
+     "This is optional: RET goes on, and leaves the backends as they are.\n\n"
+     (kittymacs-onboard--backends-source state)
+     (mapconcat (lambda (entry)
+                  (setq index (1+ index))
+                  (format "%s%s\n"
+                          (if (and (not lock) (= index cursor)) "> " "  ")
+                          (kittymacs-onboard--backend-line entry)))
+                backends "")
+     (if lock ""
+       (format "%sAdd a backend\n" (if (= cursor (length backends)) "> " "  "))))))
+
+(defconst kittymacs-onboard--backend-fields '(name transport host root)
+  "The lines of the form, in order.")
+
+(defun kittymacs-onboard--render-backend-form (state place entry cursor note)
+  "Return the form for ENTRY in STATE: PLACE, row CURSOR and NOTE."
+  (let* ((plist (cdr entry))
+         (transport (kittymacs-onboard--transport-of plist))
+         (distributions (and (memq transport kittymacs-onboard-wsl-transports)
+                             (kittymacs-onboard--distributions state)))
+         (untested (kittymacs-features--property transport :experimental))
+         (index -1))
+    (concat
+     (kittymacs-onboard--screen-title place "A backend, if you work on another machine")
+     "\nSPC changes a line.  n, p move.  RET keeps this backend.  b back, without it.  C-g quit.\n"
+     (if note (concat note "\n") "")
+     "\n"
+     (mapconcat
+      (pcase-lambda (`(,label ,value ,help))
+        (setq index (1+ index))
+        (format "%s%s: %s\n      %s\n" (if (= index cursor) "> " "  ") label (or value "") help))
+      (list
+       (list "Name" (car entry) "What SPC o b and SPC o B ask for.")
+       (list "Transport" transport
+             (format "SPC takes the next of: %s."
+                     (mapconcat #'kittymacs-onboard--transport-label
+                                (kittymacs-onboard--transports state) ", ")))
+       (list "Host" (plist-get plist :host)
+             (if distributions
+                 (format "SPC takes the next of: %s." (string-join distributions ", "))
+               "As Tramp takes it: build, me@build or build#2222."))
+       (list "Directory" (plist-get plist :root)
+             "The project's directory there, such as ~/src/project/."))
+      "")
+     (if untested (format "\nExperimental: %s\n" untested) ""))))
+
+(defun kittymacs-onboard--new-backend (state)
+  "Return a backend for the form in STATE, with only its defaults filled in."
+  (let ((transport (car (kittymacs-onboard--transports state))))
+    (list nil
+          :transport transport
+          :host (and (memq transport kittymacs-onboard-wsl-transports)
+                     (car (kittymacs-onboard--distributions state)))
+          :root nil)))
+
+(defun kittymacs-onboard--next-in (items current)
+  "Return what follows CURRENT in ITEMS, or the first of them."
+  (or (cadr (member current items)) (car items)))
+
+(defun kittymacs-onboard--typed (label current)
+  "Return a line typed after LABEL, starting from CURRENT, or nil for none."
+  (let ((value (string-trim (kittymacs-onboard--read-text (format "%s: " label) current))))
+    (and (not (string-empty-p value)) value)))
+
+(defun kittymacs-onboard--with-transport (state plist transport)
+  "Return PLIST on TRANSPORT in STATE, without a host that only made sense before."
+  (let* ((distributions (kittymacs-onboard--distributions state))
+         (host (plist-get plist :host))
+         (wsl (and (memq transport kittymacs-onboard-wsl-transports) distributions)))
+    (plist-put (plist-put plist :transport transport)
+               :host (cond ((and wsl (not (member host distributions))) (car distributions))
+                           ((and (not wsl) (member host distributions)) nil)
+                           (t host)))))
+
+(defun kittymacs-onboard--change-field (state entry field)
+  "Return ENTRY in STATE with FIELD changed, asking for it."
+  (let* ((name (car entry))
+         (plist (copy-sequence (cdr entry)))
+         (transport (kittymacs-onboard--transport-of plist))
+         (distributions (and (memq transport kittymacs-onboard-wsl-transports)
+                             (kittymacs-onboard--distributions state))))
+    (pcase field
+      ('name (cons (kittymacs-onboard--typed "Name" name) plist))
+      ('transport
+       (cons name (kittymacs-onboard--with-transport
+                   state plist
+                   (kittymacs-onboard--next-in (kittymacs-onboard--transports state) transport))))
+      ('host
+       (cons name (plist-put plist :host
+                             (if distributions
+                                 (kittymacs-onboard--next-in distributions (plist-get plist :host))
+                               (kittymacs-onboard--typed "Host" (plist-get plist :host))))))
+      ('root
+       (let ((root (kittymacs-onboard--typed "Directory" (plist-get plist :root))))
+         (cons name (plist-put plist :root (and root (file-name-as-directory root)))))))))
+
+(defun kittymacs-onboard--backend-problem (state old entry)
+  "Return why ENTRY cannot take the place of OLD in STATE, or nil."
+  (let ((missing (append (unless (car entry) '("a name"))
+                         (unless (plist-get (cdr entry) :host) '("a host"))
+                         (unless (plist-get (cdr entry) :root) '("a directory")))))
+    (cond
+     (missing (format "This backend still needs %s.  b goes back without it."
+                      (string-join missing " and ")))
+     ((assoc (car entry) (remq old (kittymacs-onboard--backends state)))
+      (format "There is already a backend called %s." (car entry))))))
+
+(defun kittymacs-onboard--keep-backend (state old entry)
+  "Put ENTRY in the place of OLD in STATE; return what else that moved, or nil."
+  (setf (kittymacs-onboard--backends state)
+        (if old
+            (cl-substitute entry old (kittymacs-onboard--backends state) :test #'eq)
+          (append (kittymacs-onboard--backends state) (list entry))))
+  (when (and (eq (kittymacs-onboard--transport-of (cdr entry)) 'wsl-rpc)
+             (not (eq (kittymacs-onboard--transport-of (cdr old)) 'wsl-rpc))
+             (not (memq 'wsl-rpc (kittymacs-onboard--on state))))
+    (kittymacs-onboard--toggle state 'wsl-rpc)))
+
+(defun kittymacs-onboard--backend-form (state place old)
+  "Ask about one backend in STATE, the backend OLD or a new one.
+Return what keeping it moved, or nil."
+  (let ((entry (or old (kittymacs-onboard--new-backend state)))
+        (last (1- (length kittymacs-onboard--backend-fields)))
+        (cursor 0)
+        note answer)
+    (while (not answer)
+      (kittymacs-onboard--show
+       (kittymacs-onboard--render-backend-form state place entry cursor note))
+      (setq note nil)
+      (pcase (kittymacs-onboard--key "SPC change, n/p move, RET keep, b back, C-g quit: ")
+        ((or ?n 'down) (setq cursor (min (1+ cursor) last)))
+        ((or ?p 'up) (setq cursor (max (1- cursor) 0)))
+        (?\s (setq entry (kittymacs-onboard--change-field
+                          state entry (nth cursor kittymacs-onboard--backend-fields))))
+        ((or ?\r 'return 'right)
+         (if-let* ((problem (kittymacs-onboard--backend-problem state old entry)))
+             (setq note problem)
+           (setq answer 'keep)))
+        ((or ?b 'left) (setq answer 'cancel))))
+    (when (eq answer 'keep)
+      (kittymacs-onboard--keep-backend state old entry))))
+
+(defun kittymacs-onboard--backends-screen (state place)
+  "Ask about the backends in STATE; return `next' or `back'."
+  (let ((cursor 0) note answer)
+    (while (not answer)
+      (let* ((lock (kittymacs-onboard--backends-lock state))
+             (backends (kittymacs-onboard--backends state))
+             (entry (nth cursor backends)))
+        (kittymacs-onboard--show (kittymacs-onboard--render-backends state place cursor note))
+        (setq note nil)
+        (pcase (kittymacs-onboard--key "SPC change, d remove, n/p move, RET next, b back, C-g quit: ")
+          ((or ?n 'down) (setq cursor (min (1+ cursor) (length backends))))
+          ((or ?p 'up) (setq cursor (max (1- cursor) 0)))
+          (?\s (unless lock
+                 (setq note (kittymacs-onboard--backend-form state place entry))))
+          (?d (when (and entry (not lock))
+                (setf (kittymacs-onboard--backends state) (remq entry backends))))
+          ((or ?\r 'return 'right) (setq answer 'next))
+          ((or ?b 'left) (setq answer 'back)))))
+    answer))
 (defun kittymacs-onboard--target-problem (file)
   "Return why FILE, or the file a link there points at, cannot be written; or nil."
   (let* ((real (file-truename file))
@@ -902,18 +1184,25 @@ A name the catalogue lacks goes in NOTES."
      ((not (file-writable-p directory))
       (format "%s is not writable, and a safe replacement needs to write there." directory)))))
 
+(defun kittymacs-onboard--meets-block-p (state option)
+  "Return non-nil if a setting of OPTION elsewhere competes with the block in STATE.
+The backends compete only while the block holds them."
+  (and (memq option (kittymacs-onboard--written-options))
+       (or (not (eq option 'kittymacs-backends))
+           (kittymacs-onboard--backends-form state))))
+
 (defun kittymacs-onboard--later-settings (state)
   "Return the settings of what onboarding writes that follow the block in STATE."
   (seq-filter (lambda (setting)
                 (and (eq (plist-get setting :place) 'after)
-                     (memq (plist-get setting :option) (kittymacs-onboard--written-options))))
+                     (kittymacs-onboard--meets-block-p state (plist-get setting :option))))
               (kittymacs-onboard--settings state)))
 
 (defun kittymacs-onboard--earlier-settings (state)
   "Return the settings of what onboarding writes that the block in STATE beats."
   (seq-filter (lambda (setting)
                 (and (memq (plist-get setting :place) '(before host))
-                     (memq (plist-get setting :option) (kittymacs-onboard--written-options))))
+                     (kittymacs-onboard--meets-block-p state (plist-get setting :option))))
               (kittymacs-onboard--settings state)))
 
 (defun kittymacs-onboard--setting-line (setting)
@@ -935,6 +1224,21 @@ A name the catalogue lacks goes in NOTES."
    (mapconcat (lambda (line) (format "- %s\n" line)) (seq-difference old new) "")
    (mapconcat (lambda (line) (format "%s %s\n" (if (member line old) " " "+") line)) new "")))
 
+(defun kittymacs-onboard--backend-warning (state)
+  "Return what the preview warns about the `wsl-rpc' feature and backends in STATE."
+  (let ((on (memq 'wsl-rpc (kittymacs-onboard--on state)))
+        (named (seq-some (lambda (entry)
+                           (eq (kittymacs-onboard--transport-of (cdr entry)) 'wsl-rpc))
+                         (kittymacs-onboard--backends state))))
+    (cond
+     ((seq-some #'kittymacs-onboard--backend-setting-opaque-p
+                (kittymacs-onboard--backend-settings state))
+      nil)
+     ((and on (not named))
+      "Warning: the wsl-rpc feature is on, and no backend uses it, so it would install and do nothing.  b goes back: name a backend over wsl-rpc, or turn it off.\n\n")
+     ((and named (not on) (kittymacs-features--applies-p 'wsl-rpc))
+      "Warning: a backend uses wsl-rpc, and that feature is off, so connecting to it would fail.  b goes back: turn it on, or change the backend.\n\n"))))
+
 (defun kittymacs-onboard--render-preview (state place)
   "Return the last screen for STATE, with PLACE as in the title."
   (let* ((file kittymacs-onboard-private-file)
@@ -950,6 +1254,7 @@ A name the catalogue lacks goes in NOTES."
      (kittymacs-onboard--screen-title place "What changes")
      "\nw writes.  n, p scroll.  b back.  C-g quit, writing nothing.\n"
      "A change takes effect at the next start, which installs what the features need.\n\n"
+     (kittymacs-onboard--backend-warning state)
      (if problem
          (format "Onboarding cannot write this: %s\n\n" problem)
        (format "%s %s, in the block between its two marker lines.\nEverything else in the file stays as it is%s\n\n"
@@ -1069,8 +1374,11 @@ Refuse if `private.el' cannot be understood."
          (known-modes (seq-mapcat (lambda (row) (plist-get (cdr row) :modes))
                                   kittymacs-onboard-structural-languages))
          (in-block (seq-filter (lambda (setting) (eq (plist-get setting :place) 'block)) private))
+         (backends (cdr (assq 'kittymacs-backends values)))
          (state (kittymacs-onboard--make-state
                  :profile profile
+                 :backends (and (kittymacs-onboard--backends-well-formed-p backends) backends)
+                 :distributions (kittymacs-onboard--read-distributions)
                  :selected (kittymacs-onboard--known-names
                             (alist-get 'kittymacs-features values) 'kittymacs-features notes)
                  :excluded (kittymacs-onboard--known-names
@@ -1109,7 +1417,7 @@ Refuse if `private.el' cannot be understood."
    '((profile))
    (mapcar (lambda (group) (list 'group group)) (kittymacs-onboard--groups))
    (and (kittymacs-onboard--structural-on-p state) '((structural)))
-   '((options) (preview))))
+   '((backends) (options) (preview))))
 
 (defun kittymacs-onboard--ask (state)
   "Walk the screens for STATE, until the person writes or quits."
@@ -1121,12 +1429,28 @@ Refuse if `private.el' cannot be understood."
                        ('(profile) (kittymacs-onboard--profile-screen state place))
                        (`(group ,group) (kittymacs-onboard--features-screen state group place))
                        ('(structural) (kittymacs-onboard--structural-screen state place))
+                       ('(backends) (kittymacs-onboard--backends-screen state place))
                        ('(options) (kittymacs-onboard--options-screen state place))
                        ('(preview) (kittymacs-onboard--preview-screen state place)))))
         (pcase answer
           ('next (setq index (1+ index)))
           ('back (setq index (max 0 (1- index))))
           ('write (setq done t)))))))
+
+(defun kittymacs-onboard--backend-next (state)
+  "Return what to do next about the backends the answers in STATE added or changed."
+  (mapconcat
+   (lambda (entry)
+     (concat
+      (format "After that start, SPC o B and then %s says what that machine has and what it is missing.\n"
+              (car entry))
+      (if (eq (kittymacs-onboard--transport-of (cdr entry)) 'wsl-rpc)
+          (format "%s also needs a server in the distribution, which nothing installs for you: that report prints the line to run.\n"
+                  (car entry))
+        "")))
+   (seq-difference (kittymacs-onboard--backends state)
+                   (kittymacs-onboard--backends-value (kittymacs-onboard--backend-settings state)))
+   ""))
 
 (defun kittymacs-onboard--result-text (state written)
   "Return what to say after the answers in STATE; WRITTEN is what writing returned."
@@ -1137,6 +1461,7 @@ Refuse if `private.el' cannot be understood."
                (if (stringp written) (format ", keeping the old one as %s" written) ""))
      (format "%s already says this, so nothing changed.\n" kittymacs-onboard-private-file))
    "A change takes effect at the next start, which installs what the features need.\n"
+   (kittymacs-onboard--backend-next state)
    (if-let* ((later (kittymacs-onboard--later-settings state)))
        (format "These come after the block, so they beat it:\n%s\n"
                (mapconcat #'kittymacs-onboard--setting-line later "\n"))

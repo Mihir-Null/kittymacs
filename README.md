@@ -243,7 +243,7 @@ programs.kittymacs = {
 
 ### First start
 
-**To choose what it installs first,** run `just onboard` in the clone, with nothing installed yet. It needs only Emacs. The screens go through a profile, then each feature with its example, then a few settings and a preview of the change, and `C-g` at any point writes nothing.
+**To choose what it installs first,** run `just onboard` in the clone, with nothing installed yet. It needs only Emacs. The screens go through a profile, then each feature with its example, then a backend if you work on another machine, then a few settings and a preview of the change, and `C-g` at any point writes nothing.
 
 - It writes a marked block in `lisp/private.el` and leaves the rest of that file as it is. It keeps the old file as `private.el~`, follows a symbolic link to the real file, and refuses with a message if the file does not read as Lisp or cannot be written.
 - Without a terminal it can draw in, it prints the options to set by hand and exits with status 3.

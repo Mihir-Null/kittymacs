@@ -65,12 +65,14 @@ profile turns on, so it is named here, whatever the configuration's default is."
       (setq index (1+ index)))
     (nreverse (cons ?\r keys))))
 
-(defun kittymacs-onboard-test--keys (profile toggled &optional structural options)
-  "Return a whole flow: the key PROFILE, TOGGLED features, then STRUCTURAL and OPTIONS keys."
+(defun kittymacs-onboard-test--keys (profile toggled &optional structural options backends)
+  "Return a whole flow: the key PROFILE, TOGGLED features, then keys for the later screens.
+Those are STRUCTURAL, BACKENDS and OPTIONS, each answered with RET by default."
   (append (list profile)
           (seq-mapcat (lambda (group) (kittymacs-onboard-test--group-keys group toggled))
                       (kittymacs-onboard--groups))
           structural
+          (or backends '(?\r))
           (or options '(?\r))
           '(?w)))
 
@@ -382,7 +384,7 @@ quits as a minibuffer would."
     (let ((result (kittymacs-onboard-test--run
                    (append (list ?m)
                            (mapcar (lambda (_) ?\r) (kittymacs-onboard--groups))
-                           '(?\s signal-quit)))))
+                           '(?\r ?\s signal-quit)))))
       (should (equal (car result) 2))
       (should-not (file-exists-p private)))))
 
@@ -987,6 +989,359 @@ quits as a minibuffer would."
     (should (search-forward "emacs -nw -Q -l lisp/kittymacs-onboard.el -f kittymacs-onboard-main" nil t))
     (should (search-forward "emacs -Q --batch -l lisp/kittymacs-onboard.el -f kittymacs-onboard-main" nil t))))
 
+;;; The backends screen
+
+(defconst kittymacs-onboard-test-two-distributions
+  "U\0b\0u\0n\0t\0u\0\r\0\n\0D\0e\0b\0i\0a\0n\0\r\0\n\0"
+  "What `wsl.exe --list --quiet' prints on a machine with two, in UTF-16.")
+
+(defmacro kittymacs-onboard-test-on-windows (output status &rest body)
+  "Run BODY as native Windows, where `wsl.exe --list' prints OUTPUT and exits with STATUS.
+A stand-in, since this machine has no `wsl.exe'.  A STATUS of `missing' means no program."
+  (declare (indent 2))
+  `(cl-letf (((symbol-function 'w32-long-file-name) #'identity)
+             ((symbol-function 'w32-convert-standard-filename) #'identity)
+             ((symbol-function 'call-process)
+              (lambda (program _input destination _display &rest _arguments)
+                (should (equal program "wsl.exe"))
+                (when (eq ,status 'missing)
+                  (signal 'file-missing (list "Searching for program" "No such file" program)))
+                (when destination (insert ,output))
+                ,status)))
+     (let ((system-type 'windows-nt))
+       ,@body)))
+
+(defun kittymacs-onboard-test--backend-screens ()
+  "Return the text of the backends screens the last run showed."
+  (string-join (seq-filter (lambda (screen)
+                             (string-search "A backend, if you work on another machine" screen))
+                           kittymacs-onboard-test-screens)))
+
+(defconst kittymacs-onboard-test-build
+  '("build" :transport ssh :host "build.example.org" :root "~/src/")
+  "The backend `kittymacs-onboard-test-build-keys' names.")
+
+(defconst kittymacs-onboard-test-build-keys
+  (list ?\s ?\s "build" ?n ?n ?\s "build.example.org" ?n ?\s "~/src" ?\r ?\r)
+  "Keys on an empty backends screen: add the backend, keep it, and go on.")
+
+(ert-deftest kittymacs-onboard-backends-can-be-skipped ()
+  (kittymacs-onboard-test-with-machine
+    (should (= 0 (car (kittymacs-onboard-test--run (kittymacs-onboard-test--keys ?m nil)))))
+    (should-not (kittymacs-onboard-test--value private 'kittymacs-backends))
+    (should (string-search "A backend, if you work on another machine"
+                           (string-join kittymacs-onboard-test-screens)))))
+
+(ert-deftest kittymacs-onboard-the-plain-form-writes-a-backend ()
+  (kittymacs-onboard-test-with-machine
+    (should (= 0 (car (kittymacs-onboard-test--run
+                       (kittymacs-onboard-test--keys
+                        ?m nil nil nil kittymacs-onboard-test-build-keys)))))
+    (should (equal (kittymacs-onboard-test--value private 'kittymacs-backends)
+                   `(',(list kittymacs-onboard-test-build))))
+    (let ((screens (kittymacs-onboard-test--backend-screens)))
+      (should (string-search "Transport: ssh" screens))
+      ;; Elsewhere no form offers either WSL transport.
+      (should-not (string-search "wsl" screens)))))
+
+(ert-deftest kittymacs-onboard-a-directory-there-stays-as-typed ()
+  (kittymacs-onboard-test-with-machine
+    (kittymacs-onboard-test--run
+     (kittymacs-onboard-test--keys ?m nil nil nil kittymacs-onboard-test-build-keys))
+    (should (string-search "\"~/src/\"" (kittymacs-onboard-test--file-string private)))))
+
+(ert-deftest kittymacs-onboard-the-form-says-what-is-missing-and-going-back-keeps-nothing ()
+  (kittymacs-onboard-test-with-machine
+    (should (= 0 (car (kittymacs-onboard-test--run
+                       (kittymacs-onboard-test--keys
+                        ?m nil nil nil (list ?\s ?\r ?\s "half" ?\r ?b ?\r))))))
+    (let ((screens (string-join kittymacs-onboard-test-screens)))
+      (should (string-search "still needs a name and a host and a directory" screens))
+      (should (string-search "still needs a host and a directory" screens)))
+    (should-not (kittymacs-onboard-test--value private 'kittymacs-backends))))
+
+(ert-deftest kittymacs-onboard-two-backends-cannot-share-a-name ()
+  (kittymacs-onboard-test-with-machine
+    (kittymacs-onboard-test--write-bytes
+     private (format "(setopt kittymacs-backends '(%S))\n" kittymacs-onboard-test-build))
+    (kittymacs-onboard-test--run
+     (kittymacs-onboard-test--keys
+      ?m nil nil nil (list ?n ?\s ?\s "build" ?n ?n ?\s "h" ?n ?\s "/d" ?\r ?b ?\r)))
+    (should (string-search "already a backend called build"
+                           (string-join kittymacs-onboard-test-screens)))
+    ;; Going back without it leaves the one that was there.
+    (should (equal (kittymacs-onboard-test--value private 'kittymacs-backends)
+                   `(',(list kittymacs-onboard-test-build))))))
+
+(ert-deftest kittymacs-onboard-offers-only-what-the-remote-chapter-can-reach ()
+  (require 'tramp)
+  (defvar tramp-methods)
+  (dolist (transport kittymacs-onboard-backend-transports)
+    (should (assoc (symbol-name transport) tramp-methods)))
+  ;; The chapter dispatches on these two by name.
+  (let ((chapter (kittymacs-onboard--text
+                  (kittymacs-onboard--file-bytes
+                   (kittymacs-onboard-test--path "lisp/kittymacs-remote.el")))))
+    (dolist (transport kittymacs-onboard-wsl-transports)
+      (should (string-search (format "(%s . kittymacs-remote--" transport) chapter)))))
+
+(ert-deftest kittymacs-onboard-windows-offers-each-distribution ()
+  (kittymacs-onboard-test-with-machine
+    (kittymacs-onboard-test-on-windows kittymacs-onboard-test-two-distributions 0
+      (should (= 0 (car (kittymacs-onboard-test--run
+                         (kittymacs-onboard-test--keys
+                          ?m nil nil nil
+                          ;; Name, past the transport, then the second distribution.
+                          (list ?\s ?\s "wsl" ?n ?n ?\s ?n ?\s "~/project" ?\r ?\r))))))
+      (should (equal (kittymacs-onboard-test--value private 'kittymacs-backends)
+                     '('(("wsl" :transport wsl :host "Debian" :root "~/project/")))))
+      (let ((screens (string-join kittymacs-onboard-test-screens)))
+        (should (string-search "Transport: wsl\n" screens))
+        (should (string-search "Host: Ubuntu\n" screens))
+        (should (string-search "Host: Debian\n" screens))
+        (should (string-search "SPC takes the next of: Ubuntu, Debian." screens))
+        (should (string-search "wsl-rpc (experimental)" screens))))))
+
+(ert-deftest kittymacs-onboard-windows-without-a-distribution-gets-the-plain-form ()
+  (dolist (machine `((missing . "")
+                     (1 . "W\0i\0n\0d\0o\0w\0s\0 \0h\0a\0s\0 \0n\0o\0n\0e\0\r\0\n\0")
+                     (0 . "")))
+    (kittymacs-onboard-test-with-machine
+      (kittymacs-onboard-test-on-windows (cdr machine) (car machine)
+        (should (= 0 (car (kittymacs-onboard-test--run
+                           (kittymacs-onboard-test--keys
+                            ?m nil nil nil kittymacs-onboard-test-build-keys)))))
+        (should (equal (kittymacs-onboard-test--value private 'kittymacs-backends)
+                       `(',(list kittymacs-onboard-test-build))))
+        (should-not (string-search "wsl" (kittymacs-onboard-test--backend-screens)))))))
+
+(ert-deftest kittymacs-onboard-choosing-wsl-rpc-selects-the-feature ()
+  (kittymacs-onboard-test-with-machine
+    (kittymacs-onboard-test-on-windows kittymacs-onboard-test-two-distributions 0
+      (let* ((untested (plist-get (alist-get 'wsl-rpc kittymacs-catalogue) :experimental))
+             (result (kittymacs-onboard-test--run
+                      (kittymacs-onboard-test--keys
+                       ?m nil nil nil
+                       (list ?\s ?\s "wsl" ?n ?\s ?n ?n ?\s "~/project" ?\r ?\r)))))
+        (should (= 0 (car result)))
+        (should (equal (kittymacs-onboard-test--value private 'kittymacs-backends)
+                       '('(("wsl" :transport wsl-rpc :host "Ubuntu" :root "~/project/")))))
+        (should (equal (kittymacs-onboard-test--value private 'kittymacs-features)
+                       '('(wsl-rpc))))
+        (should (string-search (concat "Experimental: " untested)
+                               (string-join kittymacs-onboard-test-screens)))
+        (should (string-search "On: wsl-rpc." (string-join kittymacs-onboard-test-screens)))
+        (should-not (string-search "Warning: "
+                                   (car kittymacs-onboard-test-screens)))
+        (should (string-search "SPC o B and then wsl" (cdr result)))
+        (should (string-search "needs a server" (cdr result)))))))
+
+(ert-deftest kittymacs-onboard-going-to-ssh-does-not-keep-a-distribution-as-the-host ()
+  (kittymacs-onboard-test-with-machine
+    (kittymacs-onboard-test-on-windows kittymacs-onboard-test-two-distributions 0
+      (let* ((state (kittymacs-onboard--initial-state))
+             (entry (kittymacs-onboard--new-backend state)))
+        (should (equal (plist-get (cdr entry) :host) "Ubuntu"))
+        (setq entry (kittymacs-onboard--change-field state entry 'transport))
+        (should (eq (plist-get (cdr entry) :transport) 'wsl-rpc))
+        (should (equal (plist-get (cdr entry) :host) "Ubuntu"))
+        (setq entry (kittymacs-onboard--change-field state entry 'transport))
+        (should (eq (plist-get (cdr entry) :transport) 'ssh))
+        (should-not (plist-get (cdr entry) :host))))))
+
+(ert-deftest kittymacs-onboard-the-feature-with-no-backend-warns-and-still-writes ()
+  (kittymacs-onboard-test-with-machine
+    (kittymacs-onboard-test-on-windows kittymacs-onboard-test-two-distributions 0
+      (should (= 0 (car (kittymacs-onboard-test--run
+                         (kittymacs-onboard-test--keys ?m '(wsl-rpc))))))
+      (should (string-search "Warning: the wsl-rpc feature is on, and no backend uses it"
+                             (car kittymacs-onboard-test-screens)))
+      (should (equal (kittymacs-onboard-test--value private 'kittymacs-features)
+                     '('(wsl-rpc))))
+      (should-not (kittymacs-onboard-test--value private 'kittymacs-backends)))))
+
+(ert-deftest kittymacs-onboard-a-wsl-rpc-backend-with-the-feature-off-warns ()
+  (kittymacs-onboard-test-with-machine
+    (kittymacs-onboard-test-on-windows "" 0
+      (kittymacs-onboard-test--write-bytes
+       private "(setopt kittymacs-backends '((\"wsl\" :transport wsl-rpc :host \"U\" :root \"/\")))\n")
+      (should (= 0 (car (kittymacs-onboard-test--run (kittymacs-onboard-test--keys ?m nil)))))
+      (should (string-search "Warning: a backend uses wsl-rpc"
+                             (car kittymacs-onboard-test-screens))))))
+
+(ert-deftest kittymacs-onboard-no-warning-where-the-feature-cannot-apply ()
+  (kittymacs-onboard-test-with-machine
+    (kittymacs-onboard-test--write-bytes
+     private "(setopt kittymacs-backends '((\"wsl\" :transport wsl-rpc :host \"U\" :root \"/\")))\n")
+    (kittymacs-onboard-test--run (kittymacs-onboard-test--keys ?m nil))
+    (should-not (string-search "Warning: " (car kittymacs-onboard-test-screens)))
+    ;; It stays where it is, since one file can serve several machines.
+    (should (kittymacs-onboard-test--value private 'kittymacs-backends))))
+
+(ert-deftest kittymacs-onboard-a-host-value-is-shown-and-kept-unless-changed ()
+  (kittymacs-onboard-test-with-machine
+    (make-directory host)
+    (kittymacs-onboard-test--write-bytes
+     (expand-file-name "10-nix.el" host)
+     (format "(setopt kittymacs-backends '(%S))\n" kittymacs-onboard-test-build))
+    (kittymacs-onboard-test--run (kittymacs-onboard-test--keys ?m nil))
+    (let ((screens (string-join kittymacs-onboard-test-screens)))
+      (should (string-search "build: ssh, build.example.org, ~/src/" screens))
+      (should (string-search "10-nix.el line 1 sets these" screens)))
+    ;; No form in the block, and no claim that the block beats anything.
+    (should-not (kittymacs-onboard-test--value private 'kittymacs-backends))
+    (should-not (string-search "10-nix.el line 1: kittymacs-backends"
+                               (car kittymacs-onboard-test-screens)))))
+
+(ert-deftest kittymacs-onboard-changing-a-host-value-writes-it-all-and-says-what-it-beats ()
+  (kittymacs-onboard-test-with-machine
+    (make-directory host)
+    (kittymacs-onboard-test--write-bytes
+     (expand-file-name "10-nix.el" host)
+     (format "(setopt kittymacs-backends '(%S))\n" kittymacs-onboard-test-build))
+    (kittymacs-onboard-test--run
+     (kittymacs-onboard-test--keys
+      ?m nil nil nil (list ?n ?\s ?\s "far" ?n ?n ?\s "far.example.org" ?n ?\s "/srv" ?\r ?\r)))
+    (should (equal (kittymacs-onboard-test--value private 'kittymacs-backends)
+                   `('(,kittymacs-onboard-test-build
+                       ("far" :transport ssh :host "far.example.org" :root "/srv/")))))
+    (should (string-search "10-nix.el line 1: kittymacs-backends"
+                           (car kittymacs-onboard-test-screens)))))
+
+(ert-deftest kittymacs-onboard-putting-a-host-value-back-writes-nothing ()
+  (kittymacs-onboard-test-with-machine
+    (make-directory host)
+    (kittymacs-onboard-test--write-bytes
+     (expand-file-name "10-nix.el" host)
+     (format "(setopt kittymacs-backends '(%S))\n" kittymacs-onboard-test-build))
+    (kittymacs-onboard-test--run
+     (kittymacs-onboard-test--keys
+      ?m nil nil nil (list ?n ?\s ?\s "far" ?n ?n ?\s "f" ?n ?\s "/s" ?\r ?d ?\r)))
+    (should-not (kittymacs-onboard-test--value private 'kittymacs-backends))))
+
+(ert-deftest kittymacs-onboard-removing-a-host-value-is-an-answer-the-preview-names ()
+  (kittymacs-onboard-test-with-machine
+    (make-directory host)
+    (kittymacs-onboard-test--write-bytes
+     (expand-file-name "10-nix.el" host)
+     (format "(setopt kittymacs-backends '(%S))\n" kittymacs-onboard-test-build))
+    (kittymacs-onboard-test--run (kittymacs-onboard-test--keys ?m nil nil nil '(?d ?\r)))
+    (should (equal (kittymacs-onboard-test--value private 'kittymacs-backends) '(nil)))
+    (should (string-search "10-nix.el line 1: kittymacs-backends"
+                           (car kittymacs-onboard-test-screens)))))
+
+(ert-deftest kittymacs-onboard-a-backend-keeps-the-keys-the-form-does-not-ask-about ()
+  (kittymacs-onboard-test-with-machine
+    (kittymacs-onboard-test--write-bytes
+     private "(setopt kittymacs-backends '((\"a\" :transport ssh :host \"h\" :root \"/r/\" :shell \"/bin/bash\")))\n")
+    (kittymacs-onboard-test--run
+     (kittymacs-onboard-test--keys ?m nil nil nil (list ?\s ?n ?n ?\s "other" ?\r ?\r)))
+    (should (equal (kittymacs-onboard-test--value private 'kittymacs-backends)
+                   '('(("a" :transport ssh :host "other" :root "/r/" :shell "/bin/bash")))))))
+
+(defun kittymacs-onboard-test--locked (text &optional written-before)
+  "Check that a `private.el' holding TEXT leaves the backends alone.
+With WRITTEN-BEFORE, the block already held those backends, and must go on holding them."
+  (kittymacs-onboard-test-with-machine
+    (when written-before
+      (kittymacs-onboard-test--run
+       (kittymacs-onboard-test--keys
+        ?m nil nil nil kittymacs-onboard-test-build-keys)))
+    (kittymacs-onboard-test--write-bytes
+     private (concat (if (file-exists-p private) (kittymacs-onboard-test--file-string private) "")
+                     text "\n"))
+    ;; SPC and d do nothing here, so RET moves straight on.
+    (should (= 0 (car (kittymacs-onboard-test--run
+                       (kittymacs-onboard-test--keys ?m nil nil nil '(?\s ?d ?\r))))))
+    (should (string-search "Edit it there" (string-join kittymacs-onboard-test-screens)))
+    (let* ((bytes (kittymacs-onboard-test--file-string private))
+           (block (cadr (kittymacs-onboard--split bytes private))))
+      (should (string-search text bytes))
+      (if written-before
+          (should (string-search "(\"build\" :transport ssh" block))
+        (should-not (string-search "kittymacs-backends" block))))))
+
+(ert-deftest kittymacs-onboard-a-value-after-the-block-is-left-alone ()
+  (kittymacs-onboard-test-with-machine
+    (kittymacs-onboard-test--run (kittymacs-onboard-test--keys ?m nil))
+    (let ((text (concat (kittymacs-onboard-test--file-string private)
+                        "(setopt kittymacs-backends '((\"a\" :host \"h\" :root \"/\")))\n")))
+      (kittymacs-onboard-test--write-bytes private text)
+      (kittymacs-onboard-test--run (kittymacs-onboard-test--keys ?m nil nil nil '(?\s ?d ?\r)))
+      (let ((screens (string-join kittymacs-onboard-test-screens)))
+        (should (string-search "sets this after the block" screens))
+        (should (string-search "a: ssh, h, /" screens)))
+      (should (equal (kittymacs-onboard-test--file-string private) text)))))
+
+(ert-deftest kittymacs-onboard-a-value-only-running-could-tell-is-left-alone ()
+  (dolist (form '("(setopt kittymacs-backends (my-backends))"
+                  "(when (my-p) (setopt kittymacs-backends '((\"a\" :root \"/\"))))"
+                  "(add-to-list 'kittymacs-backends '(\"a\" :root \"/\"))"
+                  "(setopt kittymacs-backends \"not a list of backends\")"))
+    (kittymacs-onboard-test--locked form)))
+
+(ert-deftest kittymacs-onboard-what-the-block-held-outlasts-a-later-setting ()
+  (kittymacs-onboard-test--locked "(setopt kittymacs-backends (my-backends))" t))
+
+(ert-deftest kittymacs-onboard-a-second-run-keeps-the-block-and-can-empty-it ()
+  (kittymacs-onboard-test-with-machine
+    (kittymacs-onboard-test--run
+     (kittymacs-onboard-test--keys ?m nil nil nil kittymacs-onboard-test-build-keys))
+    (let ((result (kittymacs-onboard-test--run (kittymacs-onboard-test--keys ?m nil))))
+      (should (string-search "already says this" (cdr result)))
+      (should-not (string-search "SPC o B" (cdr result))))
+    (should (string-search "build: ssh" (string-join kittymacs-onboard-test-screens)))
+    (kittymacs-onboard-test--run (kittymacs-onboard-test--keys ?m nil nil nil '(?d ?\r)))
+    (should-not (kittymacs-onboard-test--value private 'kittymacs-backends))))
+
+(ert-deftest kittymacs-onboard-says-what-to-do-next-about-a-backend ()
+  (kittymacs-onboard-test-with-machine
+    (let ((text (cdr (kittymacs-onboard-test--run
+                      (kittymacs-onboard-test--keys
+                       ?m nil nil nil kittymacs-onboard-test-build-keys)))))
+      (should (string-search "SPC o B and then build" text))
+      (should-not (string-search "needs a server" text)))))
+
+(ert-deftest kittymacs-onboard-a-written-backend-has-the-option-s-type ()
+  "`setopt' warns at every start about a value its `:type' does not match."
+  (require 'cus-edit)
+  (let* ((forms (mapcar #'car (kittymacs-onboard--read-forms
+                               (kittymacs-onboard--text
+                                (kittymacs-onboard--file-bytes
+                                 (kittymacs-onboard-test--path "lisp/kittymacs-remote.el"))))))
+         (definition (seq-find (lambda (form)
+                                 (and (eq (car-safe form) 'defcustom)
+                                      (eq (nth 1 form) 'kittymacs-backends)))
+                               forms))
+         (widget (widget-convert (cadr (plist-get (nthcdr 4 definition) :type)))))
+    (kittymacs-onboard-test-with-machine
+      (let ((state (kittymacs-onboard--initial-state)))
+        (kittymacs-onboard--keep-backend state nil kittymacs-onboard-test-build)
+        (should (widget-apply widget :match (kittymacs-onboard--backends state)))
+        (should-not (widget-apply widget :match '(("a" . "not a plist"))))))))
+
+(ert-deftest kittymacs-onboard-the-nix-options-carry-a-backend ()
+  (kittymacs-onboard-test-with-machine
+    (make-directory kittymacs-onboard-store-directory t)
+    (let ((state (kittymacs-onboard--initial-state)))
+      (setf (kittymacs-onboard--backends state) (list kittymacs-onboard-test-build))
+      (should (string-search "settings.kittymacs-backends.elisp = "
+                             (kittymacs-onboard--nix-text state))))))
+
+(ert-deftest kittymacs-onboard-the-distributions-reader-trusts-only-a-clean-exit ()
+  (kittymacs-onboard-test-on-windows kittymacs-onboard-test-two-distributions 0
+    (should (equal (kittymacs-wsl-distributions) '("Ubuntu" "Debian"))))
+  (kittymacs-onboard-test-on-windows "Windows has no distribution\r\n" 1
+    (should-not (kittymacs-wsl-distributions)))
+  (kittymacs-onboard-test-on-windows "" 'missing
+    (should-not (kittymacs-wsl-distributions))))
+
+(ert-deftest kittymacs-onboard-reads-distributions-only-on-native-windows ()
+  (kittymacs-onboard-test-with-machine
+    (cl-letf (((symbol-function 'call-process)
+               (lambda (&rest _) (error "Only native Windows may run wsl.exe"))))
+      (should-not (kittymacs-onboard--read-distributions)))))
+
 ;;; A real terminal
 
 ;; `nix run .#doctor' calls onboarding's reader from a shell string, where a
@@ -1009,9 +1364,10 @@ quits as a minibuffer would."
       (unless (eq name 'kittymacs-onboard)
         (should (fboundp name))))))
 
-(defun kittymacs-onboard-test--pty (keys wait-for &optional prepare)
+(defun kittymacs-onboard-test--pty (keys wait-for &optional prepare before-main)
   "Run onboarding on a pty in a copy of the modules; send KEYS once WAIT-FOR shows.
-Call PREPARE with the directory first, if given.
+Call PREPARE with the directory first, if given.  BEFORE-MAIN, a form, runs just
+before onboarding does.
 Return its exit status, what it drew, and the directory it ran in, as a list."
   (let* ((root (file-name-as-directory (make-temp-file "kittymacs-onboard-pty-" t)))
          (lisp (expand-file-name "lisp/" root))
@@ -1024,7 +1380,8 @@ Return its exit status, what it drew, and the directory it ran in, as a list."
                         (concat "XDG_CONFIG_HOME=" root "config"))
                   process-environment)))
     (make-directory lisp)
-    (dolist (file '("kittymacs-onboard.el" "kittymacs-catalogue.el" "kittymacs-features.el"))
+    (dolist (file '("kittymacs-onboard.el" "kittymacs-catalogue.el" "kittymacs-features.el"
+                    "kittymacs-wsl.el"))
       (copy-file (expand-file-name file lisp-source) (expand-file-name file lisp)))
     (when prepare
       (funcall prepare root))
@@ -1037,6 +1394,7 @@ Return its exit status, what it drew, and the directory it ran in, as a list."
                                    ;; machine must stay the one PREPARE made.
                                    "--eval" "(setq package-directory-list nil)"
                                    "-l" (expand-file-name "kittymacs-onboard.el" lisp)
+                                   "--eval" (format "%S" (or before-main t))
                                    "-f" "kittymacs-onboard-main")))
           (limit (+ (float-time) 60))
           sent)
@@ -1061,7 +1419,7 @@ Return its exit status, what it drew, and the directory it ran in, as a list."
   (skip-unless (not (memq system-type '(windows-nt ms-dos))))
   (pcase-let* ((returns (make-string (length (kittymacs-onboard--groups)) ?\r))
                (`(,status ,screen ,root)
-                (kittymacs-onboard-test--pty (concat "m" returns "\rw") "Where to start"))
+                (kittymacs-onboard-test--pty (concat "m" returns "\r\rw") "Where to start"))
                (file (expand-file-name "lisp/private.el" root)))
     (unwind-protect
         (progn
@@ -1085,7 +1443,7 @@ Return its exit status, what it drew, and the directory it ran in, as a list."
   (skip-unless (not (memq system-type '(windows-nt ms-dos))))
   (pcase-let* ((returns (make-string (length (kittymacs-onboard--groups)) ?\r))
                (`(,status ,screen ,root)
-                (kittymacs-onboard-test--pty (concat "\r" returns "\rw") "Where to start"))
+                (kittymacs-onboard-test--pty (concat "\r" returns "\r\rw") "Where to start"))
                (file (expand-file-name "lisp/private.el" root)))
     (unwind-protect
         (progn
@@ -1101,7 +1459,7 @@ Return its exit status, what it drew, and the directory it ran in, as a list."
                (`(,status ,screen ,root)
                 (kittymacs-onboard-test--pty
                  ;; `full' has Puni, so the structural-editing screen waits for an answer.
-                 (concat "\r" returns "Y\r\rw") "Where to start"
+                 (concat "\r" returns "Y\r\r\rw") "Where to start"
                  (lambda (root)
                    (kittymacs-onboard-test--install-a-package (expand-file-name "var/" root)))))
                (file (expand-file-name "lisp/private.el" root)))
@@ -1110,6 +1468,50 @@ Return its exit status, what it drew, and the directory it ran in, as a list."
           (should (equal status 0))
           (should (string-search "so it stays at full" screen))
           (should (equal (kittymacs-onboard-test--value file 'kittymacs-profile) '('full))))
+      (delete-directory root t))))
+
+(ert-deftest kittymacs-onboard-a-real-terminal-names-a-backend ()
+  (skip-unless (not (memq system-type '(windows-nt ms-dos))))
+  (pcase-let* ((returns (make-string (length (kittymacs-onboard--groups)) ?\r))
+               (`(,status ,screen ,root)
+                (kittymacs-onboard-test--pty
+                 (concat "m" returns "  build\rnn host.example\rn ~/src\r\r\r\rw") "Where to start"))
+               (file (expand-file-name "lisp/private.el" root)))
+    (unwind-protect
+        (progn
+          (should (equal status 0))
+          (should (equal (kittymacs-onboard-test--value file 'kittymacs-backends)
+                         '('(("build" :transport ssh :host "host.example" :root "~/src/")))))
+          (should (string-search "SPC o B" screen)))
+      (delete-directory root t))))
+
+(ert-deftest kittymacs-onboard-a-real-terminal-offers-what-a-stand-in-wsl-lists ()
+  "Only onboarding's own modules load here, so the false `system-type' reaches no gate."
+  (skip-unless (not (memq system-type '(windows-nt ms-dos))))
+  (pcase-let* ((returns (make-string (length (kittymacs-onboard--groups)) ?\r))
+               (`(,status ,screen ,root)
+                (kittymacs-onboard-test--pty
+                 (concat "m" returns "  wsl\rn nn ~/project\r\r\r\rw") "Where to start"
+                 (lambda (root)
+                   (let ((program (expand-file-name "wsl.exe" root)))
+                     (with-temp-file program
+                       (insert "#!/bin/sh\nprintf 'Ubuntu\\r\\nDebian\\r\\n'\n"))
+                     (set-file-modes program #o755)))
+                 `(progn
+                    (defalias 'w32-long-file-name #'identity)
+                    (defalias 'w32-convert-standard-filename #'identity)
+                    (defalias 'w32-shell-dos-semantics #'ignore)
+                    (setq system-type 'windows-nt)
+                    (add-to-list 'exec-path default-directory))))
+               (file (expand-file-name "lisp/private.el" root)))
+    (unwind-protect
+        (progn
+          (should (equal status 0))
+          (should (equal (kittymacs-onboard-test--value file 'kittymacs-backends)
+                         '('(("wsl" :transport wsl-rpc :host "Ubuntu" :root "~/project/")))))
+          (should (equal (kittymacs-onboard-test--value file 'kittymacs-features)
+                         '('(wsl-rpc))))
+          (should (string-search "needs a server" screen)))
       (delete-directory root t))))
 
 ;;; kittymacs-onboard-tests.el ends here
