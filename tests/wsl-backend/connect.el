@@ -94,6 +94,20 @@ Tramp suspends timers while it waits unless told not to, and the limit is a time
    (when (featurep 'tramp) (error "The start loaded Tramp"))
    (format "%s, %s" (emacs-version) system-type)))
 
+;;; What onboarding offers
+
+(declare-function kittymacs-wsl-distributions "kittymacs-wsl" ())
+
+(wsl-backend-check
+ "the distributions, as onboarding reads them" 30
+ (lambda ()
+   (require 'kittymacs-wsl)
+   (let ((names (kittymacs-wsl-distributions)))
+     (unless (member wsl-backend-distribution names)
+       (error "`wsl --list' gave %S, without %s" names wsl-backend-distribution))
+     (when (featurep 'tramp-rpc) (error "This job must not load tramp-rpc"))
+     (format "%S" names))))
+
 ;;; Opening from the WSL side
 
 ;; First, while Tramp has not loaded, as for someone who has not connected yet.

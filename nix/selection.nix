@@ -77,7 +77,9 @@ rec {
         default = null;
         example = true;
         description = ''
-          ${entry.summary}  True adds it to `kittymacs-features`, false to
+          ${entry.summary}${
+            lib.optionalString (entry ? experimental) "  Experimental: ${entry.experimental}"
+          }  True adds it to `kittymacs-features`, false to
           `kittymacs-features-excluded`, and null leaves it to `profile`.
         '';
       };

@@ -34,6 +34,7 @@
 ;;; Code:
 
 (require 'seq)
+(require 'kittymacs-catalogue)
 (require 'kittymacs-defaults)
 (require 'kittymacs-leader)
 
@@ -116,7 +117,7 @@ Tramp's existence check quotes the name, so it never sees a home directory."
 - A backend is a machine that runs your programs while this Emacs is the screen.
   + =kittymacs-backends= names each one, with how to reach it, the host, and the project's directory there.
   + A name is shorter than a Tramp file name, and it is what =SPC o b= and =SPC o B= ask for.
-  + Set it in =private.el= or a host file, since it is about one account's machines.
+  + Set it in =private.el= or a host file, since it is about one account's machines, or name one on [[id:b61f2e84-5d07-4c3a-9e16-7a2c40d8f193][onboarding's screen]].
 
 | Key             | Means                                                              | Default |
 |-----------------+--------------------------------------------------------------------+---------|
@@ -139,6 +140,7 @@ Tramp's existence check quotes the name, so it never sees a home directory."
 - =SPC o B= (=kittymacs-backend-doctor=) lists which of =kittymacs-backend-tools= the backend has, and where.
   + It also says whether the project's directory exists and how processes start there.
   + On =wsl-rpc= it first reports the server and the local =cat=, and it says what to install for either.
+  + A transport with the name of a [[id:3f8a6c02-9d14-4b7e-a2c5-1e7d90b64f31][catalogue]] feature that has =:experimental= gets that sentence at the top, so the label is there when you look.
 - =SPC o R= (=kittymacs-backend-reconnect=) drops the connection and opens a new one, for the buffer's backend, or for one it asks you to name.
   + That is the way out of a connection that has stopped answering.
   + It does not touch a terminal that runs =wsl.exe= itself.
@@ -259,6 +261,10 @@ This only says it: nothing here installs anything."
        "Tramp reads the machine's PATH once per connection, so then reconnect with\n"
        "M-x tramp-cleanup-connection.\n"))))
 
+(defun kittymacs-remote--experimental (transport)
+  "Return what the catalogue says is untested about TRANSPORT, or nil."
+  (plist-get (alist-get transport kittymacs-catalogue) :experimental))
+
 (defun kittymacs-backend-doctor (name)
   "Report which tools the backend called NAME has, and return them as an alist."
   (interactive (list (kittymacs-remote--read-backend)))
@@ -279,6 +285,9 @@ This only says it: nothing here installs anything."
                         (tramp-direct-async-process-p)))))
     (with-help-window "*kittymacs backend*"
       (princ (format "Backend %s, over %s\n\n" name (kittymacs-remote--transport backend)))
+      (when-let* ((untested (kittymacs-remote--experimental
+                             (kittymacs-remote--transport backend))))
+        (princ (format "Experimental: %s\n\n" untested)))
       (when rpc (princ (plist-get report :text)))
       (when reachable
         (princ (format "Project  %s (%s)\n" root (if exists "exists" "MISSING")))
@@ -423,6 +432,39 @@ It never connects."
   (kittymacs-remote--add-wsl-method)
   (kittymacs-remote--tramp-root kittymacs-remote-wsl-method backend))
 
+#+end_src
+
+** Which distributions this machine has
+:PROPERTIES:
+:ID: e94a07c6-21bd-4f58-8a3e-6d10c5b7f2a1
+:END:
+
+- Two callers need the list, and they load apart: [[id:4e8b1d76-3a95-4c20-b7f1-92c6d0e5a813][=wsl-rpc=]] loads only with its feature on, and [[id:b61f2e84-5d07-4c3a-9e16-7a2c40d8f193][onboarding]] runs under =emacs -Q=.
+  + So the function has a module of its own, which leans on nothing, and a start does not load it.
+- A machine with no =wsl.exe= has no distributions, and so does a =wsl.exe= that fails.
+  + That second case matters because, with none installed, =wsl.exe= is expected to fail and print a sentence on standard output, and each word of that must not become a distribution.
+
+#+begin_src emacs-lisp :tangle ../lisp/kittymacs-wsl.el
+;;; kittymacs-wsl.el --- Which WSL distributions this machine has -*- lexical-binding: t; -*-
+;; Generated from literate/36-remote.org; edit the Org source, then tangle.
+
+;;; Code:
+
+(defun kittymacs-wsl-distributions ()
+  "Return the distributions that `wsl.exe --list' names, or nil.
+Nil too where there is no `wsl.exe', and where it fails.  This starts no virtual
+machine.  It writes UTF-16 unless told otherwise, and an older one ignores being
+told, so this drops the NUL bytes either way."
+  (let ((default-directory temporary-file-directory)
+        (process-environment (cons "WSL_UTF8=1" process-environment))
+        (coding-system-for-read 'no-conversion))
+    (with-temp-buffer
+      (when (eql 0 (ignore-error file-missing
+                     (call-process "wsl.exe" nil '(t nil) nil "--list" "--quiet")))
+        (split-string (string-replace "\0" "" (buffer-string)) "[\r\n]+" t "[ \t]+")))))
+
+(provide 'kittymacs-wsl)
+;;; kittymacs-wsl.el ends here
 #+end_src
 
 ** A terminal in the distribution :decision:
@@ -661,6 +703,7 @@ A file with line endings keeps them.  This never connects."
         '(("wsl" :transport wsl-rpc :host "Ubuntu-24.04" :root "~/src/project/")))
 #+end_src
 
+- [[id:b61f2e84-5d07-4c3a-9e16-7a2c40d8f193][Onboarding's backend screen]] writes the same two settings.
 - The next start installs =tramp-rpc= and =msgpack= from Git, and they load only when a =/rpc:= name first appears.
 - Install the server in the distribution, because nothing downloads it for you.
   + =SPC o B= prints the line to run.
@@ -747,6 +790,7 @@ A file with line endings keeps them.  This never connects."
 (require 'seq)
 (require 'subr-x)
 (require 'kittymacs-remote)
+(require 'kittymacs-wsl)
 
 (defvar ghostel-tramp-shells)
 (defvar tramp-rpc-use-controlmaster)
@@ -907,21 +951,10 @@ backend, or move the seam: see \"Moving the pin\" in the remote chapter."
 
 ;;; What the rest of the remote chapter asks
 
-(defun kittymacs-remote-rpc--distributions ()
-  "Return the distributions that `wsl.exe --list' names.
-That starts no virtual machine.  It writes UTF-16 unless told otherwise, and an
-older one ignores being told, so this drops the NUL bytes either way."
-  (let ((default-directory temporary-file-directory)
-        (process-environment (cons "WSL_UTF8=1" process-environment))
-        (coding-system-for-read 'no-conversion))
-    (with-temp-buffer
-      (call-process "wsl.exe" nil '(t nil) nil "--list" "--quiet")
-      (split-string (string-replace "\0" "" (buffer-string)) "[\r\n]+" t "[ \t]+"))))
-
 (defun kittymacs-remote-rpc-preflight (name backend)
   "Refuse the backend NAME, with plist BACKEND, if WSL lacks its distribution."
   (let ((distribution (plist-get backend :host))
-        (known (kittymacs-remote-rpc--distributions)))
+        (known (kittymacs-wsl-distributions)))
     (unless (member distribution known)
       (user-error "Backend %s names the distribution %s, and `wsl --list' has %s"
                   name distribution (if known (string-join known ", ") "none")))))

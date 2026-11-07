@@ -250,8 +250,9 @@ Types the configuration deliberately silences are left out."
                                      nil "\\`kittymacs-.*\\.el\\'"))
         (let* ((module (intern (file-name-sans-extension file)))
                (chapter-feature (car (rassq module kittymacs-check-chapter-features))))
-          ;; Onboarding is the one module a start never loads.
-          (when (and (not (eq module 'kittymacs-onboard))
+          ;; A start never loads onboarding.  It loads the list of WSL distributions
+          ;; only through the wsl-rpc chapter, which requires it.
+          (when (and (not (memq module '(kittymacs-onboard kittymacs-wsl)))
                      (or (null chapter-feature) (kittymacs-feature-p chapter-feature)))
             (kittymacs-verify-check (featurep module) (format "Missing feature %s" module)))))
       ;; The terminal comes from MELPA.  package.el keeps a Git checkout left
