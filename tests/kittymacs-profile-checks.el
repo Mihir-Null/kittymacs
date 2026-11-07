@@ -162,6 +162,8 @@ Batch `format-mode-line' returns nothing, so this reads the option it obeys."
     (append
      (when (file-exists-p kittymacs-scratch-file)
        (list "A batch start saved *scratch*, so a new user would miss the pointer"))
+     (when which-key-allow-imprecise-window-fit
+       (list "which-key may clip text: the imprecise window fit is on"))
      (if (kittymacs-feature-p 'doom-look)
          (when collapse (list "doom-look is on, and the minor modes are collapsed"))
        (unless (and (eq (car-safe collapse) 'not)

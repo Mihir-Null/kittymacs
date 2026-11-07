@@ -293,15 +293,31 @@ Its chapter, module and catalogue entry, and elsewhere only by the feature's nam
     (should-not (string-match-p kittymacs-lint-host-name-regexp "a mackerel"))
     (should-not (string-match-p kittymacs-lint-host-name-regexp "the Mac"))))
 
+(defun kittymacs-lint--host-name-files ()
+  "Every file the host-name lint reads.
+This file holds the names, so it is the one test left out."
+  (append (kittymacs-lint--pages)
+          (kittymacs-lint--shipped-files)
+          (remove (kittymacs-lint--path "tests/kittymacs-lint-tests.el")
+                  (directory-files (kittymacs-lint--path "tests") t "\\.el\\'"))
+          (directory-files-recursively (kittymacs-lint--path "tools") "")
+          (directory-files-recursively (kittymacs-lint--path ".github") "")
+          (list (kittymacs-lint--path "AGENTS.md")
+                (kittymacs-lint--path ".dir-locals.el")
+                (kittymacs-lint--path "justfile")
+                (kittymacs-lint--path "flake.nix"))))
+
+(ert-deftest kittymacs-lint-host-name-scope-holds-what-it-names ()
+  "A moved file or an empty directory must not narrow the scan unnoticed."
+  (let ((files (kittymacs-lint--host-name-files)))
+    (dolist (name '("AGENTS.md" ".dir-locals.el" "tools/tangle.el"
+                    ".github/dependabot.yml" ".github/workflows/ci.yml"))
+      (should (member (kittymacs-lint--path name) files))
+      (should (file-regular-p (kittymacs-lint--path name))))
+    (should-not (member (kittymacs-lint--path "tests/kittymacs-lint-tests.el") files))))
+
 (ert-deftest kittymacs-lint-nothing-shipped-names-a-host ()
-  "This file holds the names, so it is the one test left out."
-  (let ((files (append (kittymacs-lint--pages)
-                       (kittymacs-lint--shipped-files)
-                       (remove (kittymacs-lint--path "tests/kittymacs-lint-tests.el")
-                               (directory-files (kittymacs-lint--path "tests") t "\\.el\\'"))
-                       (list (kittymacs-lint--path "justfile")
-                             (kittymacs-lint--path "flake.nix")
-                             (kittymacs-lint--path ".github/workflows/ci.yml"))))
+  (let ((files (kittymacs-lint--host-name-files))
         found)
     (should (> (length files) 50))
     (dolist (file files)

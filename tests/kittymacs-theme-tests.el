@@ -38,6 +38,50 @@
 (setq kittymacs-profile 'minimal)
 (require 'kittymacs-ui)
 
+(ert-deftest kittymacs-theme-pointer-word-is-only-the-pointer-in-scratch ()
+  (with-current-buffer (get-buffer-create "*scratch*")
+    (erase-buffer)
+    (insert kittymacs--scratch-pointer "\n;; SPC\n")
+    (should (kittymacs--scratch-pointer-word-p 4 7 nil))
+    (should-not (kittymacs--scratch-pointer-word-p (- (point-max) 4) (- (point-max) 1) nil))
+    (let ((text (buffer-string)))
+      (with-temp-buffer
+        (insert text)
+        (should-not (kittymacs--scratch-pointer-word-p 4 7 nil))))
+    (erase-buffer)))
+
+(defun kittymacs-theme-test--hunspell-has-a-dictionary-p ()
+  "Non-nil when Hunspell is here with the dictionary the configuration asks for."
+  (and (executable-find "hunspell")
+       (with-temp-buffer
+         (call-process "hunspell" nil t nil "-D")
+         (goto-char (point-min))
+         (search-forward "en_US" nil t))))
+
+(ert-deftest kittymacs-theme-flyspell-marks-spc-only-outside-the-pointer ()
+  "Real Flyspell, because the hook's contract is what this relies on."
+  (skip-unless (kittymacs-theme-test--hunspell-has-a-dictionary-p))
+  (require 'flyspell)
+  (let ((ispell-program-name "hunspell")
+        (ispell-dictionary "en_US")
+        (flyspell-issue-message-flag nil)
+        (process-environment (cons "DICTIONARY=en_US" process-environment)))
+    (with-current-buffer (get-buffer-create "*scratch*")
+      (erase-buffer)
+      (insert kittymacs--scratch-pointer "\n;; SPC\n")
+      (flyspell-mode 1)
+      (unwind-protect
+          (let ((other-line (save-excursion
+                              (goto-char (point-min))
+                              (line-beginning-position 2))))
+            (flyspell-region (point-min) (point-max))
+            (let ((marks (seq-filter #'flyspell-overlay-p
+                                     (overlays-in (point-min) (point-max)))))
+              (should (= 1 (length marks)))
+              (should (>= (overlay-start (car marks)) other-line))))
+        (flyspell-mode -1)
+        (erase-buffer)))))
+
 (ert-deftest kittymacs-theme-module-loads-without-doom ()
   (should (= 2 (length kittymacs-theme-test-doom)))
   (should (featurep 'kittymacs-ui))

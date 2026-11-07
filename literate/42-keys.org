@@ -43,13 +43,17 @@
 
 - which-key is built into Emacs.
 - It pops up the next keys at the top of the frame after a short pause (0.45 s); =C-h= inside any prefix shows them at once.
+- =which-key-allow-imprecise-window-fit= is nil, so that no key's text is clipped.
+  + Emacs's default is on in a terminal, or in a daemon that starts with no frame: it then sizes the window from a line count, without measuring what it drew.
+  + Off, the window fits the buffer's real text, whatever the font or the frame.
 
 #+begin_src emacs-lisp
 (setopt which-key-idle-delay 0.45
         which-key-idle-secondary-delay 0.05
         which-key-show-early-on-C-h t
         which-key-side-window-location 'top
-        which-key-side-window-max-height 0.5)
+        which-key-side-window-max-height 0.5
+        which-key-allow-imprecise-window-fit nil)
 (which-key-mode 1)
 
 #+end_src
@@ -250,9 +254,10 @@
 
 * Check
 
-- =SPC= in a Normal-state buffer, then wait: which-key lists the groups by label at the top of the frame.
+- =SPC= in a Normal-state buffer, then wait: which-key lists the groups by label at the top of the frame, and the last row is whole.
 - =SPC f f= finds a file; =SPC b b= switches buffer: the doubled key is the common action.
 - =SPC p f= in a project: Emacs's own =project-find-file=, inherited from =C-x p=.
 - =SPC /= or =SPC h l=: Emacs's help view of the whole tree, plus this buffer's =SPC m= menu.
 - =i=, then =C-c C-SPC=: the same tree from Insert state.
 - =just test-packages=: the verifier fails if any key under =SPC= runs something that is not a command, and checks =SPC l e=, =SPC s l=, =SPC h ?= and =SPC h h=.
+- =just test-packages=: =kittymacs-check-first-look= fails if the imprecise fit is on.
