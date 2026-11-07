@@ -151,6 +151,12 @@
         home-backend = headless (linuxHome {
           backend.enable = true;
         });
+        home-backend-rpc-server = headless (linuxHome {
+          backend = {
+            enable = true;
+            rpcServer = true;
+          };
+        });
         home-old-unused =
           (linuxHome {
             package = oldEmacs;

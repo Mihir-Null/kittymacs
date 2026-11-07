@@ -221,6 +221,12 @@
      :option kittymacs-msys2-root
      :summary "A fallback for Windows-side files: MSYS2's shell, spell checker and compiler."
      :example "=SPC o m= opens its shell, and each start warns that a WSL2 backend is the normal way.")
+    (wsl-rpc
+     :group shells :packages (msgpack tramp-rpc) :module kittymacs-remote-rpc :profile optional
+     :vc (msgpack tramp-rpc)
+     :not-on (gnu/linux gnu gnu/kfreebsd berkeley-unix darwin cygwin haiku android)
+     :summary "A quicker, sturdier way into a WSL backend, through a small server there."
+     :example "=SPC o B= on a backend with =:transport wsl-rpc= names the server and how processes start.")
     (eshell-highlight
      :group shells :packages (eshell-syntax-highlighting) :module kittymacs-shell :profile full
      :summary "Colours the Eshell command line as you type."

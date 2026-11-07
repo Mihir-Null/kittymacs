@@ -106,6 +106,24 @@ in
     .backend.drvPath
   );
 
+  rpc-server-opt-in = check "rpc-server-opt-in" (
+    let
+      packagesOfHost = config: namesOf config.environment.systemPackages;
+      off = nixos { backend.enable = true; };
+      on = nixos {
+        backend = {
+          enable = true;
+          rpcServer = true;
+        };
+      };
+      unasked = nixos { backend.rpcServer = true; };
+    in
+    !(lib.elem "tramp-rpc-server" (packagesOfHost off))
+    && !(lib.elem "tramp-rpc-server" backendTools)
+    && lib.elem "tramp-rpc-server" (packagesOfHost on)
+    && !(lib.elem "tramp-rpc-server" (packagesOfHost unasked))
+  );
+
   tools-follow-selection = check "tools-follow-selection" (
     toolsOf "pdf-reading" != [ ]
     && toolsOf "jupyter" != [ ]

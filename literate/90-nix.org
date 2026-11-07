@@ -28,6 +28,7 @@
 | =packages.<system>.minimal=  | Emacs, its Emacs packages, tools and fonts for the =minimal= profile, in one environment           |
 | =packages.<system>.full=     | the same for the =full= profile                                                                    |
 | =packages.<system>.backend=  | [[*The tools][the headless tools]] a machine needs when Emacs runs elsewhere                       |
+| =packages.<system>.rpc-server= | [[*The server behind wsl-rpc][the server]] behind the =wsl-rpc= transport, for a distribution |
 | =apps.<system>.default=      | [[*The apps][Emacs on a checkout, with the tools on its =PATH=]]                                    |
 | =apps.<system>.onboard=      | the onboarding screens, for a checkout                                                             |
 | =apps.<system>.doctor=       | what this machine has, against what its selection needs                                            |
@@ -304,6 +305,9 @@ in
     name = lib.getName entry.package;
   }) programTable;
 
+  # The server behind the wsl-rpc transport, which no list here installs by itself.
+  rpcServer = pkgs.callPackage ./tramp-rpc-server.nix { };
+
   # A machine that Emacs reaches from elsewhere: no Emacs, no fonts, no GUI.
   backendPrograms =
     packagesOf (
@@ -430,6 +434,7 @@ emacs.pkgs.withPackages (
 | =hostFiles.<name>=     | a host-layer file of your own, as text                                          |
 | =extraPackages=        | a function from the Emacs package set to more packages to build in              |
 | =backend.enable=       | install only [[*The tools][the headless tools]]: Emacs reaches this machine from elsewhere |
+| =backend.rpcServer=    | also install [[*The server behind wsl-rpc][the server]] behind =:transport wsl-rpc=, built from source; off by default |
 
 #+begin_src nix :tangle no
 programs.kittymacs = {
@@ -585,6 +590,12 @@ rec {
       a machine that Emacs reaches from elsewhere: only the headless tools, with
       no Emacs, no fonts and nothing with a GUI.  It works without `enable`.
       `daemon` still runs `package`, and `source` still links a checkout, if set
+    '';
+
+    backend.rpcServer = lib.mkEnableOption ''
+      tramp-rpc-server beside the headless tools, for a backend reached with
+      `:transport wsl-rpc`.  It builds from source, and it matters only with
+      `backend.enable`
     '';
   };
 #+end_src
@@ -840,6 +851,50 @@ in
     name = "kittymacs-backend";
     paths = tools.backendPrograms;
   };
+  rpc-server = tools.rpcServer;
+}
+#+end_src
+
+** The server behind wsl-rpc
+
+- =packages.<system>.rpc-server= is =tramp-rpc-server=, for [[id:4e8b1d76-3a95-4c20-b7f1-92c6d0e5a813][the wsl-rpc transport]], built from source at the revision its Lisp pins, because the two must match exactly, with no negotiation.
+- It follows upstream's own =default.nix=, with =fetchFromGitHub= in place of its checkout, and =cargoHash= in place of =importCargoLock=, so evaluating it builds nothing.
+- Upstream's test suite stays off here, because it needs a Python and a shell of its own, and upstream's CI runs it.
+- [[file:../tests/kittymacs-remote-rpc-tests.el][A test]] fails when the Lisp's pin and this one differ, and [[file:../.github/workflows/rpc-server.yml][a hosted job]] builds it, then asks it =system.info= over its own protocol, because it has no =--version=.
+- To move the pin, change =rev=, =version= and =hash= here, set =cargoHash= to =lib.fakeHash=, and read the right one from that job's failure.
+
+#+begin_src nix :tangle ../nix/tramp-rpc-server.nix :eval never :comments no :padline no :mkdirp yes
+# Generated from literate/90-nix.org; edit the Org source, then tangle.
+{
+  lib,
+  fetchFromGitHub,
+  rustPlatform,
+}:
+
+rustPlatform.buildRustPackage {
+  pname = "tramp-rpc-server";
+  version = "0.16.0";
+
+  src = fetchFromGitHub {
+    owner = "ArthurHeymans";
+    repo = "emacs-tramp-rpc";
+    rev = "543b3bf30b8a80b8cd0200c98d00f22a4e0220ac";
+    hash = "sha256-kmb0tolO3E/cXqvdzTUQFKPGgDXSO0uN+98RXvmMvBk=";
+  };
+
+  cargoHash = "sha256-o+JyVmN8KzIiokr9UKpxwP+cSUf72RtH+/m0Rfck78g=";
+  cargoBuildFlags = [
+    "--package"
+    "tramp-rpc-server"
+  ];
+  doCheck = false;
+
+  meta = {
+    description = "The server behind kittymacs's wsl-rpc transport";
+    homepage = "https://github.com/ArthurHeymans/emacs-tramp-rpc";
+    license = lib.licenses.gpl3Plus;
+    mainProgram = "tramp-rpc-server";
+  };
 }
 #+end_src
 
@@ -931,7 +986,7 @@ in
 
     environment.systemPackages =
       if cfg.backend.enable then
-        tools.backendPrograms
+        tools.backendPrograms ++ lib.optional cfg.backend.rpcServer tools.rpcServer
       else
         [ emacs ]
         ++ tools.programsFor features
@@ -1258,7 +1313,7 @@ in
       packages =
         (lib.optionals cfg.installPackages (
           if cfg.backend.enable then
-            tools.backendPrograms
+            tools.backendPrograms ++ lib.optional cfg.backend.rpcServer tools.rpcServer
           else
             [ emacs ]
             ++ tools.programsFor features
@@ -1949,6 +2004,24 @@ in
     .backend.drvPath
   );
 
+  rpc-server-opt-in = check "rpc-server-opt-in" (
+    let
+      packagesOfHost = config: namesOf config.environment.systemPackages;
+      off = nixos { backend.enable = true; };
+      on = nixos {
+        backend = {
+          enable = true;
+          rpcServer = true;
+        };
+      };
+      unasked = nixos { backend.rpcServer = true; };
+    in
+    !(lib.elem "tramp-rpc-server" (packagesOfHost off))
+    && !(lib.elem "tramp-rpc-server" backendTools)
+    && lib.elem "tramp-rpc-server" (packagesOfHost on)
+    && !(lib.elem "tramp-rpc-server" (packagesOfHost unasked))
+  );
+
   tools-follow-selection = check "tools-follow-selection" (
     toolsOf "pdf-reading" != [ ]
     && toolsOf "jupyter" != [ ]
@@ -2173,6 +2246,12 @@ in
 #
 #   (setopt kittymacs-backends
 #           '(("wsl" :transport wsl :host "Ubuntu-24.04" :root "~/src/project/")))
+#
+# For `:transport wsl-rpc', turn on `backend.rpcServer' below, and see "tramp-rpc
+# through wsl.exe" in literate/36-remote.org.  A distribution without Nix builds
+# the same revision with one line, which needs Rust 1.88:
+#
+#   cargo install --locked --root ~/.local --git https://github.com/ArthurHeymans/emacs-tramp-rpc --rev 543b3bf30b8a80b8cd0200c98d00f22a4e0220ac tramp-rpc-server
 {
   description = "The Linux side of a Windows setup, with kittymacs's headless tools";
 
@@ -2204,6 +2283,7 @@ in
             };
             programs.home-manager.enable = true;
             programs.kittymacs.backend.enable = true;
+            # programs.kittymacs.backend.rpcServer = true;
           }
         ];
       };
@@ -2455,6 +2535,7 @@ in
 | =home-darwin=       | the launchd agent and the Mac's tool list, through Home Manager                          |
 | =home-xdg=          | a custom =xdg.configHome= writes the host layer in both places                           |
 | =home-backend=      | =backend.enable= installs no Emacs and no fonts                                          |
+| =home-backend-rpc-server= | so does =backend.rpcServer=, which only adds the server                            |
 | =home-old-unused=   | an old =package= the home neither installs nor runs passes: the assertion's guard        |
 | =nixos=             | a NixOS system evaluates whole with this module                                          |
 | =nixos-full=        | the same with =daemon=, =packagesFromNix= and a selection                                |
@@ -2622,6 +2703,12 @@ in
           host.activationPackage.drvPath;
         home-backend = headless (linuxHome {
           backend.enable = true;
+        });
+        home-backend-rpc-server = headless (linuxHome {
+          backend = {
+            enable = true;
+            rpcServer = true;
+          };
         });
         home-old-unused =
           (linuxHome {
