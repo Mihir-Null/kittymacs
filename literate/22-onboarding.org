@@ -1805,7 +1805,7 @@ This Emacs keeps running as it is: a change takes effect at the next start."
 - =SPC C o= in a started Emacs: the same screens; =M-: (featurep 'kittymacs-onboard)= was nil until you pressed it.
 - Add a line after the block that sets =kittymacs-features=, and run it again: the last screen names that line.
 - On the backends screen, press =SPC= on the last line, fill in the form, and press =RET= twice: the block holds =kittymacs-backends=, and the last line names =SPC o B=.
-- With a =wsl.exe= on =PATH= that prints two names, and =system-type= set to =windows-nt=: the form starts at =wsl= on the first name, and marks =wsl-rpc= experimental.
+- On native Windows with two distributions: the form starts at =wsl= on the first, and marks =wsl-rpc= experimental. [[file:../tests/kittymacs-onboard-tests.el][The tests]] run the same form in a real terminal, with a stand-in for =wsl.exe=.
 - Set =kittymacs-backends= in a host file, and press =RET= past that screen: the block does not hold it.
 - =just test= runs [[file:../tests/kittymacs-onboard-tests.el][the onboarding tests]], which include a run in a real pty.
 - =just test-onboard-start= writes a =private.el= with these screens for several selections, and starts the verifier on each.

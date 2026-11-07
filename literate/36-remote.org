@@ -699,7 +699,7 @@ A file with line endings keeps them.  This never connects."
         '(("wsl" :transport wsl-rpc :host "Ubuntu-24.04" :root "~/src/project/")))
 #+end_src
 
-  + [[id:b61f2e84-5d07-4c3a-9e16-7a2c40d8f193][Onboarding's backend screen]] writes the same two settings.
+- [[id:b61f2e84-5d07-4c3a-9e16-7a2c40d8f193][Onboarding's backend screen]] writes the same two settings.
 - The next start installs =tramp-rpc= and =msgpack= from Git, and they load only when a =/rpc:= name first appears.
 - Install the server in the distribution, because nothing downloads it for you.
   + =SPC o B= prints the line to run.
