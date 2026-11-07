@@ -584,6 +584,9 @@ pipe want different ones.  Signals after LIMIT seconds."
   (if direnv
       (add-hook 'after-change-major-mode-hook #'kittymacs--remote-envrc-on-wsl -50)
     (remove-hook 'after-change-major-mode-hook #'kittymacs--remote-envrc-on-wsl))
+  ;; An open buffer would keep the mode it has, so this must open a new one.
+  (when-let* ((open (get-file-buffer (wsl-backend-direnv-project "file"))))
+    (kill-buffer open))
   (let ((buffer (find-file-noselect (wsl-backend-direnv-project "file"))))
     (prog1 (format "envrc-mode %s" (buffer-local-value 'envrc-mode buffer))
       (kill-buffer buffer))))
@@ -627,14 +630,12 @@ pipe want different ones.  Signals after LIMIT seconds."
          (envrc--get-current-env-or-run-direnv))
        (unless (eq envrc--status 'on)
          (error "envrc says %s" envrc--status))
-       (let* ((environment process-environment)
-              (directory default-directory)
-              (through-shell
-               (with-temp-buffer
-                 (setq process-environment environment
-                       default-directory directory)
-                 (process-file "/bin/sh" nil t nil "-c" report)
-                 (buffer-string)))
+       ;; From this buffer, as a program would be: a temporary buffer has no local
+       ;; environment, and `setq' there would change the global one.
+       (let* ((through-shell
+               (let ((output (generate-new-buffer " *direnv through the shell*")))
+                 (process-file "/bin/sh" nil output nil "-c" report)
+                 (with-current-buffer output (buffer-string))))
               (direct
                (let* ((buffer (generate-new-buffer " *direnv direct*"))
                       (process (make-process :name "direnv-direct" :buffer buffer :noquery t
@@ -642,8 +643,12 @@ pipe want different ones.  Signals after LIMIT seconds."
                                              :command (list "/bin/sh" "-c" report))))
                  (wsl-backend-wait-for process "done" 30)))
               (shell-command (shell-command-to-string report)))
-         (dolist (seen (list through-shell direct shell-command))
-           (wsl-backend-expect "[reached]" seen))
+         (kill-buffer)
+         (pcase-dolist (`(,name . ,seen) `(("process-file" . ,through-shell)
+                                           ("a direct process" . ,direct)
+                                           ("shell-command" . ,shell-command)))
+           (unless (string-search "[reached]" seen)
+             (error "%s saw %S" name seen)))
          "process-file, a direct process and shell-command")))))
 
 (wsl-backend-check

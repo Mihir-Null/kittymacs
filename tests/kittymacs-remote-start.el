@@ -429,13 +429,9 @@ It uses the real direnv, not the one `kittymacs-remote-start--fake-programs' add
             (envrc--get-current-env-or-run-direnv)))
         (kittymacs-remote-start-value 'direnv-status (bound-and-true-p envrc--status))
         (kittymacs-remote-start-value 'direnv-process-file
-          (let ((environment process-environment)
-                (directory default-directory))
-            (with-temp-buffer
-              (setq process-environment environment
-                    default-directory directory)
-              (process-file "/bin/sh" nil t nil "-c" report)
-              (string-trim (buffer-string)))))
+          (let ((output (generate-new-buffer " *direnv through the shell*")))
+            (process-file "/bin/sh" nil output nil "-c" report)
+            (string-trim (with-current-buffer output (buffer-string)))))
         (kittymacs-remote-start-value 'direnv-shell-command
           (string-trim (shell-command-to-string report)))
         (kittymacs-remote-start-value 'direnv-direct-process
