@@ -46,5 +46,18 @@ jobs:
           tool: just
       - name: Install every feature's packages
         run: just install 2>&1 | tail -3
+      # The setup action's macOS Emacs has no window system, and a cask's may be
+      # new enough: fall back to a terminal, and the table says which it measured.
+      - if: runner.os == 'macOS'
+        name: Look for a graphical Emacs
+        run: |
+          brew install --cask emacs || true
+          app=/Applications/Emacs.app/Contents/MacOS/Emacs
+          if [ -x "$app" ] && "$app" --batch --eval '(kill-emacs (if (>= emacs-major-version 31) 0 1))'; then
+            echo "LOOK_EMACS=$app" >> "$GITHUB_ENV"
+          else
+            "$app" --version | head -1 || true
+            echo "LOOK_ARGS=-nw" >> "$GITHUB_ENV"
+          fi
       - name: Measure
         run: emacs -Q --batch -l tools/look-measure.el | tee -a "$GITHUB_STEP_SUMMARY"
