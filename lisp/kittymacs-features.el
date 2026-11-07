@@ -226,6 +226,8 @@ names what was asked for and cannot be had."
   "Return non-nil if FEATURE, a name in the catalogue, is on."
   (and (memq feature (kittymacs-features-enabled)) t))
 (defvar use-package-ensure-function)
+(defvar package-user-dir)
+(defvar package-directory-list)
 (declare-function package-installed-p "package" (package &optional min-version))
 
 (defvar kittymacs-features--failed nil
@@ -260,11 +262,24 @@ A package that cannot be installed warns, and the rest carry on."
       (unless (package-installed-p package)
         (push package kittymacs-features--failed)))))
 
+(defun kittymacs-features--native-report-on-others-p (warning)
+  "Return non-nil if WARNING is a native compiler report on a package or Emacs."
+  (and (eq (car warning) 'native-compiler)
+       (string-match "\\`\\([^:\n]+\\.el\\)\\(?::[0-9]+:[0-9]+\\)?: " (cadr warning))
+       (when-let* ((file (locate-library (match-string 1 (cadr warning)) t)))
+         (require 'package)
+         (seq-some (lambda (directory) (file-in-directory-p file directory))
+                   (append (list package-user-dir lisp-directory) package-directory-list)))))
+
 (defun kittymacs-features--log-compile-warnings ()
-  "Write the compile warnings a start delayed to their log, with no window."
-  (let ((held (seq-filter (lambda (warning) (equal (nth 3 warning) "*Compile-Log*"))
+  "Write the compile warnings a start delayed to their logs, with no window."
+  (let ((held (seq-filter (lambda (warning)
+                            (or (equal (nth 3 warning) "*Compile-Log*")
+                                (and (eq (bound-and-true-p native-comp-async-report-warnings-errors)
+                                         'silent)
+                                     (kittymacs-features--native-report-on-others-p warning))))
                           delayed-warnings-list))
-        (warning-suppress-types (cons '(bytecomp) warning-suppress-types)))
+        (warning-suppress-types (append '((bytecomp) (native-compiler)) warning-suppress-types)))
     (setq delayed-warnings-list (seq-difference delayed-warnings-list held))
     (dolist (warning (reverse held))
       (apply #'display-warning warning))))
