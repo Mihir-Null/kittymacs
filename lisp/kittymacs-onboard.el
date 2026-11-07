@@ -1185,7 +1185,7 @@ Return what keeping it moved, or nil."
       (format "%s is not writable, and a safe replacement needs to write there." directory)))))
 
 (defun kittymacs-onboard--meets-block-p (state option)
-  "Return non-nil if a setting of OPTION elsewhere competes with the block in STATE.
+  "Return non-nil if a setting of OPTION elsewhere competes with STATE's block.
 The backends compete only while the block holds them."
   (and (memq option (kittymacs-onboard--written-options))
        (or (not (eq option 'kittymacs-backends))
