@@ -123,6 +123,7 @@
   + a module adds to =after-init-hook= only through =kittymacs-after-init=, except the defaults, which other modules require while compiling, before =init.el= has defined it;
   + nothing that loads before host files and =private.el= declares a package;
   + nothing in the repository names a host, so a machine's reasons stay in that machine's configuration: only the test that looks for the names spells them;
+  + code outside the MSYS2 module, the catalogue and =init.el='s one gate neither names that feature or module nor looks for an MSYS2 directory, so the module stays separable: prose and a string in a message may mention it;
   + =kittymacs-agent-mcp-servers= defaults to nil, because a host chooses the servers;
   + every option =lisp/private.example.el= offers is a real =defcustom=;
   + the Org, Org extras, Org-roam and reading modules do not use each other's names, packages or modules without asking first, so each one can be off while the others are on;
