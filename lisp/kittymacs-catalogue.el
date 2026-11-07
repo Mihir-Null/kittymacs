@@ -183,6 +183,7 @@
      :group shells :packages (msgpack tramp-rpc) :module kittymacs-remote-rpc :profile optional
      :vc (msgpack tramp-rpc)
      :not-on (gnu/linux gnu gnu/kfreebsd berkeley-unix darwin cygwin haiku android)
+     :experimental "Its server is built separately, by cargo in the hosted job that tested it; a server built by Nix has not yet run over wsl.exe, and it has had no daily use."
      :summary "A quicker, sturdier way into a WSL backend, through a small server there."
      :example "=SPC o B= on a backend with =:transport wsl-rpc= names the server and how processes start.")
     (eshell-highlight

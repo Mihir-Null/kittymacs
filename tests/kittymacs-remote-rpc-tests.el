@@ -335,7 +335,7 @@ That is `unset' if the hook left it alone, and it records any connecting."
   (kittymacs-rpc-test--with-module
     (cl-letf (((symbol-function 'call-process)
                (kittymacs-rpc-test--wsl "U\0b\0u\0n\0t\0u\0\r\0\n\0D\0e\0b\0i\0a\0n\0\r\0\n\0" 0)))
-      (should (equal (kittymacs-remote-rpc--distributions) '("Ubuntu" "Debian")))
+      (should (equal (kittymacs-wsl-distributions) '("Ubuntu" "Debian")))
       (should-not (kittymacs-remote-rpc-preflight "a" '(:host "Debian")))
       (let ((failure (should-error (kittymacs-remote-rpc-preflight "a" '(:host "Fake-24.04"))
                                    :type 'user-error)))
@@ -390,7 +390,14 @@ That is `unset' if the hook left it alone, and it records any connecting."
         (should-not asked)
         (with-current-buffer "*kittymacs backend*"
           (should (string-search "NOT FOUND" (buffer-string)))
-          (should (string-search "cargo install" (buffer-string))))))))
+          (should (string-search "cargo install" (buffer-string)))
+        ;; A backend that cannot start yet still says it.
+        (should (string-search "Experimental: " (buffer-string))))))))
+
+(ert-deftest kittymacs-rpc-only-an-experimental-transport-is-labelled ()
+  (should (kittymacs-remote--experimental 'wsl-rpc))
+  (should-not (kittymacs-remote--experimental 'wsl))
+  (should-not (kittymacs-remote--experimental 'ssh)))
 
 (ert-deftest kittymacs-rpc-the-doctor-reports-processes-through-the-server ()
   (kittymacs-rpc-test--with-module
@@ -406,6 +413,10 @@ That is `unset' if the hook left it alone, and it records any connecting."
       (with-current-buffer "*kittymacs backend*"
         (should (string-search "Server   /nix/server" (buffer-string)))
         (should (string-search "Processes start through tramp-rpc-server" (buffer-string)))
+        (should (string-search
+                 (concat "Experimental: "
+                         (plist-get (alist-get 'wsl-rpc kittymacs-catalogue) :experimental))
+                 (buffer-string)))
         (should-not (string-search "directly" (buffer-string)))))))
 
 ;;; kittymacs-open
