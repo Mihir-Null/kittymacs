@@ -212,6 +212,28 @@ Return (STATUS . OUTPUT)."
     (kill-buffer buffer)
     t))
 
+(defun rpc-timed-saves (backend directory label name bytes)
+  "Time saving BYTES to NAME in DIRECTORY on BACKEND, in place and then by replacing it.
+Each is set by hand, without the hook, so both rows mean the same on both transports."
+  (dolist (precious '(nil t))
+    (let ((buffer (find-file-noselect (concat directory name) t))
+          (before-save-hook (remove 'kittymacs--remote-rpc-precious before-save-hook))
+          (file-precious-flag precious))
+      (with-current-buffer buffer
+        (setq-local backup-inhibited t)
+        (erase-buffer)
+        (set-buffer-multibyte nil)
+        (setq buffer-file-coding-system 'binary)
+        (rpc-timed backend (format "Save %s, %s" label (if precious "replacing" "in place"))
+                   (max rpc-rounds 5) 60
+                   (lambda (_)
+                     (erase-buffer)
+                     (insert bytes)
+                     (save-buffer)
+                     t))
+        (set-buffer-modified-p nil))
+      (kill-buffer buffer))))
+
 (defun rpc-phase-compare ()
   "The rows the owner compares, on each transport."
   (require 'magit)
@@ -237,6 +259,8 @@ Return (STATUS . OUTPUT)."
                                    (error "Wrong bytes"))))
         (rpc-timed backend "Write 1 MiB" rpc-rounds 120
                    (lambda (_) (rpc-write (concat directory "large") large) t))
+        (rpc-timed-saves backend directory "4 KiB" "saved-small" small)
+        (rpc-timed-saves backend directory "1 MiB" "saved-large" large)
         (rpc-timed backend "directory-files, 200 names" rpc-rounds 60
                    (lambda (_)
                      (let ((remote-file-name-inhibit-cache t))
@@ -325,6 +349,34 @@ It waits with `accept-process-output', since this Emacs must answer the client."
   "Run the doctor on the backend called NAME, and return what it said."
   (kittymacs-backend-doctor name)
   (with-current-buffer "*kittymacs backend*" (buffer-string)))
+
+(defconst rpc-save-directory "save" "Under the home: where the save rows work.")
+
+(defun rpc-save-path ()
+  "Return the save directory, as the distribution names it."
+  (format "%s/%s" rpc-home rpc-save-directory))
+
+(defun rpc-save-fixture (script)
+  "Make a new save directory holding `plain', then run SCRIPT there."
+  (let ((made (rpc-wsl 30 nil (format "rm -rf %1$s && mkdir %1$s && cd %1$s && echo old > plain && %2$s"
+                                      (rpc-save-path) script))))
+    (unless (eql 0 (car made)) (error "Fixture failed: %s" (cdr made)))))
+
+(defun rpc-save-facts (script)
+  "Run SCRIPT in the save directory, around Tramp's caches, and return its output."
+  (let ((ran (rpc-wsl 30 nil (format "cd %s && %s" (rpc-save-path) script))))
+    (unless (eql 0 (car ran)) (error "%s failed: %s" script (cdr ran)))
+    (cdr ran)))
+
+(defun rpc-save-appending (name &optional mode)
+  "Open NAME in the save directory, optionally turn on MODE, add a line, and save it."
+  (with-current-buffer (find-file-noselect (rpc-name "rpc" (format "%s/%s" rpc-save-directory name)))
+    (when mode (funcall mode))
+    (setq-local backup-inhibited t)
+    (goto-char (point-max))
+    (insert "new\n")
+    (save-buffer)
+    (kill-buffer)))
 
 (defun rpc-server-pids ()
   "Return the server processes the distribution has now."
@@ -575,6 +627,42 @@ It waits with `accept-process-output', since this Emacs must answer the client."
        (delete-file windows)
        "both")))
   (rpc-check
+   "a save replaces a file, keeps its mode, and leaves nothing beside it" 60
+   (lambda ()
+     (rpc-save-fixture "chmod 750 plain")
+     (let ((before (rpc-save-facts "stat -c '%i %a' plain")))
+       (rpc-save-appending "plain")
+       (let ((after (rpc-save-facts "stat -c '%i %a' plain; cat plain; ls")))
+         (when (string-prefix-p (concat (car (split-string before)) " ") after)
+           (error "Same inode: %s, then %s" before after))
+         ;; To the end, so a file left beside it fails this.
+         (unless (string-suffix-p " 750\nold\nnew\nplain" after)
+           (error "Expected mode 750, the new text, and only plain, and got %S" after))
+         "new inode, mode 750"))))
+  (rpc-check
+   "a symbolic link stays one, and the file it names gets the bytes" 60
+   (lambda ()
+     (rpc-save-fixture "ln -s plain link")
+     (let ((before (rpc-save-facts "stat -c %i plain")))
+       (rpc-save-appending "link")
+       (rpc-expect (format "link\n%s\nold\nnew" before)
+                   (rpc-save-facts "test -L link && echo link; stat -c %i plain; cat plain")))))
+  (rpc-check
+   "a file's other name keeps the same bytes" 60
+   (lambda ()
+     (rpc-save-fixture "ln plain other")
+     (rpc-save-appending "plain")
+     (rpc-expect "2\nold\nnew" (rpc-save-facts "stat -c %h plain; cat other"))))
+  (rpc-check
+   "a change of major mode does not lose it" 60
+   (lambda ()
+     (rpc-save-fixture "true")
+     (let ((before (rpc-save-facts "stat -c %i plain")))
+       (rpc-save-appending "plain" #'text-mode)
+       (let ((after (rpc-save-facts "stat -c %i plain")))
+         (when (equal before after) (error "Written in place, inode %s" after))
+         "replaced"))))
+  (rpc-check
    "kittymacs-remote-buffer-p and kittymacs-remote-agent-path, both ways" 30
    (lambda ()
      (let ((remote (rpc-prefix "rpc")))
@@ -806,7 +894,8 @@ Return their hash."
 
 (defun rpc-killed-round (kind how round new)
   "Kill the server during one write of NEW, by KIND, through HOW, and record what is left.
-HOW is `write-region', `save-buffer', or `save-precious'."
+HOW is `write-region', `save-buffer' with the configuration's hook off, or
+`save-precious', which is `save-buffer' as the configuration has it."
   (let* ((path (format "%s/kill/target" rpc-home))
          (file (concat (rpc-prefix "rpc") path))
          (remote-file-name-inhibit-cache t)
@@ -841,12 +930,14 @@ HOW is `write-region', `save-buffer', or `save-precious'."
                        (write-region new nil file nil 'silent))
                      "returned")
                     ('save-buffer
-                     (with-current-buffer buffer (save-buffer))
-                     "save-buffer returned")
-                    ('save-precious
                      (with-current-buffer buffer
-                       (let ((file-precious-flag t)) (save-buffer)))
-                     "save-buffer returned, with file-precious-flag"))))
+                       (let ((before-save-hook
+                              (remove 'kittymacs--remote-rpc-precious before-save-hook)))
+                         (save-buffer)))
+                     "save-buffer returned, in place")
+                    ('save-precious
+                     (with-current-buffer buffer (save-buffer))
+                     "save-buffer returned, through the configuration"))))
             ((error quit) (format "signalled: %s" (error-message-string err)))))
          (seconds (- (float-time) began)))
     (let ((end (+ (float-time) 30)))
@@ -883,13 +974,14 @@ HOW is `write-region', `save-buffer', or `save-precious'."
       (rpc-killed-round 'watch 'save-buffer round new))
     (dolist (round '(1 2))
       (rpc-killed-round 'widened 'save-buffer round new))
-    (dolist (round '(1 2))
+    (dolist (round '(1 2 3))
       (rpc-killed-round 'widened-temp 'save-precious round new)))
   (princ "\n## A write killed midway\n\nOld contents 1 MiB + 17 bytes, new contents 1 MiB.\n\n")
   (princ "- `watch`: killed as soon as the file's size moves.\n")
   (princ "- `at-once`: killed as the write starts, which the write can finish first.\n")
   (princ "- `widened`: `strace` delays each write 300 ms, so the kill lands after truncate and before the bytes.\n")
-  (princ "- `widened-temp`: the same, as soon as a second file appears, which for `file-precious-flag` is its temporary file.\n\n")
+  (princ "- `widened-temp`: the same, as soon as a second file appears, which for `file-precious-flag` is its temporary file.\n")
+  (princ "- `save-buffer` here has the configuration's hook off, to show what it guards against. `save-precious` is a save as the configuration has it.\n\n")
   (princ "| Kill | Through | Round | Seconds | How it reports | What the file holds |\n|---|---|---:|---:|---|---|\n")
   (pcase-dolist (`(,kind ,how ,round ,seconds ,outcome ,left) (reverse rpc-killed-rows))
     (princ (format "| %s | %s | %d | %.3f | %s | %s |\n" kind how round seconds

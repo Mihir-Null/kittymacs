@@ -212,6 +212,22 @@ person, with what to install for whichever is missing."
   (advice-add 'server-visit-files :filter-args #'kittymacs--remote-rpc-own-names))
 (with-eval-after-load 'ghostel-shell
   (add-to-list 'ghostel-tramp-shells (list kittymacs-remote-wsl-rpc-method 'login-shell)))
+(defun kittymacs-remote-rpc--file-p (file)
+  "Return non-nil if the name FILE is on a `wsl-rpc' backend's distribution.
+This reads the name, and never connects."
+  (and (kittymacs-remote--wsl-distribution file)
+       (string-prefix-p (format "/%s:" kittymacs-remote-wsl-rpc-method) file)))
+
+(defun kittymacs--remote-rpc-precious ()
+  "Have this save replace its file, if a `wsl-rpc' backend holds it.
+Not a symbolic link or a file with other names, which replacing would cut off."
+  (when (kittymacs-remote-rpc--file-p buffer-file-name)
+    (let ((attributes (file-attributes buffer-file-name)))
+      (setq-local file-precious-flag
+                  (not (or (stringp (file-attribute-type attributes))
+                           (> (or (file-attribute-link-number attributes) 1) 1)))))))
+
+(add-hook 'before-save-hook #'kittymacs--remote-rpc-precious)
 
 (provide 'kittymacs-remote-rpc)
 ;;; kittymacs-remote-rpc.el ends here

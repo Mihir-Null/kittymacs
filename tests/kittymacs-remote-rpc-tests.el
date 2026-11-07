@@ -125,6 +125,42 @@
     (should-not (kittymacs-remote--wsl-distribution "c:/Users/me/a"))
     (should-not (kittymacs-remote--wsl-distribution nil))))
 
+;;; Saving
+
+(defun kittymacs-rpc-test--precious-after (file attributes)
+  "Return `file-precious-flag' after a save's hook, on FILE with ATTRIBUTES.
+That is `unset' if the hook left it alone, and it records any connecting."
+  (with-temp-buffer
+    (let ((buffer-file-name file)
+          (asked 0))
+      (cl-letf (((symbol-function 'file-attributes)
+                 (lambda (&rest _) (cl-incf asked) attributes)))
+        (kittymacs--remote-rpc-precious))
+      (if (local-variable-p 'file-precious-flag)
+          file-precious-flag
+        (should (zerop asked))
+        'unset))))
+
+(ert-deftest kittymacs-rpc-a-save-replaces-the-file ()
+  (kittymacs-rpc-test--with-module
+    (should (memq #'kittymacs--remote-rpc-precious (default-value 'before-save-hook)))
+    (let ((file "/rpc:Fake-24.04:/home/me/a"))
+      ;; A file with one name, and a new one, which has no attributes.
+      (should (eq t (kittymacs-rpc-test--precious-after file '(nil 1))))
+      (should (eq t (kittymacs-rpc-test--precious-after file nil))))))
+
+(ert-deftest kittymacs-rpc-a-save-keeps-a-link-and-other-names ()
+  (kittymacs-rpc-test--with-module
+    (let ((file "/rpc:Fake-24.04:/home/me/a"))
+      (should-not (kittymacs-rpc-test--precious-after file '("target" 1)))
+      (should-not (kittymacs-rpc-test--precious-after file '(nil 2))))))
+
+(ert-deftest kittymacs-rpc-a-save-elsewhere-is-left-alone ()
+  (kittymacs-rpc-test--with-module
+    (dolist (file '("/wslm:Fake-24.04:/home/me/a" "/rpc:far:/home/me/a"
+                    "/ssh:Fake-24.04:/home/me/a" "c:/Users/me/a" nil))
+      (should (eq 'unset (kittymacs-rpc-test--precious-after file '(nil 1)))))))
+
 (ert-deftest kittymacs-rpc-the-windows-file-message-follows-the-backend ()
   (let ((kittymacs-backends kittymacs-rpc-test-backends))
     (should (equal (kittymacs-remote--windows-file "/rpc:Fake-24.04:/mnt/c/Users/a.txt") "c:/Users/a.txt"))
