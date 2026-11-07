@@ -1,0 +1,50 @@
+name: Look features, start cost
+
+# A one-off measurement, on a branch that never merges: what each look feature
+# costs a graphical start on the hosted macOS and Windows runners.
+
+on:
+  push:
+    branches: [dev/look-measure]
+
+permissions:
+  contents: read
+
+jobs:
+  measure:
+    name: ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, windows-latest]
+    defaults:
+      run:
+        shell: bash
+    env:
+      KITTYMACS_TEST_PROFILE: every
+    steps:
+      - uses: actions/checkout@v7
+      - if: runner.os != 'Windows'
+        uses: purcell/setup-emacs@34c6ded44899fd1bf74d2889558befd1750e61a7 # master as of 2026-09-24
+        with:
+          version: "31.1"
+      - if: runner.os == 'Windows'
+        name: Install Emacs from GNU
+        env:
+          EMACS_VERSION: "31.1"
+        run: |
+          tmp=$(cygpath -u "$RUNNER_TEMP")
+          curl -sSfL -o "$tmp/emacs.zip" \
+            "https://ftp.gnu.org/gnu/emacs/windows/emacs-${EMACS_VERSION%%.*}/emacs-$EMACS_VERSION.zip"
+          7z x -y "-o$(cygpath -w "$tmp/emacs")" "$(cygpath -w "$tmp/emacs.zip")" > /dev/null
+          emacs_exe=$(find "$tmp/emacs" -path '*/bin/emacs.exe' | head -n 1)
+          test -n "$emacs_exe"
+          cygpath -w "$(dirname "$emacs_exe")" >> "$GITHUB_PATH"
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: just
+      - name: Install every feature's packages
+        run: just install 2>&1 | tail -3
+      - name: Measure
+        run: emacs -Q --batch -l tools/look-measure.el | tee -a "$GITHUB_STEP_SUMMARY"
