@@ -282,10 +282,23 @@ A `doom-' theme needs the `doom-look' feature; without it, `modus-operandi'."
     :commands writeroom-mode)
 
   (keymap-set kittymacs-toggle-map "w" (cons "writeroom" #'writeroom-mode)))
+(defconst kittymacs--scratch-pointer ";; SPC opens the menu.  SPC C o chooses features."
+  "The line that tells a new reader where the menu is.")
+
 (unless (or (kittymacs-feature-p 'home-page)
             initial-scratch-message
             (file-exists-p kittymacs-scratch-file))
-  (setq initial-scratch-message ";; SPC opens the menu.  SPC C o chooses features.\n\n"))
+  (setq initial-scratch-message (concat kittymacs--scratch-pointer "\n\n")))
+
+(defun kittymacs--scratch-pointer-word-p (start _end _corrections)
+  "Return non-nil when the word at START is on the pointer's line in *scratch*.
+A function on `flyspell-incorrect-hook': non-nil leaves the word unmarked."
+  (and (equal (buffer-name) "*scratch*")
+       (save-excursion
+         (goto-char start)
+         (equal (buffer-substring-no-properties (pos-bol) (pos-eol))
+                kittymacs--scratch-pointer))))
+(add-hook 'flyspell-incorrect-hook #'kittymacs--scratch-pointer-word-p)
 (defun kittymacs--programming-presentation ()
   "Visual aids for programming buffers."
   (when kittymacs-line-numbers-in-programming
