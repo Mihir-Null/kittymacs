@@ -12,7 +12,9 @@
   + For that work, the Unix tools have to run on Windows too.
 - The =msys2-fallback= feature is off by default, even under =full=, and the catalogue rules it out everywhere but Windows.
   + With it off, this module does not load, and nothing searches for MSYS2.
-  + No other chapter names it: the rest of kittymacs finds what this module puts on =exec-path=, as it finds any other program.
+  + The module and all that comes with it are separable, and inactive on plain Linux.
+  + So other code does not ask for it: the rest of kittymacs finds what this module puts on =exec-path=, as it finds any other program.
+  + Prose may mention it, and so may a message on Windows, as [[id:afa6b7fd-742a-4c15-86a6-32e3e8027b0e][the spell checker]]'s does.
 - Turn it on where the profile is set, and keep the line that says where MSYS2 lives, if it is not in =C:/msys64/=.
 
 #+begin_src emacs-lisp :tangle no
@@ -31,7 +33,7 @@
   + UCRT64 comes first, because a compiler from =usr/bin= builds against the POSIX layer, and a grammar must load into native Emacs.
 - It sets =DICPATH= when you have not, since MSYS2's Hunspell looks for its dictionaries there.
 - This is the fallback's trigger: opening a file under =/mnt/= through a WSL backend warns that it is slow ([[id:3c9e7a52-1d84-4f6b-a0c3-8e5d27b1f96a][a WSL distribution]]), and that message offers the native file.
-  + With the feature on, it adds that this module's tools work there, through =kittymacs-remote-windows-file-note=, so no other chapter names it.
+  + With the feature on, it adds that this module's tools work there, through =kittymacs-remote-windows-file-note=, so the remote code does not ask for it.
   + With it off, the offer is the native file alone, and this chapter is where to read about the rest.
 - =SPC o m= opens an MSYS2 UCRT64 login shell in a terminal, which is why the feature depends on =terminal=.
   + =MSYSTEM= selects the environment and =CHERE_INVOKING= keeps the directory you were in, both for the child process only.
@@ -111,6 +113,8 @@ With prefix ARG, create another one instead of reusing the existing buffer."
 * Check
 
 - With the feature off, =M-: (featurep 'kittymacs-msys2)= is =nil=, and =SPC o m= is unbound.
+  + =kittymacs-check-msys2-inactive= checks this at each start the verifier makes, with what else the module would leave behind.
+  + A lint fails if code outside this module, the catalogue and =init.el='s one gate names the feature or the module, or looks for an MSYS2 directory.
 - With it on, a start warns once, and =SPC o m= opens a UCRT64 shell.
 - With it on, =C-x C-f /wslm:DISTRIBUTION:/mnt/c/Windows/win.ini= warns too, and says the shell and tools are here.
 - =M-: (executable-find "hunspell")= names the one under the root, unless a native one comes first.
