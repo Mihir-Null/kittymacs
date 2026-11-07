@@ -287,6 +287,17 @@
     "summary": "Paints colour names and codes in their own colour.",
     "example": "=SPC t r= shows =#ff0000= on a red background."
   },
+  "meow-state-cursor": {
+    "group": "look",
+    "packages": [],
+    "module": "kittymacs-meow-state-cursor",
+    "profile": "optional",
+    "deps": [
+      "meow"
+    ],
+    "summary": "Colours the cursor and the mode line's mark by Meow's state, from the theme.",
+    "example": "=i= turns the cursor green in most themes, and =SPC t c= compares it with one colour."
+  },
   "help-extras": {
     "group": "help",
     "packages": [

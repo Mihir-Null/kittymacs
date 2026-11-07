@@ -1,0 +1,162 @@
+:PROPERTIES:
+:ID: 3eb038b5-6eee-4cb3-84ba-5dc4a23e6629
+:END:
+
+#+TITLE: Meow's state in colour
+#+FILETAGS: :interface:
+#+STARTUP: overview
+#+PROPERTY: header-args:emacs-lisp :tangle ../lisp/kittymacs-meow-state-cursor.el :eval never :comments no :padline no :mkdirp yes
+
+- A trial, so the owner can decide whether colour should say which Meow state a buffer is in: the =meow-state-cursor= feature, =optional= in [[id:3f8a6c02-9d14-4b7e-a2c5-1e7d90b64f31][the catalogue]], and off under every profile.
+  + Onboarding offers it by itself.
+  + =(setopt kittymacs-features '(meow-state-cursor))= in =private.el= is the other way to turn it on.
+- [[id:40302e33-d2b2-4c0b-9bc3-1f9e121307e1][The startup chapter]] loads this whole chapter behind that feature, so with it off nothing here exists.
+- It gives you:
+  + the cursor in one colour for each state;
+  + the same colour on the state's mark in the mode line, in both mode lines;
+  + =SPC t c=, which turns it off and on in the running session, to compare.
+- It installs nothing.
+
+* What was there already
+
+- Meow already gives each state its own cursor shape, through =meow-cursor-type-normal= and its neighbours, and this chapter leaves that alone.
+- Meow also has a face per state for the cursor, =meow-normal-cursor= and so on, and one for the mode line, =meow-normal-indicator=.
+  + Each cursor face only inherits =cursor=, and each indicator face is empty, so every state looks the same.
+  + Neither =doom-themes= nor the Modus themes style them, so no theme here gives a state a colour.
+- =doom-modeline= has its own face per state, which inherits from its own mode-line faces.
+
+* Colours from the theme
+:PROPERTIES:
+:ID: 7c4e15d9-a286-4f30-9b1e-08d3c6f4ea72
+:END:
+
+- Fixed colours would have to suit every theme, and the owner moves between Modus, Doom's themes, light and dark.
+- So each state borrows the foreground of a face that a theme has to define, because its own text uses that face:
+
+| State  | Colour of     | Reads as        |
+|--------+---------------+-----------------|
+| Normal | =warning=     | the accent      |
+| Insert | =success=     | you may type    |
+| Motion | =link=        | a read-only view, as a link is |
+| Keypad | =font-lock-keyword-face= | a command to come |
+| Beacon | =font-lock-string-face=  | several cursors |
+
+- A face with no usable colour leaves that state on the theme's =cursor=, as it would be with this feature off.
+- =enable-theme-functions= runs after each theme, including through =SPC t t=, and a new theme forgets these attributes, so this runs again.
+- Meow reads the face's =:inherit= before its =:background=, so the cursor face has to lose that inheritance, or the colour would do nothing.
+- Keypad shares Motion's cursor in Meow itself, so the keypad's cursor is Motion's colour, and only its mark in the mode line is its own.
+
+* The mode line
+
+- The default mode line shows Meow's mark as a minor mode's lighter, which is plain text, so a face on the indicator would not reach it.
+- So this wraps each state's entry in =minor-mode-alist= in a =:propertize= with that state's indicator face, and turning it off puts the entry back.
+- =doom-modeline= takes its own faces instead, when it has loaded.
+
+* On a terminal
+
+- A terminal draws its own cursor, and Emacs has no general way to set its colour, so a terminal's cursor stays as it is, whatever this sets.
+- The mode line's colours do reach a terminal, as near as its palette allows.
+
+#+begin_src emacs-lisp
+;;; kittymacs-meow-state-cursor.el --- Meow's state in colour -*- lexical-binding: t; -*-
+;; Generated from literate/52-meow-state-cursor.org; edit the Org source, then tangle.
+
+;;; Code:
+
+(require 'kittymacs-leader)
+
+(defvar kittymacs-meow-state-cursor-mode)
+(declare-function meow--update-cursor "meow-core" ())
+
+(defconst kittymacs-meow-state-cursor-sources
+  '((normal . warning)
+    (insert . success)
+    (motion . link)
+    (keypad . font-lock-keyword-face)
+    (beacon . font-lock-string-face))
+  "Each Meow state, and the face whose foreground gives its colour.")
+
+(defun kittymacs-meow-state-cursor--face (format-string state)
+  "Return the face FORMAT-STRING names for STATE, or nil if it does not exist yet."
+  (let ((face (intern (format format-string state))))
+    (and (facep face) face)))
+
+(defun kittymacs-meow-state-cursor--colour (source)
+  "Return the foreground of the face SOURCE in this theme, or the cursor's colour."
+  (let ((colour (face-foreground source nil t)))
+    (if (and (stringp colour) (color-defined-p colour))
+        colour
+      (face-background 'cursor nil t))))
+
+(defun kittymacs-meow-state-cursor--paint (&rest _)
+  "Give every state its colour from the current theme."
+  (pcase-dolist (`(,state . ,source) kittymacs-meow-state-cursor-sources)
+    (let ((colour (kittymacs-meow-state-cursor--colour source)))
+      (when-let* ((cursor (kittymacs-meow-state-cursor--face "meow-%s-cursor" state)))
+        (set-face-attribute cursor nil :inherit 'unspecified :background colour))
+      (dolist (format-string '("meow-%s-indicator" "doom-modeline-meow-%s-state"))
+        (when-let* ((face (kittymacs-meow-state-cursor--face format-string state)))
+          (set-face-attribute face nil :foreground colour :weight 'bold)))))
+  (when (fboundp 'meow--update-cursor)
+    (meow--update-cursor)))
+
+(defun kittymacs-meow-state-cursor--unpaint ()
+  "Hand every state's faces back to their own definitions and the theme."
+  (pcase-dolist (`(,state . ,_) kittymacs-meow-state-cursor-sources)
+    (dolist (format-string '("meow-%s-cursor" "meow-%s-indicator" "doom-modeline-meow-%s-state"))
+      (when-let* ((face (kittymacs-meow-state-cursor--face format-string state)))
+        (dolist (attribute '(:inherit :background :foreground :weight))
+          (set-face-attribute face t attribute 'unspecified))
+        (custom-theme-recalc-face face))))
+  (when (fboundp 'meow--update-cursor)
+    (meow--update-cursor)))
+
+(defvar kittymacs-meow-state-cursor--lighters nil
+  "The entries of `minor-mode-alist' this mode changed, as they were.")
+
+(defun kittymacs-meow-state-cursor--wrap-lighters ()
+  "Put each state's face on its mark in `minor-mode-alist'."
+  (pcase-dolist (`(,state . ,_) kittymacs-meow-state-cursor-sources)
+    (when-let* ((mode (intern (format "meow-%s-mode" state)))
+                (entry (assq mode minor-mode-alist))
+                (face (kittymacs-meow-state-cursor--face "meow-%s-indicator" state)))
+      (unless (assq mode kittymacs-meow-state-cursor--lighters)
+        (push (cons mode (cdr entry)) kittymacs-meow-state-cursor--lighters)
+        (setcdr entry `((:propertize ,(cadr entry) face ,face)))))))
+
+(defun kittymacs-meow-state-cursor--unwrap-lighters ()
+  "Put back each entry of `minor-mode-alist' this mode changed."
+  (pcase-dolist (`(,mode . ,value) kittymacs-meow-state-cursor--lighters)
+    (setcdr (assq mode minor-mode-alist) value))
+  (setq kittymacs-meow-state-cursor--lighters nil))
+
+(define-minor-mode kittymacs-meow-state-cursor-mode
+  "Colour the cursor and the mode line's mark by Meow's state."
+  :global t
+  :group 'kittymacs
+  (cond (kittymacs-meow-state-cursor-mode
+         (add-hook 'enable-theme-functions #'kittymacs-meow-state-cursor--paint)
+         (kittymacs-meow-state-cursor--wrap-lighters)
+         (kittymacs-meow-state-cursor--paint))
+        (t
+         (remove-hook 'enable-theme-functions #'kittymacs-meow-state-cursor--paint)
+         (kittymacs-meow-state-cursor--unwrap-lighters)
+         (kittymacs-meow-state-cursor--unpaint))))
+
+(keymap-set kittymacs-toggle-map "c" (cons "state colours" #'kittymacs-meow-state-cursor-mode))
+(kittymacs-meow-state-cursor-mode 1)
+
+(provide 'kittymacs-meow-state-cursor)
+;;; kittymacs-meow-state-cursor.el ends here
+#+end_src
+
+* Check
+
+- =just test= runs [[file:../tests/kittymacs-meow-state-cursor-tests.el][its tests]], which need no packages: the colours come from the theme's faces, a new theme paints again, and turning it off leaves the faces as they were.
+- =just test-features= starts Emacs with this feature on, and every other selection with it off; a start fails if this module loads with the feature off.
+- With =(setopt kittymacs-features '(meow-state-cursor))= on a graphical frame:
+  + a file, then =i=, then =ESC=: the cursor changes colour with its shape, and the mark in the mode line changes with it;
+  + Dired or Magit: the Motion colour;
+  + =SPC t t=: both change to the other theme's colours, and each still reads against the background;
+  + =SPC t c=: every state's cursor goes back to the theme's, and the mark to plain text.
+- =emacs -nw= with the feature on: the mode line's mark has its colour, and the terminal's cursor does not change.

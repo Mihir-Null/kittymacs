@@ -524,6 +524,8 @@ Set before init.el loads to change them, because they are read during init.")
 (kittymacs-require-module 'kittymacs-vc)
 (kittymacs-require-module 'kittymacs-navigation)
 (kittymacs-require-module 'kittymacs-meow)
+(when (kittymacs-feature-p 'meow-state-cursor)
+  (kittymacs-require-module 'kittymacs-meow-state-cursor))
 (kittymacs-require-module 'kittymacs-keys)
 
 ;; Applications: shells, programming, Org, reading, notebooks, agents, suggestions,
