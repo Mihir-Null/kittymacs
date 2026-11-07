@@ -9,6 +9,7 @@
 (require 'ert)
 (require 'package)
 (require 'seq)
+(require 'cl-lib)
 
 (defconst kittymacs-theme-test-root
   (file-name-directory
@@ -108,5 +109,70 @@
 
 (ert-deftest kittymacs-theme-module-leaves-org-unloaded ()
   (should-not (featurep 'org)))
+
+;;; The pulse after a jump
+
+(ert-deftest kittymacs-theme-the-jump-pulse-follows-ui-polish ()
+  "The minimal profile keeps the pulse it had, on scrolling and window changes."
+  (should-not (kittymacs-feature-p 'ui-polish))
+  (should-not kittymacs-pulse-jumps-mode)
+  (should-not (memq #'kittymacs--pulse-line next-error-hook))
+  (should-not (advice-member-p #'kittymacs--pulse-line 'avy-goto-line))
+  (should (advice-member-p #'kittymacs--pulse-line 'scroll-up-command)))
+
+(ert-deftest kittymacs-theme-the-jump-pulse-goes-on-and-off-and-loads-nothing ()
+  (unwind-protect
+      (progn
+        (kittymacs-pulse-jumps-mode 1)
+        (should (memq #'kittymacs--pulse-line next-error-hook))
+        (dolist (command kittymacs-pulse-jump-commands)
+          (should (equal (list command t)
+                         (list command (and (advice-member-p #'kittymacs--pulse-line command) t)))))
+        (should-not (featurep 'avy))
+        (should-not (featurep 'consult)))
+    (kittymacs-pulse-jumps-mode -1))
+  (should-not (memq #'kittymacs--pulse-line next-error-hook))
+  (should-not (advice-member-p #'kittymacs--pulse-line 'consult-line)))
+
+(ert-deftest kittymacs-theme-the-jump-pulse-leaves-a-missing-command-undefined ()
+  (let ((command 'kittymacs-theme-test-no-such-jump)
+        (kittymacs-pulse-jump-commands '(kittymacs-theme-test-no-such-jump)))
+    (kittymacs-pulse-jumps-mode 1)
+    (unwind-protect
+        (should-not (fboundp command))
+      (kittymacs-pulse-jumps-mode -1))))
+
+(ert-deftest kittymacs-theme-the-jump-pulse-shows-after-a-mark-and-next-error ()
+  (let (pulses)
+    (cl-letf (((symbol-function 'pulse-momentary-highlight-one-line)
+               (lambda (point &rest _) (push point pulses))))
+      (kittymacs-pulse-jumps-mode 1)
+      (unwind-protect
+          (with-temp-buffer
+            (insert "one\ntwo\nthree\n")
+            (push-mark 5 t)
+            (goto-char (point-max))
+            (pop-to-mark-command)
+            (should (equal pulses '(5)))
+            (run-hooks 'next-error-hook)
+            (should (equal pulses '(5 5))))
+        (kittymacs-pulse-jumps-mode -1)))))
+
+(ert-deftest kittymacs-theme-the-jump-list-holds-only-what-this-configuration-has ()
+  "A command of a package is real if a module binds it; a built-in one, if Emacs has it."
+  (let ((sources (with-temp-buffer
+                   (dolist (file (directory-files
+                                  (expand-file-name "lisp" kittymacs-theme-test-root) t
+                                  "\\`kittymacs-.*\\.el\\'"))
+                     (unless (string-suffix-p "kittymacs-ui.el" file)
+                       (insert-file-contents file)))
+                   (buffer-string))))
+    (dolist (command kittymacs-pulse-jump-commands)
+      (should (equal (list command t)
+                     (list command
+                           (and (or (string-search (format "#'%s" command) sources)
+                                    (and (fboundp command)
+                                         (not (autoloadp (symbol-function command)))))
+                                t)))))))
 
 ;;; kittymacs-theme-tests.el ends here

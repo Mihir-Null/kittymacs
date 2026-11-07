@@ -233,8 +233,8 @@
       "goggles",
       "outline-minor-faces"
     ],
-    "summary": "Frame padding, highlighted TODOs and numbers, and a flash on each edit.",
-    "example": "=TODO= stands out in code, and pasted text flashes briefly."
+    "summary": "Frame padding, highlighted TODOs and numbers, and a flash on each edit and jump.",
+    "example": "=TODO= stands out in code, and =SPC t j= turns off the pulse after a jump."
   },
   "smooth-scroll": {
     "group": "look",
