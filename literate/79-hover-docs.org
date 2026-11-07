@@ -1,0 +1,115 @@
+:PROPERTIES:
+:ID: 78b15713-364e-4d1d-99c9-0e67e1729164
+:END:
+
+#+TITLE: Hover documentation
+#+FILETAGS: :code:
+#+STARTUP: overview
+#+PROPERTY: header-args:emacs-lisp :tangle ../lisp/kittymacs-hover-docs.el :eval never :comments no :padline no :mkdirp yes
+
+- A trial, so the owner can decide whether a language server's documentation should float over the text: the =hover-docs= feature, =optional= in [[id:3f8a6c02-9d14-4b7e-a2c5-1e7d90b64f31][the catalogue]], and off under every profile.
+  + Onboarding offers it by itself.
+  + =(setopt kittymacs-features '(hover-docs))= in =private.el= is the other way to turn it on.
+- [[id:40302e33-d2b2-4c0b-9bc3-1f9e121307e1][The startup chapter]] loads this whole chapter behind that feature, so with it off nothing here exists, and Eldoc stays as [[id:97c04bd3-1404-4b0a-8018-20d77bc671bc][the programming chapter]] sets it.
+- It gives you:
+  + =eldoc-box= in a buffer that Eglot manages, on a graphical frame;
+  + =SPC t e=, which turns it off and on in the running session, to compare with the echo area.
+- It leaves every other buffer alone, as the owner's earlier branch did: Emacs Lisp's Eldoc is one line, and belongs in the echo area.
+
+* Where the frame appears
+:PROPERTIES:
+:ID: c2f8a6d4-71e3-49b0-a5d6-0e94b3c17f28
+:END:
+
+- Eldoc already shows a server's documentation in the echo area; =eldoc-box-hover-mode= replaces that one display with a child frame.
+- Eglot runs =eglot-managed-mode-hook= when it takes a buffer on and when it lets one go, so one function answers both.
+  + Adding to that hook loads nothing, so =eldoc-box= waits for the first buffer with a server.
+- Only documentation of more than one line takes the frame, because a signature in the echo area is enough, and a frame for it would flicker with each move at =eldoc-idle-delay= 0.
+- The frame goes half a second after point moves off, and =C-g= hides it sooner.
+- A terminal frame keeps the echo area.
+  + The hook does not turn the mode on there.
+  + A daemon can show one buffer on both kinds of frame, and the mode belongs to the buffer, so an =:around= advice sends the documentation to the echo area whenever the selected frame is a terminal.
+
+#+begin_src emacs-lisp
+;;; kittymacs-hover-docs.el --- A language server's documentation in a child frame -*- lexical-binding: t; -*-
+;; Generated from literate/79-hover-docs.org; edit the Org source, then tangle.
+
+;;; Code:
+
+(require 'kittymacs-leader)
+
+(defvar eldoc-box-hover-mode)
+(defvar kittymacs-hover-docs-mode)
+(declare-function eglot-managed-p "eglot" ())
+(declare-function eldoc-display-in-echo-area "eldoc" (docs interactive))
+
+(use-package eldoc-box
+  :ensure t
+  :commands eldoc-box-hover-mode
+  :custom
+  (eldoc-box-only-multi-line t)
+  (eldoc-box-cleanup-interval 0.5)
+  (eldoc-box-clear-with-C-g t))
+
+(defun kittymacs-hover-docs--apply ()
+  "Make this buffer's hover documentation agree with the mode, Eglot and its frame."
+  (cond ((and kittymacs-hover-docs-mode
+              (fboundp 'eglot-managed-p)
+              (eglot-managed-p)
+              (display-graphic-p))
+         (eldoc-box-hover-mode 1))
+        ((bound-and-true-p eldoc-box-hover-mode)
+         (eldoc-box-hover-mode -1))))
+
+(defun kittymacs-hover-docs--display (display docs interactive)
+  "Call DISPLAY with DOCS and INTERACTIVE, or use the echo area in a terminal."
+  (if (display-graphic-p)
+      (funcall display docs interactive)
+    (eldoc-display-in-echo-area docs interactive)))
+(advice-add 'eldoc-box--eldoc-display-function :around #'kittymacs-hover-docs--display)
+
+#+end_src
+
+* A remote buffer
+:PROPERTIES:
+:ID: 4a9e07b3-d5c2-4186-8f3a-6b1d72e0c9a5
+:END:
+
+- A remote buffer gets the frame too, and this chapter adds no guard to [[id:8d3b7e15-6f42-4c09-a1e8-5b2d90c7f364][the guards]].
+  + Those stop what reaches a remote machine with nobody asking, and =eldoc-box= reaches nothing: it draws text that Eldoc already holds.
+  + Its source makes no file call and reads no =default-directory=, and a run through a dead address made no connection.
+- The request for that text is Eglot's, and it is the same with this feature off: =jsonrpc= sends it asynchronously, and a dead connection means no answer, so no frame.
+
+* The key
+
+- =SPC t e= is =kittymacs-hover-docs-mode=, which holds the hook and goes through the buffers Eglot manages already.
+  + It starts on, because selecting the feature asked for it.
+
+#+begin_src emacs-lisp
+(define-minor-mode kittymacs-hover-docs-mode
+  "Show a language server's documentation in a child frame on a graphical frame."
+  :global t
+  :group 'kittymacs
+  (if kittymacs-hover-docs-mode
+      (add-hook 'eglot-managed-mode-hook #'kittymacs-hover-docs--apply)
+    (remove-hook 'eglot-managed-mode-hook #'kittymacs-hover-docs--apply))
+  (dolist (buffer (buffer-list))
+    (with-current-buffer buffer
+      (kittymacs-hover-docs--apply))))
+
+(keymap-set kittymacs-toggle-map "e" (cons "hover documentation" #'kittymacs-hover-docs-mode))
+(kittymacs-hover-docs-mode 1)
+
+(provide 'kittymacs-hover-docs)
+;;; kittymacs-hover-docs.el ends here
+#+end_src
+
+* Check
+
+- =just test= runs [[file:../tests/kittymacs-hover-docs-tests.el][its tests]], which need no packages: which buffers ask for the frame, and what turning it off leaves.
+- =just test-features= starts Emacs with this feature on, and every other selection with it off; a start fails if this module or =eldoc-box= loads with the feature off.
+- With =(setopt kittymacs-features '(hover-docs))= on a graphical frame, press =SPC l e= for a language server, then:
+  + pause on a name with long documentation: a small frame shows it at the top right of the window;
+  + move away: it goes;
+  + =SPC t e=, then pause again: the echo area shows it instead.
+- =emacs -nw= with the feature on: the echo area shows documentation, as it does with the feature off.
