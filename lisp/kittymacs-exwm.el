@@ -214,6 +214,10 @@ A command, or a function taking the key's ARGS."
                     (cons (kbd (car entry))
                           (kittymacs-exwm--command (cadr entry) (cddr entry))))
                   kittymacs-wm-keys)))
+(defun kittymacs-exwm--keysyms-or-failure (keysyms)
+  "Return KEYSYMS, or what `xcb:keysyms:event->keysyms' documents for a failure."
+  (or keysyms '((0 . 0))))
+
 ;; `when' rather than `:if': `use-package' installs before it reads `:if', so
 ;; every machine would download a window manager it cannot use.
 (when (and kittymacs-exwm (kittymacs-feature-p 'window-manager))
@@ -223,6 +227,8 @@ A command, or a function taking the key's ARGS."
     :custom
     (exwm-workspace-number 4)
     :config
+    (advice-add 'xcb:keysyms:event->keysyms :filter-return
+                #'kittymacs-exwm--keysyms-or-failure)
     (kittymacs-exwm-apply-keys)
     (add-hook 'exwm-update-class-hook
               (lambda () (exwm-workspace-rename-buffer exwm-class-name)))
