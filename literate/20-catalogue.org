@@ -143,6 +143,10 @@
      :group look :packages (frames-only-mode) :module kittymacs-frames :profile full
      :summary "Opens each new editing surface as an OS window, for tiling window managers."
      :example "=SPC w n= makes a window, and =SPC t f= turns the policy off for a session.")
+    (which-key-frame
+     :group look :packages (which-key-posframe) :module kittymacs-which-key-frame :profile optional
+     :summary "Shows the key menu in a small frame over the text, on a graphical frame."
+     :example "=SPC= opens the menu at the bottom right, and =SPC t W= compares it with the side window.")
     (home-page
      :group look :packages (dashboard) :module kittymacs-dashboard :profile full
      :summary "A start page with recent files and projects."

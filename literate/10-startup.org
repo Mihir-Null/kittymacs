@@ -525,6 +525,8 @@ Set before init.el loads to change them, because they are read during init.")
 (kittymacs-require-module 'kittymacs-navigation)
 (kittymacs-require-module 'kittymacs-meow)
 (kittymacs-require-module 'kittymacs-keys)
+(when (kittymacs-feature-p 'which-key-frame)
+  (kittymacs-require-module 'kittymacs-which-key-frame))
 
 ;; Applications: shells, programming, Org, reading, notebooks, agents, suggestions,
 ;; then the window manager, and finally frame policy, which reads it.

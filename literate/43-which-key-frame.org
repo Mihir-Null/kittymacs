@@ -1,0 +1,152 @@
+:PROPERTIES:
+:ID: 720ee516-cb7b-4a90-89f6-3cfd0249d03a
+:END:
+
+#+TITLE: which-key in a child frame
+#+FILETAGS: :interface:
+#+STARTUP: overview
+#+PROPERTY: header-args:emacs-lisp :tangle ../lisp/kittymacs-which-key-frame.el :eval never :comments no :padline no :mkdirp yes
+
+- A trial, so the owner can decide whether the key menu should float instead of pushing the text aside: the =which-key-frame= feature, =optional= in [[id:3f8a6c02-9d14-4b7e-a2c5-1e7d90b64f31][the catalogue]], and off under every profile.
+  + Onboarding offers it by itself.
+  + =(setopt kittymacs-features '(which-key-frame))= in =private.el= is the other way to turn it on.
+- [[id:40302e33-d2b2-4c0b-9bc3-1f9e121307e1][The startup chapter]] loads this whole chapter behind that feature, so with it off nothing here exists, and which-key stays as [[id:53ad53ed-155f-47dc-973d-7be18de2893c][the keys chapter]] sets it.
+- It gives you:
+  + the menu at the bottom right of a graphical frame, over the text, so no window changes size when it opens;
+  + the side window, as before, on a terminal frame;
+  + =SPC t W=, which turns it off and on in the running session, to compare.
+
+* One menu, two places
+:PROPERTIES:
+:ID: 9e5c1b84-3f7d-4a26-b0e9-d48a6c2f7310
+:END:
+
+- =which-key-posframe-mode= would turn the whole session over to the child frame.
+  + A daemon can hold a graphical frame and a terminal frame, and its show function draws nothing where =posframe-workable-p= says no.
+  + Emacs 31 can draw child frames in a terminal, so that test also says yes where the owner asked for the side window.
+- So this chapter leaves that mode off, and hands which-key three functions through its own =custom= popup type: each asks about the selected frame, then calls the child frame's function or the side window's.
+- The package supplies the drawing, and it loads when the first menu opens on a graphical frame, so a start pays for neither it nor =posframe=, and a terminal never loads them.
+- The menu gets the height [[id:53ad53ed-155f-47dc-973d-7be18de2893c][the keys chapter]] gives the side window, half the frame, through the same option.
+- Its colours come from the theme by way of =which-key-posframe='s faces, which inherit =default=, so they follow =SPC t t=.
+
+** Working with an exact window fit
+
+- =which-key-allow-imprecise-window-fit= stays nil, and this chapter does not read it.
+  + Emacs reads that option only in the side window's function, which sizes the window from the buffer's real text, and that path is unchanged here.
+- The child frame's last row stays whole as well, because =posframe= fits its frame to the text, with [[id:0286f652-e861-4e61-9ca6-91e225c8939d][the appearance chapter]]'s =line-spacing= of 0.1 included.
+  + Under Xvfb, the menu's rows took 150 pixels of a frame of 152.
+
+** Where the menu sits
+
+- =posframe-poshandler-frame-bottom-right-corner= returns negative coordinates, to count from the far edges.
+  + Under Xvfb on this Emacs, a child frame took them literally, and the menu landed at the top left, partly above the frame.
+- So this chapter returns the same corner in plain pixels: it clears the mode line and the echo area, where =SPC-= shows what you have typed.
+
+#+begin_src emacs-lisp
+;;; kittymacs-which-key-frame.el --- which-key in a child frame -*- lexical-binding: t; -*-
+;; Generated from literate/43-which-key-frame.org; edit the Org source, then tangle.
+
+;;; Code:
+
+(require 'seq)
+(require 'which-key)
+(require 'kittymacs-leader)
+
+(declare-function posframe-delete "posframe" (buffer-or-name))
+(declare-function which-key-posframe--hide "which-key-posframe" ())
+(declare-function which-key-posframe--show-buffer "which-key-posframe" (act-popup-dim))
+
+(use-package which-key-posframe
+  :ensure t
+  :defer t
+  :custom
+  (which-key-posframe-border-width 1)
+  (which-key-posframe-poshandler #'kittymacs-which-key-frame--position))
+
+(defun kittymacs-which-key-frame--position (info)
+  "Return the corner above the mode line, from the pixels in INFO."
+  (cons (max 0 (- (plist-get info :parent-frame-width)
+                  (plist-get info :posframe-width)))
+        (max 0 (- (plist-get info :parent-frame-height)
+                  (plist-get info :posframe-height)
+                  (plist-get info :mode-line-height)
+                  (plist-get info :minibuffer-height)))))
+
+(defun kittymacs-which-key-frame--show (dimensions)
+  "Show the menu of DIMENSIONS in a child frame, or a terminal's side window."
+  (if (display-graphic-p)
+      (progn
+        (require 'which-key-posframe)
+        (which-key-posframe--show-buffer dimensions))
+    (which-key--show-buffer-side-window dimensions)))
+
+(defun kittymacs-which-key-frame--hide ()
+  "Hide the menu, wherever it is."
+  (when (featurep 'which-key-posframe)
+    (which-key-posframe--hide))
+  (unless (display-graphic-p)
+    (which-key--hide-buffer-side-window)))
+
+(defun kittymacs-which-key-frame--max-dimensions (_window-width)
+  "Return the room for the menu as (HEIGHT . WIDTH), by the kind of selected frame."
+  (if (display-graphic-p)
+      (cons (max 1 (floor (* which-key-side-window-max-height (frame-height))))
+            (frame-width))
+    (which-key--side-window-max-dimensions)))
+
+#+end_src
+
+* The key
+
+- =SPC t W= is =kittymacs-which-key-frame-mode=.
+  + Turning it on saves the four which-key settings it changes, and turning it off puts them back, and deletes the child frame.
+  + It starts on, because selecting the feature asked for it.
+
+#+begin_src emacs-lisp
+(defvar kittymacs-which-key-frame--saved nil
+  "The which-key settings to put back: its popup type and three functions.")
+
+(defconst kittymacs-which-key-frame--settings
+  '(which-key-popup-type
+    which-key-custom-show-popup-function
+    which-key-custom-hide-popup-function
+    which-key-custom-popup-max-dimensions-function)
+  "The which-key settings this mode changes.")
+
+(define-minor-mode kittymacs-which-key-frame-mode
+  "Show which-key's menu in a child frame on a graphical frame."
+  :global t
+  :group 'kittymacs
+  (which-key--hide-popup-ignore-command)
+  (cond
+   (kittymacs-which-key-frame-mode
+    (unless kittymacs-which-key-frame--saved
+      (setq kittymacs-which-key-frame--saved
+            (mapcar #'symbol-value kittymacs-which-key-frame--settings)))
+    (setq which-key-popup-type 'custom
+          which-key-custom-show-popup-function #'kittymacs-which-key-frame--show
+          which-key-custom-hide-popup-function #'kittymacs-which-key-frame--hide
+          which-key-custom-popup-max-dimensions-function
+          #'kittymacs-which-key-frame--max-dimensions))
+   (kittymacs-which-key-frame--saved
+    (seq-mapn #'set kittymacs-which-key-frame--settings kittymacs-which-key-frame--saved)
+    (setq kittymacs-which-key-frame--saved nil)
+    (when (and (featurep 'which-key-posframe) (buffer-live-p which-key--buffer))
+      (posframe-delete which-key--buffer)))))
+
+(keymap-set kittymacs-toggle-map "W" (cons "which-key in a frame" #'kittymacs-which-key-frame-mode))
+(kittymacs-which-key-frame-mode 1)
+
+(provide 'kittymacs-which-key-frame)
+;;; kittymacs-which-key-frame.el ends here
+#+end_src
+
+* Check
+
+- =just test= runs [[file:../tests/kittymacs-which-key-frame-tests.el][its tests]], which need no packages: which place each kind of frame gets, and what turning it off leaves.
+- =just test-features= starts Emacs with this feature on, and every other selection with it off; a start fails if this module or its package loads with the feature off.
+- With =(setopt kittymacs-features '(which-key-frame))= on a graphical frame:
+  + =SPC=, then wait: the groups show at the bottom right, over the text, and the last row is whole;
+  + =SPC t W=, then =SPC=: they show at the top of the frame, as they do with the feature off;
+  + =SPC t t=: the menu's colours follow the theme.
+- =emacs -nw= with the feature on: =SPC=, then wait: the side window, with its last row whole.
