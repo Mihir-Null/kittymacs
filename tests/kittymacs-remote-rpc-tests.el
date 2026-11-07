@@ -127,6 +127,17 @@
 
 ;;; direnv
 
+(ert-deftest kittymacs-rpc-direnv-variables-survive-inheritenv ()
+  "What direnv set, and this scope has, reaches tramp-rpc, and nothing else does."
+  (kittymacs-rpc-test--with-module
+    (let ((kittymacs-remote--envrc-variables '("FROM_DIRENV=a=b" "NOT_HERE=x" "KEPT=direnv"))
+          (process-environment '("FROM_DIRENV=a=b" "KEPT=direnv" "OTHER=y")))
+      (let ((result (kittymacs--remote-rpc-direnv-variables '(("KEPT" . "caller")))))
+        (should (equal (cdr (assoc "FROM_DIRENV" result)) "a=b"))
+        (should (equal (cdr (assoc "KEPT" result)) "caller"))
+        (should-not (assoc "NOT_HERE" result))
+        (should-not (assoc "OTHER" result))))))
+
 (ert-deftest kittymacs-rpc-direnv-starts-on-a-pipe ()
   "A pty merges direnv's stderr into the JSON that envrc reads."
   (kittymacs-rpc-test--with-module
