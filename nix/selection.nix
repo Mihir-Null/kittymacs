@@ -131,6 +131,12 @@ rec {
       no Emacs, no fonts and nothing with a GUI.  It works without `enable`.
       `daemon` still runs `package`, and `source` still links a checkout, if set
     '';
+
+    backend.rpcServer = lib.mkEnableOption ''
+      tramp-rpc-server beside the headless tools, for a backend reached with
+      `:transport wsl-rpc`.  It builds from source, and it matters only with
+      `backend.enable`
+    '';
   };
 
   # The features that are on for SYSTEMTYPE, Emacs's name for the system, or
