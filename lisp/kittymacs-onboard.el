@@ -1445,7 +1445,7 @@ Refuse if `private.el' cannot be understood."
       (format "After that start, SPC o B and then %s says what that machine has and what it is missing.\n"
               (car entry))
       (if (eq (kittymacs-onboard--transport-of (cdr entry)) 'wsl-rpc)
-          (format "%s also needs a server in the distribution, which nothing installs for you: that report prints the line to run.\n"
+          (format "%s also needs a server in the distribution, which nothing installs for you: that report prints the line to run, or a Nix home there sets programs.kittymacs.backend.rpcServer.\n"
                   (car entry))
         "")))
    (seq-difference (kittymacs-onboard--backends state)
