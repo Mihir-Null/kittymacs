@@ -41,6 +41,7 @@
 | [[id:d2e0bc37-0bd4-4b28-a8ee-04f94ac451f8][Shells]]          | apps      | the login environment and Eshell                                                   |
 | [[id:6e1f2a90-4c7b-4d35-9f18-2b7c0d6e3a41][Remote]]          | core      | Tramp, named backends, and guards for a dead connection                             |
 | [[id:a1607a41-b741-428a-9de3-c16e7c8d3ecc][Editing]]         | keys      | Meow's states and grammar                                                          |
+| [[id:3eb038b5-6eee-4cb3-84ba-5dc4a23e6629][Meow's state in colour]] | interface | a trial: the cursor and the mode line's mark by state, off by default |
 | [[id:e5942eb0-4389-447d-9317-d9178adcaaae][Leader]]          | keys      | why =SPC= is a real keymap, its groups, and how modes get their own menu             |
 | [[id:53ad53ed-155f-47dc-973d-7be18de2893c][Keys]]            | keys      | the whole =SPC= tree, group by group, and the keys no feature owns                   |
 | [[id:720ee516-cb7b-4a90-89f6-3cfd0249d03a][which-key frame]] | interface | a trial: the key menu in a child frame, off by default |
