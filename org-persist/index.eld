@@ -1,0 +1,2 @@
+;;   -*- mode: lisp-data; -*-
+((:container ((elisp org-element--headline-cache) (elisp org-element--cache) (version "2.3")) :persist-file "87/ce562f-9b04-43a4-b029-08d366b33eaf" :associated (:hash "8e08220d32a37f5b5ceab091c4d4565e" :file "/tmp/kittymacs-bench-samples-GLr73H/sample.org" :inode 805182) :expiry 30 :last-access 1794021970.5336015 :last-access-hr "2026-11-06T22:26:10-0500") (:container ((index "3.2")) :persist-file "51/f07d76-4d6f-476e-8fc7-4653f9cda021" :associated nil :expiry never :last-access 1794021870.36214 :last-access-hr "2026-11-06T22:24:30-0500"))
