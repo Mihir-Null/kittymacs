@@ -20,6 +20,8 @@
 (defvar tramp-dont-suspend-timers nil)
 (defvar kittymacs-backends)
 (defvar kittymacs-host-directories nil)
+(defvar envrc--status)
+(declare-function envrc--get-current-env-or-run-direnv "envrc" (&optional force))
 (defvar w32-pipe-buffer-size)
 (declare-function tramp-cleanup-connection "tramp-cmds" (vec &optional keep-debug keep-password keep-processes))
 (declare-function tramp-direct-async-process-p "tramp" (&rest args))
@@ -553,6 +555,108 @@ pipe want different ones.  Signals after LIMIT seconds."
      (wsl-backend-expect "does not have yet" text)
      (wsl-backend-expect "nix profile install" text)
      (wsl-backend-expect "rg fd direnv inotifywait" text))))
+
+;;; direnv
+
+;; After the doctor's check, which needs a machine with no direnv.
+
+(defun wsl-backend-direnv-project (name)
+  "Return the file NAME in a project with an allowed `.envrc', on the backend."
+  (wsl-backend-file (concat "direnv/" name)))
+
+(defun wsl-backend-as-root (command)
+  "Run the shell COMMAND in the distribution as root, and signal if it fails."
+  (with-temp-buffer
+    (unless (zerop (call-process "wsl.exe" nil t nil "-d" wsl-backend-distribution
+                                 "-u" "root" "--exec" "sh" "-c" command))
+      (error "%s failed: %s" command (buffer-string)))))
+
+(defun wsl-backend-stop ()
+  "Stop the distribution, and drop what Emacs knows about its connection."
+  (wsl-backend-disconnect)
+  (call-process "wsl.exe" nil nil nil "--terminate" wsl-backend-distribution)
+  (dolist (buffer (buffer-list))
+    (when (string-prefix-p "*envrc" (buffer-name buffer))
+      (kill-buffer buffer))))
+
+(defun wsl-backend-open-and-close (direnv)
+  "Open the project's file with the backend's DIRENV on or off, and close it."
+  (if direnv
+      (add-hook 'after-change-major-mode-hook #'kittymacs--remote-envrc-on-wsl -50)
+    (remove-hook 'after-change-major-mode-hook #'kittymacs--remote-envrc-on-wsl))
+  (let ((buffer (find-file-noselect (wsl-backend-direnv-project "file"))))
+    (prog1 (format "envrc-mode %s" (buffer-local-value 'envrc-mode buffer))
+      (kill-buffer buffer))))
+
+(wsl-backend-check
+ "direnv: install it, and allow a project's .envrc" 300
+ (lambda ()
+   (wsl-backend-as-root "apt-get update -qq && apt-get install -y -qq direnv")
+   (make-directory (wsl-backend-direnv-project "") t)
+   (let ((coding-system-for-write 'utf-8-unix))
+     (with-temp-file (wsl-backend-direnv-project ".envrc")
+       (insert "export KITTYMACS_ENVRC_PROBE=reached\n"))
+     (with-temp-file (wsl-backend-direnv-project "file")
+       (insert "hello\n")))
+   (let ((default-directory (wsl-backend-direnv-project "")))
+     (with-temp-buffer
+       (unless (zerop (process-file "direnv" nil t t "allow"))
+         (error "direnv allow: %s" (buffer-string)))
+       "allowed"))))
+
+(wsl-backend-check
+ "direnv: a file opens with it off" 60
+ (lambda () (wsl-backend-open-and-close nil)))
+
+(wsl-backend-check
+ "direnv: a file opens with it on, and direnv runs" 60
+ (lambda () (wsl-backend-open-and-close t)))
+
+(wsl-backend-check
+ "direnv: a file opens with it on, and the result is known" 60
+ (lambda () (wsl-backend-open-and-close t)))
+
+(wsl-backend-check
+ "direnv: its variable reaches each kind of process" 120
+ (lambda ()
+   (with-current-buffer (find-file-noselect (wsl-backend-direnv-project "file"))
+     (let ((end (+ (float-time) 60))
+           (report "echo [$KITTYMACS_ENVRC_PROBE]; echo done"))
+       (while (and (memq envrc--status '(nil running none)) (< (float-time) end))
+         (accept-process-output nil 0.2)
+         (envrc--get-current-env-or-run-direnv))
+       (unless (eq envrc--status 'on)
+         (error "envrc says %s" envrc--status))
+       (let* ((environment process-environment)
+              (directory default-directory)
+              (through-shell
+               (with-temp-buffer
+                 (setq process-environment environment
+                       default-directory directory)
+                 (process-file "/bin/sh" nil t nil "-c" report)
+                 (buffer-string)))
+              (direct
+               (let* ((buffer (generate-new-buffer " *direnv direct*"))
+                      (process (make-process :name "direnv-direct" :buffer buffer :noquery t
+                                             :file-handler t :connection-type 'pipe
+                                             :command (list "/bin/sh" "-c" report))))
+                 (wsl-backend-wait-for process "done" 30)))
+              (shell-command (shell-command-to-string report)))
+         (dolist (seen (list through-shell direct shell-command))
+           (wsl-backend-expect "[reached]" seen))
+         "process-file, a direct process and shell-command")))))
+
+(wsl-backend-check
+ "direnv: a file opens with it off, in a stopped distribution" 120
+ (lambda ()
+   (wsl-backend-stop)
+   (wsl-backend-open-and-close nil)))
+
+(wsl-backend-check
+ "direnv: a file opens with it on, in a stopped distribution" 120
+ (lambda ()
+   (wsl-backend-stop)
+   (wsl-backend-open-and-close t)))
 
 ;; For the record: what a new file on the backend gets from Emacs on Windows.
 (wsl-backend-check
