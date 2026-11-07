@@ -59,6 +59,7 @@
 | [[id:f48e8f01-88da-4e33-8398-c00ab346b8bb][Org-roam]]        | notes     | linked notes: personal and project graphs, capture, backlinks, tags                |
 | [[id:97c04bd3-1404-4b0a-8018-20d77bc671bc][Programming]]     | code      | delimiters, structural editing, linting, compiling, Emacs Lisp                     |
 | [[id:560fcdca-6cb8-49d9-bf27-eb78f32b9285][Languages]]       | code      | Tree-sitter grammars and opt-in language servers                                   |
+| [[id:78b15713-364e-4d1d-99c9-0e67e1729164][Hover documentation]] | code | a trial: Eglot's documentation in a child frame, off by default |
 | [[id:78b654e1-a93e-4e31-b0d8-f266215b5b12][Reading]]         | notes     | PDFs in Emacs, and org-noter's notes beside them                                    |
 | [[id:0bb7490f-71af-4c3d-9e64-741df8ae25c6][Notebooks]]       | code      | Jupytext scripts: cells, a Jupyter kernel, LaTeX drawn in Markdown cells            |
 | [[id:94d55283-5011-4f98-a7f0-8c6bcb51aab9][Agents]]          | apps      | Claude Code in a buffer, through agent-shell, and its MCP servers                  |

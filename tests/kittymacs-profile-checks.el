@@ -26,7 +26,8 @@
     (notebooks . kittymacs-notebooks)
     (agents . kittymacs-agents)
     (suggestions . kittymacs-suggestions)
-    (smooth-scroll . kittymacs-smooth-scroll))
+    (smooth-scroll . kittymacs-smooth-scroll)
+    (hover-docs . kittymacs-hover-docs))
   "The features `init.el' loads a whole chapter for, and that chapter's module.")
 
 (defun kittymacs-check--binding (binding)
