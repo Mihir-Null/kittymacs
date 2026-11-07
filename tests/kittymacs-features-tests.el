@@ -471,4 +471,40 @@ A request installs the package it names."
           (display-warning 'emacs reminder)
           (should (equal (car warnings) reminder)))))))
 
+(ert-deftest kittymacs-features-a-start-that-compiles-fills-the-log-with-no-window ()
+  "Real `display-warning', as a graphical start runs it, on the batch frame."
+  (let ((noninteractive nil)
+        (after-init-time nil)
+        (delayed-warnings-list nil)
+        (warning-minimum-level :warning)
+        (warning-suppress-types nil)
+        (delayed-warnings-hook delayed-warnings-hook)
+        (log "*Compile-Log*"))
+    (when (get-buffer log) (kill-buffer log))
+    (cl-letf (((symbol-function 'sit-for) #'ignore))
+      (save-window-excursion
+        (delete-other-windows)
+        (display-warning 'bytecomp "while installing" :warning log)
+        (display-warning 'emacs "another kind")
+        (should (= (length delayed-warnings-list) 2))
+        (setq after-init-time (current-time))
+        (unwind-protect
+            (progn
+              (kittymacs-features--log-compile-warnings)
+              (should (equal (mapcar #'cadr delayed-warnings-list) '("another kind")))
+              (with-current-buffer log
+                (should (string-match-p "while installing" (buffer-string))))
+              (should-not (get-buffer-window log t))
+              (display-warning 'bytecomp "afterwards" :warning log)
+              (with-current-buffer log
+                (should (string-match-p "afterwards" (buffer-string))))
+              (should (get-buffer-window log t)))
+          (kill-buffer log))))))
+
+(ert-deftest kittymacs-features-the-hook-runs-before-the-display ()
+  "Emacs raises the panel from the same hook, so the order is the fix."
+  (should (seq-position delayed-warnings-hook #'kittymacs-features--log-compile-warnings))
+  (should (< (seq-position delayed-warnings-hook #'kittymacs-features--log-compile-warnings)
+             (seq-position delayed-warnings-hook #'display-delayed-warnings))))
+
 ;;; kittymacs-features-tests.el ends here

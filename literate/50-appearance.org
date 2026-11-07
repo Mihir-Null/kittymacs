@@ -335,12 +335,19 @@ A `doom-' theme needs the `doom-look' feature; without it, `modus-operandi'."
 |--------------------------+------------------------------------------------------------|
 | =spacious-padding=       | a little padding around the frame                          |
 | =pulse= on scroll, recenter and window change | the current line pulses when you change window or page |
+| =pulse= after a jump, with =ui-polish= | the line pulses where Avy, Consult, a mark or =next-error= lands |
 | =hl-todo=, =highlight-numbers= | =TODO=, =FIXME= and numbers stand out in code        |
 | =goggles=                | recent edits flash briefly, so you see what a command changed |
 | =outline-minor-faces=    | Lisp outline headings get heading faces                    |
 
 - The cursor shows only in the selected window.
 - =SPC s t= lists the =TODO= and =FIXME= keywords in this buffer.
+- A jump can land anywhere, so =kittymacs-pulse-jumps-mode= shows where it landed, with the same pulse and no new package.
+  + It belongs to =ui-polish=, because the pulse on scrolling has no feature of its own, and this row of the table is that feature's work: =minimal= keeps the three commands it had.
+  + =SPC t j= turns it off and on in the running session, to compare.
+  + =advice-add= needs no library loaded, and leaves a command that is not there undefined, so naming Avy here loads nothing and defines nothing.
+  + Marks mean =pop-to-mark-command= and =pop-global-mark=, and =next-error= is its own hook, because a compilation, Flymake's list or an Occur buffer can each run it.
+  + The list holds only commands this configuration binds, and [[file:../tests/kittymacs-theme-tests.el][the theme tests]] fail on any other.
 
 #+begin_src emacs-lisp
 (when (kittymacs-feature-p 'ui-polish)
@@ -370,7 +377,30 @@ A `doom-' theme needs the `doom-look' feature; without it, `modus-operandi'."
 ;; Every change of window, by `other-window', a mouse click or a leader key.
 (add-hook 'window-selection-change-functions #'kittymacs--pulse-line)
 
+(defconst kittymacs-pulse-jump-commands
+  '(avy-goto-char-timer avy-goto-line avy-goto-word-1 avy-goto-symbol-1
+    avy-goto-end-of-line avy-goto-char-in-line
+    consult-line consult-line-multi consult-goto-line consult-imenu consult-outline
+    consult-mark consult-global-mark consult-ripgrep consult-flymake consult-org-heading
+    pop-to-mark-command pop-global-mark)
+  "The commands after which `kittymacs-pulse-jumps-mode' pulses the line.")
+
+(define-minor-mode kittymacs-pulse-jumps-mode
+  "Pulse the current line after a jump, so you can see where it landed."
+  :global t
+  :group 'kittymacs-ui
+  (dolist (command kittymacs-pulse-jump-commands)
+    (if kittymacs-pulse-jumps-mode
+        (advice-add command :after #'kittymacs--pulse-line)
+      (advice-remove command #'kittymacs--pulse-line)))
+  (if kittymacs-pulse-jumps-mode
+      (add-hook 'next-error-hook #'kittymacs--pulse-line)
+    (remove-hook 'next-error-hook #'kittymacs--pulse-line)))
+
 (when (kittymacs-feature-p 'ui-polish)
+  (kittymacs-pulse-jumps-mode 1)
+  (keymap-set kittymacs-toggle-map "j" (cons "pulse after jumps" #'kittymacs-pulse-jumps-mode))
+
   (use-package hl-todo
     :ensure t
     :hook ((prog-mode markdown-mode markdown-ts-mode) . hl-todo-mode))
@@ -419,12 +449,29 @@ A `doom-' theme needs the `doom-look' feature; without it, `modus-operandi'."
   + a file at =kittymacs-scratch-file= means Emacs has started before, and [[id:3fd783cd-deb8-48aa-bb44-0d9b16535365][the defaults chapter]] restores that text;
   + clearing the comment stays cleared, because the empty buffer saves to that file too.
 - A value set in =private.el= wins.
+- Flyspell checks comments, and =SPC= is no word, so it would underline the first thing a reader sees.
+  + =flyspell-incorrect-hook= lets one function accept what Flyspell found.
+  + Only the pointer's own line in =*scratch*= passes, so =SPC= stays a misspelling everywhere else, and a dictionary gains nothing.
+  + The hook stays on after a first start, because the kept comment comes back from the scratch file.
 
 #+begin_src emacs-lisp
+(defconst kittymacs--scratch-pointer ";; SPC opens the menu.  SPC C o chooses features."
+  "The line that tells a new reader where the menu is.")
+
 (unless (or (kittymacs-feature-p 'home-page)
             initial-scratch-message
             (file-exists-p kittymacs-scratch-file))
-  (setq initial-scratch-message ";; SPC opens the menu.  SPC C o chooses features.\n\n"))
+  (setq initial-scratch-message (concat kittymacs--scratch-pointer "\n\n")))
+
+(defun kittymacs--scratch-pointer-word-p (start _end _corrections)
+  "Return non-nil when the word at START is on the pointer's line in *scratch*.
+A function on `flyspell-incorrect-hook': non-nil leaves the word unmarked."
+  (and (equal (buffer-name) "*scratch*")
+       (save-excursion
+         (goto-char start)
+         (equal (buffer-substring-no-properties (pos-bol) (pos-eol))
+                kittymacs--scratch-pointer))))
+(add-hook 'flyspell-incorrect-hook #'kittymacs--scratch-pointer-word-p)
 
 #+end_src
 
@@ -450,6 +497,7 @@ A `doom-' theme needs the `doom-look' feature; without it, `modus-operandi'."
 - =SPC t t= flips to the light theme and back; colours never mix.
 - =SPC t w= in an Org file hides everything but the text; =SPC t w= again brings it back.
 - =SPC t H= hides only the mode line.
+- With =ui-polish=: =SPC j l= to a line, then =SPC b m= to a mark: the line pulses each time; =SPC t j=, then the same: nothing pulses.
 - =C-x C-+= grows the text one step; =C-x C-0= resets.
 - =SPC f f=: icons beside the candidates, or none at all on a machine without the icon font.
 - Set =kittymacs-icons= to =nil= in =private.el= to run without icon fonts.
@@ -458,3 +506,4 @@ A `doom-' theme needs the `doom-look' feature; without it, `modus-operandi'."
   + Batch =format-mode-line= returns nothing, so it reads the option that decides; look at a real frame for the text.
 - =just test-minimal=: the same verifier checks that Modus comes back alone, and that neither doom package loaded.
   + The theme tests leave out doom-themes and doom-modeline, and check that the Modus themes load and toggle instead.
+- =just test-packages=: where Hunspell has a dictionary, the theme tests run real Flyspell over =*scratch*=, and only a =SPC= outside the pointer gets marked.

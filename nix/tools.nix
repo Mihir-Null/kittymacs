@@ -81,7 +81,10 @@ in
   fontsFor = features: packagesOf (lib.filter (isOn features) fontTable);
 
   # What the doctor looks for, and the feature that asks for each.
-  commands = map (entry: { inherit (entry) feature command; }) programTable;
+  commands = map (entry: {
+    inherit (entry) feature command;
+    name = lib.getName entry.package;
+  }) programTable;
 
   # The server behind the wsl-rpc transport, which no list here installs by itself.
   rpcServer = pkgs.callPackage ./tramp-rpc-server.nix { };

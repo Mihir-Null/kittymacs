@@ -190,10 +190,12 @@ This only says it: nothing here installs anything."
       (when rpc (princ (plist-get report :text)))
       (when reachable
         (princ (format "Project  %s (%s)\n" root (if exists "exists" "MISSING")))
-        (princ (format "Processes start %s\n\n"
+        (princ (format "Processes start %s\n"
                        (cond (rpc "through tramp-rpc-server")
                              (direct "directly")
                              (t "through Tramp's shell"))))
+        (princ (format "A project's direnv is %s\n\n"
+                       (if (kittymacs-remote--direnv-p root) "on" "off")))
         (pcase-dolist (`(,tool . ,path) tools)
           (princ (format "%-20s %s\n" tool (or path "not found"))))
         (when-let* ((advice (kittymacs-remote--setup-advice tools)))
@@ -427,6 +429,62 @@ A file with line endings keeps them.  This never connects."
 
 (with-eval-after-load 'tramp
   (kittymacs--remote-after-tramp))
+(eval-when-compile (require 'cl-lib))
+(defvar envrc-remote)
+(defvar envrc-supported-tramp-methods)
+(declare-function envrc--merged-environment "envrc" (process-env pairs))
+
+(defun kittymacs-remote--direnv-p (directory)
+  "Return non-nil if a buffer in DIRECTORY gets its project's direnv environment.
+This reads the name, and never connects."
+  (kittymacs-remote--wsl-distribution directory))
+
+(defun kittymacs--remote-envrc-on-wsl ()
+  "Let envrc's global mode turn on in this buffer, if it is on a WSL backend."
+  (when (kittymacs-remote--direnv-p default-directory)
+    (setq-local envrc-remote t
+                envrc-supported-tramp-methods (list (file-remote-p default-directory 'method)))))
+;; Before `envrc-global-mode-enable-in-buffer', which is at the default depth.
+(add-hook 'after-change-major-mode-hook #'kittymacs--remote-envrc-on-wsl -50)
+
+(defun kittymacs--remote-envrc-export (export)
+  "Call EXPORT, which starts direnv, so that direnv runs on the WSL backend."
+  (if (kittymacs-remote--direnv-p default-directory)
+      (let ((make-process-original (symbol-function 'make-process)))
+        (cl-letf (((symbol-function 'make-process)
+                   (lambda (&rest args)
+                     (apply make-process-original :file-handler t :connection-type 'pipe args))))
+          (funcall export)))
+    (funcall export)))
+
+(defvar kittymacs-remote--envrc-variables nil
+  "Each NAME=VALUE that direnv has set on a WSL backend in this session.")
+
+(defun kittymacs--remote-envrc-apply (buffer result)
+  "Give BUFFER's processes RESULT from direnv, if BUFFER is on a WSL backend."
+  (with-current-buffer buffer
+    (when (and result (listp result) (kittymacs-remote--direnv-p default-directory))
+      (setq-local process-environment
+                  (envrc--merged-environment (default-value 'process-environment) result))
+      (pcase-dolist (`(,name . ,value) result)
+        (when value
+          (cl-pushnew (concat name "=" value) kittymacs-remote--envrc-variables
+                      :test #'equal))))))
+
+(defun kittymacs--remote-envrc-variable-local-p (original variable)
+  "Call ORIGINAL on VARIABLE, unless it is one that direnv set on a WSL backend.
+This asks about the variable, and not about the buffer or its directory,
+because a direct process rebinds the directory, and `shell-command' runs
+from a new buffer."
+  (and (not (member variable kittymacs-remote--envrc-variables))
+       (funcall original variable)))
+
+(with-eval-after-load 'envrc
+  (advice-add 'envrc--direnv-export :around #'kittymacs--remote-envrc-export)
+  (advice-add 'envrc--apply :after #'kittymacs--remote-envrc-apply))
+(with-eval-after-load 'tramp
+  (advice-add 'tramp-local-environment-variable-p :around
+              #'kittymacs--remote-envrc-variable-local-p))
 (setopt remote-file-name-inhibit-auto-save-visited t
         remote-file-name-inhibit-auto-save t)
 

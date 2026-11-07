@@ -390,6 +390,60 @@ just saved does not exist, and these tests are about what reached the disk."
       (kittymacs-remote-start-value 'local-auto-save-file
         (progn (auto-save-mode 1) (and buffer-auto-save-file-name t))))))
 
+(defun kittymacs-remote-start--wsl-direnv (root)
+  "A file under a `.envrc' on a stand-in for a WSL distribution, under ROOT.
+It uses the real direnv, not the one `kittymacs-remote-start--fake-programs' adds."
+  (dolist (backend '("wsl" "here"))
+    (kittymacs-remote-start-value (intern (concat "direnv-doctor-" backend))
+      (save-window-excursion
+        (kittymacs-backend-doctor backend)
+        (with-current-buffer "*kittymacs backend*" (buffer-string)))))
+  (kittymacs-remote-start-value 'direnv-name-reading
+    (mapcar #'kittymacs-remote--wsl-distribution
+            '("/wslm:Ubuntu-24.04:/home/me/" "/wslm:me@Ubuntu-24.04:/home/me/"
+              "/wslm:Nowhere:/hung/" "/ssh:build:/home/me/" "/home/me/" "/wslm:no-colon" nil)))
+  (kittymacs-remote-start-value 'direnv-other-machine
+    (with-temp-buffer
+      (setq default-directory (kittymacs-backend-root "here"))
+      (normal-mode)
+      (bound-and-true-p envrc-mode)))
+  (when-let* ((direnv (let ((exec-path (seq-remove (lambda (directory)
+                                                     (string-search "local-bin" directory))
+                                                   exec-path)))
+                        (executable-find "direnv"))))
+    (let* ((local (make-temp-file "kittymacs-direnv-" t))
+           (name (concat root (string-remove-prefix "/tmp/" local) "/"))
+           (report "echo [$KITTYMACS_ENVRC_PROBE]"))
+      (with-temp-file (expand-file-name ".envrc" local)
+        (insert "export KITTYMACS_ENVRC_PROBE=reached\n"))
+      (with-temp-file (expand-file-name "file" local) (insert "hello\n"))
+      (let ((default-directory (file-name-as-directory local)))
+        (call-process direnv nil nil nil "allow"))
+      (setq-default envrc-direnv-executable direnv)
+      (with-current-buffer (find-file-noselect (concat name "file"))
+        (kittymacs-remote-start-value 'direnv-mode (bound-and-true-p envrc-mode))
+        (let ((end (+ (float-time) 30)))
+          (while (and (memq (bound-and-true-p envrc--status) '(nil running none))
+                      (< (float-time) end))
+            (accept-process-output nil 0.1)
+            (envrc--get-current-env-or-run-direnv)))
+        (kittymacs-remote-start-value 'direnv-status (bound-and-true-p envrc--status))
+        (kittymacs-remote-start-value 'direnv-process-file
+          (let ((output (generate-new-buffer " *direnv through the shell*")))
+            (process-file "/bin/sh" nil output nil "-c" report)
+            (string-trim (with-current-buffer output (buffer-string)))))
+        (kittymacs-remote-start-value 'direnv-shell-command
+          (string-trim (shell-command-to-string report)))
+        (kittymacs-remote-start-value 'direnv-direct-process
+          (let* ((output (generate-new-buffer " *direnv direct*"))
+                 (process (make-process :name "direnv-direct" :buffer output :noquery t
+                                        :file-handler t :connection-type 'pipe
+                                        :command (list "/bin/sh" "-c" report)))
+                 (end (+ (float-time) 20)))
+            (while (and (process-live-p process) (< (float-time) end))
+              (accept-process-output process 0.1))
+            (string-trim (with-current-buffer output (buffer-string)))))))))
+
 (defun kittymacs-remote-start--wsl ()
   "The `wsl' transport: refused without `wsl.exe', and connecting through a stand-in."
   (kittymacs-remote-start-value 'wsl-refused
@@ -430,7 +484,16 @@ just saved does not exist, and these tests are about what reached the disk."
       (let ((tramp-connection-timeout 10)
             (name (concat "/" kittymacs-remote-wsl-method ":Nosuch-24.04:/tmp")))
         (condition-case _ (file-exists-p name)
-          (error nil))))))
+          (error nil)))))
+  ;; Outside that `let': Tramp passes what differs from the top-level value of
+  ;; `process-environment', and a `let' there would make every variable differ.
+  (let* ((bin (kittymacs-remote-fixture-wsl-exe))
+         (path (getenv "PATH"))
+         (exec-path (cons bin exec-path)))
+    (setenv "PATH" (concat bin path-separator path))
+    (unwind-protect
+        (kittymacs-remote-start--wsl-direnv (kittymacs-backend-root "wsl"))
+      (setenv "PATH" path))))
 
 (defun kittymacs-remote-start--terminal ()
   "What `SPC o e' opens: on a remote machine, that machine's, in a buffer of its own."

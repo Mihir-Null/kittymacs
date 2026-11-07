@@ -328,8 +328,20 @@ A command, or a function taking the key's ARGS."
 - An X window's buffer is named after its program and title, =Google-chrome: Inbox=, so =C-x b= and Consult find it by either.
 - =exwm-wm-mode= waits for =window-setup-hook= when called while the first frame is still being set up, so it can be turned on from here.
 - =C-x=, =C-h=, =M-x= and the other prefix keys reach Emacs even from an X window ([[https://github.com/emacs-exwm/exwm/wiki][EXWM's wiki]]); =C-q= sends the next key to the program instead.
+- A key whose modifier the X server lacks must not stop EXWM.
+  + =xcb:keysyms:event->keysyms= documents =((0 . 0))= for a key it cannot convert, and EXWM warns "Key unavailable" on that value.
+  + With no mask for a modifier, it returns nil instead, and EXWM's arithmetic on that turns EXWM off, leaving a plain frame.
+  + An xorgxrdp session can start like that, because it rebuilds the keyboard about 2 s in, and a bare X server has no Hyper at all.
+  + So a filter reads nil as the documented value.
+  + EXWM's input code treats that value as a failed key, and its input-method code sends key 0 where nil would signal an error.
+  + The =H-= keys are dead while the modifier is missing, with a warning for each, and the rest of EXWM works.
+  + When the modifier returns, xelb reads the new masks and EXWM grabs the keys again, so a session that reloads its keymap gets them back.
 
 #+begin_src emacs-lisp
+
+(defun kittymacs-exwm--keysyms-or-failure (keysyms)
+  "Return KEYSYMS, or what `xcb:keysyms:event->keysyms' documents for a failure."
+  (or keysyms '((0 . 0))))
 
 ;; `when' rather than `:if': `use-package' installs before it reads `:if', so
 ;; every machine would download a window manager it cannot use.
@@ -340,6 +352,8 @@ A command, or a function taking the key's ARGS."
     :custom
     (exwm-workspace-number 4)
     :config
+    (advice-add 'xcb:keysyms:event->keysyms :filter-return
+                #'kittymacs-exwm--keysyms-or-failure)
     (kittymacs-exwm-apply-keys)
     (add-hook 'exwm-update-class-hook
               (lambda () (exwm-workspace-rename-buffer exwm-class-name)))
@@ -391,3 +405,5 @@ A command, or a function taking the key's ARGS."
 - =H-S= in Chrome: it vanishes; =H-s= brings it back floating, and again hides it.
 - =C-h k H-w=: =kittymacs-exwm-close=, from the table.
 - In an Emacs started any other way: =M-: kittymacs-exwm= is =nil=, and =(featurep 'exwm)= is =nil=.
+- On an X server with no Hyper modifier, =*Warnings*= says "Key unavailable" for each =H-= key, and =M-: exwm-wm-mode= is still =t=.
+- =just test= runs [[file:../tests/kittymacs-exwm-tests.el][the EXWM tests]], with stand-ins for EXWM and xelb.

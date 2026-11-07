@@ -145,6 +145,7 @@ in
         line "Host layer" "$directory:''${files:- nothing}"
       done
 
+      tool_missing=
       needs() {
         [ -z "$selection_known" ] || [ "$1" = - ] || [[ " $features " == *" $1 "* ]]
       }
@@ -154,6 +155,7 @@ in
             line Tool "$command"
           else
             line Tool "$command is missing, and ''${feature/#-/every start} would use it"
+            tool_missing=yes
           fi
         fi
       done <<'EOF'
@@ -161,6 +163,10 @@ in
         entry: "${if entry.feature == null then "-" else entry.feature} ${entry.command}"
       ) tools.commands}
       EOF
+
+      if [ -n "$tool_missing" ]; then
+        line Hint "on Nix, select its feature in programs.kittymacs, or add the tool to home.packages"
+      fi
 
       exit "$problems"
     '';

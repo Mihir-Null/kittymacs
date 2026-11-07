@@ -188,6 +188,14 @@ rec {
     else
       cfg.package;
 
+  # The features a module installs tools for.
+  toolFeatures =
+    system: cfg:
+    let
+      features = enabled system cfg;
+    in
+    if features == null then profileFeatures system "full" else features;
+
   assertions =
     { cfg, usesPackage }:
     let

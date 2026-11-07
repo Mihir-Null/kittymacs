@@ -58,8 +58,25 @@ let
   hostLayerNames =
     config: lib.filter (lib.hasPrefix "kittymacs/") (builtins.attrNames config.environment.etc);
 
+  allTools = map (entry: entry.name) tools.commands;
+  toolsOf =
+    feature: map (entry: entry.name) (lib.filter (entry: entry.feature == feature) tools.commands);
+  installedTools =
+    config: lib.filter (name: lib.elem name allTools) (namesOf config.environment.systemPackages);
+  sameNames = a: b: lib.sort lib.lessThan a == lib.sort lib.lessThan b;
+
   plain = nixos { };
   chosen = nixos { profile = "minimal"; };
+  noPdf = nixos { features.pdf-reading.enable = false; };
+  minimalPdf = nixos {
+    profile = "minimal";
+    features.pdf-reading.enable = true;
+  };
+  backend = nixos { backend.enable = true; };
+  backendMinimal = nixos {
+    backend.enable = true;
+    profile = "minimal";
+  };
   old = nixos { package = standIn "30.2"; };
   oldBackend = nixos {
     package = standIn "30.2";
@@ -105,6 +122,18 @@ in
     && !(lib.elem "tramp-rpc-server" backendTools)
     && lib.elem "tramp-rpc-server" (packagesOfHost on)
     && !(lib.elem "tramp-rpc-server" (packagesOfHost unasked))
+  );
+
+  tools-follow-selection = check "tools-follow-selection" (
+    toolsOf "pdf-reading" != [ ]
+    && toolsOf "jupyter" != [ ]
+    && sameNames (installedTools plain) (lib.subtractLists (toolsOf "jupyter") allTools)
+    && sameNames (installedTools noPdf) (
+      lib.subtractLists (toolsOf "pdf-reading" ++ toolsOf "jupyter") allTools
+    )
+    && sameNames (installedTools chosen) minimalTools
+    && sameNames (installedTools minimalPdf) (minimalTools ++ toolsOf "pdf-reading")
+    && namesOf backend.environment.systemPackages == namesOf backendMinimal.environment.systemPackages
   );
 
   system-module = check "system-module" (
