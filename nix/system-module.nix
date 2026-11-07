@@ -15,6 +15,7 @@ let
     emacs = cfg.package;
   };
   emacs = selection.emacsFor (selection.systemType pkgs) cfg;
+  features = selection.toolFeatures (selection.systemType pkgs) cfg;
 in
 {
   options.programs.kittymacs = selection.options // {
@@ -75,8 +76,10 @@ in
       if cfg.backend.enable then
         tools.backendPrograms
       else
-        [ emacs ] ++ tools.programs ++ lib.optional cfg.suggestions.enable cfg.suggestions.package;
-    fonts.packages = lib.optionals (!cfg.backend.enable) tools.fonts;
+        [ emacs ]
+        ++ tools.programsFor features
+        ++ lib.optional cfg.suggestions.enable cfg.suggestions.package;
+    fonts.packages = lib.optionals (!cfg.backend.enable) (tools.fontsFor features);
 
     environment.etc = lib.mapAttrs' (
       file: text: lib.nameValuePair "kittymacs/conf.d/${file}" { inherit text; }
