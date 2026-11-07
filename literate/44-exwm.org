@@ -334,7 +334,8 @@ A command, or a function taking the key's ARGS."
   + An xorgxrdp session can start like that, because it rebuilds the keyboard about 2 s in, and a bare X server has no Hyper at all.
   + So a filter reads nil as the documented value.
   + EXWM's input code treats that value as a failed key, and its input-method code sends key 0 where nil would signal an error.
-  + The =H-= keys stay dead in that session, with a warning for each, and the rest of EXWM works.
+  + The =H-= keys are dead while the modifier is missing, with a warning for each, and the rest of EXWM works.
+  + When the modifier returns, xelb reads the new masks and EXWM grabs the keys again, so a session that reloads its keymap gets them back.
 
 #+begin_src emacs-lisp
 
