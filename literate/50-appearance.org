@@ -335,12 +335,19 @@ A `doom-' theme needs the `doom-look' feature; without it, `modus-operandi'."
 |--------------------------+------------------------------------------------------------|
 | =spacious-padding=       | a little padding around the frame                          |
 | =pulse= on scroll, recenter and window change | the current line pulses when you change window or page |
+| =pulse= after a jump, with =ui-polish= | the line pulses where Avy, Consult, a mark or =next-error= lands |
 | =hl-todo=, =highlight-numbers= | =TODO=, =FIXME= and numbers stand out in code        |
 | =goggles=                | recent edits flash briefly, so you see what a command changed |
 | =outline-minor-faces=    | Lisp outline headings get heading faces                    |
 
 - The cursor shows only in the selected window.
 - =SPC s t= lists the =TODO= and =FIXME= keywords in this buffer.
+- A jump can land anywhere, so =kittymacs-pulse-jumps-mode= shows where it landed, with the same pulse and no new package.
+  + It belongs to =ui-polish=, because the pulse on scrolling has no feature of its own, and this row of the table is that feature's work: =minimal= keeps the three commands it had.
+  + =SPC t j= turns it off and on in the running session, to compare.
+  + =advice-add= needs no library loaded, and leaves a command that is not there undefined, so naming Avy here loads nothing and defines nothing.
+  + Marks mean =pop-to-mark-command= and =pop-global-mark=, and =next-error= is its own hook, because a compilation, Flymake's list or an Occur buffer can each run it.
+  + The list holds only commands this configuration binds, and [[file:../tests/kittymacs-theme-tests.el][the theme tests]] fail on any other.
 
 #+begin_src emacs-lisp
 (when (kittymacs-feature-p 'ui-polish)
@@ -370,7 +377,30 @@ A `doom-' theme needs the `doom-look' feature; without it, `modus-operandi'."
 ;; Every change of window, by `other-window', a mouse click or a leader key.
 (add-hook 'window-selection-change-functions #'kittymacs--pulse-line)
 
+(defconst kittymacs-pulse-jump-commands
+  '(avy-goto-char-timer avy-goto-line avy-goto-word-1 avy-goto-symbol-1
+    avy-goto-end-of-line avy-goto-char-in-line
+    consult-line consult-line-multi consult-goto-line consult-imenu consult-outline
+    consult-mark consult-global-mark consult-ripgrep consult-flymake consult-org-heading
+    pop-to-mark-command pop-global-mark)
+  "The commands after which `kittymacs-pulse-jumps-mode' pulses the line.")
+
+(define-minor-mode kittymacs-pulse-jumps-mode
+  "Pulse the current line after a jump, so you can see where it landed."
+  :global t
+  :group 'kittymacs-ui
+  (dolist (command kittymacs-pulse-jump-commands)
+    (if kittymacs-pulse-jumps-mode
+        (advice-add command :after #'kittymacs--pulse-line)
+      (advice-remove command #'kittymacs--pulse-line)))
+  (if kittymacs-pulse-jumps-mode
+      (add-hook 'next-error-hook #'kittymacs--pulse-line)
+    (remove-hook 'next-error-hook #'kittymacs--pulse-line)))
+
 (when (kittymacs-feature-p 'ui-polish)
+  (kittymacs-pulse-jumps-mode 1)
+  (keymap-set kittymacs-toggle-map "j" (cons "pulse after jumps" #'kittymacs-pulse-jumps-mode))
+
   (use-package hl-todo
     :ensure t
     :hook ((prog-mode markdown-mode markdown-ts-mode) . hl-todo-mode))
@@ -467,6 +497,7 @@ A function on `flyspell-incorrect-hook': non-nil leaves the word unmarked."
 - =SPC t t= flips to the light theme and back; colours never mix.
 - =SPC t w= in an Org file hides everything but the text; =SPC t w= again brings it back.
 - =SPC t H= hides only the mode line.
+- With =ui-polish=: =SPC j l= to a line, then =SPC b m= to a mark: the line pulses each time; =SPC t j=, then the same: nothing pulses.
 - =C-x C-+= grows the text one step; =C-x C-0= resets.
 - =SPC f f=: icons beside the candidates, or none at all on a machine without the icon font.
 - Set =kittymacs-icons= to =nil= in =private.el= to run without icon fonts.

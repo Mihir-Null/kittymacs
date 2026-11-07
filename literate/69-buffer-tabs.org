@@ -1,0 +1,150 @@
+:PROPERTIES:
+:ID: c696355a-0086-4c84-8017-b520cf934d77
+:END:
+
+#+TITLE: Buffer tabs per window
+#+FILETAGS: :interface:
+#+STARTUP: overview
+#+PROPERTY: header-args:emacs-lisp :tangle ../lisp/kittymacs-buffer-tabs.el :eval never :comments no :padline no :mkdirp yes
+
+- A trial, so the owner can decide whether each window should list its buffers as tabs: the =buffer-tabs= feature, =optional= in [[id:3f8a6c02-9d14-4b7e-a2c5-1e7d90b64f31][the catalogue]], and off under every profile.
+  + Onboarding offers it by itself.
+  + =(setopt kittymacs-features '(buffer-tabs))= in =private.el= is the other way to turn it on.
+- [[id:40302e33-d2b2-4c0b-9bc3-1f9e121307e1][The startup chapter]] loads this whole chapter behind that feature, so with it off nothing here exists.
+- It installs nothing: Emacs's own =tab-line= draws the tabs, with its =tab-line-tabs-buffer-groups=.
+- It gives you:
+  + one line of tabs above each window, for the buffers of the current buffer's group, most recent first;
+  + a tab that names the group, which lists the groups when you click it;
+  + =C-<tab>= and =C-S-<tab>= for the next and previous tab;
+  + =SPC t b=, which turns the tabs off and on in the running session, to compare.
+- The grouping comes from the owner's earlier branch.
+- [[id:e4d65984-892d-4046-b718-d4265ab74215][The workspaces]] stay a separate layer: a tab there is a window layout, and a tab here is a buffer in one window.
+
+* The groups
+:PROPERTIES:
+:ID: 3b7f92c6-48de-4e15-a0c7-65d1e8f2094b
+:END:
+
+| Group    | Major modes, and the modes derived from them                                           |
+|----------+----------------------------------------------------------------------------------------|
+| Tools    | =dired-mode=, =magit-mode=, =help-mode=, =helpful-mode=, =Info-mode=, =compilation-mode=, =special-mode= |
+| Terminal | =eshell-mode=, =shell-mode=, =term-mode=, =comint-mode=, =ghostel-mode=                 |
+| Config   | =conf-mode=                                                                            |
+| Docs     | =org-mode=, =markdown-mode=, =text-mode=                                               |
+| Code     | =prog-mode=                                                                            |
+| Buffers  | everything else                                                                        |
+
+- The first row that fits wins, so a configuration file is Config, even in a text mode.
+- Both lists keep =tab-line-tabs-buffer-list='s order, which starts from this window's own history, so the sort functions are nil.
+- Most recent first would stop =C-<tab>= from ever getting past two buffers, since each press puts the new buffer first and the old one second.
+  + So the order stays as it was while one =C-<tab>= or =C-S-<tab>= follows another, and the buffer you stop on takes the front at the next command.
+- Tabs show a name of up to 24 characters, through =tab-line-tab-name-truncated-buffer=, and Emacs's own face marks a modified buffer.
+- No close or new-tab buttons: =SPC b k= and =SPC f f= already do those jobs, and each button takes room on a short line.
+
+* Which buffers get a tab
+
+- A name that starts with a space is a buffer nobody chose, so =tab-line-tabs-buffer-list= leaves it out, which also leaves out which-key's, Treemacs's and every other internal buffer.
+- =*Messages*= and =*Completions*= stay out too, though both can be selected, because neither is somewhere you work.
+- While =tabspaces-mode= is on, a tab shows only the current workspace's buffers, or a workspace would list every other project's files.
+- =dashboard-mode= and =completion-list-mode= draw no tab line of their own, because neither is a window you switch between buffers in.
+
+* No cost on a remote file
+
+- Emacs asks for the list of tabs on every redisplay, so anything slow here would be slow all the time.
+- The group comes from =major-mode=, a variable, and from no file or directory.
+  + Grouping by project would be a mistake on this path: =tab-line-tabs-buffer-group-by-project= calls =project-current= for each buffer on each redisplay, and on a remote buffer that asks the connection.
+- [[file:../tests/kittymacs-buffer-tabs-tests.el][The tests]] draw the tabs among buffers on a fake machine, with a file handler that fails if anyone calls it.
+
+#+begin_src emacs-lisp
+;;; kittymacs-buffer-tabs.el --- Grouped buffer tabs in each window -*- lexical-binding: t; -*-
+;; Generated from literate/69-buffer-tabs.org; edit the Org source, then tangle.
+
+;;; Code:
+
+(require 'seq)
+(require 'tab-line)
+(require 'kittymacs-leader)
+
+(declare-function tabspaces--local-buffer-p "tabspaces" (buffer))
+
+(defconst kittymacs-buffer-tabs-groups
+  '(("Tools" dired-mode magit-mode help-mode helpful-mode Info-mode compilation-mode special-mode)
+    ("Terminal" eshell-mode shell-mode term-mode comint-mode ghostel-mode)
+    ("Config" conf-mode)
+    ("Docs" org-mode markdown-mode text-mode)
+    ("Code" prog-mode))
+  "Each group's name and its major modes; the first that fits wins.")
+
+(defun kittymacs-buffer-tabs-group (&optional buffer)
+  "Return the group of BUFFER, or of the current buffer."
+  (let ((mode (buffer-local-value 'major-mode (or buffer (current-buffer)))))
+    (or (car (seq-find (lambda (group) (provided-mode-derived-p mode (cdr group)))
+                       kittymacs-buffer-tabs-groups))
+        "Buffers")))
+
+(defconst kittymacs-buffer-tabs--cycling
+  '(tab-line-switch-to-next-tab tab-line-switch-to-prev-tab)
+  "The commands that move along the tabs, during which the order stays.")
+
+(defun kittymacs-buffer-tabs--fresh ()
+  "Return the buffers that get a tab, starting from this window's own history."
+  (seq-filter (lambda (buffer)
+                (and (not (member (buffer-name buffer) '("*Messages*" "*Completions*")))
+                     (or (not (bound-and-true-p tabspaces-mode))
+                         (tabspaces--local-buffer-p buffer))))
+              (tab-line-tabs-buffer-list)))
+
+(defun kittymacs-buffer-tabs-list ()
+  "Return this window's tabs, in the order they had if a tab move is under way."
+  (let ((kept (window-parameter nil 'kittymacs-buffer-tabs-order)))
+    (if (and kept (or (memq this-command kittymacs-buffer-tabs--cycling)
+                      (and (null this-command)
+                           (memq last-command kittymacs-buffer-tabs--cycling))))
+        (seq-filter #'buffer-live-p kept)
+      (set-window-parameter nil 'kittymacs-buffer-tabs-order (kittymacs-buffer-tabs--fresh)))))
+
+(setopt tab-line-tabs-function #'tab-line-tabs-buffer-groups
+        tab-line-tabs-buffer-list-function #'kittymacs-buffer-tabs-list
+        tab-line-tabs-buffer-group-function #'kittymacs-buffer-tabs-group
+        tab-line-tabs-buffer-group-sort-function nil
+        tab-line-tabs-buffer-groups-sort-function nil
+        tab-line-tab-name-function #'tab-line-tab-name-truncated-buffer
+        tab-line-tab-name-truncated-max 24
+        tab-line-close-button-show nil
+        tab-line-new-button-show nil
+        tab-line-exclude-modes (append '(dashboard-mode) tab-line-exclude-modes))
+
+#+end_src
+
+* The keys, and the window manager
+
+- =SPC t b= is =global-tab-line-mode= itself, and so is =toggle-tabbed= in [[id:86fcd506-34c8-476d-8903-acbef46275bf][the EXWM chapter]].
+  + The two keys agree, because each presses the same switch, and a session started with this feature has the tabs on, so =toggle-tabbed= turns them off first.
+  + With this feature off, =toggle-tabbed= shows Emacs's own tabs, one per buffer of the window, as it always has.
+- =C-<tab>= and =C-S-<tab>= live in =tab-line-mode-map=, which is active only where the tabs show.
+  + =C-<iso-lefttab>= and =C-S-<iso-lefttab>= are the same reverse key, as X reports it.
+  + Selecting this feature takes =C-<tab>= from what a major mode binds there: Magit's =magit-section-cycle= and Org's =org-force-cycle-archived=, for as long as the tabs are on.
+
+#+begin_src emacs-lisp
+(keymap-set tab-line-mode-map "C-<tab>" #'tab-line-switch-to-next-tab)
+(keymap-set tab-line-mode-map "C-S-<tab>" #'tab-line-switch-to-prev-tab)
+(keymap-set tab-line-mode-map "C-<iso-lefttab>" #'tab-line-switch-to-prev-tab)
+(keymap-set tab-line-mode-map "C-S-<iso-lefttab>" #'tab-line-switch-to-prev-tab)
+
+(keymap-set kittymacs-toggle-map "b" (cons "buffer tabs" #'global-tab-line-mode))
+(global-tab-line-mode 1)
+
+(provide 'kittymacs-buffer-tabs)
+;;; kittymacs-buffer-tabs.el ends here
+#+end_src
+
+* Check
+
+- =just test= runs [[file:../tests/kittymacs-buffer-tabs-tests.el][its tests]], which need no packages: the groups, what stays out, the keys and the remote buffers.
+- =just test-features= starts Emacs with this feature on, and every other selection with it off; a start fails if this module loads with the feature off.
+- With =(setopt kittymacs-features '(buffer-tabs))=:
+  + open a few files and a Dired buffer: each window shows the buffers of its group, most recent first;
+  + =C-<tab>= moves along them, past every buffer of the group; =C-S-<tab>= moves back;
+  + click the tab that names the group: the groups show, and one more click opens a group;
+  + =SPC t b=: the line goes, and =C-<tab>= is whatever the major mode has it as.
+- Open a file over Tramp and pull the cable: the tabs still draw.

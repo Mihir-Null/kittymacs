@@ -11,6 +11,7 @@
 (defvar kittymacs-localleader-alist)
 (defvar kittymacs-user-map)
 (defvar kittymacs-scratch-file)
+(defvar kittymacs-pulse-jumps-mode)
 (declare-function kittymacs--save-scratch "kittymacs-defaults" ())
 (declare-function kittymacs-feature-p "kittymacs-features" (feature))
 (declare-function kittymacs-features-enabled "kittymacs-features" ())
@@ -26,7 +27,12 @@
     (pdf-reading . kittymacs-reading)
     (notebooks . kittymacs-notebooks)
     (agents . kittymacs-agents)
-    (suggestions . kittymacs-suggestions))
+    (suggestions . kittymacs-suggestions)
+    (smooth-scroll . kittymacs-smooth-scroll)
+    (hover-docs . kittymacs-hover-docs)
+    (which-key-frame . kittymacs-which-key-frame)
+    (buffer-tabs . kittymacs-buffer-tabs)
+    (meow-state-cursor . kittymacs-meow-state-cursor))
   "The features `init.el' loads a whole chapter for, and that chapter's module.")
 
 (defun kittymacs-check--binding (binding)
@@ -165,6 +171,9 @@ Batch `format-mode-line' returns nothing, so this reads the option it obeys."
        (list "A batch start saved *scratch*, so a new user would miss the pointer"))
      (when which-key-allow-imprecise-window-fit
        (list "which-key may clip text: the imprecise window fit is on"))
+     (unless (eq (and kittymacs-pulse-jumps-mode t) (kittymacs-feature-p 'ui-polish))
+       (list (format "The pulse after a jump is %S, and ui-polish is %S"
+                     kittymacs-pulse-jumps-mode (kittymacs-feature-p 'ui-polish))))
      (if (kittymacs-feature-p 'doom-look)
          (when collapse (list "doom-look is on, and the minor modes are collapsed"))
        (unless (and (eq (car-safe collapse) 'not)
@@ -177,6 +186,13 @@ Batch `format-mode-line' returns nothing, so this reads the option it obeys."
                     (string-match-p "\\`;; SPC .* SPC C o .*\n\n\\'" pointer)
                     (commandp (kittymacs-check--binding key)))
          (list (format "*scratch* has no valid pointer: %S, SPC C o is %S" pointer key)))))))
+
+(defun kittymacs-check-chapters-off ()
+  "Return the chapters that loaded although their feature is off."
+  (mapcar #'cdr (seq-filter (lambda (entry)
+                              (and (not (kittymacs-feature-p (car entry)))
+                                   (featurep (cdr entry))))
+                            kittymacs-check-chapter-features)))
 
 (defun kittymacs-check-msys2-inactive ()
   "Return what shows the MSYS2 module at work while its feature is off."
@@ -197,6 +213,8 @@ Batch `format-mode-line' returns nothing, so this reads the option it obeys."
   "Return what is wrong after any start: dead keys, empty groups, Org and Tramp."
   (append
    (kittymacs-check-first-look)
+   (mapcar (lambda (chapter) (format "%s loaded, and its feature is off" chapter))
+           (kittymacs-check-chapters-off))
    (kittymacs-check-msys2-inactive)
    (mapcar (lambda (binding) (format "SPC %s is not a command" binding))
            (kittymacs-check-uncallable-bindings kittymacs-leader-map []))
