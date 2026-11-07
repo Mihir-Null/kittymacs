@@ -724,7 +724,7 @@ This reads the name, and never connects."
     (funcall export)))
 
 (defvar-local kittymacs-remote--envrc-applied nil
-  "Non-nil in a buffer on a WSL backend whose `process-environment' came from direnv.")
+  "Non-nil in a buffer on a WSL backend with direnv's `process-environment'.")
 
 (defun kittymacs--remote-envrc-apply (buffer result)
   "Give BUFFER's processes RESULT from direnv, if BUFFER is on a WSL backend."
