@@ -723,17 +723,22 @@ This reads the name, and never connects."
           (funcall export)))
     (funcall export)))
 
+(defvar-local kittymacs-remote--envrc-applied nil
+  "Non-nil in a buffer on a WSL backend whose `process-environment' came from direnv.")
+
 (defun kittymacs--remote-envrc-apply (buffer result)
   "Give BUFFER's processes RESULT from direnv, if BUFFER is on a WSL backend."
   (with-current-buffer buffer
+    (setq kittymacs-remote--envrc-applied nil)
     (when (and result (listp result) (kittymacs-remote--direnv-p default-directory))
       (setq-local process-environment
-                  (envrc--merged-environment (default-value 'process-environment) result)))))
+                  (envrc--merged-environment (default-value 'process-environment) result))
+      (setq kittymacs-remote--envrc-applied t))))
 
 (defun kittymacs--remote-envrc-variable-local-p (original variable)
-  "Call ORIGINAL on VARIABLE, or compare with the global value in a direnv buffer."
-  (if (and (bound-and-true-p envrc-mode)
-           (kittymacs-remote--direnv-p default-directory))
+  "Call ORIGINAL on VARIABLE, or compare with the global value in a direnv buffer.
+This asks the buffer and not its directory, which a direct process has rebound."
+  (if kittymacs-remote--envrc-applied
       (member variable (default-toplevel-value 'process-environment))
     (funcall original variable)))
 

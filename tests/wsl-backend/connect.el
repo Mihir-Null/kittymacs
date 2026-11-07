@@ -642,14 +642,17 @@ pipe want different ones.  Signals after LIMIT seconds."
                                              :file-handler t :connection-type 'pipe
                                              :command (list "/bin/sh" "-c" report))))
                  (wsl-backend-wait-for process "done" 30)))
-              (shell-command (shell-command-to-string report)))
+              (shell-command (shell-command-to-string report))
+              (tramp-list (getenv-internal "KITTYMACS_ENVRC_PROBE"
+                                           tramp-remote-process-environment)))
          (kill-buffer)
          (pcase-dolist (`(,name . ,seen) `(("process-file" . ,through-shell)
                                            ("a direct process" . ,direct)
                                            ("shell-command" . ,shell-command)))
            (unless (string-search "[reached]" seen)
-             (error "%s saw %S" name seen)))
-         "process-file, a direct process and shell-command")))))
+             (error "%s saw %S, and Tramp's list has %S" name seen tramp-list)))
+         (format "process-file, a direct process and shell-command; Tramp's list has %S"
+                 tramp-list))))))
 
 (wsl-backend-check
  "direnv: a file opens with it off, in a stopped distribution" 120
