@@ -514,6 +514,72 @@ A request installs the package it names."
               (should (get-buffer-window log t)))
           (kill-buffer log))))))
 
+(defvar native-comp-async-report-warnings-errors)
+(defvar package-user-dir)
+(defvar package-directory-list)
+
+(defmacro kittymacs-features-test--with-native-reports (value &rest body)
+  "Run BODY with VALUE as the report setting, in a start that has delayed reports.
+A package's file and the owner's file are on `load-path'; one other is nowhere."
+  (declare (indent 1))
+  `(let* ((noninteractive nil)
+          (after-init-time nil)
+          (delayed-warnings-list nil)
+          (warning-minimum-level :warning)
+          (warning-suppress-types nil)
+          (native-comp-async-report-warnings-errors ,value)
+          (root (make-temp-file "kittymacs-native" t))
+          (package-user-dir (expand-file-name "elpa" root))
+          (package-directory-list nil)
+          (package (expand-file-name "a-package" package-user-dir))
+          (own (expand-file-name "lisp" root))
+          (load-path (append (list own package) load-path)))
+     (when (get-buffer "*Warnings*") (kill-buffer "*Warnings*"))
+     (make-directory package t)
+     (make-directory own t)
+     (write-region "" nil (expand-file-name "kittymacs-test-package.el" package))
+     (write-region "" nil (expand-file-name "kittymacs-test-own.el" own))
+     (cl-letf (((symbol-function 'sit-for) #'ignore))
+       (save-window-excursion
+         (delete-other-windows)
+         (unwind-protect
+             (progn
+               (display-warning 'native-compiler "kittymacs-test-package.el:1:2: Warning: at a line")
+               (display-warning 'native-compiler "kittymacs-test-package.el: Warning: at no line")
+               (display-warning 'native-compiler "kittymacs-test-own.el:1:2: Warning: own")
+               (display-warning 'native-compiler "kittymacs-test-nowhere.el:1:2: Warning: nowhere")
+               (display-warning 'native-compiler "Cannot write /x.eln; skipping.")
+               (display-warning 'emacs "kittymacs-test-package.el:1:2: another type")
+               (should (= (length delayed-warnings-list) 6))
+               (setq after-init-time (current-time))
+               ,@body)
+           (when (get-buffer "*Warnings*") (kill-buffer "*Warnings*"))
+           (delete-directory root t))))))
+
+(ert-deftest kittymacs-features-a-start-logs-native-reports-on-packages ()
+  "`silent' reaches what a start delayed: only reports on a package's file."
+  (kittymacs-features-test--with-native-reports 'silent
+    (kittymacs-features--log-compile-warnings)
+    (should (seq-set-equal-p (mapcar #'cadr delayed-warnings-list)
+                             '("kittymacs-test-own.el:1:2: Warning: own"
+                               "kittymacs-test-nowhere.el:1:2: Warning: nowhere"
+                               "Cannot write /x.eln; skipping."
+                               "kittymacs-test-package.el:1:2: another type")))
+    (with-current-buffer "*Warnings*"
+      (should (string-match-p "at a line" (buffer-string)))
+      (should (string-match-p "at no line" (buffer-string))))
+    (should-not (get-buffer-window "*Warnings*" t))
+    ;; The reports left behind still raise the panel, as Emacs shows them next.
+    (display-delayed-warnings)
+    (should (get-buffer-window "*Warnings*" t))))
+
+(ert-deftest kittymacs-features-native-reports-stay-unless-silent ()
+  "Another setting is the owner's choice, so every report still shows."
+  (kittymacs-features-test--with-native-reports t
+    (kittymacs-features--log-compile-warnings)
+    (should (= (length delayed-warnings-list) 6))
+    (should-not (get-buffer "*Warnings*"))))
+
 (ert-deftest kittymacs-features-the-hook-runs-before-the-display ()
   "Emacs raises the panel from the same hook, so the order is the fix."
   (should (seq-position delayed-warnings-hook #'kittymacs-features--log-compile-warnings))

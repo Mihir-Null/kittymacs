@@ -372,9 +372,17 @@ names what was asked for and cannot be had."
   + =delayed-warnings-hook= runs just before that: this writes those warnings to the log, with no window, and leaves every other delayed warning alone.
   + The log still fills, for =C-x b= to open, and the same warning after a start raises its panel ([[id:c8c9c239-55c8-456d-8761-0e8cd9e6c1cd][Diagnostics are not editing surfaces]]).
   + A daemon's start is the exception: Emacs does not delay there, and it shows these warnings on the first client's frame.
+- The same start does not raise =*Warnings*= for the native compiler's reports on packages or on Emacs's own files, because =silent= in =early-init.el= misses them.
+  + Emacs applies =silent= only while it reads a report, and during a start =display-warning= delays the report past that, so it arrives as if nobody had chosen =silent=.
+  + So the end of a start applies =silent= itself: such a report goes to =*Warnings*=, with no window.
+  + A report that names any other file still raises the panel, because that file is probably your own code.
+  + So does a report that names no file, such as =Cannot write=, which =silent= never covered.
+  + Any other value of =native-comp-async-report-warnings-errors= leaves them all alone, because it is your choice.
 
 #+begin_src emacs-lisp
 (defvar use-package-ensure-function)
+(defvar package-user-dir)
+(defvar package-directory-list)
 (declare-function package-installed-p "package" (package &optional min-version))
 
 (defvar kittymacs-features--failed nil
@@ -409,11 +417,24 @@ A package that cannot be installed warns, and the rest carry on."
       (unless (package-installed-p package)
         (push package kittymacs-features--failed)))))
 
+(defun kittymacs-features--native-report-on-others-p (warning)
+  "Return non-nil if WARNING is a native compiler report on a package or Emacs."
+  (and (eq (car warning) 'native-compiler)
+       (string-match "\\`\\([^:\n]+\\.el\\)\\(?::[0-9]+:[0-9]+\\)?: " (cadr warning))
+       (when-let* ((file (locate-library (match-string 1 (cadr warning)) t)))
+         (require 'package)
+         (seq-some (lambda (directory) (file-in-directory-p file directory))
+                   (append (list package-user-dir lisp-directory) package-directory-list)))))
+
 (defun kittymacs-features--log-compile-warnings ()
-  "Write the compile warnings a start delayed to their log, with no window."
-  (let ((held (seq-filter (lambda (warning) (equal (nth 3 warning) "*Compile-Log*"))
+  "Write the compile warnings a start delayed to their logs, with no window."
+  (let ((held (seq-filter (lambda (warning)
+                            (or (equal (nth 3 warning) "*Compile-Log*")
+                                (and (eq (bound-and-true-p native-comp-async-report-warnings-errors)
+                                         'silent)
+                                     (kittymacs-features--native-report-on-others-p warning))))
                           delayed-warnings-list))
-        (warning-suppress-types (cons '(bytecomp) warning-suppress-types)))
+        (warning-suppress-types (append '((bytecomp) (native-compiler)) warning-suppress-types)))
     (setq delayed-warnings-list (seq-difference delayed-warnings-list held))
     (dolist (warning (reverse held))
       (apply #'display-warning warning))))
@@ -443,5 +464,6 @@ A package that cannot be installed warns, and the rest carry on."
 - =(setopt kittymacs-features '(jump))= on a machine without Avy: the next start installs it, and =SPC j j= works.
 - =just test= runs [[file:../tests/kittymacs-features-tests.el][the features tests]], which need no packages.
 - A first graphical start in a new checkout: no =*Compile-Log*= window opens, =C-x b *Compile-Log*= shows the log, and compiling a file with a warning afterwards raises the panel.
+  + On =full=, no =*Warnings*= window opens either, and =C-x b *Warnings*= lists the native compiler's reports.
 - CI's =startup= job fails if =just install= prints Embark's reminder, which it can only do when its package cache starts empty.
 - =ls var/started-on-default= on a machine that started with nothing: the file is there, and =M-: (kittymacs-features-profile)= says =minimal=.
