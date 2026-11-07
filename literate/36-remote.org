@@ -662,6 +662,7 @@ A file with line endings keeps them.  This never connects."
 - The next start installs =tramp-rpc= and =msgpack= from Git, and they load only when a =/rpc:= name first appears.
 - Install the server in the distribution, because nothing downloads it for you.
   + =SPC o B= prints the line to run.
+  + With Nix, =programs.kittymacs.backend.rpcServer = true= in the host beside =backend.enable=, or =nix profile install github:Mihir-Null/kittymacs#rpc-server=, gives the same revision ([[id:d25a5063-1439-4ae0-8fbe-b0162d05a0e0][the Nix chapter]]).
   + Without Nix, that line builds from source at the pinned revision with =cargo=, and needs Rust 1.88.
 - Each process Emacs starts there runs a local =cat=, because tramp-rpc pipes its output through one, and it has no fallback.
   + GNU's Emacs ships none, so it comes from Git for Windows, which [[id:af9044c2-44a8-4795-9f1b-2c0d83d66d76][the platform chapter]] already puts on =exec-path=.
@@ -680,6 +681,7 @@ A file with line endings keeps them.  This never connects."
 - To move it:
   + change =kittymacs-remote-rpc-revision= and, if its needs moved, =kittymacs-remote-rpc-msgpack-revision=;
   + delete =var/elpa/tramp-rpc= and =var/elpa/msgpack=, and restart;
+  + change the same revision in =nix/tramp-rpc-server.nix=, since a test fails until the two agree;
   + install the server again, at the new revision;
   + run [[file:../tests/wsl-backend/rpc.el][the hosted job]], since the seam leans on private functions that a release may rename.
 
@@ -946,7 +948,7 @@ person, with what to install for whichever is missing."
            (format "Server   %s\n" (or server "NOT FOUND"))
            (format "cat      %s\n\n" (or cat "NOT FOUND"))
            (unless server
-             (format "On that machine, with Rust 1.88 or later:\n\n  cargo install --locked --root ~/.local --git %s --rev %s tramp-rpc-server\n\nOr set `:server' on the backend, if it is installed where this PATH misses:\n\n  %s\n\n"
+             (format "On that machine, with Nix:\n\n  nix profile install github:Mihir-Null/kittymacs#rpc-server\n\nOr with Rust 1.88 or later:\n\n  cargo install --locked --root ~/.local --git %s --rev %s tramp-rpc-server\n\nOr set `:server' on the backend, if it is installed where this PATH misses:\n\n  %s\n\n"
                      kittymacs-remote-rpc-repository kittymacs-remote-rpc-revision
                      (kittymacs-remote-rpc--path)))
            (unless cat

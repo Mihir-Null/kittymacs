@@ -200,7 +200,7 @@ person, with what to install for whichever is missing."
            (format "Server   %s\n" (or server "NOT FOUND"))
            (format "cat      %s\n\n" (or cat "NOT FOUND"))
            (unless server
-             (format "On that machine, with Rust 1.88 or later:\n\n  cargo install --locked --root ~/.local --git %s --rev %s tramp-rpc-server\n\nOr set `:server' on the backend, if it is installed where this PATH misses:\n\n  %s\n\n"
+             (format "On that machine, with Nix:\n\n  nix profile install github:Mihir-Null/kittymacs#rpc-server\n\nOr with Rust 1.88 or later:\n\n  cargo install --locked --root ~/.local --git %s --rev %s tramp-rpc-server\n\nOr set `:server' on the backend, if it is installed where this PATH misses:\n\n  %s\n\n"
                      kittymacs-remote-rpc-repository kittymacs-remote-rpc-revision
                      (kittymacs-remote-rpc--path)))
            (unless cat
