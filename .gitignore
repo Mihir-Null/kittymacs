@@ -19,3 +19,6 @@
 #*#
 /agent/
 .claude/
+
+# Org writes its cache here when a tool runs from the checkout.
+/org-persist/

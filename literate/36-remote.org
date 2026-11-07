@@ -289,10 +289,12 @@ This only says it: nothing here installs anything."
       (when rpc (princ (plist-get report :text)))
       (when reachable
         (princ (format "Project  %s (%s)\n" root (if exists "exists" "MISSING")))
-        (princ (format "Processes start %s\n\n"
+        (princ (format "Processes start %s\n"
                        (cond (rpc "through tramp-rpc-server")
                              (direct "directly")
                              (t "through Tramp's shell"))))
+        (princ (format "A project's direnv is %s\n\n"
+                       (if (kittymacs-remote--direnv-p root) "on" "off")))
         (pcase-dolist (`(,tool . ,path) tools)
           (princ (format "%-20s %s\n" tool (or path "not found"))))
         (when-let* ((advice (kittymacs-remote--setup-advice tools)))
@@ -860,8 +862,19 @@ which starts `ssh'."
         (apply original vec arguments))
     (apply original vec arguments)))
 
+(defun kittymacs--remote-rpc-direnv-variables (environment)
+  "Return ENVIRONMENT, an alist, with what direnv set that this scope still has.
+`envrc' runs `shell-command' under `inheritenv', which copies the buffer's
+environment over the default that tramp-rpc compares with, so it sees no change."
+  (dolist (entry process-environment environment)
+    (when (and (member entry kittymacs-remote--envrc-variables)
+               (string-match "\\`\\([^=]+\\)=\\(.*\\)\\'" entry)
+               (not (assoc (match-string 1 entry) environment)))
+      (push (cons (match-string 1 entry) (match-string 2 entry)) environment))))
+
 (defconst kittymacs-remote-rpc-private-functions
-  '(tramp-rpc--start-server-process tramp-rpc--connect tramp-rpc--make-pty-process)
+  '(tramp-rpc--start-server-process tramp-rpc--connect tramp-rpc--make-pty-process
+    tramp-rpc--caller-environment)
   "What the seam relies on in tramp-rpc, none of which it promises to keep.")
 
 (defun kittymacs--remote-rpc-refuse (operation &rest arguments)
@@ -890,7 +903,9 @@ backend, or move the seam: see \"Moving the pin\" in the remote chapter."
         (advice-add 'tramp-rpc-file-name-handler :before #'kittymacs--remote-rpc-refuse))
     (advice-add 'tramp-rpc--start-server-process :around #'kittymacs--remote-rpc-start-server)
     (advice-add 'tramp-rpc--connect :around #'kittymacs--remote-rpc-scope)
-    (advice-add 'tramp-rpc--make-pty-process :around #'kittymacs--remote-rpc-scope)))
+    (advice-add 'tramp-rpc--make-pty-process :around #'kittymacs--remote-rpc-scope)
+    (advice-add 'tramp-rpc--caller-environment :filter-return
+                #'kittymacs--remote-rpc-direnv-variables)))
 
 (with-eval-after-load 'tramp-rpc
   (kittymacs-remote-rpc--install))
@@ -1086,6 +1101,7 @@ Not a symbolic link or a file with other names, which replacing would cut off."
 
 - [[file:../tests/wsl-backend/connect.el][The job on real WSL2]] measures the first three rows, so a change in Tramp shows there.
   + =wsl-rpc= gives the same answers, and [[file:../tests/wsl-backend/rpc.el][its own job]] measures them.
+- A =wsl= backend's =.envrc= reaches the first three rows too, from a buffer under it ([[*direnv on a WSL backend]]).
 - =~/.profile= on the machine is the nearest parallel, for =PATH=: one file, on the machine, for that machine.
   + [[*Where a remote program is found]] asks =sh -l= for its =PATH=, and Tramp passes the answer to each process.
   + =sh= reads it, so it uses POSIX syntax and not Bash's.
@@ -1103,6 +1119,90 @@ Not a symbolic link or a file with other names, which replacing would cut off."
  'my-ubuntu-settings '((shell-command-switch . "-lc")))
 (connection-local-set-profiles
  '(:application tramp :protocol "wslm" :machine "Ubuntu-24.04") 'my-ubuntu-settings)
+#+end_src
+
+** direnv on a WSL backend :decision:
+:PROPERTIES:
+:ID: 2f6b1c84-7d39-4e52-a0c6-9b1e3d75f028
+:END:
+
+- A buffer on a WSL backend gets its project's =.envrc= environment, with nothing to set, because that distribution is on this machine and does not drop as a network does.
+- Every other remote buffer stays as it was, because a dead connection there would stall each new buffer.
+- envrc's global mode reads =envrc-remote= and =envrc-supported-tramp-methods= in the buffer it is deciding about, so both are set buffer-locally, before it runs.
+  + =kittymacs-remote--wsl-distribution= decides from the name alone, so a buffer on any other machine connects to nothing.
+  + A host that sets =envrc-remote= for itself keeps what it chose, on other machines.
+- The cost is a stopped distribution: =wsl.exe= has to start it, and opening a file waits until it answers or =C-g=.
+  + That wait is there with direnv off too, and direnv adds its search and its run to it, about 3 s on top of about 5 s on [[file:../tests/wsl-backend/connect.el][the job's runner]].
+  + Once the distribution runs, a file opens in under 0.4 s with direnv's first run, and in about 0.1 s after that, with or without direnv.
+  + A help buffer with that directory pays too.
+- envrc needs three corrections on such a machine, and all apply to these buffers alone.
+  + It starts =direnv export= with =make-process= and no =:file-handler=, as its own "todo tramp?" says, so the program runs on this machine, in no project, and the buffer reads as =on= with nothing in it.
+    Started that way it must also ask for a pipe: tramp-rpc follows =process-connection-type= to a pty, which merges direnv's log into the JSON that envrc reads.
+  + It keeps the result in =tramp-remote-process-environment=, which only a direct process reads, so the result also goes in the buffer's =process-environment=.
+  + From Emacs 31 Tramp treats a buffer's own =process-environment= as this machine's, and passes none of it, so =tramp-local-environment-variable-p= says no for each variable direnv set.
+- =SPC o B= says whether this is on for a backend.
+- =wsl-rpc= adds to that, because tramp-rpc has its own direnv support, =tramp-rpc-use-direnv=.
+  + It runs =direnv export= for each process's directory, keeps the answer for 300 s, and passes only the variables in =tramp-rpc-direnv-essential-vars=, such as =PATH=, so a project's other variables still come through envrc.
+  + It remembers for each connection that direnv is missing, so =SPC o R= after installing it.
+  + =shell-command= runs under envrc's =inheritenv=, which hides the buffer's environment from tramp-rpc's comparison, so [[*The seam][the seam]] adds back what direnv set.
+
+#+begin_src emacs-lisp
+(eval-when-compile (require 'cl-lib))
+(defvar envrc-remote)
+(defvar envrc-supported-tramp-methods)
+(declare-function envrc--merged-environment "envrc" (process-env pairs))
+
+(defun kittymacs-remote--direnv-p (directory)
+  "Return non-nil if a buffer in DIRECTORY gets its project's direnv environment.
+This reads the name, and never connects."
+  (kittymacs-remote--wsl-distribution directory))
+
+(defun kittymacs--remote-envrc-on-wsl ()
+  "Let envrc's global mode turn on in this buffer, if it is on a WSL backend."
+  (when (kittymacs-remote--direnv-p default-directory)
+    (setq-local envrc-remote t
+                envrc-supported-tramp-methods (list (file-remote-p default-directory 'method)))))
+;; Before `envrc-global-mode-enable-in-buffer', which is at the default depth.
+(add-hook 'after-change-major-mode-hook #'kittymacs--remote-envrc-on-wsl -50)
+
+(defun kittymacs--remote-envrc-export (export)
+  "Call EXPORT, which starts direnv, so that direnv runs on the WSL backend."
+  (if (kittymacs-remote--direnv-p default-directory)
+      (let ((make-process-original (symbol-function 'make-process)))
+        (cl-letf (((symbol-function 'make-process)
+                   (lambda (&rest args)
+                     (apply make-process-original :file-handler t :connection-type 'pipe args))))
+          (funcall export)))
+    (funcall export)))
+
+(defvar kittymacs-remote--envrc-variables nil
+  "Each NAME=VALUE that direnv has set on a WSL backend in this session.")
+
+(defun kittymacs--remote-envrc-apply (buffer result)
+  "Give BUFFER's processes RESULT from direnv, if BUFFER is on a WSL backend."
+  (with-current-buffer buffer
+    (when (and result (listp result) (kittymacs-remote--direnv-p default-directory))
+      (setq-local process-environment
+                  (envrc--merged-environment (default-value 'process-environment) result))
+      (pcase-dolist (`(,name . ,value) result)
+        (when value
+          (cl-pushnew (concat name "=" value) kittymacs-remote--envrc-variables
+                      :test #'equal))))))
+
+(defun kittymacs--remote-envrc-variable-local-p (original variable)
+  "Call ORIGINAL on VARIABLE, unless it is one that direnv set on a WSL backend.
+This asks about the variable, and not about the buffer or its directory,
+because a direct process rebinds the directory, and `shell-command' runs
+from a new buffer."
+  (and (not (member variable kittymacs-remote--envrc-variables))
+       (funcall original variable)))
+
+(with-eval-after-load 'envrc
+  (advice-add 'envrc--direnv-export :around #'kittymacs--remote-envrc-export)
+  (advice-add 'envrc--apply :after #'kittymacs--remote-envrc-apply))
+(with-eval-after-load 'tramp
+  (advice-add 'tramp-local-environment-variable-p :around
+              #'kittymacs--remote-envrc-variable-local-p))
 #+end_src
 
 * The guards :decision:
@@ -1131,7 +1231,7 @@ Not a symbolic link or a file with other names, which replacing would cut off."
 
 - Two needed no guard, and tests hold them there.
   + Auto-revert skips a remote buffer: =auto-revert-remote-files= is =nil=, so =auto-revert-handler= stops at =file-remote-p=, =dired-buffer-stale-p= does the same, and no notification watch is set up.
-  + envrc stays off in a remote buffer: =envrc-remote= is =nil=, so its global mode's test stops there, and =envrc-supported-tramp-methods= is never read.
+  + envrc stays off in a remote buffer that is not on a WSL backend ([[*direnv on a WSL backend]]): =envrc-remote= is =nil=, so its global mode's test stops there, and =envrc-supported-tramp-methods= is never read.
   + Set =envrc-remote= only if you accept the cost: each new buffer with a remote directory, a help buffer included, then searches for a =.envrc= over the connection.
 
 ** Files saved behind your back
@@ -1299,5 +1399,7 @@ Host vm
 - On a =wsl= backend, =C-x C-f /wslm:DISTRIBUTION:/mnt/c/Windows/win.ini=: a message says it is slow, once, and =SPC o w= opens =c:/Windows/win.ini=.
 - From Windows Emacs, =C-x C-f= a new file on a backend, save two lines, and =file= there says it has no CRLF.
 - =SPC o B= on a machine that lacks =rg= says what to run there, and nothing installs itself.
+- On a =wsl= backend with =direnv=, in a project with an allowed =.envrc=: the mode line shows =envrc=, and =M-! echo $NAME= prints that variable.
+  + =SPC o B= says a project's direnv is on there, and off on any other backend.
 - Open a remote file and cut the network: Emacs keeps responding while you are idle; =C-g= ends a command that was waiting.
 - =just test-packages= and =just test-minimal= run [[file:../tests/kittymacs-remote-tests.el][the remote tests]], with a Tramp method that needs no ssh.
