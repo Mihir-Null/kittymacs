@@ -8,7 +8,8 @@
         which-key-idle-secondary-delay 0.05
         which-key-show-early-on-C-h t
         which-key-side-window-location 'top
-        which-key-side-window-max-height 0.5)
+        which-key-side-window-max-height 0.5
+        which-key-allow-imprecise-window-fit nil)
 (which-key-mode 1)
 (defun kittymacs-new-buffer-frame ()
   "Create an empty buffer in a new frame."

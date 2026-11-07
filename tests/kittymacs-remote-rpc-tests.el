@@ -125,6 +125,31 @@
     (should-not (kittymacs-remote--wsl-distribution "c:/Users/me/a"))
     (should-not (kittymacs-remote--wsl-distribution nil))))
 
+;;; direnv
+
+(ert-deftest kittymacs-rpc-direnv-variables-survive-inheritenv ()
+  "What direnv set, and this scope has, reaches tramp-rpc, and nothing else does."
+  (kittymacs-rpc-test--with-module
+    (let ((kittymacs-remote--envrc-variables '("FROM_DIRENV=a=b" "NOT_HERE=x" "KEPT=direnv"))
+          (process-environment '("FROM_DIRENV=a=b" "KEPT=direnv" "OTHER=y")))
+      (let ((result (kittymacs--remote-rpc-direnv-variables '(("KEPT" . "caller")))))
+        (should (equal (cdr (assoc "FROM_DIRENV" result)) "a=b"))
+        (should (equal (cdr (assoc "KEPT" result)) "caller"))
+        (should-not (assoc "NOT_HERE" result))
+        (should-not (assoc "OTHER" result))))))
+
+(ert-deftest kittymacs-rpc-direnv-starts-on-a-pipe ()
+  "A pty merges direnv's stderr into the JSON that envrc reads."
+  (kittymacs-rpc-test--with-module
+    (let ((default-directory "/rpc:Fake-24.04:/home/me/")
+          seen)
+      (cl-letf (((symbol-function 'make-process)
+                 (lambda (&rest arguments) (setq seen arguments) nil)))
+        (kittymacs--remote-envrc-export (lambda () (make-process :name "direnv"))))
+      (should (eq (plist-get seen :connection-type) 'pipe))
+      (should (eq (plist-get seen :file-handler) t))
+      (should (equal (plist-get seen :name) "direnv")))))
+
 ;;; Saving
 
 (defun kittymacs-rpc-test--precious-after (file attributes)

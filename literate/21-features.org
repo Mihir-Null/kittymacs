@@ -367,6 +367,11 @@ names what was asked for and cannot be had."
   + =package-install= compiles in the running Emacs, and that loads Embark and Consult, so the reminder fires moments before =embark-consult= arrives.
   + The order of the catalogue's list cannot prevent this, because Emacs installs a package's dependencies before the package, whichever the list names first.
   + A failed install still warns, because every other warning passes, and the reminder returns on the next start that loads Embark and Consult.
+- A start that installs packages does not raise =*Compile-Log*=, because a new reader should not meet a panel of other people's compiler warnings.
+  + Compiling during a start delays each warning, which =package.el='s own quieting cannot reach, so all of them raise the panel when the start ends.
+  + =delayed-warnings-hook= runs just before that: this writes those warnings to the log, with no window, and leaves every other delayed warning alone.
+  + The log still fills, for =C-x b= to open, and the same warning after a start raises its panel ([[id:c8c9c239-55c8-456d-8761-0e8cd9e6c1cd][Diagnostics are not editing surfaces]]).
+  + A daemon's start is the exception: Emacs does not delay there, and it shows these warnings on the first client's frame.
 
 #+begin_src emacs-lisp
 (defvar use-package-ensure-function)
@@ -404,6 +409,16 @@ A package that cannot be installed warns, and the rest carry on."
       (unless (package-installed-p package)
         (push package kittymacs-features--failed)))))
 
+(defun kittymacs-features--log-compile-warnings ()
+  "Write the compile warnings a start delayed to their log, with no window."
+  (let ((held (seq-filter (lambda (warning) (equal (nth 3 warning) "*Compile-Log*"))
+                          delayed-warnings-list))
+        (warning-suppress-types (cons '(bytecomp) warning-suppress-types)))
+    (setq delayed-warnings-list (seq-difference delayed-warnings-list held))
+    (dolist (warning (reverse held))
+      (apply #'display-warning warning))))
+(add-hook 'delayed-warnings-hook #'kittymacs-features--log-compile-warnings)
+
 #+end_src
 
 * A directory can name an option of a chapter that is off
@@ -427,5 +442,6 @@ A package that cannot be installed warns, and the rest carry on."
 - Add =(setopt kittymacs-features '(no-such-feature))= to =private.el= and restart: a warning names it, and everything else starts.
 - =(setopt kittymacs-features '(jump))= on a machine without Avy: the next start installs it, and =SPC j j= works.
 - =just test= runs [[file:../tests/kittymacs-features-tests.el][the features tests]], which need no packages.
+- A first graphical start in a new checkout: no =*Compile-Log*= window opens, =C-x b *Compile-Log*= shows the log, and compiling a file with a warning afterwards raises the panel.
 - CI's =startup= job fails if =just install= prints Embark's reminder, which it can only do when its package cache starts empty.
 - =ls var/started-on-default= on a machine that started with nothing: the file is there, and =M-: (kittymacs-features-profile)= says =minimal=.

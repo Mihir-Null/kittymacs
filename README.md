@@ -191,7 +191,7 @@ There are two ways, and they are alternatives rather than layers:
 
 ### Nix
 
-The flake installs everything the configuration uses (Emacs, the tools and the editing, prose and icon fonts), pinned by the flake's lock; the configuration itself stays a writable clone, with its state in `var/`. The Lisp packages are the exception: by default the configuration installs them from the archives at first start, since no binary cache carries them. Set `programs.kittymacs.packagesFromNix = true` to have Nix build them into Emacs instead, pinned by the lock, at the cost of compiling them on the machine after each flake update.
+The flake's modules install Emacs, the editing, prose and icon fonts, and the tools of the features a machine selects, pinned by the flake's lock; the configuration itself stays a writable clone, with its state in `var/`. The Lisp packages are the exception: by default the configuration installs them from the archives at first start, since no binary cache carries them. Set `programs.kittymacs.packagesFromNix = true` to have Nix build them into Emacs instead, pinned by the lock, at the cost of compiling them on the machine after each flake update.
 
 ```nix
 {

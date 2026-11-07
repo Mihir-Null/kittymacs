@@ -22,6 +22,10 @@
   (push (list 'connect tramp-rpc-use-controlmaster) tramp-rpc-fake-seen)
   (tramp-rpc--start-server-process vec "tramp-rpc-server"))
 
+(defun tramp-rpc--caller-environment ()
+  "Stand for the real one, which compares with the default."
+  nil)
+
 (defun tramp-rpc--make-pty-process (_vec &rest _arguments)
   "Record the switch `tramp-rpc--make-pty-process' reads."
   (push (list 'pty tramp-rpc-use-direct-ssh-pty) tramp-rpc-fake-seen))

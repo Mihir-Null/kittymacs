@@ -108,8 +108,19 @@ which starts `ssh'."
         (apply original vec arguments))
     (apply original vec arguments)))
 
+(defun kittymacs--remote-rpc-direnv-variables (environment)
+  "Return ENVIRONMENT, an alist, with what direnv set that this scope still has.
+`envrc' runs `shell-command' under `inheritenv', which copies the buffer's
+environment over the default that tramp-rpc compares with, so it sees no change."
+  (dolist (entry process-environment environment)
+    (when (and (member entry kittymacs-remote--envrc-variables)
+               (string-match "\\`\\([^=]+\\)=\\(.*\\)\\'" entry)
+               (not (assoc (match-string 1 entry) environment)))
+      (push (cons (match-string 1 entry) (match-string 2 entry)) environment))))
+
 (defconst kittymacs-remote-rpc-private-functions
-  '(tramp-rpc--start-server-process tramp-rpc--connect tramp-rpc--make-pty-process)
+  '(tramp-rpc--start-server-process tramp-rpc--connect tramp-rpc--make-pty-process
+    tramp-rpc--caller-environment)
   "What the seam relies on in tramp-rpc, none of which it promises to keep.")
 
 (defun kittymacs--remote-rpc-refuse (operation &rest arguments)
@@ -138,7 +149,9 @@ backend, or move the seam: see \"Moving the pin\" in the remote chapter."
         (advice-add 'tramp-rpc-file-name-handler :before #'kittymacs--remote-rpc-refuse))
     (advice-add 'tramp-rpc--start-server-process :around #'kittymacs--remote-rpc-start-server)
     (advice-add 'tramp-rpc--connect :around #'kittymacs--remote-rpc-scope)
-    (advice-add 'tramp-rpc--make-pty-process :around #'kittymacs--remote-rpc-scope)))
+    (advice-add 'tramp-rpc--make-pty-process :around #'kittymacs--remote-rpc-scope)
+    (advice-add 'tramp-rpc--caller-environment :filter-return
+                #'kittymacs--remote-rpc-direnv-variables)))
 
 (with-eval-after-load 'tramp-rpc
   (kittymacs-remote-rpc--install))
