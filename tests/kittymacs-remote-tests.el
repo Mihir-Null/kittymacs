@@ -172,6 +172,10 @@ there too, and the log does not say why.  Linux runs all three."
 (ert-deftest kittymacs-remote-backend-names-its-root ()
   (should (string-prefix-p "/kmock:" (kittymacs-remote-test--value 'working 'backend-root)))
   (should (equal (kittymacs-remote-test--value 'working 'backend-tramp-method) "/sshx:build:~/src/"))
+  ;; An optional method is refused until it is enabled, and the refusal says how.
+  (should (string-match-p "tramp-enable-method"
+                          (kittymacs-remote-test--value 'working 'optional-method-off)))
+  (should (equal (kittymacs-remote-test--value 'working 'optional-method-on) "/distrobox:box:/"))
   (should (equal (kittymacs-remote-test--value 'working 'backend-default-transport) "/ssh:build:~/src/")))
 
 (ert-deftest kittymacs-remote-transport-is-a-key-the-code-dispatches-on ()
