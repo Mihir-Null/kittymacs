@@ -97,6 +97,10 @@
      :group look :packages (writeroom-mode hide-mode-line) :module kittymacs-ui :profile full
      :summary "A centred, distraction-free view for writing."
      :example "=SPC t w= centres the buffer and hides the mode line.")
+    (hover-docs
+     :group look :packages (eldoc-box) :module kittymacs-hover-docs :profile optional
+     :summary "Shows a language server's documentation in a small frame over the text."
+     :example "Pause on a name in an Eglot buffer, and =SPC t e= compares it with the echo area.")
     (frames
      :group look :packages (frames-only-mode) :module kittymacs-frames :profile full
      :summary "Opens each new editing surface as an OS window, for tiling window managers."
