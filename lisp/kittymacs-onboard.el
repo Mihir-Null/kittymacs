@@ -644,7 +644,9 @@ A name the catalogue lacks goes in NOTES."
       (cons "[x]" (format "pulled in: %s needs it"
                           (kittymacs-onboard--names
                            (kittymacs-onboard--needed-by state feature)))))
-     (on (cons "[x]" ""))
+     (on (cons "[x]" (if (kittymacs-features--property feature :experimental) "experimental" "")))
+     ((kittymacs-features--property feature :experimental)
+      (cons "[ ]" "experimental: off until you choose it"))
      ((eq (kittymacs-features--property feature :profile) 'optional)
       (cons "[ ]" "optional: off until you choose it"))
      (t (cons "[ ]" "")))))
@@ -652,7 +654,8 @@ A name the catalogue lacks goes in NOTES."
 (defun kittymacs-onboard--feature-row (state feature cursor)
   "Return the lines for FEATURE in STATE, marked when CURSOR is non-nil."
   (pcase-let ((`(,mark . ,reason) (kittymacs-onboard--status state feature))
-              (deps (kittymacs-features--property feature :deps)))
+              (deps (kittymacs-features--property feature :deps))
+              (untested (kittymacs-features--property feature :experimental)))
     (concat
      (if cursor "> " "  ")
      (let ((head (format "%s %s" mark feature)))
@@ -663,6 +666,7 @@ A name the catalogue lacks goes in NOTES."
      "\n      "
      (kittymacs-onboard--plain (kittymacs-features--property feature :example))
      (if deps (format "\n      Needs: %s." (kittymacs-onboard--names deps)) "")
+     (if untested (format "\n      Experimental: %s" untested) "")
      "\n")))
 
 (defun kittymacs-onboard--groups ()

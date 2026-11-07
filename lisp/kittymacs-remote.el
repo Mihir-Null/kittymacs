@@ -4,6 +4,7 @@
 ;;; Code:
 
 (require 'seq)
+(require 'kittymacs-catalogue)
 (require 'kittymacs-defaults)
 (require 'kittymacs-leader)
 
@@ -167,6 +168,10 @@ This only says it: nothing here installs anything."
        "Tramp reads the machine's PATH once per connection, so then reconnect with\n"
        "M-x tramp-cleanup-connection.\n"))))
 
+(defun kittymacs-remote--experimental (transport)
+  "Return what the catalogue says is untested about TRANSPORT, or nil."
+  (plist-get (alist-get transport kittymacs-catalogue) :experimental))
+
 (defun kittymacs-backend-doctor (name)
   "Report which tools the backend called NAME has, and return them as an alist."
   (interactive (list (kittymacs-remote--read-backend)))
@@ -187,6 +192,9 @@ This only says it: nothing here installs anything."
                         (tramp-direct-async-process-p)))))
     (with-help-window "*kittymacs backend*"
       (princ (format "Backend %s, over %s\n\n" name (kittymacs-remote--transport backend)))
+      (when-let* ((untested (kittymacs-remote--experimental
+                             (kittymacs-remote--transport backend))))
+        (princ (format "Experimental: %s\n\n" untested)))
       (when rpc (princ (plist-get report :text)))
       (when reachable
         (princ (format "Project  %s (%s)\n" root (if exists "exists" "MISSING")))

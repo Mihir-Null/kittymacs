@@ -454,6 +454,26 @@ quits as a minibuffer would."
       (should (equal (kittymacs-onboard--status state 'icons)
                      '("[x]" . "pulled in: file-tree needs it"))))))
 
+(ert-deftest kittymacs-onboard-labels-an-experimental-feature ()
+  (kittymacs-onboard-test-with-machine
+    (let* ((state (kittymacs-onboard--initial-state))
+           ;; After reading the machine, since reading files differs on Windows.
+           (system-type 'windows-nt)
+           (untested (plist-get (alist-get 'wsl-rpc kittymacs-catalogue) :experimental)))
+      (setf (kittymacs-onboard--profile state) 'minimal)
+      (should (equal (kittymacs-onboard--status state 'wsl-rpc)
+                     '("[ ]" . "experimental: off until you choose it")))
+      (kittymacs-onboard--toggle state 'wsl-rpc)
+      (should (equal (kittymacs-onboard--status state 'wsl-rpc) '("[x]" . "experimental")))
+      (should (string-search (concat "Experimental: " untested)
+                             (kittymacs-onboard--render-features state 'shells '(1 . 1) 0 nil)))
+      ;; Plain optional features keep their label, with no sentence.
+      (should (equal (kittymacs-onboard--status state 'lang-nix)
+                     '("[ ]" . "optional: off until you choose it")))
+      (should-not (string-search "Experimental:"
+                                 (kittymacs-onboard--render-features
+                                  state 'programming '(1 . 1) 0 nil))))))
+
 (ert-deftest kittymacs-onboard-toggling-pulls-in-and-takes-away-what-deps-say ()
   (kittymacs-onboard-test-with-machine
     (let ((state (kittymacs-onboard--initial-state)))

@@ -239,6 +239,33 @@ INIT-GATES are the chapters init.el gates, and DECLARATIONS come from
     (should-not (seq-remove (lambda (name) (assq name kittymacs-catalogue))
                             (seq-uniq asked)))))
 
+(ert-deftest kittymacs-catalogue-experimental-is-one-sentence-of-plain-text ()
+  "Three places show it as it stands, and a blank one would label nothing."
+  (let ((found 0))
+    (pcase-dolist (`(,feature . ,plist) kittymacs-catalogue)
+      (when (plist-member plist :experimental)
+        (setq found (1+ found))
+        (let ((value (plist-get plist :experimental)))
+          (ert-info ((format "%s" feature))
+            (should (stringp value))
+            (should (string-match-p "[[:alpha:]].*\\.\\'" value))
+            (should-not (string-search "=" value))))))
+    (should (> found 0))))
+
+(ert-deftest kittymacs-catalogue-experimental-reaches-the-nix-options ()
+  (let ((json (with-temp-buffer
+                (insert-file-contents
+                 (expand-file-name "nix/features.json" kittymacs-catalogue-test-root))
+                (json-parse-buffer :object-type 'alist :array-type 'list)))
+        (selection (with-temp-buffer
+                     (insert-file-contents
+                      (expand-file-name "nix/selection.nix" kittymacs-catalogue-test-root))
+                     (buffer-string))))
+    (pcase-dolist (`(,feature . ,plist) kittymacs-catalogue)
+      (should (equal (alist-get 'experimental (alist-get feature json))
+                     (plist-get plist :experimental))))
+    (should (string-search "entry.experimental" selection))))
+
 (ert-deftest kittymacs-catalogue-loads-without-anything-else ()
   "Onboarding reads this under `emacs -Q', before any package exists."
   (let ((forms (kittymacs-bench--forms
