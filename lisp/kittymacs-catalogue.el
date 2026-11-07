@@ -109,6 +109,10 @@
      :group look :packages (popper) :module kittymacs-basics :profile full
      :summary "Keeps Help and compilation output in a window that one key dismisses."
      :example "=M-`= toggles the last popup.")
+    (buffer-tabs
+     :group look :packages () :module kittymacs-buffer-tabs :profile optional
+     :summary "Lists a window's buffers as tabs, grouped by kind, most recent first."
+     :example "=C-<tab>= moves along the tabs, and =SPC t b= turns them off and on.")
     (color-names
      :group look :packages (rainbow-mode) :module kittymacs-basics :profile full
      :summary "Paints colour names and codes in their own colour."

@@ -63,6 +63,7 @@ test:
     emacs -Q --batch -l tests/kittymacs-open-tests.el -f ert-run-tests-batch-and-exit
     emacs -Q --batch -l tests/kittymacs-treesit-tests.el -f ert-run-tests-batch-and-exit
     emacs -Q --batch -l tests/kittymacs-org-table-tests.el -f ert-run-tests-batch-and-exit
+    emacs -Q --batch -l tests/kittymacs-buffer-tabs-tests.el -f ert-run-tests-batch-and-exit
     emacs -Q --batch -l tests/kittymacs-bench-tests.el -f ert-run-tests-batch-and-exit
     emacs -Q --batch -l tests/kittymacs-catalogue-tests.el -f ert-run-tests-batch-and-exit
     emacs -Q --batch -l tests/kittymacs-features-tests.el -f ert-run-tests-batch-and-exit
