@@ -138,6 +138,7 @@ before this module is loaded, to override."
 - Instead =*Warnings*=, =*Compile-Log*=, =*Backtrace*= and the native-compilation logs appear in a small window at the bottom of the frame you are in.
   + =q= dismisses them and the frame is untouched.
 - The same rule as [[*What stays inside the frame]], applied to the buffers Emacs raises on its own: a panel that serves the buffer next to it stays inside the frame.
+- A start that installs packages logs to =*Compile-Log*= without the panel ([[id:a9d3e1c7-52f8-4b06-8e14-6c07f2b1d945][the installer]]).
 
 #+begin_src emacs-lisp
 (dolist (pattern '("\\`\\*Warnings\\*\\'"
