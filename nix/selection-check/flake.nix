@@ -80,12 +80,19 @@
           system,
           config,
           files,
+          pkgs,
+          packages,
         }:
         let
           cfg = config.programs.kittymacs;
+          installed = map lib.getName packages;
         in
         {
           inherit system;
+          tools = map (entry: {
+            inherit (entry) feature name;
+            installed = lib.elem entry.name installed;
+          }) (import "${kittymacs}/nix/tools.nix" { inherit pkgs; }).commands;
           files = lib.mapAttrs' (name: file: lib.nameValuePair (baseNameOf name) file.text) (
             lib.filterAttrs (name: _: lib.hasPrefix "kittymacs/" name) files
           );
@@ -111,18 +118,21 @@
           system = "gnu/linux";
           inherit config;
           files = config.xdg.configFile;
+          pkgs = nixpkgs.legacyPackages.x86_64-linux;
+          packages = config.home.packages;
         };
       systemReport =
-        system: build: settings:
+        system: pkgs: build: settings:
         let
           inherit (build settings) config;
         in
         describe {
-          inherit system config;
+          inherit system config pkgs;
           files = config.environment.etc;
+          packages = config.environment.systemPackages;
         };
-      nixosReport = systemReport "gnu/linux" nixosHost;
-      darwinReport = systemReport "darwin" darwinHost;
+      nixosReport = systemReport "gnu/linux" nixpkgs.legacyPackages.x86_64-linux nixosHost;
+      darwinReport = systemReport "darwin" nixpkgs.legacyPackages.aarch64-darwin darwinHost;
 
       fullOptions = {
         profile = "full";

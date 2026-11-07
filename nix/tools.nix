@@ -81,7 +81,10 @@ in
   fontsFor = features: packagesOf (lib.filter (isOn features) fontTable);
 
   # What the doctor looks for, and the feature that asks for each.
-  commands = map (entry: { inherit (entry) feature command; }) programTable;
+  commands = map (entry: {
+    inherit (entry) feature command;
+    name = lib.getName entry.package;
+  }) programTable;
 
   # A machine that Emacs reaches from elsewhere: no Emacs, no fonts, no GUI.
   backendPrograms =
