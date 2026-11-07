@@ -188,7 +188,7 @@ Batch `format-mode-line' returns nothing, so this reads the option it obeys."
      (when (bound-and-true-p kittymacs-remote-windows-file-note)
        (list "msys2-fallback is off, and its note on Windows-side files is set"))
      (when-let* ((found (seq-filter (lambda (directory)
-                                      (string-match-p "msys\\|ucrt64" directory))
+                                      (string-match-p "msys" directory))
                                     exec-path)))
        (list (format "msys2-fallback is off, and exec-path has %S" found))))))
 
