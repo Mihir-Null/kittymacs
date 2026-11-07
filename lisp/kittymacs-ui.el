@@ -256,7 +256,30 @@ A `doom-' theme needs the `doom-look' feature; without it, `modus-operandi'."
 ;; Every change of window, by `other-window', a mouse click or a leader key.
 (add-hook 'window-selection-change-functions #'kittymacs--pulse-line)
 
+(defconst kittymacs-pulse-jump-commands
+  '(avy-goto-char-timer avy-goto-line avy-goto-word-1 avy-goto-symbol-1
+    avy-goto-end-of-line avy-goto-char-in-line
+    consult-line consult-line-multi consult-goto-line consult-imenu consult-outline
+    consult-mark consult-global-mark consult-ripgrep consult-flymake consult-org-heading
+    pop-to-mark-command pop-global-mark)
+  "The commands after which `kittymacs-pulse-jumps-mode' pulses the line.")
+
+(define-minor-mode kittymacs-pulse-jumps-mode
+  "Pulse the current line after a jump, so you can see where it landed."
+  :global t
+  :group 'kittymacs-ui
+  (dolist (command kittymacs-pulse-jump-commands)
+    (if kittymacs-pulse-jumps-mode
+        (advice-add command :after #'kittymacs--pulse-line)
+      (advice-remove command #'kittymacs--pulse-line)))
+  (if kittymacs-pulse-jumps-mode
+      (add-hook 'next-error-hook #'kittymacs--pulse-line)
+    (remove-hook 'next-error-hook #'kittymacs--pulse-line)))
+
 (when (kittymacs-feature-p 'ui-polish)
+  (kittymacs-pulse-jumps-mode 1)
+  (keymap-set kittymacs-toggle-map "j" (cons "pulse after jumps" #'kittymacs-pulse-jumps-mode))
+
   (use-package hl-todo
     :ensure t
     :hook ((prog-mode markdown-mode markdown-ts-mode) . hl-todo-mode))

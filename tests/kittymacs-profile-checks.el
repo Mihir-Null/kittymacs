@@ -11,6 +11,7 @@
 (defvar kittymacs-localleader-alist)
 (defvar kittymacs-user-map)
 (defvar kittymacs-scratch-file)
+(defvar kittymacs-pulse-jumps-mode)
 (declare-function kittymacs--save-scratch "kittymacs-defaults" ())
 (declare-function kittymacs-feature-p "kittymacs-features" (feature))
 (declare-function kittymacs-features-enabled "kittymacs-features" ())
@@ -164,6 +165,9 @@ Batch `format-mode-line' returns nothing, so this reads the option it obeys."
        (list "A batch start saved *scratch*, so a new user would miss the pointer"))
      (when which-key-allow-imprecise-window-fit
        (list "which-key may clip text: the imprecise window fit is on"))
+     (unless (eq (and kittymacs-pulse-jumps-mode t) (kittymacs-feature-p 'ui-polish))
+       (list (format "The pulse after a jump is %S, and ui-polish is %S"
+                     kittymacs-pulse-jumps-mode (kittymacs-feature-p 'ui-polish))))
      (if (kittymacs-feature-p 'doom-look)
          (when collapse (list "doom-look is on, and the minor modes are collapsed"))
        (unless (and (eq (car-safe collapse) 'not)

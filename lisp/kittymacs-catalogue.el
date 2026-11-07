@@ -91,8 +91,8 @@
     (ui-polish
      :group look :module kittymacs-ui :profile full
      :packages (spacious-padding hl-todo highlight-numbers goggles outline-minor-faces)
-     :summary "Frame padding, highlighted TODOs and numbers, and a flash on each edit."
-     :example "=TODO= stands out in code, and pasted text flashes briefly.")
+     :summary "Frame padding, highlighted TODOs and numbers, and a flash on each edit and jump."
+     :example "=TODO= stands out in code, and =SPC t j= turns off the pulse after a jump.")
     (focus-mode
      :group look :packages (writeroom-mode hide-mode-line) :module kittymacs-ui :profile full
      :summary "A centred, distraction-free view for writing."
