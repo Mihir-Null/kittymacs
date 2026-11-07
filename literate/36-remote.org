@@ -691,7 +691,7 @@ A file with line endings keeps them.  This never connects."
 - envrc needs three corrections on such a machine, and all apply to these buffers alone.
   + It starts =direnv export= with =make-process= and no =:file-handler=, as its own "todo tramp?" says, so the program runs on this machine, in no project, and the buffer reads as =on= with nothing in it.
   + It keeps the result in =tramp-remote-process-environment=, which only a direct process reads, so the result also goes in the buffer's =process-environment=.
-  + From Emacs 31 Tramp treats a buffer's own =process-environment= as this machine's, and passes none of it, so =tramp-local-environment-variable-p= compares with the global value alone in these buffers.
+  + From Emacs 31 Tramp treats a buffer's own =process-environment= as this machine's, and passes none of it, so =tramp-local-environment-variable-p= says no for each variable direnv set.
 - =SPC o B= says whether this is on for a backend.
 
 #+begin_src emacs-lisp
@@ -723,24 +723,26 @@ This reads the name, and never connects."
           (funcall export)))
     (funcall export)))
 
-(defvar-local kittymacs-remote--envrc-applied nil
-  "Non-nil in a buffer on a WSL backend with direnv's `process-environment'.")
+(defvar kittymacs-remote--envrc-variables nil
+  "Each NAME=VALUE that direnv has set on a WSL backend in this session.")
 
 (defun kittymacs--remote-envrc-apply (buffer result)
   "Give BUFFER's processes RESULT from direnv, if BUFFER is on a WSL backend."
   (with-current-buffer buffer
-    (setq kittymacs-remote--envrc-applied nil)
     (when (and result (listp result) (kittymacs-remote--direnv-p default-directory))
       (setq-local process-environment
                   (envrc--merged-environment (default-value 'process-environment) result))
-      (setq kittymacs-remote--envrc-applied t))))
+      (pcase-dolist (`(,name . ,value) result)
+        (when value
+          (cl-pushnew (concat name "=" value) kittymacs-remote--envrc-variables
+                      :test #'equal))))))
 
 (defun kittymacs--remote-envrc-variable-local-p (original variable)
-  "Call ORIGINAL on VARIABLE, or compare with the global value in a direnv buffer.
-This asks the buffer and not its directory, which a direct process has rebound."
-  (if kittymacs-remote--envrc-applied
-      (member variable (default-toplevel-value 'process-environment))
-    (funcall original variable)))
+  "Call ORIGINAL on VARIABLE, unless it is one that direnv set on a WSL backend.
+This asks about the variable, and not about the buffer or its directory, because
+a direct process rebinds the directory, and `shell-command' runs from a new buffer."
+  (and (not (member variable kittymacs-remote--envrc-variables))
+       (funcall original variable)))
 
 (with-eval-after-load 'envrc
   (advice-add 'envrc--direnv-export :around #'kittymacs--remote-envrc-export)

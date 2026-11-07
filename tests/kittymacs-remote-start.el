@@ -480,12 +480,20 @@ It uses the real direnv, not the one `kittymacs-remote-start--fake-programs' add
             (accept-process-output process 0.1))
           (list (process-exit-status process)
                 (with-current-buffer buffer (buffer-string))))))
-    (kittymacs-remote-start--wsl-direnv root)
     (kittymacs-remote-start-value 'wsl-no-such-distribution
       (let ((tramp-connection-timeout 10)
             (name (concat "/" kittymacs-remote-wsl-method ":Nosuch-24.04:/tmp")))
         (condition-case _ (file-exists-p name)
-          (error nil))))))
+          (error nil)))))
+  ;; Outside that `let': Tramp passes what differs from the top-level value of
+  ;; `process-environment', and a `let' there would make every variable differ.
+  (let* ((bin (kittymacs-remote-fixture-wsl-exe))
+         (path (getenv "PATH"))
+         (exec-path (cons bin exec-path)))
+    (setenv "PATH" (concat bin path-separator path))
+    (unwind-protect
+        (kittymacs-remote-start--wsl-direnv (kittymacs-backend-root "wsl"))
+      (setenv "PATH" path))))
 
 (defun kittymacs-remote-start--terminal ()
   "What `SPC o e' opens: on a remote machine, that machine's, in a buffer of its own."

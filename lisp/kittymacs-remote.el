@@ -393,24 +393,26 @@ This reads the name, and never connects."
           (funcall export)))
     (funcall export)))
 
-(defvar-local kittymacs-remote--envrc-applied nil
-  "Non-nil in a buffer on a WSL backend with direnv's `process-environment'.")
+(defvar kittymacs-remote--envrc-variables nil
+  "Each NAME=VALUE that direnv has set on a WSL backend in this session.")
 
 (defun kittymacs--remote-envrc-apply (buffer result)
   "Give BUFFER's processes RESULT from direnv, if BUFFER is on a WSL backend."
   (with-current-buffer buffer
-    (setq kittymacs-remote--envrc-applied nil)
     (when (and result (listp result) (kittymacs-remote--direnv-p default-directory))
       (setq-local process-environment
                   (envrc--merged-environment (default-value 'process-environment) result))
-      (setq kittymacs-remote--envrc-applied t))))
+      (pcase-dolist (`(,name . ,value) result)
+        (when value
+          (cl-pushnew (concat name "=" value) kittymacs-remote--envrc-variables
+                      :test #'equal))))))
 
 (defun kittymacs--remote-envrc-variable-local-p (original variable)
-  "Call ORIGINAL on VARIABLE, or compare with the global value in a direnv buffer.
-This asks the buffer and not its directory, which a direct process has rebound."
-  (if kittymacs-remote--envrc-applied
-      (member variable (default-toplevel-value 'process-environment))
-    (funcall original variable)))
+  "Call ORIGINAL on VARIABLE, unless it is one that direnv set on a WSL backend.
+This asks about the variable, and not about the buffer or its directory, because
+a direct process rebinds the directory, and `shell-command' runs from a new buffer."
+  (and (not (member variable kittymacs-remote--envrc-variables))
+       (funcall original variable)))
 
 (with-eval-after-load 'envrc
   (advice-add 'envrc--direnv-export :around #'kittymacs--remote-envrc-export)
