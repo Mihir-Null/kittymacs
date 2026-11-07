@@ -9,6 +9,7 @@
 
 (defvar agent-shell-path-resolver-function)
 (defvar kittymacs-remote-wsl-method)
+(defvar kittymacs-remote-wsl-rpc-method)
 (defvar tramp-methods)
 (defvar tramp-remote-path)
 (declare-function connection-local-set-profile-variables "files-x" (profile variables))
@@ -20,6 +21,8 @@
 (declare-function tramp-file-name-method "tramp" (vec))
 (declare-function tramp-get-home-directory "tramp" (vec &optional user))
 (declare-function tramp-get-method-parameter "tramp" (vec param &optional default))
+(declare-function kittymacs-remote-rpc-preflight "kittymacs-remote-rpc" (name backend))
+(declare-function kittymacs-remote-rpc-report "kittymacs-remote-rpc" (backend))
 
 (setopt tramp-persistency-file-name (expand-file-name "tramp" kittymacs-cache-dir)
         tramp-default-method "ssh"
@@ -56,8 +59,8 @@ Tramp's existence check quotes the name, so it never sees a home directory."
 (defcustom kittymacs-backends nil
   "The machines this Emacs works on, by name.
 Each element is (NAME . PLIST), with NAME a string.  The keys of PLIST are
-`:transport', `:host', `:root', `:shell' and `:direct-async'; the remote chapter
-says what each means.  For example:
+`:transport', `:host', `:root', `:shell', `:direct-async' and `:server'; the
+remote chapter says what each means.  For example:
 
   ((\"build\" :transport ssh :host \"build.example.org\" :root \"~/src/project/\"))"
   :type '(alist :key-type string :value-type (plist :value-type sexp))
@@ -72,7 +75,8 @@ Add the language servers your projects there use."
 
 (defvar kittymacs-remote-transports
   '((ssh . kittymacs-remote--tramp-root)
-    (wsl . kittymacs-remote--wsl-root))
+    (wsl . kittymacs-remote--wsl-root)
+    (wsl-rpc . kittymacs-remote--wsl-rpc-root))
   "How each transport names a directory on its machine, by the `:transport' key.
 A value is a function of the transport and the backend's plist.  An enabled
 Tramp method needs no row: its name is the transport, handled as `ssh' is.")
@@ -109,10 +113,21 @@ Tramp method needs no row: its name is the transport, handled as `ssh' is.")
     (user-error "No backends: set `kittymacs-backends' in private.el"))
   (completing-read "Backend: " kittymacs-backends nil t))
 
+(defun kittymacs-remote--rpc-p (backend)
+  "Return non-nil if BACKEND uses the `wsl-rpc' transport."
+  (eq (plist-get backend :transport) 'wsl-rpc))
+
+(defun kittymacs-remote--preflight (name)
+  "Refuse the backend called NAME if its transport can tell what would fail."
+  (let ((backend (kittymacs-remote--backend name)))
+    (when (kittymacs-remote--rpc-p backend)
+      (kittymacs-remote-rpc-preflight name backend))))
+
 (defun kittymacs-backend-connect (name)
   "Open the project on the backend called NAME."
   (interactive (list (kittymacs-remote--read-backend)))
   (let ((root (kittymacs-backend-root name)))
+    (kittymacs-remote--preflight name)
     (kittymacs-remote--apply-backend name)
     (unless (file-directory-p root)
       (user-error "Backend %s has no directory %s" name root))
@@ -157,21 +172,34 @@ This only says it: nothing here installs anything."
   (interactive (list (kittymacs-remote--read-backend)))
   (let* ((root (kittymacs-backend-root name))
          (backend (kittymacs-remote--backend name))
-         (tools (progn (kittymacs-remote--apply-backend name)
-                       (kittymacs-remote--tools root)))
-         (exists (file-directory-p root))
-         (direct (let ((default-directory (file-remote-p root)))
-                   (tramp-direct-async-process-p))))
+         (rpc (kittymacs-remote--rpc-p backend))
+         (report (when rpc
+                   (kittymacs-remote--preflight name)
+                   (kittymacs-remote-rpc-report backend)))
+         ;; Without a server, asking the machine anything would only fail.
+         (reachable (or (not rpc) (plist-get report :server)))
+         (tools (when reachable
+                  (kittymacs-remote--apply-backend name)
+                  (kittymacs-remote--tools root)))
+         (exists (and reachable (file-directory-p root)))
+         (direct (and reachable (not rpc)
+                      (let ((default-directory (file-remote-p root)))
+                        (tramp-direct-async-process-p)))))
     (with-help-window "*kittymacs backend*"
       (princ (format "Backend %s, over %s\n\n" name (kittymacs-remote--transport backend)))
-      (princ (format "Project  %s (%s)\n" root (if exists "exists" "MISSING")))
-      (princ (format "Processes start %s\n" (if direct "directly" "through Tramp's shell")))
-      (princ (format "A project's direnv is %s\n\n"
-                     (if (kittymacs-remote--direnv-p root) "on" "off")))
-      (pcase-dolist (`(,tool . ,path) tools)
-        (princ (format "%-20s %s\n" tool (or path "not found"))))
-      (when-let* ((advice (kittymacs-remote--setup-advice tools)))
-        (princ advice)))
+      (when rpc (princ (plist-get report :text)))
+      (when reachable
+        (princ (format "Project  %s (%s)\n" root (if exists "exists" "MISSING")))
+        (princ (format "Processes start %s\n"
+                       (cond (rpc "through tramp-rpc-server")
+                             (direct "directly")
+                             (t "through Tramp's shell"))))
+        (princ (format "A project's direnv is %s\n\n"
+                       (if (kittymacs-remote--direnv-p root) "on" "off")))
+        (pcase-dolist (`(,tool . ,path) tools)
+          (princ (format "%-20s %s\n" tool (or path "not found"))))
+        (when-let* ((advice (kittymacs-remote--setup-advice tools)))
+          (princ advice))))
     tools))
 
 (defun kittymacs-backend-reconnect (name)
@@ -180,6 +208,7 @@ Interactively, NAME is this buffer's backend, or else one you choose."
   (interactive (list (or (kittymacs-remote--buffer-backend)
                          (kittymacs-remote--read-backend))))
   (let ((root (kittymacs-backend-root name)))
+    (kittymacs-remote--preflight name)
     (kittymacs-remote--apply-backend name)
     (tramp-cleanup-connection (tramp-dissect-file-name root))
     (unless (file-directory-p root)
@@ -193,7 +222,10 @@ Interactively, NAME is this buffer's backend, or else one you choose."
   "Return the start of a file name on BACKEND, without looking anything up."
   (let ((transport (or (plist-get backend :transport) 'ssh)))
     (format "/%s:%s:"
-            (if (eq transport 'wsl) kittymacs-remote-wsl-method transport)
+            (pcase transport
+              ('wsl kittymacs-remote-wsl-method)
+              ('wsl-rpc kittymacs-remote-wsl-rpc-method)
+              (_ transport))
             (or (plist-get backend :host) ""))))
 
 (defun kittymacs-remote--buffer-backend ()
@@ -226,6 +258,10 @@ It never connects."
 (defconst kittymacs-remote-wsl-method "wslm"
   "The Tramp method behind the `wsl' transport.")
 
+(defconst kittymacs-remote-wsl-path
+  "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/run/current-system/sw/bin"
+  "A Linux PATH, in place of the one `wsl.exe' gives, which ends in Windows's.")
+
 (defun kittymacs-remote--add-wsl-method ()
   "Add the Tramp method behind the `wsl' transport, where `wsl.exe' exists."
   (when (executable-find "wsl.exe")
@@ -234,7 +270,7 @@ It never connects."
                    (tramp-login-program "wsl.exe")
                    (tramp-login-args (("-d" "%h") ("--exec")
                                       ("/bin/sh" "-c"
-                                       "\"PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/run/current-system/sw/bin"
+                                       ,(concat "\"PATH=" kittymacs-remote-wsl-path)
                                        "exec" "%l" "2>&1\"")))
                    (tramp-direct-async ("/bin/sh" "-c"))
                    (tramp-remote-shell "/bin/sh")
@@ -255,17 +291,17 @@ It never connects."
 (defvar ghostel-use-native-pty)
 
 (defun kittymacs--remote-wsl-terminal (original)
-  "Call ORIGINAL, which starts a terminal, running `wsl.exe' for a `wsl' backend.
+  "Call ORIGINAL, which starts a terminal, running `wsl.exe' for a WSL backend.
 Anywhere else it calls ORIGINAL unchanged, after one test that never connects."
-  (if (not (and ghostel-use-native-pty
-                (equal (file-remote-p default-directory 'method)
-                       kittymacs-remote-wsl-method)))
-      (funcall original)
-    (let ((ghostel-shell (list "wsl.exe"
-                               "-d" (file-remote-p default-directory 'host)
-                               "--cd" (file-local-name (expand-file-name default-directory))))
-          (default-directory temporary-file-directory))
-      (funcall original))))
+  (let ((distribution (and ghostel-use-native-pty
+                           (kittymacs-remote--wsl-distribution default-directory))))
+    (if (not distribution)
+        (funcall original)
+      (let ((ghostel-shell (list "wsl.exe"
+                                 "-d" distribution
+                                 "--cd" (file-local-name (expand-file-name default-directory))))
+            (default-directory temporary-file-directory))
+        (funcall original)))))
 
 (with-eval-after-load 'ghostel
   (advice-add 'ghostel--start-process :around #'kittymacs--remote-wsl-terminal))
@@ -277,20 +313,30 @@ Anywhere else it calls ORIGINAL unchanged, after one test that never connects."
 (defvar kittymacs-remote--windows-files-noted nil
   "The Windows-side files this session has already spoken about.")
 
+(defun kittymacs-remote--wsl-rpc-hosts ()
+  "Return the distributions that `wsl-rpc' backends name."
+  (seq-keep (lambda (backend)
+              (and (kittymacs-remote--rpc-p (cdr backend))
+                   (plist-get (cdr backend) :host)))
+            kittymacs-backends))
+
 (defun kittymacs-remote--wsl-distribution (file)
   "Return the WSL distribution that the name FILE is on, or nil.
 This reads the name, and never connects."
   (when (and (stringp file)
-             (string-match "\\`/\\([^:/|]+\\):\\(?:[^:/|@]*@\\)?\\([^:/|]*\\):" file)
-             (equal (match-string 1 file) kittymacs-remote-wsl-method))
-    (match-string 2 file)))
+             (string-match "\\`/\\([^:/|]+\\):\\(?:[^:/|@]*@\\)?\\([^:/|]*\\):" file))
+    (let ((method (match-string 1 file))
+          (host (match-string 2 file)))
+      (when (or (equal method kittymacs-remote-wsl-method)
+                (and (equal method kittymacs-remote-wsl-rpc-method)
+                     (member host (kittymacs-remote--wsl-rpc-hosts))))
+        host))))
 
 (defun kittymacs-remote--windows-file (file)
   "Return what Windows calls FILE, a name on a WSL backend under /mnt/, or nil.
 This reads the name, and never connects."
-  (when (string-match (format "\\`/%s:[^:]*:/mnt/\\([a-z]\\)\\(/.*\\)?\\'"
-                              (regexp-quote kittymacs-remote-wsl-method))
-                      file)
+  (when (and (kittymacs-remote--wsl-distribution file)
+             (string-match "\\`/[^:]*:[^:]*:/mnt/\\([a-z]\\)\\(/.*\\)?\\'" file))
     (concat (match-string 1 file) ":" (or (match-string 2 file) "/"))))
 
 (defun kittymacs--remote-note-windows-file ()
@@ -331,6 +377,20 @@ A file with line endings keeps them.  This never connects."
 
 (add-hook 'find-file-hook #'kittymacs--remote-unix-newlines)
 (add-hook 'after-set-visited-file-name-hook #'kittymacs--remote-unix-newlines)
+(defconst kittymacs-remote-wsl-rpc-method "rpc"
+  "The Tramp method behind the `wsl-rpc' transport, which tramp-rpc registers.")
+
+(defun kittymacs-remote--wsl-rpc-root (_transport backend)
+  "Return the root of BACKEND, a distribution reached through tramp-rpc."
+  (unless (executable-find "wsl.exe")
+    (user-error "The wsl-rpc transport needs wsl.exe, and this machine has none"))
+  (unless (plist-get backend :host)
+    (user-error "A wsl-rpc backend needs :host, the distribution's name in `wsl --list'"))
+  (unless (featurep 'kittymacs-remote-rpc)
+    (user-error "The wsl-rpc transport needs the wsl-rpc feature: add it to `kittymacs-features' and restart, or use `:transport wsl'"))
+  (unless (locate-library "tramp-rpc")
+    (user-error "The wsl-rpc feature is on and tramp-rpc is not installed: see the warning from the start, or use `:transport wsl'"))
+  (kittymacs-remote--tramp-root kittymacs-remote-wsl-rpc-method backend))
 (defun kittymacs-remote--apply-backend (name)
   "Set the connection-local variables of the backend called NAME."
   (let* ((backend (kittymacs-remote--backend name))
@@ -344,7 +404,11 @@ A file with line endings keeps them.  This never connects."
      profile
      (append (when shell
                `((shell-file-name . ,shell) (explicit-shell-file-name . ,shell)))
-             (when direct '((tramp-direct-async-process . t)))))
+             (when direct '((tramp-direct-async-process . t)))
+             ;; Upstream reads these two per connection, so no other /rpc: host sees them.
+             (when (kittymacs-remote--rpc-p backend)
+               `((tramp-rpc-deploy-never-deploy . t)
+                 (tramp-rpc-deploy-remote-binary-path . ,(plist-get backend :server))))))
     (connection-local-set-profiles
      `(:application tramp
        :protocol ,(tramp-file-name-method vec)
@@ -389,7 +453,7 @@ This reads the name, and never connects."
       (let ((make-process-original (symbol-function 'make-process)))
         (cl-letf (((symbol-function 'make-process)
                    (lambda (&rest args)
-                     (apply make-process-original :file-handler t args))))
+                     (apply make-process-original :file-handler t :connection-type 'pipe args))))
           (funcall export)))
     (funcall export)))
 

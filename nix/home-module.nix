@@ -168,7 +168,7 @@ in
       packages =
         (lib.optionals cfg.installPackages (
           if cfg.backend.enable then
-            tools.backendPrograms
+            tools.backendPrograms ++ lib.optional cfg.backend.rpcServer tools.rpcServer
           else
             [ emacs ]
             ++ tools.programsFor features

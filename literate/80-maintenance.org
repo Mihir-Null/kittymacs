@@ -333,6 +333,11 @@
 ;; (setopt kittymacs-backends
 ;;         '(("build" :transport ssh :host "build.example.org" :root "~/src/project/")
 ;;           ("wsl" :transport wsl :host "Ubuntu-24.04" :root "~/src/project/")))
+;; The same distribution through tramp-rpc's server, which is opt-in: a quicker,
+;; sturdier way in.  It needs the wsl-rpc feature and the server.  See literate/36-remote.org.
+;; (setopt kittymacs-features '(wsl-rpc)
+;;         kittymacs-backends
+;;         '(("wsl" :transport wsl-rpc :host "Ubuntu-24.04" :root "~/src/project/")))
 ;; What the doctor looks for, and where Tramp searches after the login shell's PATH.
 ;; (setopt kittymacs-backend-tools '("git" "rg" "pyright-langserver"))
 ;; (setopt kittymacs-remote-nix-path '("~/.nix-profile/bin"))
