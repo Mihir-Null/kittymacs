@@ -450,7 +450,7 @@ programs.kittymacs = {
 - The Home Manager module writes to =~/.config/kittymacs/conf.d/=, and [[*The system modules][the system modules]] to =/etc/kittymacs/conf.d/=, which loads first.
   + On a machine with both, each module's =packagesFromNix= and tools follow that module's own options, and a user's file loads after the system's.
     So set the selection on the module that installs the tools.
-- =features= is generated from =nix/features.json=, which the builder reads from the catalogue, so each feature's summary is its option's description.
+- =features= is generated from =nix/features.json=, which the builder reads from the catalogue, so each feature's summary is its option's description, and =:experimental= follows it.
 - A name the catalogue lacks fails at evaluation, with the module system's message naming the option: a typo costs least there.
   + Elisp only warns about such a name, because a checkout can drift from the flake that wrote the file.
   + =enable= has three values, because "no opinion" must stay different from "off": a =false= default would exclude every feature.
@@ -539,7 +539,9 @@ rec {
         default = null;
         example = true;
         description = ''
-          ${entry.summary}  True adds it to `kittymacs-features`, false to
+          ${entry.summary}${
+            lib.optionalString (entry ? experimental) "  Experimental: ${entry.experimental}"
+          }  True adds it to `kittymacs-features`, false to
           `kittymacs-features-excluded`, and null leaves it to `profile`.
         '';
       };

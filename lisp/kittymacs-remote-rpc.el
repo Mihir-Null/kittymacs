@@ -7,6 +7,7 @@
 (require 'seq)
 (require 'subr-x)
 (require 'kittymacs-remote)
+(require 'kittymacs-wsl)
 
 (defvar ghostel-tramp-shells)
 (defvar tramp-rpc-use-controlmaster)
@@ -157,21 +158,10 @@ backend, or move the seam: see \"Moving the pin\" in the remote chapter."
 
 ;;; What the rest of the remote chapter asks
 
-(defun kittymacs-remote-rpc--distributions ()
-  "Return the distributions that `wsl.exe --list' names.
-That starts no virtual machine.  It writes UTF-16 unless told otherwise, and an
-older one ignores being told, so this drops the NUL bytes either way."
-  (let ((default-directory temporary-file-directory)
-        (process-environment (cons "WSL_UTF8=1" process-environment))
-        (coding-system-for-read 'no-conversion))
-    (with-temp-buffer
-      (call-process "wsl.exe" nil '(t nil) nil "--list" "--quiet")
-      (split-string (string-replace "\0" "" (buffer-string)) "[\r\n]+" t "[ \t]+"))))
-
 (defun kittymacs-remote-rpc-preflight (name backend)
   "Refuse the backend NAME, with plist BACKEND, if WSL lacks its distribution."
   (let ((distribution (plist-get backend :host))
-        (known (kittymacs-remote-rpc--distributions)))
+        (known (kittymacs-wsl-distributions)))
     (unless (member distribution known)
       (user-error "Backend %s names the distribution %s, and `wsl --list' has %s"
                   name distribution (if known (string-join known ", ") "none")))))

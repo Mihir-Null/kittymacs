@@ -24,6 +24,9 @@
     ("minimal, adding two features"
      ,(lambda () (kittymacs-onboard-test--keys ?m '(jump surround)))
      ((meow . t) (jump . t) (surround . t) (agents . nil) (lang-nix . nil)))
+    ("minimal, naming a backend"
+     ,(lambda () (kittymacs-onboard-test--keys ?m nil nil nil kittymacs-onboard-test-build-keys))
+     ((meow . t) (jump . nil)))
     ("full, adding one and excluding one"
      ,(lambda () (kittymacs-onboard-test--keys ?f '(color-names lang-nix) '(?n ?y ?N ?\r)))
      ((meow . t) (jump . t) (lang-nix . t) (color-names . nil))))
