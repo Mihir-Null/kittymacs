@@ -419,12 +419,29 @@ A `doom-' theme needs the `doom-look' feature; without it, `modus-operandi'."
   + a file at =kittymacs-scratch-file= means Emacs has started before, and [[id:3fd783cd-deb8-48aa-bb44-0d9b16535365][the defaults chapter]] restores that text;
   + clearing the comment stays cleared, because the empty buffer saves to that file too.
 - A value set in =private.el= wins.
+- Flyspell checks comments, and =SPC= is no word, so it would underline the first thing a reader sees.
+  + =flyspell-incorrect-hook= lets one function accept what Flyspell found.
+  + Only the pointer's own line in =*scratch*= passes, so =SPC= stays a misspelling everywhere else, and a dictionary gains nothing.
+  + The hook stays on after a first start, because the kept comment comes back from the scratch file.
 
 #+begin_src emacs-lisp
+(defconst kittymacs--scratch-pointer ";; SPC opens the menu.  SPC C o chooses features."
+  "The line that tells a new reader where the menu is.")
+
 (unless (or (kittymacs-feature-p 'home-page)
             initial-scratch-message
             (file-exists-p kittymacs-scratch-file))
-  (setq initial-scratch-message ";; SPC opens the menu.  SPC C o chooses features.\n\n"))
+  (setq initial-scratch-message (concat kittymacs--scratch-pointer "\n\n")))
+
+(defun kittymacs--scratch-pointer-word-p (start _end _corrections)
+  "Return non-nil when the word at START is on the pointer's line in *scratch*.
+A function on `flyspell-incorrect-hook': non-nil leaves the word unmarked."
+  (and (equal (buffer-name) "*scratch*")
+       (save-excursion
+         (goto-char start)
+         (equal (buffer-substring-no-properties (pos-bol) (pos-eol))
+                kittymacs--scratch-pointer))))
+(add-hook 'flyspell-incorrect-hook #'kittymacs--scratch-pointer-word-p)
 
 #+end_src
 
@@ -458,3 +475,4 @@ A `doom-' theme needs the `doom-look' feature; without it, `modus-operandi'."
   + Batch =format-mode-line= returns nothing, so it reads the option that decides; look at a real frame for the text.
 - =just test-minimal=: the same verifier checks that Modus comes back alone, and that neither doom package loaded.
   + The theme tests leave out doom-themes and doom-modeline, and check that the Modus themes load and toggle instead.
+- =just test-packages=: where Hunspell has a dictionary, the theme tests run real Flyspell over =*scratch*=, and only a =SPC= outside the pointer gets marked.
