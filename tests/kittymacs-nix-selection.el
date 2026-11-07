@@ -128,6 +128,23 @@ their own."
                    (list (format "built beyond the features: %S, and extraPackages says (avy)"
                                  extra)))))))
 
+(defun kittymacs-nix--check-tools (said tools system)
+  "Return what is wrong with the TOOLS a host installs on SYSTEM, for the options SAID.
+A tool must be there when this start has its feature on.  With no profile, Nix
+answers from `full', so only then may it install one this start does not need."
+  (let ((on (kittymacs-nix--answer system)))
+    (seq-keep (lambda (tool)
+                (let* ((feature (alist-get 'feature tool))
+                       (installed (eq (alist-get 'installed tool) t))
+                       (needed (or (null feature) (memq (intern feature) on))))
+                  (cond ((and needed (not installed))
+                         (format "%s is not installed, and %s is on"
+                                 (alist-get 'name tool) (or feature "every start")))
+                        ((and installed (not needed) (alist-get 'profile said))
+                         (format "%s is installed, and %s is off"
+                                 (alist-get 'name tool) feature)))))
+              tools)))
+
 (defun kittymacs-nix--check-settings (name)
   "Return what is wrong with the settings the host NAME asked for."
   (when (memq name '(full nixosFull darwinFull))
@@ -183,6 +200,9 @@ their own."
                                                       (alist-get 'system entry))
                         (kittymacs-nix--check-built name (alist-get 'built entry)
                                                     (alist-get 'system entry))
+                        (kittymacs-nix--check-tools (alist-get 'said entry)
+                                                    (alist-get 'tools entry)
+                                                    (alist-get 'system entry))
                         (kittymacs-nix--check-settings name)
                         (kittymacs-nix--selection-warnings))))
       (error (push (format "Startup error: %S" err) failures)))
@@ -218,7 +238,13 @@ their own."
          (and (alist-get 'enabled host)
               (list (format "%s chose features" name)))
          (and (null host)
-              (list (format "the report has no %s host" name))))))
+              (list (format "the report has no %s host" name)))
+         ;; A host that chose nothing gets what `full' selects.
+         (seq-keep (lambda (tool)
+                     (unless (or (eq (alist-get 'installed tool) t)
+                                 (equal (alist-get 'feature tool) "jupyter"))
+                       (format "%s does not install %s" name (alist-get 'name tool))))
+                   (alist-get 'tools host)))))
     '(plain nixosPlain darwinPlain))
    (and (not (equal (alist-get 'built (alist-get 'extraOnly report)) '("vundo")))
         (list (format "extraOnly built %S" (alist-get 'built (alist-get 'extraOnly report)))))))

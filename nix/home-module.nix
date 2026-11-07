@@ -16,6 +16,7 @@ let
     emacs = cfg.package;
   };
   emacs = selection.emacsFor (selection.systemType pkgs) cfg;
+  features = selection.toolFeatures (selection.systemType pkgs) cfg;
   git = "${pkgs.git}/bin/git";
   coreutils = "${pkgs.coreutils}/bin";
 in
@@ -169,9 +170,11 @@ in
           if cfg.backend.enable then
             tools.backendPrograms
           else
-            [ emacs ] ++ tools.programs ++ lib.optional cfg.suggestions.enable cfg.suggestions.package
+            [ emacs ]
+            ++ tools.programsFor features
+            ++ lib.optional cfg.suggestions.enable cfg.suggestions.package
         ))
-        ++ (lib.optionals cfg.installFonts tools.fonts);
+        ++ (lib.optionals cfg.installFonts (tools.fontsFor features));
 
       file = lib.mkIf (config.xdg.configHome != "${config.home.homeDirectory}/.config") (
         lib.mapAttrs' (
