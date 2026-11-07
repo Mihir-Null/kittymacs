@@ -89,6 +89,7 @@
                                                 (\"slow\" :transport kmock :host \"elsewhere\" :root \"/\" :direct-async nil :shell \"/custom/shell\")
                                                 (\"typo\" :transport no-such-transport :host \"x\" :root \"/\")
                                                 (\"tramp\" :transport sshx :host \"build\" :root \"~/src/\")
+                                                (\"optional\" :transport distrobox :host \"box\" :root \"/\")
                                                 (\"wsl\" :transport wsl :host \"Fake-24.04\" :root \"/tmp/\")
                                                 (\"wsl-nameless\" :transport wsl :root \"/tmp/\")
                                                 (\"default\" :host \"build\" :root \"~/src/\")))\n"
@@ -547,6 +548,11 @@ It uses the real direnv, not the one `kittymacs-remote-start--fake-programs' add
   (kittymacs-remote-fixture--script "project/sub/kfake-here" "echo here")
   (kittymacs-remote-start-value 'backend-root (kittymacs-backend-root "here"))
   (kittymacs-remote-start-value 'backend-tramp-method (kittymacs-backend-root "tramp"))
+  (kittymacs-remote-start-value 'optional-method-off
+    (condition-case err (kittymacs-backend-root "optional")
+      (user-error (error-message-string err))))
+  (tramp-enable-method "distrobox")
+  (kittymacs-remote-start-value 'optional-method-on (kittymacs-backend-root "optional"))
   (kittymacs-remote-start-value 'backend-default-transport (kittymacs-backend-root "default"))
   (kittymacs-remote-start--wsl)
   (kittymacs-remote-start-value 'backend-typo

@@ -74,8 +74,8 @@ Add the language servers your projects there use."
   '((ssh . kittymacs-remote--tramp-root)
     (wsl . kittymacs-remote--wsl-root))
   "How each transport names a directory on its machine, by the `:transport' key.
-A value is a function of the transport and the backend's plist.  A Tramp method
-needs no row: its name is the transport, handled as `ssh' is.")
+A value is a function of the transport and the backend's plist.  An enabled
+Tramp method needs no row: its name is the transport, handled as `ssh' is.")
 
 (defun kittymacs-remote--tramp-root (transport backend)
   "Return the root of BACKEND as a Tramp name, with TRANSPORT as the method."
@@ -92,7 +92,7 @@ needs no row: its name is the transport, handled as `ssh' is.")
     (require 'tramp)
     (unless (or (assq transport kittymacs-remote-transports)
                 (assoc (symbol-name transport) tramp-methods))
-      (user-error "No transport called %s: not in `kittymacs-remote-transports', and Tramp has no such method"
+      (user-error "No transport called %s: not in `kittymacs-remote-transports', and not an enabled Tramp method; `tramp-enable-method' enables an optional one"
                   transport))
     transport))
 
