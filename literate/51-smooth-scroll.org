@@ -1,0 +1,226 @@
+:PROPERTIES:
+:ID: b4e91f6a-57ea-452d-9e74-8f9440b62cfa
+:END:
+
+#+TITLE: Smooth scrolling
+#+FILETAGS: :interface:
+#+STARTUP: overview
+#+PROPERTY: header-args:emacs-lisp :tangle ../lisp/kittymacs-smooth-scroll.el :eval never :comments no :padline no :mkdirp yes
+
+- A trial, so the owner can decide whether scrolling by pixels is worth keeping: the =smooth-scroll= feature, =optional= in [[id:3f8a6c02-9d14-4b7e-a2c5-1e7d90b64f31][the catalogue]], and off under every profile.
+  + Onboarding offers it by itself.
+  + =(setopt kittymacs-features '(smooth-scroll))= in =private.el= is the other way to turn it on.
+- [[id:40302e33-d2b2-4c0b-9bc3-1f9e121307e1][The startup chapter]] loads this whole chapter behind that feature, so with it off nothing here exists.
+- It gives you:
+  + =pixel-scroll-precision-mode= and =ultra-scroll= for the wheel and the touchpad;
+  + animated page keys, with =C-v=, =M-v=, =<next>= and =<prior>= keeping their meaning;
+  + two half-page keys in Normal state, =C-d= and =C-u=;
+  + =SPC t S=, which turns all of it off and on in the running session, to compare.
+- The idea, and the half-page keys, come from the owner's own earlier branch, and this chapter's code is new.
+
+* What animates, and what stays plain
+
+- Animation redraws many times a second.
+  + That is fine on a graphical frame showing a local file, and nothing else can draw it at all.
+  + Each redraw of a remote buffer may ask the connection something, so a slow link would stall on every step, and [[id:6e1f2a90-4c7b-4d35-9f18-2b7c0d6e3a41][the remote chapter]] explains what a stall costs.
+- So =kittymacs-smooth-scroll--plain-p= decides for every key and every wheel event: a terminal frame and a remote buffer scroll as they do without this feature.
+- It reads the event's window, because the wheel scrolls the window under the pointer, which need not be the selected one.
+- It never connects: [[id:6e1f2a90-4c7b-4d35-9f18-2b7c0d6e3a41][the remote chapter]]'s test only reads the name of the directory.
+
+#+begin_src emacs-lisp
+;;; kittymacs-smooth-scroll.el --- Pixel scrolling and animated page keys -*- lexical-binding: t; -*-
+;; Generated from literate/51-smooth-scroll.org; edit the Org source, then tangle.
+
+;;; Code:
+
+(require 'seq)
+(require 'kittymacs-leader)
+
+(defvar kittymacs-smooth-scroll-mode)
+(defvar meow-normal-mode)
+(defvar ultra-scroll-mode)
+(declare-function kittymacs--pulse-line "kittymacs-ui" (&rest _))
+(declare-function kittymacs-remote-buffer-p "kittymacs-remote" (&rest _))
+(declare-function mwheel-event-window "mwheel" (event))
+(declare-function mwheel-scroll "mwheel" (event &optional arg))
+(declare-function pixel-scroll-precision-interpolate "pixel-scroll" (delta &optional old-window factor))
+
+(defun kittymacs-smooth-scroll--plain-p (&optional window)
+  "Return non-nil if WINDOW keeps plain scrolling: a terminal or a remote buffer.
+WINDOW may be a frame, as a wheel event's can, and nil means the selected one."
+  (let ((window (cond ((framep window) (frame-selected-window window))
+                      (window)
+                      (t (selected-window)))))
+    (or (not (display-graphic-p (window-frame window)))
+        (with-current-buffer (window-buffer window)
+          (kittymacs-remote-buffer-p)))))
+
+#+end_src
+
+* The wheel and the touchpad
+
+- =ultra-scroll= scrolls by the pixel deltas the system reports, and handles lines taller than the window, which =pixel-scroll-precision-mode= alone jumps past.
+  + It is on MELPA under the GPL, version 3 or later, and turning it on turns =pixel-scroll-precision-mode= on as well, so this chapter asks only for the one.
+  + Its README supports the =scroll-margin= of 3 and the =scroll-conservatively= of 101 that [[id:3fd783cd-deb8-48aa-bb44-0d9b16535365][the defaults chapter]] sets, so neither changes.
+- Both modes are global, so one graphical frame turns them on for a terminal frame beside it, as in a daemon.
+  + An =:around= advice sends a wheel event in a plain window to =mwheel-scroll= instead.
+  + Precision scrolling tells Emacs to report every small movement, so a touchpad's events can each be far less than a line.
+  + The plain path therefore adds up the pixels and scrolls whole lines, and a wheel with no pixel data goes straight to =mwheel-scroll=.
+- A session with no graphical frame loads none of this until =after-make-frame-functions= sees one.
+
+** What native Windows does
+
+- This comes from reading =w32_construct_mouse_wheel= in =src/w32term.c= on Emacs's =emacs-31= branch, with no test on hardware:
+  + a message smaller than one wheel notch carries a pixel delta, and only such a message does;
+  + a whole notch carries none, so =ultra-scroll= hands it to =mwheel-scroll=, and a classic wheel scrolls as it did before;
+  + nothing there sends =touch-end=, so Windows gets no momentum.
+- So a touchpad scrolls by pixels only if its driver sends fine-grained =WM_MOUSEWHEEL= messages, which this source cannot settle.
+  + =M-x ultra-scroll-check= reports what a machine really sends.
+- The README of =ultra-scroll= does not mention Windows, and says that without pixel data it works, but without smooth scrolling.
+- The animated keys need no input device, so they work there regardless.
+
+#+begin_src emacs-lisp
+(use-package ultra-scroll
+  :ensure t
+  :commands ultra-scroll-mode)
+
+(defvar kittymacs-smooth-scroll--rest 0.0
+  "Pixels a plain window has been asked to scroll, short of a whole line.")
+
+(defun kittymacs-smooth-scroll--plain-wheel (event arg window)
+  "Scroll WINDOW by whole lines for EVENT and ARG, adding up its pixels."
+  (if-let* ((delta (nth 4 event)))
+      (with-selected-window window
+        (let* ((height (default-line-height))
+               (pixels (+ kittymacs-smooth-scroll--rest (cdr delta)))
+               (lines (truncate (/ pixels height))))
+          (setq kittymacs-smooth-scroll--rest (- pixels (* lines height)))
+          (condition-case nil
+              (cond ((< lines 0) (scroll-up (- lines)))
+                    ((> lines 0) (scroll-down lines)))
+            ((beginning-of-buffer end-of-buffer) nil))))
+    (mwheel-scroll event arg)))
+
+(defun kittymacs-smooth-scroll--wheel (scroll event &optional arg)
+  "Call SCROLL with EVENT and ARG, unless EVENT's window keeps plain scrolling."
+  (let* ((target (mwheel-event-window event))
+         (window (if (framep target) (frame-selected-window target) target)))
+    (if (kittymacs-smooth-scroll--plain-p window)
+        (kittymacs-smooth-scroll--plain-wheel event arg window)
+      (funcall scroll event arg))))
+(advice-add 'ultra-scroll :around #'kittymacs-smooth-scroll--wheel)
+(advice-add 'ultra-scroll-mac :around #'kittymacs-smooth-scroll--wheel)
+
+#+end_src
+
+* The keys
+
+- Meow's grammar here binds nothing that scrolls, so the scrolling keys are Emacs's own: =C-v= and =<next>= forward, =M-v= and =<prior>= back.
+- This chapter animates them where they are, by remapping their commands.
+  + The same remap catches =pixel-scroll-interpolate-down= and =-up=, which is what =pixel-scroll-precision-mode= puts on =<next>= and =<prior>=.
+- A page keeps its meaning: the window's height less =next-screen-context-lines=, as =scroll-up-command= moves.
+- A prefix argument counts lines, so it takes the plain command.
+- =kittymacs--pulse-line= follows the animation, because the [[id:0286f652-e861-4e61-9ca6-91e225c8939d][appearance chapter]]'s pulse is advice on the plain commands, which an animated page no longer calls.
+- A scroll past either end of the buffer stops with a message rather than an error.
+- =C-d= and =C-u= scroll half a window, in Normal state only.
+  + Insert state keeps =delete-char= and =universal-argument= under those keys, and so do Motion-state buffers such as Magit.
+  + In Normal state, =C-u= stops being =universal-argument= while this is on: =M-1= and its neighbours still give a count, and =-= still negates.
+  + A menu item's =:filter= asks for the state as the key is read, so nothing edits Meow's map, and turning this off leaves nothing behind.
+  + In a terminal frame or a remote buffer they scroll half a window with no animation, so one key means one thing everywhere.
+- =SPC t S= is =kittymacs-smooth-scroll-mode=, which holds the keys and turns the pixel scrolling on and off.
+  + It starts on, because selecting the feature asked for it.
+
+#+begin_src emacs-lisp
+(defun kittymacs-smooth-scroll--animate (pixels)
+  "Scroll by PIXELS with an animation, forward when negative, then pulse the line."
+  (condition-case err
+      (pixel-scroll-precision-interpolate pixels nil 1)
+    ((beginning-of-buffer end-of-buffer)
+     (message "%s" (error-message-string err))))
+  (kittymacs--pulse-line))
+
+(defun kittymacs-smooth-scroll--page-pixels ()
+  "Return how many pixels `scroll-up-command' moves this window by."
+  (max (default-line-height)
+       (- (window-text-height nil t)
+          (* next-screen-context-lines (default-line-height)))))
+
+(defun kittymacs-smooth-scroll-page-down (&optional lines)
+  "Scroll forward a page with an animation, or LINES lines without one."
+  (interactive "^P")
+  (if (or lines (kittymacs-smooth-scroll--plain-p))
+      (scroll-up-command lines)
+    (kittymacs-smooth-scroll--animate (- (kittymacs-smooth-scroll--page-pixels)))))
+
+(defun kittymacs-smooth-scroll-page-up (&optional lines)
+  "Scroll back a page with an animation, or LINES lines without one."
+  (interactive "^P")
+  (if (or lines (kittymacs-smooth-scroll--plain-p))
+      (scroll-down-command lines)
+    (kittymacs-smooth-scroll--animate (kittymacs-smooth-scroll--page-pixels))))
+
+(defun kittymacs-smooth-scroll-half-page-down ()
+  "Scroll forward half a window, with an animation where one is possible."
+  (interactive)
+  (if (kittymacs-smooth-scroll--plain-p)
+      (scroll-up-command (max 1 (/ (window-body-height) 2)))
+    (kittymacs-smooth-scroll--animate (- (/ (window-text-height nil t) 2)))))
+
+(defun kittymacs-smooth-scroll-half-page-up ()
+  "Scroll back half a window, with an animation where one is possible."
+  (interactive)
+  (if (kittymacs-smooth-scroll--plain-p)
+      (scroll-down-command (max 1 (/ (window-body-height) 2)))
+    (kittymacs-smooth-scroll--animate (/ (window-text-height nil t) 2))))
+
+(defun kittymacs-smooth-scroll--in-normal-state (command)
+  "Return COMMAND in Meow's Normal state, and nil anywhere else."
+  (and (bound-and-true-p meow-normal-mode) command))
+
+(defvar-keymap kittymacs-smooth-scroll-mode-map
+  :doc "The animated page keys."
+  "<remap> <scroll-up-command>" #'kittymacs-smooth-scroll-page-down
+  "<remap> <scroll-down-command>" #'kittymacs-smooth-scroll-page-up
+  "<remap> <pixel-scroll-interpolate-down>" #'kittymacs-smooth-scroll-page-down
+  "<remap> <pixel-scroll-interpolate-up>" #'kittymacs-smooth-scroll-page-up
+  "C-d" `(menu-item "" kittymacs-smooth-scroll-half-page-down
+                    :filter kittymacs-smooth-scroll--in-normal-state)
+  "C-u" `(menu-item "" kittymacs-smooth-scroll-half-page-up
+                    :filter kittymacs-smooth-scroll--in-normal-state))
+
+(defun kittymacs-smooth-scroll--apply (&optional _frame)
+  "Make the pixel scrolling agree with the mode, once a graphical frame exists."
+  (cond ((not kittymacs-smooth-scroll-mode)
+         (when (bound-and-true-p ultra-scroll-mode)
+           (ultra-scroll-mode -1)))
+        ((seq-some #'display-graphic-p (frame-list))
+         (ultra-scroll-mode 1))))
+
+(define-minor-mode kittymacs-smooth-scroll-mode
+  "Scroll by pixels on a graphical frame, and animate the page keys."
+  :global t
+  :group 'kittymacs
+  :keymap kittymacs-smooth-scroll-mode-map
+  (if kittymacs-smooth-scroll-mode
+      (add-hook 'after-make-frame-functions #'kittymacs-smooth-scroll--apply)
+    (remove-hook 'after-make-frame-functions #'kittymacs-smooth-scroll--apply))
+  (kittymacs-smooth-scroll--apply))
+
+(keymap-set kittymacs-toggle-map "S" (cons "smooth scrolling" #'kittymacs-smooth-scroll-mode))
+(kittymacs-smooth-scroll-mode 1)
+
+(provide 'kittymacs-smooth-scroll)
+;;; kittymacs-smooth-scroll.el ends here
+#+end_src
+
+* Check
+
+- =just test= runs [[file:../tests/kittymacs-smooth-scroll-tests.el][its tests]], which need no packages: the keys, the plain paths, and what turning it off leaves.
+- =just test-features= starts Emacs with this feature on, and every other selection with it off; a start fails if this module or its package loads with the feature off.
+- A real feel is for a person. With =(setopt kittymacs-features '(smooth-scroll))= on a graphical frame:
+  + =C-v= glides a page, and the line pulses where it stops;
+  + =C-d= and =C-u= glide half a window in Normal state, and =C-d= still deletes in Insert state;
+  + a touchpad moves the text by pixels; =M-x ultra-scroll-check= says if the system sends pixel data at all;
+  + =SPC t S=, then =C-v=: the page jumps, as it does with the feature off.
+- =emacs -nw= with the feature on: =C-v= and =C-d= scroll with no animation.
+- A file over Tramp in a graphical frame: =C-v= jumps a page, and a local file beside it glides.
