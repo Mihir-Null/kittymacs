@@ -965,8 +965,9 @@ person, with what to install for whichever is missing."
   + Emacs reports that save as failed and keeps the buffer modified, so saving again repairs it, unless Emacs has gone too.
 - So a save on this transport sets =file-precious-flag=, which writes a temporary file beside it and renames that over the file, and the same kill leaves the old bytes.
   + It costs a few round trips per save: [[file:../tests/wsl-backend/rpc.el][the hosted job]] times it.
-  + A kill mid-save leaves an empty =tmp= file in that directory, for you to delete.
+  + A kill mid-save leaves an empty file beside it, such as =target.tmpbdZZ1p=, for you to delete.
 - Replacing a file would cut off a symbolic link or a file's other names, so those are written in place, and keep the window.
+  + A link is rarely that case: =find-file-visit-truename= has the buffer visit the file the link names, which gets replaced, and the link goes on naming it.
   + Replacing also gives the file a new inode and makes you its owner, while Emacs keeps its mode.
 - It covers =save-buffer= and what goes through it, and not a program calling =write-region= directly.
 - It is set just before each save, not when the file opens, because a change of major mode clears it, and because the check needs the connection that a save has anyway.
