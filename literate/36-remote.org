@@ -687,7 +687,9 @@ A file with line endings keeps them.  This never connects."
   + =kittymacs-remote--wsl-distribution= decides from the name alone, so a buffer on any other machine connects to nothing.
   + A host that sets =envrc-remote= for itself keeps what it chose, on other machines.
 - The cost is a stopped distribution: =wsl.exe= has to start it, and opening a file waits until it answers or =C-g=.
-  + Finding the =.envrc= runs in the same breath, and a help buffer with that directory pays too.
+  + That wait is there with direnv off too, and direnv adds its search and its run to it, about 3 s on top of about 5 s on [[file:../tests/wsl-backend/connect.el][the job's runner]].
+  + Once the distribution runs, a file opens in under 0.4 s with direnv's first run, and in about 0.1 s after that, with or without direnv.
+  + A help buffer with that directory pays too.
 - envrc needs three corrections on such a machine, and all apply to these buffers alone.
   + It starts =direnv export= with =make-process= and no =:file-handler=, as its own "todo tramp?" says, so the program runs on this machine, in no project, and the buffer reads as =on= with nothing in it.
   + It keeps the result in =tramp-remote-process-environment=, which only a direct process reads, so the result also goes in the buffer's =process-environment=.
