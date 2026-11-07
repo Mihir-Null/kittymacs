@@ -327,6 +327,88 @@ which is what an unpaired installation looks like from Emacs."
       (should (equal ispell-dictionary "en_US"))
       (should-not kittymacs--spell-warned))))
 
+(defmacro kittymacs-platform-test-spelling (system executables &rest body)
+  "Run BODY as SYSTEM with EXECUTABLES, collecting `message' texts in MESSAGES.
+PROSE is a function that runs the hooks' function in a new buffer it names."
+  (declare (indent 2))
+  `(kittymacs-platform-test-with ,system ,executables
+     (let ((kittymacs--spell-missing-said nil)
+           (messages nil))
+       (cl-letf* (((symbol-function 'flyspell-mode) #'ignore)
+                  ((symbol-function 'flyspell-prog-mode) #'ignore)
+                  ((symbol-function 'message)
+                   (lambda (format-string &rest args)
+                     (push (apply #'format format-string args) messages)))
+                  (open (lambda (name function)
+                          (let ((buffer (generate-new-buffer name)))
+                            (unwind-protect
+                                (with-current-buffer buffer (funcall function))
+                              (kill-buffer buffer)))))
+                  ((symbol-function 'kittymacs-platform-test--open) open))
+         ,@body))))
+
+(ert-deftest kittymacs-platform-no-checker-says-so-once-a-session ()
+  (kittymacs-platform-test-spelling 'gnu/linux '()
+    (kittymacs-platform-test--open "one" #'kittymacs--flyspell-text)
+    (kittymacs-platform-test--open "two" #'kittymacs--flyspell-text)
+    (should (= (length messages) 1))
+    (should (string-match-p "Hunspell" (car messages)))))
+
+(ert-deftest kittymacs-platform-no-checker-waits-for-prose ()
+  (kittymacs-platform-test-spelling 'gnu/linux '()
+    (kittymacs-platform-test--open "code" #'kittymacs--flyspell-prog)
+    (should-not messages)
+    (should-not kittymacs--spell-missing-said)))
+
+(ert-deftest kittymacs-platform-no-checker-is-not-used-up-by-a-hidden-buffer ()
+  (kittymacs-platform-test-spelling 'gnu/linux '()
+    (kittymacs-platform-test--open " *hidden*" #'kittymacs--flyspell-text)
+    (should-not messages)
+    (kittymacs-platform-test--open "seen" #'kittymacs--flyspell-text)
+    (should (= (length messages) 1))))
+
+(ert-deftest kittymacs-platform-a-checker-means-no-message ()
+  (kittymacs-platform-test-spelling 'gnu/linux '("hunspell")
+    (kittymacs-platform-test--open "prose" #'kittymacs--flyspell-text)
+    (should-not messages)))
+
+(ert-deftest kittymacs-platform-no-checker-elsewhere-leaves-msys2-out ()
+  (dolist (system '(gnu/linux darwin android))
+    (kittymacs-platform-test-spelling system '()
+      (kittymacs-platform-test--open "prose" #'kittymacs--flyspell-text)
+      (should (string-match-p "system's Hunspell" (car messages)))
+      (should-not (string-match-p "[Mm][Ss][Yy][Ss]" (car messages))))))
+
+(ert-deftest kittymacs-platform-no-checker-on-windows-names-both-ways ()
+  (kittymacs-platform-test-spelling 'windows-nt '()
+    (kittymacs-platform-test--open "prose" #'kittymacs--flyspell-text)
+    (should (string-match-p "choco install hunspell\\.portable" (car messages)))
+    (should (string-match-p (regexp-quote "(setopt kittymacs-features '(msys2-fallback))")
+                            (car messages)))))
+
+(defvar kittymacs-platform-test--file-operations nil
+  "The file operations seen by `kittymacs-platform-test--file-handler'.")
+
+(defun kittymacs-platform-test--file-handler (operation &rest args)
+  "Record OPERATION, then run it on ARGS as if no handler were here."
+  (push operation kittymacs-platform-test--file-operations)
+  (let ((inhibit-file-name-handlers
+         (cons 'kittymacs-platform-test--file-handler inhibit-file-name-handlers))
+        (inhibit-file-name-operation operation))
+    (apply operation args)))
+
+(ert-deftest kittymacs-platform-no-checker-looks-for-nothing-on-disk ()
+  "A file-name handler sees each file operation, with no primitive replaced."
+  (kittymacs-platform-test-spelling 'windows-nt '()
+    (setq kittymacs-platform-test--file-operations nil)
+    (let ((file-name-handler-alist '(("" . kittymacs-platform-test--file-handler))))
+      (kittymacs-platform-test--open "prose" #'kittymacs--flyspell-text))
+    (should (= (length messages) 1))
+    (should-not (seq-intersection kittymacs-platform-test--file-operations
+                                  '(file-exists-p file-directory-p file-readable-p
+                                    file-executable-p file-attributes directory-files
+                                    directory-files-and-attributes file-expand-wildcards)))))
+
 (ert-deftest kittymacs-platform-ispell-keeps-an-inherited-dictionary ()
   (kittymacs-platform-test-with 'gnu/linux '("hunspell")
     (let ((ispell-program-name ispell-program-name)
