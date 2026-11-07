@@ -638,9 +638,10 @@ A file with line endings keeps them.  This never connects."
 :ID: 4e8b1d76-3a95-4c20-b7f1-92c6d0e5a813
 :END:
 
-- =:transport wsl-rpc= reaches a distribution through a small server there, in place of Tramp's shell, because small file operations and the commands that =wslm= breaks gain the most.
-  + Reads, =directory-files= and =file-attributes= run 4 to 9 times faster on a hosted runner, and non-ASCII arguments and long commands pass.
-  + Magit gains nothing, and [[file:../ARCHITECTURE.md][ARCHITECTURE.md]] says why that was accepted.
+- =:transport wsl-rpc= reaches a distribution through a small server there, in place of Tramp's shell, because small reads, large files and the commands that =wslm= breaks gain the most.
+  + On a hosted runner with this configuration, small reads, =directory-files= and =file-attributes= run 2 to 4 times faster, and reads and writes of 1 MiB 3 to 7 times.
+  + Non-ASCII arguments and long commands pass, and a stuck server is replaced with no action.
+  + A small write, Magit and Eglot gain nothing you could rely on, and [[file:../ARCHITECTURE.md][ARCHITECTURE.md]] says why that was accepted.
 - It is opt-in for each backend, and =:transport wsl= stays =wslm=, the default and the way back.
 - It needs the =wsl-rpc= feature, which only native Windows can turn on, because the transport exists only there.
   + The server is [[https://github.com/ArthurHeymans/emacs-tramp-rpc][tramp-rpc]], at a pinned revision, with no fork and no change to its files.
@@ -955,6 +956,38 @@ person, with what to install for whichever is missing."
   (advice-add 'server-visit-files :filter-args #'kittymacs--remote-rpc-own-names))
 (with-eval-after-load 'ghostel-shell
   (add-to-list 'ghostel-tramp-shells (list kittymacs-remote-wsl-rpc-method 'login-shell)))
+#+end_src
+
+** A save the server dies during
+
+- The server's =file.write= truncates and then writes, so a server killed between the two leaves an empty file.
+  + The window is short: the hosted job holds it open with =strace= to hit it, and otherwise finds the file whole, old or new.
+  + Emacs reports that save as failed and keeps the buffer modified, so saving again repairs it, unless Emacs has gone too.
+- So a save on this transport sets =file-precious-flag=, which writes a temporary file beside it and renames that over the file, and the same kill leaves the old bytes.
+  + It costs a few round trips per save: [[file:../tests/wsl-backend/rpc.el][the hosted job]] times it.
+  + A kill mid-save leaves an empty =tmp= file in that directory, for you to delete.
+- Replacing a file would cut off a symbolic link or a file's other names, so those are written in place, and keep the window.
+  + Replacing also gives the file a new inode and makes you its owner, while Emacs keeps its mode.
+- It covers =save-buffer= and what goes through it, and not a program calling =write-region= directly.
+- It is set just before each save, not when the file opens, because a change of major mode clears it, and because the check needs the connection that a save has anyway.
+
+#+begin_src emacs-lisp :tangle ../lisp/kittymacs-remote-rpc.el
+(defun kittymacs-remote-rpc--file-p (file)
+  "Return non-nil if the name FILE is on a `wsl-rpc' backend's distribution.
+This reads the name, and never connects."
+  (and (kittymacs-remote--wsl-distribution file)
+       (string-prefix-p (format "/%s:" kittymacs-remote-wsl-rpc-method) file)))
+
+(defun kittymacs--remote-rpc-precious ()
+  "Have this save replace its file, if a `wsl-rpc' backend holds it.
+Not a symbolic link or a file with other names, which replacing would cut off."
+  (when (kittymacs-remote-rpc--file-p buffer-file-name)
+    (let ((attributes (file-attributes buffer-file-name)))
+      (setq-local file-precious-flag
+                  (not (or (stringp (file-attribute-type attributes))
+                           (> (or (file-attribute-link-number attributes) 1) 1)))))))
+
+(add-hook 'before-save-hook #'kittymacs--remote-rpc-precious)
 
 (provide 'kittymacs-remote-rpc)
 ;;; kittymacs-remote-rpc.el ends here
