@@ -181,10 +181,26 @@ Batch `format-mode-line' returns nothing, so this reads the option it obeys."
                     (commandp (kittymacs-check--binding key)))
          (list (format "*scratch* has no valid pointer: %S, SPC C o is %S" pointer key)))))))
 
+(defun kittymacs-check-msys2-inactive ()
+  "Return what shows the MSYS2 module at work while its feature is off."
+  (unless (kittymacs-feature-p 'msys2-fallback)
+    (append
+     (when (or (featurep 'kittymacs-msys2) (fboundp 'kittymacs-msys2-apply))
+       (list "msys2-fallback is off, and its module loaded"))
+     (when (keymap-lookup kittymacs-leader-map "o m")
+       (list "msys2-fallback is off, and SPC o m is bound"))
+     (when (bound-and-true-p kittymacs-remote-windows-file-note)
+       (list "msys2-fallback is off, and its note on Windows-side files is set"))
+     (when-let* ((found (seq-filter (lambda (directory)
+                                      (string-match-p "msys" directory))
+                                    exec-path)))
+       (list (format "msys2-fallback is off, and exec-path has %S" found))))))
+
 (defun kittymacs-check-start ()
   "Return what is wrong after any start: dead keys, empty groups, Org and Tramp."
   (append
    (kittymacs-check-first-look)
+   (kittymacs-check-msys2-inactive)
    (mapcar (lambda (binding) (format "SPC %s is not a command" binding))
            (kittymacs-check-uncallable-bindings kittymacs-leader-map []))
    (mapcar (lambda (group) (format "SPC %s is an empty group" group))
