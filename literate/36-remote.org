@@ -688,9 +688,10 @@ A file with line endings keeps them.  This never connects."
   + A host that sets =envrc-remote= for itself keeps what it chose, on other machines.
 - The cost is a stopped distribution: =wsl.exe= has to start it, and opening a file waits until it answers or =C-g=.
   + Finding the =.envrc= runs in the same breath, and a help buffer with that directory pays too.
-- envrc needs two corrections on such a machine, and both apply to these buffers alone.
+- envrc needs three corrections on such a machine, and all apply to these buffers alone.
   + It starts =direnv export= with =make-process= and no =:file-handler=, as its own "todo tramp?" says, so the program runs on this machine, in no project, and the buffer reads as =on= with nothing in it.
-  + It keeps the result in =tramp-remote-process-environment=, which only a direct process reads, so the result also goes in the buffer's =process-environment=, which Tramp passes to the others.
+  + It keeps the result in =tramp-remote-process-environment=, which only a direct process reads, so the result also goes in the buffer's =process-environment=.
+  + From Emacs 31 Tramp treats a buffer's own =process-environment= as this machine's, and passes none of it, so =tramp-local-environment-variable-p= compares with the global value alone in these buffers.
 - =SPC o B= says whether this is on for a backend.
 
 #+begin_src emacs-lisp
@@ -729,9 +730,19 @@ This reads the name, and never connects."
       (setq-local process-environment
                   (envrc--merged-environment (default-value 'process-environment) result)))))
 
+(defun kittymacs--remote-envrc-variable-local-p (original variable)
+  "Call ORIGINAL on VARIABLE, or compare with the global value in a direnv buffer."
+  (if (and (bound-and-true-p envrc-mode)
+           (kittymacs-remote--direnv-p default-directory))
+      (member variable (default-toplevel-value 'process-environment))
+    (funcall original variable)))
+
 (with-eval-after-load 'envrc
   (advice-add 'envrc--direnv-export :around #'kittymacs--remote-envrc-export)
   (advice-add 'envrc--apply :after #'kittymacs--remote-envrc-apply))
+(with-eval-after-load 'tramp
+  (advice-add 'tramp-local-environment-variable-p :around
+              #'kittymacs--remote-envrc-variable-local-p))
 #+end_src
 
 * The guards :decision:

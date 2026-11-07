@@ -400,9 +400,19 @@ This reads the name, and never connects."
       (setq-local process-environment
                   (envrc--merged-environment (default-value 'process-environment) result)))))
 
+(defun kittymacs--remote-envrc-variable-local-p (original variable)
+  "Call ORIGINAL on VARIABLE, or compare with the global value in a direnv buffer."
+  (if (and (bound-and-true-p envrc-mode)
+           (kittymacs-remote--direnv-p default-directory))
+      (member variable (default-toplevel-value 'process-environment))
+    (funcall original variable)))
+
 (with-eval-after-load 'envrc
   (advice-add 'envrc--direnv-export :around #'kittymacs--remote-envrc-export)
   (advice-add 'envrc--apply :after #'kittymacs--remote-envrc-apply))
+(with-eval-after-load 'tramp
+  (advice-add 'tramp-local-environment-variable-p :around
+              #'kittymacs--remote-envrc-variable-local-p))
 (setopt remote-file-name-inhibit-auto-save-visited t
         remote-file-name-inhibit-auto-save t)
 
