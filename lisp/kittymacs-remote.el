@@ -409,8 +409,9 @@ This reads the name, and never connects."
 
 (defun kittymacs--remote-envrc-variable-local-p (original variable)
   "Call ORIGINAL on VARIABLE, unless it is one that direnv set on a WSL backend.
-This asks about the variable, and not about the buffer or its directory, because
-a direct process rebinds the directory, and `shell-command' runs from a new buffer."
+This asks about the variable, and not about the buffer or its directory,
+because a direct process rebinds the directory, and `shell-command' runs
+from a new buffer."
   (and (not (member variable kittymacs-remote--envrc-variables))
        (funcall original variable)))
 
