@@ -254,24 +254,41 @@ with a backtick.  `SPC m' is left out: a major mode's map decides what follows."
             (push (format "%s:%d: %s" (file-name-nondirectory file) line name) found)))))
     (should-not (reverse found))))
 
-(defun kittymacs-lint--msys2-allowed-p (file text)
-  "Return non-nil if TEXT, a line of FILE, may mention MSYS2.
-Its chapter, module and catalogue entry, and elsewhere only by the feature's name."
-  (let ((name (file-name-nondirectory file)))
-    (or (member name '("37-msys2.org" "kittymacs-msys2.el" "20-catalogue.org" "kittymacs-catalogue.el"))
-        (string-prefix-p "- **MSYS2 stays only as a fallback" text)
-        (and (not (member name '("30-platform.org" "kittymacs-platform.el"
-                                 "34-terminal.org" "kittymacs-terminal.el"
-                                 "74-languages.org" "kittymacs-treesit.el")))
-             (string-match-p "msys2-fallback\\|kittymacs-msys2" text)))))
+(defun kittymacs-lint--atoms (form)
+  "Every symbol and string in FORM, however deep."
+  (cond ((consp form) (append (kittymacs-lint--atoms (car form))
+                              (kittymacs-lint--atoms (cdr form))))
+        ((or (stringp form) (and form (symbolp form))) (list form))))
 
-(ert-deftest kittymacs-lint-msys2-stays-in-its-module ()
+(defun kittymacs-lint--asks-for-msys2-p (atom)
+  "Return non-nil if ATOM, from code, reaches for MSYS2.
+A symbol asks for the feature or the module.  A string naming a directory looks
+for an installation.  Any other string may mention it: a message on Windows does."
+  (if (symbolp atom)
+      (string-match-p "msys2" (symbol-name atom))
+    (string-match-p "msys64\\|ucrt64" atom)))
+
+(ert-deftest kittymacs-lint-msys2-stays-separable ()
+  "Code outside the module and the catalogue does not ask for it."
   (let (found)
-    (dolist (file (append (kittymacs-lint--pages) (kittymacs-lint--shipped-files)))
-      (pcase-dolist (`(,line . ,text) (kittymacs-lint--lines-matching "[Mm][Ss][Yy][Ss]" file))
-        (unless (kittymacs-lint--msys2-allowed-p file text)
-          (push (format "%s:%d" (file-name-nondirectory file) line) found))))
+    (dolist (file (kittymacs-lint--modules))
+      (unless (member (file-name-nondirectory file)
+                      '("kittymacs-msys2.el" "kittymacs-catalogue.el"))
+        (dolist (form (kittymacs-lint--forms file))
+          (when-let* ((atoms (seq-filter #'kittymacs-lint--asks-for-msys2-p
+                                         (kittymacs-lint--atoms form))))
+            (push (format "%s: %S" (file-name-nondirectory file) atoms) found)))))
     (should-not (reverse found))))
+
+(ert-deftest kittymacs-lint-msys2-has-one-gate-in-init ()
+  "The module loads from one place, and only when its feature is on."
+  (let ((forms (seq-filter (lambda (form)
+                             (seq-some #'kittymacs-lint--asks-for-msys2-p
+                                       (kittymacs-lint--atoms form)))
+                           (kittymacs-lint--forms (kittymacs-lint--path "init.el")))))
+    (should (equal forms
+                   '((when (kittymacs-feature-p 'msys2-fallback)
+                       (kittymacs-require-module 'kittymacs-msys2)))))))
 
 ;;; Host names
 
