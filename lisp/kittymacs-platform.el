@@ -286,15 +286,29 @@ library, runs the checker and fails again."
 
 (with-eval-after-load 'ispell (kittymacs--configure-ispell))
 
+(defvar kittymacs--spell-missing-said nil)
+(defun kittymacs--spell-missing ()
+  "Say once a session, from a buffer someone can see, that no checker exists."
+  (unless (or kittymacs--spell-missing-said
+              (string-prefix-p " " (buffer-name)))
+    (setq kittymacs--spell-missing-said t)
+    (message
+     (if (eq system-type 'windows-nt)
+         "No spell checker, so spelling is off.  Install Hunspell and an en_US dictionary, such as with `choco install hunspell.portable', or use the fallback: (setopt kittymacs-features '(msys2-fallback))"
+       "No spell checker, so spelling is off.  Install this system's Hunspell and an en_US dictionary."))))
+
 ;; Enable Flyspell the same way: on any error say so once and carry on.
-(defun kittymacs--flyspell (mode-function)
+(defun kittymacs--flyspell (mode-function &optional when-missing)
   "Enable Flyspell with MODE-FUNCTION when this machine has a spell checker.
-A checker that fails is reported once instead of breaking the buffer."
-  (when (kittymacs-spell-checker)
-    (condition-case err
-        (funcall mode-function)
-      (error (kittymacs--spell-off err)))))
-(defun kittymacs--flyspell-text () (kittymacs--flyspell #'flyspell-mode))
+A checker that fails is reported once instead of breaking the buffer.
+With no checker, call WHEN-MISSING, if given."
+  (if (kittymacs-spell-checker)
+      (condition-case err
+          (funcall mode-function)
+        (error (kittymacs--spell-off err)))
+    (when when-missing (funcall when-missing))))
+(defun kittymacs--flyspell-text ()
+  (kittymacs--flyspell #'flyspell-mode #'kittymacs--spell-missing))
 (defun kittymacs--flyspell-prog () (kittymacs--flyspell #'flyspell-prog-mode))
 
 (add-hook 'text-mode-hook #'kittymacs--flyspell-text)

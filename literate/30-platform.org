@@ -496,6 +496,15 @@ current directory."
   + Deciding once, at load time, would be too early: the module loads before =private.el=, so an =exec-path= set there, or a checker that =exec-path-from-shell= later finds on the login shell's =PATH=, would never turn spelling on.
   + The question costs two lookups on =exec-path= per buffer, nothing next to what Flyspell itself does.
   + Text modes get =flyspell-mode=; programming modes =flyspell-prog-mode=, which checks only comments and strings.
+- A session with no checker says so once, in a =message=, because otherwise nothing shows that spelling is off.
+  + It waits for the first prose buffer, since a code buffer's comments are not why someone wants a checker.
+  + A hidden buffer does not count, because Org and others make those for their own work, and nobody would see what it says.
+  + It looks for nothing on disk: the two lookups above already said there is no checker.
+- On native Windows the message offers two ways, because Windows has no system Hunspell to name.
+  + =hunspell.portable= is Chocolatey's package.
+  + Winget and Scoop's Main and Extras buckets list no Hunspell, as of this writing, so the message names neither.
+  + The other way is [[id:5d07c1e4-92ab-4f36-b8d1-6a3e0c47f2d9][the MSYS2 fallback]], which the message only suggests: this code does not ask for that feature.
+- Elsewhere the message names the system's Hunspell, and leaves MSYS2 out, because it runs on Windows alone.
 - Only Emacs's own Flyspell is used here; the two front ends that make corrections pleasant (=C-;= and =SPC s p=) are declared in [[id:42b02bb4-ea68-4981-b427-35705bf162f4][the completion chapter]].
 
 #+begin_src emacs-lisp
@@ -533,15 +542,29 @@ library, runs the checker and fails again."
 
 (with-eval-after-load 'ispell (kittymacs--configure-ispell))
 
+(defvar kittymacs--spell-missing-said nil)
+(defun kittymacs--spell-missing ()
+  "Say once a session, from a buffer someone can see, that no checker exists."
+  (unless (or kittymacs--spell-missing-said
+              (string-prefix-p " " (buffer-name)))
+    (setq kittymacs--spell-missing-said t)
+    (message
+     (if (eq system-type 'windows-nt)
+         "No spell checker, so spelling is off.  Install Hunspell and an en_US dictionary, such as with `choco install hunspell.portable', or use the fallback: (setopt kittymacs-features '(msys2-fallback))"
+       "No spell checker, so spelling is off.  Install this system's Hunspell and an en_US dictionary."))))
+
 ;; Enable Flyspell the same way: on any error say so once and carry on.
-(defun kittymacs--flyspell (mode-function)
+(defun kittymacs--flyspell (mode-function &optional when-missing)
   "Enable Flyspell with MODE-FUNCTION when this machine has a spell checker.
-A checker that fails is reported once instead of breaking the buffer."
-  (when (kittymacs-spell-checker)
-    (condition-case err
-        (funcall mode-function)
-      (error (kittymacs--spell-off err)))))
-(defun kittymacs--flyspell-text () (kittymacs--flyspell #'flyspell-mode))
+A checker that fails is reported once instead of breaking the buffer.
+With no checker, call WHEN-MISSING, if given."
+  (if (kittymacs-spell-checker)
+      (condition-case err
+          (funcall mode-function)
+        (error (kittymacs--spell-off err)))
+    (when when-missing (funcall when-missing))))
+(defun kittymacs--flyspell-text ()
+  (kittymacs--flyspell #'flyspell-mode #'kittymacs--spell-missing))
 (defun kittymacs--flyspell-prog () (kittymacs--flyspell #'flyspell-prog-mode))
 
 (add-hook 'text-mode-hook #'kittymacs--flyspell-text)
@@ -558,6 +581,7 @@ A checker that fails is reported once instead of breaking the buffer."
 - =C-h v shell-file-name=: this machine's shell, as in [[*The policy applied after private.el]].
 - =SPC f o= in a file buffer: the file manager opens on it, selected where the manager allows.
 - =SPC t s= in a text buffer: misspellings are underlined when a checker is installed; without one, nothing happens and nothing breaks.
+- With no checker on =PATH=, open two text files: the first says how to get one, and the second says nothing.
 - macOS: =⌘Q= in one of several frames closes only that frame; deleting a file in Dired puts it in the Trash; switching between a light and a dark theme changes the title bar.
 - Android: two quick presses of volume down quit; in Normal state the on-screen keyboard no longer rewrites the buffer.
 - [[file:../tests/kittymacs-platform-tests.el][The platform tests]] run every system's branch on any machine:
@@ -566,7 +590,8 @@ A checker that fails is reported once instead of breaking the buffer."
   + the 1 MiB pipe on Windows, and no such variable set elsewhere;
   + Termux's shell first, the system shell without it, text conversion following Meow;
   + the file manager for each desktop;
-  + Ispell told its dictionary before it is asked, a broken checker reported once, never aborting Ispell.
+  + Ispell told its dictionary before it is asked, a broken checker reported once, never aborting Ispell;
+  + the message with no checker: once a session, from the first prose buffer anyone sees, with what each system needs.
 
 #+begin_src sh :tangle no
 just test      # the builder, the platform tests and the Tree-sitter policy
