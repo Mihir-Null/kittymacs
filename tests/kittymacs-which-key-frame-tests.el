@@ -43,8 +43,9 @@
                 (lambda () '(side-height . side-width))))
        ,@body)))
 
-(ert-deftest kittymacs-which-key-frame-the-catalogue-keeps-it-off ()
+(ert-deftest kittymacs-which-key-frame-the-catalogue-keeps-it-off-and-hidden ()
   (let ((entry (alist-get 'which-key-frame kittymacs-catalogue)))
+    (should (eq (plist-get entry :hidden) t))
     (should (eq (plist-get entry :profile) 'optional))
     (should (eq (plist-get entry :group) 'look))
     (should (equal (plist-get entry :packages) '(which-key-posframe)))

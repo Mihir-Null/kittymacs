@@ -677,14 +677,19 @@ A name the catalogue lacks goes in NOTES."
      (if untested (format "\n      Experimental: %s" untested) "")
      "\n")))
 
+(defun kittymacs-onboard--offered ()
+  "Return the catalogue's entries the screens offer: all but the hidden."
+  (seq-remove (lambda (entry) (plist-get (cdr entry) :hidden)) kittymacs-catalogue))
+
 (defun kittymacs-onboard--groups ()
-  "Return the catalogue's groups, in the order it first names them."
-  (seq-uniq (mapcar (lambda (entry) (plist-get (cdr entry) :group)) kittymacs-catalogue)))
+  "Return the groups of the offered features, in the catalogue's order."
+  (seq-uniq (mapcar (lambda (entry) (plist-get (cdr entry) :group))
+                    (kittymacs-onboard--offered))))
 
 (defun kittymacs-onboard--features-in (group)
-  "Return the catalogue's features in GROUP."
+  "Return the offered features in GROUP."
   (mapcar #'car (seq-filter (lambda (entry) (eq (plist-get (cdr entry) :group) group))
-                            kittymacs-catalogue)))
+                            (kittymacs-onboard--offered))))
 
 (defun kittymacs-onboard--screen-title (place title)
   "Return a screen's top line: PLACE is its number and the total; TITLE names it."

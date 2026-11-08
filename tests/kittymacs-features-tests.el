@@ -104,6 +104,19 @@ Nothing the older options set is bound, and no machine has run kittymacs yet."
     (should (equal (kittymacs-features-enabled) (kittymacs-features-test--names 'minimal)))
     (should-not warnings)))
 
+(ert-deftest kittymacs-features-the-tried-look-features-are-in-full-and-minimal-is-unchanged ()
+  "The owner moved three look features into `full'; `minimal' must stay as it was."
+  (let ((system-type 'gnu/linux))
+    (should (equal (kittymacs-features--compute 'minimal nil nil)
+                   '(meow undo-tree whitespace-cleanup completion version-control diff-hl
+                     project-environment shell-path)))
+    (dolist (feature '(smooth-scroll hover-docs meow-state-cursor))
+      (should (equal (list feature t)
+                     (list feature (and (memq feature (kittymacs-features--compute 'full nil nil))
+                                        t)))))
+    (dolist (feature '(buffer-tabs which-key-frame))
+      (should-not (memq feature (kittymacs-features--compute 'full nil nil))))))
+
 (ert-deftest kittymacs-features-full-leaves-out-what-the-catalogue-calls-optional ()
   (kittymacs-features-test-with ((kittymacs-profile 'full)) warnings
     (let ((enabled (kittymacs-features-enabled)))

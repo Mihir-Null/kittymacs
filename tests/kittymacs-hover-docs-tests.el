@@ -29,13 +29,14 @@
   `(cl-letf (((symbol-function 'display-graphic-p) (lambda (&rest _) t)))
      ,@body))
 
-(ert-deftest kittymacs-hover-docs-the-catalogue-keeps-it-off ()
+(ert-deftest kittymacs-hover-docs-full-has-it-and-minimal-does-not ()
   (let ((entry (alist-get 'hover-docs kittymacs-catalogue)))
-    (should (eq (plist-get entry :profile) 'optional))
+    (should (eq (plist-get entry :profile) 'full))
     (should (eq (plist-get entry :group) 'look))
     (should (equal (plist-get entry :packages) '(eldoc-box)))
     (should-not (memq 'hover-docs (kittymacs-features--compute 'minimal nil nil)))
-    (should-not (memq 'hover-docs (kittymacs-features--compute 'full nil nil)))))
+    (should (memq 'hover-docs (kittymacs-features--compute 'full nil nil)))
+    (should-not (memq 'hover-docs (kittymacs-features--compute 'full nil '(hover-docs))))))
 
 (ert-deftest kittymacs-hover-docs-loading-it-does-not-load-eglot-or-eldoc-box ()
   (should-not (featurep 'eglot))

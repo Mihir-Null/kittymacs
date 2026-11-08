@@ -41,14 +41,14 @@
 | [[id:d2e0bc37-0bd4-4b28-a8ee-04f94ac451f8][Shells]]          | apps      | the login environment and Eshell                                                   |
 | [[id:6e1f2a90-4c7b-4d35-9f18-2b7c0d6e3a41][Remote]]          | core      | Tramp, named backends, and guards for a dead connection                             |
 | [[id:a1607a41-b741-428a-9de3-c16e7c8d3ecc][Editing]]         | keys      | Meow's states and grammar                                                          |
-| [[id:3eb038b5-6eee-4cb3-84ba-5dc4a23e6629][Meow's state in colour]] | interface | a trial: the cursor and the mode line's mark by state, off by default |
+| [[id:3eb038b5-6eee-4cb3-84ba-5dc4a23e6629][Meow's state in colour]] | interface | the cursor and the mode line's mark by state, in =full= |
 | [[id:e5942eb0-4389-447d-9317-d9178adcaaae][Leader]]          | keys      | why =SPC= is a real keymap, its groups, and how modes get their own menu             |
 | [[id:53ad53ed-155f-47dc-973d-7be18de2893c][Keys]]            | keys      | the whole =SPC= tree, group by group, and the keys no feature owns                   |
-| [[id:720ee516-cb7b-4a90-89f6-3cfd0249d03a][which-key frame]] | interface | a trial: the key menu in a child frame, off by default |
+| [[id:720ee516-cb7b-4a90-89f6-3cfd0249d03a][which-key frame]] | interface | the key menu in a child frame, hidden and off unless set by hand |
 | [[id:86fcd506-34c8-476d-8903-acbef46275bf][EXWM]]            | interface | Emacs as the X window manager, with LeopardWM's keys                               |
 | [[id:f1d045c2-e2dc-4514-ab17-dd982ed6be00][Frames]]          | interface | frames-only mode and its exceptions                                                |
 | [[id:0286f652-e861-4e61-9ca6-91e225c8939d][Appearance]]      | interface | fonts, theme, mode line, icons, highlighting                                       |
-| [[id:b4e91f6a-57ea-452d-9e74-8f9440b62cfa][Smooth scrolling]] | interface | a trial: pixel scrolling and animated page keys, off by default |
+| [[id:b4e91f6a-57ea-452d-9e74-8f9440b62cfa][Smooth scrolling]] | interface | pixel scrolling and animated page keys, in =full= |
 | [[id:e73c0805-dc30-4671-a448-65a78921ec92][Dashboard]]       | interface | the home page                                                                      |
 | [[id:42b02bb4-ea68-4981-b427-35705bf162f4][Completion]]      | interface | Vertico, Orderless, Marginalia, Consult, Embark, Corfu, Cape, snippets             |
 | [[id:8545f3ea-11d0-420b-a823-22a344e56f1e][Help]]            | interface | Helpful, Info, Transient                                                           |
@@ -62,7 +62,7 @@
 | [[id:f48e8f01-88da-4e33-8398-c00ab346b8bb][Org-roam]]        | notes     | linked notes: personal and project graphs, capture, backlinks, tags                |
 | [[id:97c04bd3-1404-4b0a-8018-20d77bc671bc][Programming]]     | code      | delimiters, structural editing, linting, compiling, Emacs Lisp                     |
 | [[id:560fcdca-6cb8-49d9-bf27-eb78f32b9285][Languages]]       | code      | Tree-sitter grammars and opt-in language servers                                   |
-| [[id:78b15713-364e-4d1d-99c9-0e67e1729164][Hover documentation]] | code | a trial: Eglot's documentation in a child frame, off by default |
+| [[id:78b15713-364e-4d1d-99c9-0e67e1729164][Hover documentation]] | code | Eglot's documentation in a child frame, in =full= |
 | [[id:78b654e1-a93e-4e31-b0d8-f266215b5b12][Reading]]         | notes     | PDFs in Emacs, and org-noter's notes beside them                                    |
 | [[id:0bb7490f-71af-4c3d-9e64-741df8ae25c6][Notebooks]]       | code      | Jupytext scripts: cells, a Jupyter kernel, LaTeX drawn in Markdown cells            |
 | [[id:94d55283-5011-4f98-a7f0-8c6bcb51aab9][Agents]]          | apps      | Claude Code in a buffer, through agent-shell, and its MCP servers                  |

@@ -29,6 +29,7 @@
 | =:not-on=       | values of =system-type= where it does not apply                        |
 | =:option=       | a setting that does nothing with the feature off, so setting it alone warns |
 | =:experimental= | one sentence, in plain text with no markup: what is still untested     |
+| =:hidden=       | =t= for a feature that works and that nothing offers, so it is on only where a setting names it |
 | =:summary=      | one sentence: what you get                                             |
 | =:example=      | one sentence: how you notice it                                        |
 
@@ -39,6 +40,11 @@
   + [[id:c8e2f1a7-4b60-49d3-8a15-7d3e96b0c421][Onboarding]] shows it on the feature's row, =SPC o B= names it for a backend whose transport has the feature's name, and the Nix chapter adds it to the feature's option.
   + No start warns about it, because you opted in by name, and =SPC o B= shows it when you look.
   + Those three places read the sentence as it stands, so it holds no markup.
+- =:hidden= keeps a feature that the owner chose not to advertise, and did not want to delete, because it still works for whoever set it.
+  + [[id:c8e2f1a7-4b60-49d3-8a15-7d3e96b0c421][Onboarding]] lists it on no screen, and keeps it where a =private.el= already selects it.
+  + Its keys need no rule of their own: its chapter binds them, and with the feature off that chapter does not load, so the =SPC= menu never shows them.
+  + It is =optional= too, so no profile turns on a feature that nobody offered, and the catalogue tests hold that.
+  + The Nix chapter keeps its option, because a Nix host sets it by hand as =private.el= does, and onboarding's Nix text names it there.
 - The builder writes =nix/features.json= from this list, by reading it and never evaluating it ([[id:d702f35a-3b2f-4cb5-9b4c-c176f0711db0][the builder]]).
 - [[file:../tests/kittymacs-catalogue-tests.el][The catalogue tests]] hold it to the code: every declared package appears once, in the feature of the module that declares it.
   + A package added without an entry fails =just test=, which is the point.
@@ -141,7 +147,7 @@
      :summary "Frame padding, highlighted TODOs and numbers, and a flash on each edit and jump."
      :example "=TODO= stands out in code, and =SPC t j= turns off the pulse after a jump.")
     (smooth-scroll
-     :group look :packages (ultra-scroll) :module kittymacs-smooth-scroll :profile optional
+     :group look :packages (ultra-scroll) :module kittymacs-smooth-scroll :profile full
      :summary "Scrolls by pixels on a graphical frame, and animates the page keys."
      :example "=C-v= glides a page, and =SPC t S= compares it with plain scrolling.")
     (focus-mode
@@ -149,7 +155,7 @@
      :summary "A centred, distraction-free view for writing."
      :example "=SPC t w= centres the buffer and hides the mode line.")
     (hover-docs
-     :group look :packages (eldoc-box) :module kittymacs-hover-docs :profile optional
+     :group look :packages (eldoc-box) :module kittymacs-hover-docs :profile full
      :summary "Shows a language server's documentation in a small frame over the text."
      :example "Pause on a name in an Eglot buffer, and =SPC t e= compares it with the echo area.")
     (frames
@@ -157,7 +163,7 @@
      :summary "Opens each new editing surface as an OS window, for tiling window managers."
      :example "=SPC w n= makes a window, and =SPC t f= turns the policy off for a session.")
     (which-key-frame
-     :group look :packages (which-key-posframe) :module kittymacs-which-key-frame :profile optional
+     :group look :packages (which-key-posframe) :module kittymacs-which-key-frame :profile optional :hidden t
      :summary "Shows the key menu in a small frame over the text, on a graphical frame."
      :example "=SPC= opens the menu at the bottom right, and =SPC t W= compares it with the side window.")
     (home-page
@@ -177,7 +183,7 @@
      :summary "Paints colour names and codes in their own colour."
      :example "=SPC t r= shows =#ff0000= on a red background.")
     (meow-state-cursor
-     :group look :packages () :module kittymacs-meow-state-cursor :profile optional :deps (meow)
+     :group look :packages () :module kittymacs-meow-state-cursor :profile full :deps (meow)
      :summary "Colours the cursor and the mode line's mark by Meow's state, from the theme."
      :example "=i= changes the cursor's colour with its shape, and =SPC t c= compares it with one colour.")
 

@@ -76,6 +76,9 @@
 
 - The screens show the catalogue's own groups, so a feature added there appears here with no change.
   + =kittymacs-onboard--group-titles= only names the groups, and a test fails on a group without a name.
+- A feature the catalogue marks =:hidden= is on no screen, and a group with nothing else has no screen.
+  + A =private.el= that already selects one keeps it: [[*Reading without running]] takes every name the catalogue knows, and [[*The choices]] writes back what is on, so the block and the preview still hold it.
+  + Dropping it would undo a choice the person made by hand, which onboarding must never do.
 - =kittymacs-onboard-options= is short on purpose: what =lisp/private.example.el= presents as the things a machine usually sets.
   + A test reads the source of every module and fails on an option that is no =defcustom=, whose =:type= differs, or that the example does not offer.
   + The source, because under =-Q= the modules are not loaded.
@@ -879,14 +882,19 @@ A name the catalogue lacks goes in NOTES."
      (if untested (format "\n      Experimental: %s" untested) "")
      "\n")))
 
+(defun kittymacs-onboard--offered ()
+  "Return the catalogue's entries the screens offer: all but the hidden."
+  (seq-remove (lambda (entry) (plist-get (cdr entry) :hidden)) kittymacs-catalogue))
+
 (defun kittymacs-onboard--groups ()
-  "Return the catalogue's groups, in the order it first names them."
-  (seq-uniq (mapcar (lambda (entry) (plist-get (cdr entry) :group)) kittymacs-catalogue)))
+  "Return the groups of the offered features, in the catalogue's order."
+  (seq-uniq (mapcar (lambda (entry) (plist-get (cdr entry) :group))
+                    (kittymacs-onboard--offered))))
 
 (defun kittymacs-onboard--features-in (group)
-  "Return the catalogue's features in GROUP."
+  "Return the offered features in GROUP."
   (mapcar #'car (seq-filter (lambda (entry) (eq (plist-get (cdr entry) :group) group))
-                            kittymacs-catalogue)))
+                            (kittymacs-onboard--offered))))
 
 (defun kittymacs-onboard--screen-title (place title)
   "Return a screen's top line: PLACE is its number and the total; TITLE names it."
@@ -1804,6 +1812,7 @@ This Emacs keeps running as it is: a change takes effect at the next start."
 - =TERM=dumb just onboard=: a message saying what to set by hand, and exit status 3.
 - =SPC C o= in a started Emacs: the same screens; =M-: (featurep 'kittymacs-onboard)= was nil until you pressed it.
 - Add a line after the block that sets =kittymacs-features=, and run it again: the last screen names that line.
+- With =(setopt kittymacs-features '(which-key-frame))= in =private.el=: no screen lists it, and the last screen's block still selects it.
 - On the backends screen, press =SPC= on the last line, fill in the form, and press =RET= twice: the block holds =kittymacs-backends=, and the last line names =SPC o B=.
 - On native Windows with two distributions: the form starts at =wsl= on the first, and marks =wsl-rpc= experimental. [[file:../tests/kittymacs-onboard-tests.el][The tests]] run the same form in a real terminal, with a stand-in for =wsl.exe=.
 - Set =kittymacs-backends= in a host file, and press =RET= past that screen: the block does not hold it.

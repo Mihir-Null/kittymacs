@@ -242,7 +242,7 @@
       "ultra-scroll"
     ],
     "module": "kittymacs-smooth-scroll",
-    "profile": "optional",
+    "profile": "full",
     "summary": "Scrolls by pixels on a graphical frame, and animates the page keys.",
     "example": "=C-v= glides a page, and =SPC t S= compares it with plain scrolling."
   },
@@ -263,7 +263,7 @@
       "eldoc-box"
     ],
     "module": "kittymacs-hover-docs",
-    "profile": "optional",
+    "profile": "full",
     "summary": "Shows a language server's documentation in a small frame over the text.",
     "example": "Pause on a name in an Eglot buffer, and =SPC t e= compares it with the echo area."
   },
@@ -284,6 +284,7 @@
     ],
     "module": "kittymacs-which-key-frame",
     "profile": "optional",
+    "hidden": "t",
     "summary": "Shows the key menu in a small frame over the text, on a graphical frame.",
     "example": "=SPC= opens the menu at the bottom right, and =SPC t W= compares it with the side window."
   },
@@ -329,7 +330,7 @@
     "group": "look",
     "packages": [],
     "module": "kittymacs-meow-state-cursor",
-    "profile": "optional",
+    "profile": "full",
     "deps": [
       "meow"
     ],

@@ -94,7 +94,7 @@
      :summary "Frame padding, highlighted TODOs and numbers, and a flash on each edit and jump."
      :example "=TODO= stands out in code, and =SPC t j= turns off the pulse after a jump.")
     (smooth-scroll
-     :group look :packages (ultra-scroll) :module kittymacs-smooth-scroll :profile optional
+     :group look :packages (ultra-scroll) :module kittymacs-smooth-scroll :profile full
      :summary "Scrolls by pixels on a graphical frame, and animates the page keys."
      :example "=C-v= glides a page, and =SPC t S= compares it with plain scrolling.")
     (focus-mode
@@ -102,7 +102,7 @@
      :summary "A centred, distraction-free view for writing."
      :example "=SPC t w= centres the buffer and hides the mode line.")
     (hover-docs
-     :group look :packages (eldoc-box) :module kittymacs-hover-docs :profile optional
+     :group look :packages (eldoc-box) :module kittymacs-hover-docs :profile full
      :summary "Shows a language server's documentation in a small frame over the text."
      :example "Pause on a name in an Eglot buffer, and =SPC t e= compares it with the echo area.")
     (frames
@@ -110,7 +110,7 @@
      :summary "Opens each new editing surface as an OS window, for tiling window managers."
      :example "=SPC w n= makes a window, and =SPC t f= turns the policy off for a session.")
     (which-key-frame
-     :group look :packages (which-key-posframe) :module kittymacs-which-key-frame :profile optional
+     :group look :packages (which-key-posframe) :module kittymacs-which-key-frame :profile optional :hidden t
      :summary "Shows the key menu in a small frame over the text, on a graphical frame."
      :example "=SPC= opens the menu at the bottom right, and =SPC t W= compares it with the side window.")
     (home-page
@@ -130,7 +130,7 @@
      :summary "Paints colour names and codes in their own colour."
      :example "=SPC t r= shows =#ff0000= on a red background.")
     (meow-state-cursor
-     :group look :packages () :module kittymacs-meow-state-cursor :profile optional :deps (meow)
+     :group look :packages () :module kittymacs-meow-state-cursor :profile full :deps (meow)
      :summary "Colours the cursor and the mode line's mark by Meow's state, from the theme."
      :example "=i= changes the cursor's colour with its shape, and =SPC t c= compares it with one colour.")
 

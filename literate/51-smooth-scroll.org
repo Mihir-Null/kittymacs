@@ -7,9 +7,10 @@
 #+STARTUP: overview
 #+PROPERTY: header-args:emacs-lisp :tangle ../lisp/kittymacs-smooth-scroll.el :eval never :comments no :padline no :mkdirp yes
 
-- A trial, so the owner can decide whether scrolling by pixels is worth keeping: the =smooth-scroll= feature, =optional= in [[id:3f8a6c02-9d14-4b7e-a2c5-1e7d90b64f31][the catalogue]], and off under every profile.
-  + Onboarding offers it by itself.
-  + =(setopt kittymacs-features '(smooth-scroll))= in =private.el= is the other way to turn it on.
+- Scrolling by pixels: the =smooth-scroll= feature, which [[id:3f8a6c02-9d14-4b7e-a2c5-1e7d90b64f31][the catalogue]] puts in the =full= profile, and =minimal= leaves out.
+  + The owner chose it for =full= after trying it on its own.
+  + Onboarding offers it by itself, under either profile.
+  + =(setopt kittymacs-features-excluded '(smooth-scroll))= in =private.el= turns it off under =full=, and =(setopt kittymacs-features '(smooth-scroll))= turns it on under =minimal=.
 - [[id:40302e33-d2b2-4c0b-9bc3-1f9e121307e1][The startup chapter]] loads this whole chapter behind that feature, so with it off nothing here exists.
 - It gives you:
   + =pixel-scroll-precision-mode= and =ultra-scroll= for the wheel and the touchpad;
@@ -217,7 +218,7 @@ WINDOW may be a frame, as a wheel event's can, and nil means the selected one."
 
 - =just test= runs [[file:../tests/kittymacs-smooth-scroll-tests.el][its tests]], which need no packages: the keys, the plain paths, and what turning it off leaves.
 - =just test-features= starts Emacs with this feature on, and every other selection with it off; a start fails if this module or its package loads with the feature off.
-- A real feel is for a person. With =(setopt kittymacs-features '(smooth-scroll))= on a graphical frame:
+- A real feel is for a person. On =full=, or =minimal= with =(setopt kittymacs-features '(smooth-scroll))=, on a graphical frame:
   + =C-v= glides a page, and the line pulses where it stops;
   + =C-d= and =C-u= glide half a window in Normal state, and =C-d= still deletes in Insert state;
   + a touchpad moves the text by pixels; =M-x ultra-scroll-check= says if the system sends pixel data at all;
