@@ -7,9 +7,10 @@
 #+STARTUP: overview
 #+PROPERTY: header-args:emacs-lisp :tangle ../lisp/kittymacs-hover-docs.el :eval never :comments no :padline no :mkdirp yes
 
-- A trial, so the owner can decide whether a language server's documentation should float over the text: the =hover-docs= feature, =optional= in [[id:3f8a6c02-9d14-4b7e-a2c5-1e7d90b64f31][the catalogue]], and off under every profile.
-  + Onboarding offers it by itself.
-  + =(setopt kittymacs-features '(hover-docs))= in =private.el= is the other way to turn it on.
+- A language server's documentation over the text: the =hover-docs= feature, which [[id:3f8a6c02-9d14-4b7e-a2c5-1e7d90b64f31][the catalogue]] puts in the =full= profile, and =minimal= leaves out.
+  + The owner chose it for =full= after trying it on its own.
+  + Onboarding offers it by itself, under either profile.
+  + =(setopt kittymacs-features-excluded '(hover-docs))= in =private.el= turns it off under =full=, and =(setopt kittymacs-features '(hover-docs))= turns it on under =minimal=.
 - [[id:40302e33-d2b2-4c0b-9bc3-1f9e121307e1][The startup chapter]] loads this whole chapter behind that feature, so with it off nothing here exists, and Eldoc stays as [[id:97c04bd3-1404-4b0a-8018-20d77bc671bc][the programming chapter]] sets it.
 - It gives you:
   + =eldoc-box= in a buffer that Eglot manages, on a graphical frame;
@@ -108,7 +109,7 @@
 
 - =just test= runs [[file:../tests/kittymacs-hover-docs-tests.el][its tests]], which need no packages: which buffers ask for the frame, and what turning it off leaves.
 - =just test-features= starts Emacs with this feature on, and every other selection with it off; a start fails if this module or =eldoc-box= loads with the feature off.
-- With =(setopt kittymacs-features '(hover-docs))= on a graphical frame, press =SPC l e= for a language server, then:
+- On =full=, or =minimal= with =(setopt kittymacs-features '(hover-docs))=, on a graphical frame, press =SPC l e= for a language server, then:
   + pause on a name with long documentation: a small frame shows it at the top right of the window;
   + move away: it goes;
   + =SPC t e=, then pause again: the echo area shows it instead.

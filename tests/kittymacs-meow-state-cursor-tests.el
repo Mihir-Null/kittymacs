@@ -39,14 +39,16 @@
   '((warning . "#aa0000") (success . "#00aa00") (link . "#0000aa")
     (font-lock-keyword-face . "#aa00aa") (font-lock-string-face . "#00aaaa")))
 
-(ert-deftest kittymacs-state-the-catalogue-keeps-it-off-and-installs-nothing ()
+(ert-deftest kittymacs-state-full-has-it-minimal-does-not-and-it-installs-nothing ()
   (let ((entry (alist-get 'meow-state-cursor kittymacs-catalogue)))
-    (should (eq (plist-get entry :profile) 'optional))
+    (should (eq (plist-get entry :profile) 'full))
     (should (eq (plist-get entry :group) 'look))
     (should-not (plist-get entry :packages))
     (should (memq 'meow (plist-get entry :deps)))
     (should-not (memq 'meow-state-cursor (kittymacs-features--compute 'minimal nil nil)))
-    (should-not (memq 'meow-state-cursor (kittymacs-features--compute 'full nil nil)))))
+    (should (memq 'meow-state-cursor (kittymacs-features--compute 'full nil nil)))
+    (should-not (memq 'meow-state-cursor
+                      (kittymacs-features--compute 'full nil '(meow-state-cursor))))))
 
 (ert-deftest kittymacs-state-each-state-takes-its-theme-colour ()
   (kittymacs-state-test-with-colours kittymacs-state-test-theme

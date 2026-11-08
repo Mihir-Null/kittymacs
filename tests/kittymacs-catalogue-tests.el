@@ -81,6 +81,13 @@
                        (list feature property
                              (and (stringp text) (string-suffix-p "." text) t))))))))
 
+(ert-deftest kittymacs-catalogue-a-hidden-feature-is-optional ()
+  "No profile may turn on a feature that nothing offers."
+  (pcase-dolist (`(,feature . ,plist) kittymacs-catalogue)
+    (when (plist-member plist :hidden)
+      (should (equal (list feature t 'optional)
+                     (list feature (plist-get plist :hidden) (plist-get plist :profile)))))))
+
 (ert-deftest kittymacs-catalogue-deps-exist-and-stay-within-the-profile ()
   "A feature must not need something its own profile leaves out."
   (let ((rank '((minimal . 0) (full . 1) (optional . 2))))

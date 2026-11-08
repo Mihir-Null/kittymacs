@@ -46,13 +46,14 @@
                ((symbol-function 'scroll-down-command) (lambda (&optional n) (push (cons 'down n) plain))))
        ,@body)))
 
-(ert-deftest kittymacs-smooth-scroll-the-catalogue-keeps-it-off ()
+(ert-deftest kittymacs-smooth-scroll-full-has-it-and-minimal-does-not ()
   (let ((entry (alist-get 'smooth-scroll kittymacs-catalogue)))
-    (should (eq (plist-get entry :profile) 'optional))
+    (should (eq (plist-get entry :profile) 'full))
     (should (eq (plist-get entry :group) 'look))
     (should (equal (plist-get entry :packages) '(ultra-scroll)))
     (should-not (memq 'smooth-scroll (kittymacs-features--compute 'minimal nil nil)))
-    (should-not (memq 'smooth-scroll (kittymacs-features--compute 'full nil nil)))
+    (should (memq 'smooth-scroll (kittymacs-features--compute 'full nil nil)))
+    (should-not (memq 'smooth-scroll (kittymacs-features--compute 'full nil '(smooth-scroll))))
     (should (memq 'smooth-scroll (kittymacs-features--compute 'minimal '(smooth-scroll) nil)))))
 
 (ert-deftest kittymacs-smooth-scroll-a-terminal-keeps-plain-scrolling ()

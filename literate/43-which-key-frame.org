@@ -7,9 +7,10 @@
 #+STARTUP: overview
 #+PROPERTY: header-args:emacs-lisp :tangle ../lisp/kittymacs-which-key-frame.el :eval never :comments no :padline no :mkdirp yes
 
-- A trial, so the owner can decide whether the key menu should float instead of pushing the text aside: the =which-key-frame= feature, =optional= in [[id:3f8a6c02-9d14-4b7e-a2c5-1e7d90b64f31][the catalogue]], and off under every profile.
-  + Onboarding offers it by itself.
-  + =(setopt kittymacs-features '(which-key-frame))= in =private.el= is the other way to turn it on.
+- The key menu floating over the text instead of pushing it aside: the =which-key-frame= feature, =optional= and =:hidden= in [[id:3f8a6c02-9d14-4b7e-a2c5-1e7d90b64f31][the catalogue]], and off under every profile.
+  + The owner tried it and chose not to offer it, and kept it because it works: so onboarding never lists it, and nothing else advertises it.
+  + =(setopt kittymacs-features '(which-key-frame))= in =private.el= turns it on by hand, and on a Nix host so does =programs.kittymacs.features.which-key-frame.enable = true=.
+  + Onboarding keeps that setting when it rewrites =private.el=.
 - [[id:40302e33-d2b2-4c0b-9bc3-1f9e121307e1][The startup chapter]] loads this whole chapter behind that feature, so with it off nothing here exists, and which-key stays as [[id:53ad53ed-155f-47dc-973d-7be18de2893c][the keys chapter]] sets it.
 - It gives you:
   + the menu at the bottom right of a graphical frame, over the text, so no window changes size when it opens;
@@ -99,6 +100,8 @@
 * The key
 
 - =SPC t W= is =kittymacs-which-key-frame-mode=.
+  + The key stays, because it advertises nothing: this chapter binds it, and with the feature off the chapter does not load, so the =SPC t= menu does not list it.
+  + Whoever turned the feature on by hand then has the key to compare the two menus.
   + Turning it on saves the four which-key settings it changes, and turning it off puts them back, and deletes the child frame.
   + It starts on, because selecting the feature asked for it.
 

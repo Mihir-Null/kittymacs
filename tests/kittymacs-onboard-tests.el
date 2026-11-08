@@ -431,11 +431,46 @@ quits as a minibuffer would."
             (should (string-search (kittymacs-onboard--plain
                                     (plist-get (alist-get feature kittymacs-catalogue) :example))
                                    screen)))))
-      (should (= (length kittymacs-catalogue)
+      (should (= (length (seq-remove (lambda (entry) (plist-get (cdr entry) :hidden))
+                                     kittymacs-catalogue))
                  (seq-reduce #'+ (mapcar (lambda (group)
                                            (length (kittymacs-onboard--features-in group)))
                                          (kittymacs-onboard--groups))
                              0))))))
+
+(defun kittymacs-onboard-test--hidden ()
+  "Return the features the catalogue hides, failing if it hides none."
+  (let ((hidden (mapcar #'car (seq-filter (lambda (entry) (plist-get (cdr entry) :hidden))
+                                          kittymacs-catalogue))))
+    (should hidden)
+    hidden))
+
+(ert-deftest kittymacs-onboard-never-lists-a-hidden-feature ()
+  (kittymacs-onboard-test-with-machine
+    (let ((hidden (kittymacs-onboard-test--hidden)))
+      (should (equal (car (kittymacs-onboard-test--run
+                           (kittymacs-onboard-test--keys ?f nil '(?N ?\r))))
+                     0))
+      (should (> (length kittymacs-onboard-test-screens) 3))
+      (dolist (screen kittymacs-onboard-test-screens)
+        (dolist (feature hidden)
+          (should-not (string-search (symbol-name feature) screen))))
+      (dolist (group (kittymacs-onboard--groups))
+        (should-not (seq-intersection hidden (kittymacs-onboard--features-in group)))))))
+
+(ert-deftest kittymacs-onboard-keeps-a-hidden-feature-a-private-file-selects ()
+  "Onboarding must not drop a choice the person made by hand."
+  (kittymacs-onboard-test-with-machine
+    (let ((hidden (kittymacs-onboard-test--hidden)))
+      (kittymacs-onboard-test--write-bytes
+       private (format "(setopt kittymacs-profile 'minimal)\n(setopt kittymacs-features '%S)\n"
+                       hidden))
+      (should (equal (car (kittymacs-onboard-test--run (kittymacs-onboard-test--keys ?\r nil)))
+                     0))
+      (dolist (feature hidden)
+        (should (string-search (symbol-name feature) (car kittymacs-onboard-test-screens))))
+      (should (equal (kittymacs-onboard-test--value private 'kittymacs-features)
+                     (list (list 'quote hidden)))))))
 
 (ert-deftest kittymacs-onboard-strips-only-the-markup ()
   (should (equal (kittymacs-onboard--plain "=SPC b b= switches, and =KITTYMACS_EXWM=1= runs (=x=).")
