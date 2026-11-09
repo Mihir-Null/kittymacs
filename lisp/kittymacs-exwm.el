@@ -30,6 +30,7 @@ frame is on X.  Frames-only mode is off by default while it is on."
      ("H-SPC" toggle-overview)
      ("H-s" scratchpad-toggle) ("H-S" scratchpad-stash)
      ("H-t" toggle-tabbed)
+     ("H-d" launch)
      ("H-r" refresh) ("H-R" reload))
    ;; H-1 … H-9 switch workspace; H-! … H-( (Shift+1 … Shift+9) move there.
    (seq-map-indexed (lambda (key i) (list key 'move-to-workspace (1+ i)))
@@ -191,11 +192,38 @@ means widths.  Past the last preset, the first comes round again."
     (scratchpad-toggle . kittymacs-exwm-scratchpad-toggle)
     (toggle-tabbed . global-tab-line-mode)
     (refresh . exwm-reset)
-    (reload . kittymacs-exwm-apply-keys))
+    (reload . kittymacs-exwm-apply-keys)
+    (launch . kittymacs-exwm-launch))
   "What each action in `kittymacs-wm-keys' does under EXWM.
 A command, or a function taking the key's ARGS."
   :type '(alist :key-type symbol :value-type function)
   :group 'kittymacs)
+(defun kittymacs-exwm--launch-filter (process output)
+  "Keep the latest OUTPUT of PROCESS, for its sentinel to quote."
+  (process-put process 'kittymacs-exwm-output output))
+
+(defun kittymacs-exwm--launch-sentinel (process _event)
+  "Say in the echo area if PROCESS, from `kittymacs-exwm-launch', failed."
+  (when (and (eq (process-status process) 'exit)
+             (/= (process-exit-status process) 0))
+    (message "%s exited with code %d: %s"
+             (process-name process) (process-exit-status process)
+             (or (car (last (split-string
+                             (or (process-get process 'kittymacs-exwm-output) "")
+                             "\n" t)))
+                 "no output"))))
+
+(defun kittymacs-exwm-launch (command)
+  "Start the shell COMMAND detached, so that Emacs never waits for it.
+\\`TAB' completes program names from `exec-path'.  If COMMAND exits
+with an error, the echo area says so."
+  (interactive (list (read-shell-command "Launch: ")))
+  (let* ((process-connection-type nil)
+         (process (start-process-shell-command command nil command)))
+    (set-process-query-on-exit-flag process nil)
+    (set-process-filter process #'kittymacs-exwm--launch-filter)
+    (set-process-sentinel process #'kittymacs-exwm--launch-sentinel)
+    process))
 (defun kittymacs-exwm--command (action args)
   "The command for ACTION, called with ARGS."
   (let ((function (alist-get action kittymacs-exwm-actions)))
