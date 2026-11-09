@@ -243,6 +243,7 @@ Falls back to `magit-status', which asks, when neither is a repository."
 - Forge cannot comment on a line of a diff, which is most of a review, so pr-review does that part.
   + One buffer holds one pull request: its description, commits, diff, review threads and checks.
   + =SPC v R= runs =kittymacs-pr-review=, which reviews the pull request at point in a Forge list or buffer, or else the current branch's; anywhere else, it asks for a URL.
+  + It loads Forge if nothing has yet, so the first =SPC v R= of a session, from a file, still finds the branch's pull request.
   + =SPC v N= lists GitHub's notifications, with the pull requests waiting on your review among them.
 - One token serves both: pr-review reads Forge's entry, rather than one of its own.
   + The entry is a line in an =auth-sources= file such as =~/.authinfo.gpg=: =machine api.github.com login USERNAME^forge password TOKEN=.
@@ -259,7 +260,7 @@ Falls back to `magit-status', which asks, when neither is a repository."
   "Review a pull request with pr-review.
 The one at point in Forge, or else the current branch's; otherwise ask."
   (interactive)
-  (if-let* ((pullreq (and (featurep 'forge)
+  (if-let* ((pullreq (and (require 'forge nil t)
                           (magit-toplevel)
                           (forge-current-pullreq))))
       (pr-review (forge-get-url pullreq))
@@ -360,7 +361,8 @@ The one at point in Forge, or else the current branch's; otherwise ask."
 
 * Links to lines and commits
 
-- =SPC v o= runs =git-link=: it copies the forge's URL for this line, or for the selected lines, at the commit or branch you are on.
+- =SPC v o= runs =git-link=: it copies the forge's URL for this line, or for the selected lines, at the commit you are on.
+  + The URL names the commit rather than the branch, so a link pasted into a note still shows the same lines after the branch moves.
 - orgit adds Org links to Magit buffers: =orgit:= for a status buffer, =orgit-log:= for a log and =orgit-rev:= for a commit.
   + =SPC m L= in a Magit buffer stores one, for each selected commit if there are several; =org-store-link= does the same.
   + Exported, an =orgit-rev:= link becomes the commit's URL on the forge.
@@ -370,7 +372,9 @@ The one at point in Forge, or else the current branch's; otherwise ask."
 (when (kittymacs-feature-p 'git-links)
   (use-package git-link
     :ensure t
-    :defer t)
+    :defer t
+    :custom
+    (git-link-use-commit t))
 
   (use-package orgit
     :ensure t

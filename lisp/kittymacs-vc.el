@@ -117,7 +117,7 @@ Falls back to `magit-status', which asks, when neither is a repository."
   "Review a pull request with pr-review.
 The one at point in Forge, or else the current branch's; otherwise ask."
   (interactive)
-  (if-let* ((pullreq (and (featurep 'forge)
+  (if-let* ((pullreq (and (require 'forge nil t)
                           (magit-toplevel)
                           (forge-current-pullreq))))
       (pr-review (forge-get-url pullreq))
@@ -182,7 +182,9 @@ The one at point in Forge, or else the current branch's; otherwise ask."
 (when (kittymacs-feature-p 'git-links)
   (use-package git-link
     :ensure t
-    :defer t)
+    :defer t
+    :custom
+    (git-link-use-commit t))
 
   (use-package orgit
     :ensure t
