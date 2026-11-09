@@ -48,13 +48,19 @@ jobs:
           emacs_exe=$(find "$tmp/emacs" -path '*/bin/emacs.exe' | head -n 1)
           test -n "$emacs_exe"
           cygpath -w "$(dirname "$emacs_exe")" >> "$GITHUB_PATH"
-      # GnuPG's own installer puts gpg where Gpg4win puts it, which is where
-      # early-init.el looks.  Gpg4win's installer never returned on a runner.
+      # GnuPG's own build, unpacked where its installer and Gpg4win's put it, which
+      # is where early-init.el looks.  Both installers, run by Chocolatey, never
+      # returned on a runner, so 7-Zip unpacks this one.
       - name: Install GnuPG
         if: matrix.gpg == 'gpg4win'
-        shell: pwsh
+        shell: bash
         timeout-minutes: 10
-        run: choco install gnupg -y --no-progress
+        run: |
+          tmp=$(cygpath -u "$RUNNER_TEMP")
+          curl -sSfL -o "$tmp/gnupg.exe" \
+            "https://gnupg.org/ftp/gcrypt/binary/gnupg-w32-2.5.24_20260923.exe"
+          7z x -y "-oC:\Program Files\GnuPG" "$(cygpath -w "$tmp/gnupg.exe")" > /dev/null
+          "/c/Program Files/GnuPG/bin/gpg.exe" --version
       - name: Start once, as a person's first start
         shell: pwsh
         timeout-minutes: 30
