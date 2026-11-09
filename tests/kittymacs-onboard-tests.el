@@ -548,7 +548,7 @@ quits as a minibuffer would."
         (should-not (memq 'window-manager (kittymacs-onboard--on state)))))))
 
 (ert-deftest kittymacs-onboard-a-one-of-set-works-as-a-radio-button ()
-  "No feature has `:one-of' now, so two stand-ins make a set."
+  "Two stand-ins make a set, so the test does not move with the catalogue."
   (kittymacs-onboard-test-with-machine
     (let* ((kittymacs-catalogue
             (append kittymacs-catalogue

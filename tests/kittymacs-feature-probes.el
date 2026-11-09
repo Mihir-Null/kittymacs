@@ -79,7 +79,7 @@
     (when (kittymacs-feature-p feature)
       (push (format "%s is on" feature) kittymacs-probe-failures))
     (when-let* ((module (alist-get feature kittymacs-check-chapter-features)))
-      (when (featurep module)
+      (when (and (featurep module) (not (kittymacs-check--chapter-wanted-p module)))
         (push (format "%s loaded with %s off" module feature) kittymacs-probe-failures))))
   (dolist (package (kittymacs-check--packages-off))
     (when (featurep package)
