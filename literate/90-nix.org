@@ -434,7 +434,7 @@ emacs.pkgs.withPackages (
 | =hostFiles.<name>=     | a host-layer file of your own, as text                                          |
 | =extraPackages=        | a function from the Emacs package set to more packages to build in              |
 | =backend.enable=       | install only [[*The tools][the headless tools]]: Emacs reaches this machine from elsewhere |
-| =backend.rpcServer=    | also install [[*The server behind wsl-rpc][the server]] behind =:transport wsl-rpc=, built from source; off by default |
+| =backend.rpcServer=    | also install [[*The server behind wsl-rpc][the server]] behind =:transport wsl-rpc=, built from source, with or without =backend.enable=; off by default |
 
 #+begin_src nix :tangle no
 programs.kittymacs = {
@@ -595,9 +595,10 @@ rec {
     '';
 
     backend.rpcServer = lib.mkEnableOption ''
-      tramp-rpc-server beside the headless tools, for a backend reached with
-      `:transport wsl-rpc`.  It builds from source, and it matters only with
-      `backend.enable`
+      tramp-rpc-server, for a machine that another Emacs reaches with
+      `:transport wsl-rpc`.  It builds from source.  It installs beside the
+      headless tools under `backend.enable`, and beside Emacs on a machine
+      that runs kittymacs too
     '';
   };
 #+end_src
@@ -909,6 +910,7 @@ rustPlatform.buildRustPackage {
   + Only the words differ: =flake.nix= applies the function with the module's name and a note on its Emacs builds.
 - It has every option in [[id:b7e4d1a6-20c9-4f3e-8a57-c61f09d3e248][Choosing features]], and writes to =/etc/kittymacs/conf.d/=, which =kittymacs-host-directories= already reads.
 - With nothing new set, a host writes nothing, and gets [[*The tools of a host][the tools =full= selects]] in the list's order.
+- =backend.rpcServer= adds [[*The server behind wsl-rpc][the server]] to the host's packages, as in [[*The link and the packages][the Home Manager module]], whether or not =backend.enable= is on.
 - Neither system module clones anything: it has no user to clone for. The README's =git clone= or [[*Home Manager][the Home Manager module]] does that.
 
 #+begin_src nix
@@ -987,12 +989,15 @@ in
     };
 
     environment.systemPackages =
-      if cfg.backend.enable then
-        tools.backendPrograms ++ lib.optional cfg.backend.rpcServer tools.rpcServer
-      else
-        [ emacs ]
-        ++ tools.programsFor features
-        ++ lib.optional cfg.suggestions.enable cfg.suggestions.package;
+      (
+        if cfg.backend.enable then
+          tools.backendPrograms
+        else
+          [ emacs ]
+          ++ tools.programsFor features
+          ++ lib.optional cfg.suggestions.enable cfg.suggestions.package
+      )
+      ++ lib.optional cfg.backend.rpcServer tools.rpcServer;
     fonts.packages = lib.optionals (!cfg.backend.enable) (tools.fontsFor features);
 
     environment.etc = lib.mapAttrs' (
@@ -1297,6 +1302,7 @@ in
 
 - =home.packages= gets Emacs (with its packages, under =packagesFromNix=) and [[*The tools of a host][the tools of the selection]] (with Copilot's server when =suggestions.enable= is on), then the fonts of the selection, each behind its option; fontconfig is turned on, as a default, with the fonts.
   + With =backend.enable= it gets [[*The tools][the headless tools]] instead, which =installPackages= still governs.
+  + =backend.rpcServer= adds [[*The server behind wsl-rpc][the server]] to either list, also behind =installPackages=, so a full home that another Emacs reaches over =wsl-rpc= installs it as a backend does.
 - =xdg.configFile."emacs"= is an out-of-store symlink: =~/.config/emacs= points at the checkout itself, not a copy.
 - The rest of =xdg.configFile= is the host layer ([[id:b7e4d1a6-20c9-4f3e-8a57-c61f09d3e248][Choosing features]]): =10-nix.el= when the options ask for something, and one file per =hostFiles= entry.
 - Emacs looks for that directory under =XDG_CONFIG_HOME= when the home exports it, and under =~/.config= when it does not, so a home with a custom =xdg.configHome= and no export would write where Emacs does not look.
@@ -1314,12 +1320,15 @@ in
     home = {
       packages =
         (lib.optionals cfg.installPackages (
-          if cfg.backend.enable then
-            tools.backendPrograms ++ lib.optional cfg.backend.rpcServer tools.rpcServer
-          else
-            [ emacs ]
-            ++ tools.programsFor features
-            ++ lib.optional cfg.suggestions.enable cfg.suggestions.package
+          (
+            if cfg.backend.enable then
+              tools.backendPrograms
+            else
+              [ emacs ]
+              ++ tools.programsFor features
+              ++ lib.optional cfg.suggestions.enable cfg.suggestions.package
+          )
+          ++ lib.optional cfg.backend.rpcServer tools.rpcServer
         ))
         ++ (lib.optionals cfg.installFonts (tools.fontsFor features));
 
@@ -1896,6 +1905,10 @@ in
   + =backend.enable= installs the same names whatever the selection says.
   + [[id:1c9a5e37-d482-4b06-97f1-e3a80c6b42d5][The selection check]] holds the same answer through Home Manager and nix-darwin, against a real start.
 - =overlay= :: =pkgs.kittymacs.backend= under =overlays.default= is the same derivation as =packages.backend=.
+- =rpc-server-opt-in= :: on x86_64 Linux, the real NixOS module installs [[*The server behind wsl-rpc][the server]] only when =backend.rpcServer= asks:
+  + a backend and a plain host without the option lack it, and so do the backend's tools;
+  + a backend with it has it, and so does a full host, with Emacs and no =backend.enable=.
+  + [[*The evaluation matrix][The matrix]]'s =home-rpc-server= holds the same for a full Home Manager home.
 
 #+begin_src nix
 # Generated from literate/90-nix.org; edit the Org source, then tangle.
@@ -2016,12 +2029,13 @@ in
           rpcServer = true;
         };
       };
-      unasked = nixos { backend.rpcServer = true; };
+      full = nixos { backend.rpcServer = true; };
     in
     !(lib.elem "tramp-rpc-server" (packagesOfHost off))
+    && !(lib.elem "tramp-rpc-server" (packagesOfHost plain))
     && !(lib.elem "tramp-rpc-server" backendTools)
     && lib.elem "tramp-rpc-server" (packagesOfHost on)
-    && !(lib.elem "tramp-rpc-server" (packagesOfHost unasked))
+    && lib.elem "tramp-rpc-server" (packagesOfHost full)
   );
 
   tools-follow-selection = check "tools-follow-selection" (
@@ -2538,6 +2552,7 @@ in
 | =home-xdg=          | a custom =xdg.configHome= writes the host layer in both places                           |
 | =home-backend=      | =backend.enable= installs no Emacs and no fonts                                          |
 | =home-backend-rpc-server= | so does =backend.rpcServer=, which only adds the server                            |
+| =home-rpc-server=   | a full home with =backend.rpcServer= installs the server beside Emacs                    |
 | =home-old-unused=   | an old =package= the home neither installs nor runs passes: the assertion's guard        |
 | =nixos=             | a NixOS system evaluates whole with this module                                          |
 | =nixos-full=        | the same with =daemon=, =packagesFromNix= and a selection                                |
@@ -2712,6 +2727,17 @@ in
             rpcServer = true;
           };
         });
+        home-rpc-server =
+          let
+            host = linuxHome {
+              package = emacsOf "x86_64-linux";
+              backend.rpcServer = true;
+            };
+            names = map lib.getName host.config.home.packages;
+          in
+          assert lib.elem "tramp-rpc-server" names;
+          assert lib.elem "emacs" names;
+          host.activationPackage.drvPath;
         home-old-unused =
           (linuxHome {
             package = oldEmacs;

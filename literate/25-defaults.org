@@ -304,13 +304,42 @@
 
 - The server lets =emacsclient= open files in this instance from a shell or a file manager, which matters when frames are your windows.
 - It starts whenever Emacs has a display or runs as a daemon, unless a server is already running.
+  + A daemon gets one again from Emacs itself after =init.el=, because =startup.el= starts the server of every =--daemon= and =--fg-daemon=. This start only comes first.
+- A server that cannot start warns, and the rest of =init.el= goes on, because an error here would stop it.
+  + The socket lives in =$XDG_RUNTIME_DIR/emacs/= when the session sets that variable, and a Unix socket's name has a limit of about 108 bytes. A longer one makes both =server-running-p= and =server-start= signal =Service name too long=.
+  + Then it tries once more in =emacs<uid>= under =TMPDIR= or =/tmp=, which is =server.el='s own choice for =server-socket-dir= without =XDG_RUNTIME_DIR=. =emacsclient= looks there too when the first socket is missing.
+  + Any other error, or a second failure, is a warning that names the error and the directory.
+  + A daemon on such a directory now starts on the shorter one, where before it stopped at this error.
 
 #+begin_src emacs-lisp
+(defvar server-socket-dir)
+(declare-function server-running-p "server" (&optional name))
+
+(defun kittymacs--server-start ()
+  "Start the server unless one is running, and warn if it cannot.
+A socket name the system finds too long gets one more try where `server.el'
+puts the socket without `XDG_RUNTIME_DIR'."
+  (let ((start (lambda () (unless (server-running-p) (server-start))))
+        (warn (lambda (err)
+                (display-warning
+                 'kittymacs
+                 (format "The Emacs server did not start in %s, so emacsclient cannot reach this Emacs: %s"
+                         server-socket-dir (error-message-string err))))))
+    (condition-case err
+        (funcall start)
+      (error
+       (if (not (string-search "too long" (error-message-string err)))
+           (funcall warn err)
+         (setq server-socket-dir (expand-file-name (format "emacs%d" (user-uid))
+                                                   (or (getenv "TMPDIR") "/tmp")))
+         (condition-case err
+             (funcall start)
+           (error (funcall warn err))))))))
+
 (when (or window-system (daemonp))
   (require 'server)
   (setopt server-client-instructions nil)
-  (unless (server-running-p)
-    (server-start)))
+  (kittymacs--server-start))
 
 #+end_src
 

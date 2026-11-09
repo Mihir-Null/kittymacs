@@ -1123,7 +1123,7 @@ A name the catalogue lacks goes in NOTES."
   + A key the form does not ask about, such as =:server=, stays on a backend you change.
   + =:root= stays as typed, since =~= there means the backend's home, and not this machine's.
 - What the form offers depends on the machine.
-  + On native Windows it reads [[id:e94a07c6-21bd-4f58-8a3e-6d10c5b7f2a1][the distributions]], offers each one, and starts at =wsl=, with =wsl-rpc= labelled from the catalogue.
+  + On native Windows it reads [[id:e94a07c6-21bd-4f58-8a3e-6d10c5b7f2a1][the distributions]], offers each one, and starts at =wsl=, with =wsl-rpc= one =SPC= away.
   + A machine with no =wsl.exe= or no distribution gets the plain form, which starts at =ssh=.
   + No other system's form offers =wsl= or =wsl-rpc=, which would only fail there.
   + =kittymacs-onboard-backend-transports= is short on purpose, and a test holds it to Tramp's own methods; any other method goes in =private.el= by hand.
@@ -1867,7 +1867,7 @@ This Emacs keeps running as it is: a change takes effect at the next start."
 - With =(setopt kittymacs-features '(which-key-frame))= in =private.el=: no screen lists it, and the last screen's block still selects it.
 - On the backends page, the form comes first, and the list below it says "None yet" when there are none. Fill in the form and press =SPC= on its last line: the list shows the new backend. Press =RET=: the block holds =kittymacs-backends=, and the last line names =SPC o B=.
 - Press =SPC= on a listed backend, change its host, and press =SPC= on the form's last line: the list shows the new host. =d= on it removes it.
-- On native Windows with two distributions: the page opens with the form at =wsl= on the first, lists both distributions, and marks =wsl-rpc= experimental. [[file:../tests/kittymacs-onboard-tests.el][The tests]] run the same form in a real terminal, with a stand-in for =wsl.exe=.
+- On native Windows with two distributions: the page opens with the form at =wsl= on the first, lists both distributions, and offers =wsl-rpc= with no label. [[file:../tests/kittymacs-onboard-tests.el][The tests]] run the same form in a real terminal, with a stand-in for =wsl.exe=.
 - Set =kittymacs-backends= in a host file, and press =RET= past that screen: the block does not hold it.
 - =just test= runs [[file:../tests/kittymacs-onboard-tests.el][the onboarding tests]], which include a run in a real pty.
 - =just test-onboard-start= writes a =private.el= with these screens for several selections, and starts the verifier on each.

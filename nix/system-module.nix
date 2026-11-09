@@ -73,12 +73,15 @@ in
     };
 
     environment.systemPackages =
-      if cfg.backend.enable then
-        tools.backendPrograms ++ lib.optional cfg.backend.rpcServer tools.rpcServer
-      else
-        [ emacs ]
-        ++ tools.programsFor features
-        ++ lib.optional cfg.suggestions.enable cfg.suggestions.package;
+      (
+        if cfg.backend.enable then
+          tools.backendPrograms
+        else
+          [ emacs ]
+          ++ tools.programsFor features
+          ++ lib.optional cfg.suggestions.enable cfg.suggestions.package
+      )
+      ++ lib.optional cfg.backend.rpcServer tools.rpcServer;
     fonts.packages = lib.optionals (!cfg.backend.enable) (tools.fontsFor features);
 
     environment.etc = lib.mapAttrs' (

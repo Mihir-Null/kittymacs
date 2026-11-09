@@ -20,8 +20,12 @@
 (declare-function tramp-dissect-file-name "tramp" (name &optional nodefault))
 (declare-function tramp-file-name-host "tramp" (vec))
 (declare-function tramp-file-name-method "tramp" (vec))
+(declare-function tramp-file-name-user "tramp" (vec))
+(declare-function tramp-get-connection-property "tramp-cache" (key property &optional default))
 (declare-function tramp-get-home-directory "tramp" (vec &optional user))
 (declare-function tramp-get-method-parameter "tramp" (vec param &optional default))
+(declare-function tramp-send-command-and-read "tramp-sh" (vec command &optional noerror marker))
+(declare-function tramp-set-connection-property "tramp-cache" (key property value))
 (declare-function kittymacs-remote-rpc-preflight "kittymacs-remote-rpc" (name backend))
 (declare-function kittymacs-remote-rpc-report "kittymacs-remote-rpc" (backend))
 
@@ -30,20 +34,36 @@
         tramp-copy-size-limit nil
         tramp-use-ssh-controlmaster-options nil)
 (defcustom kittymacs-remote-nix-path
-  '("~/.nix-profile/bin" "/nix/var/nix/profiles/default/bin" "/run/current-system/sw/bin")
+  '("/run/wrappers/bin" "~/.nix-profile/bin" "/etc/profiles/per-user/$USER/bin"
+    "/nix/var/nix/profiles/default/bin" "/run/current-system/sw/bin")
   "Directories Tramp searches on a remote machine, after its login shell's PATH.
-Those that do not exist there are dropped when the connection opens."
+Those that do not exist there are dropped when the connection opens.  `~/' is
+the machine's home directory, and `$USER' the user Tramp logs in as."
   :type '(repeat string)
   :group 'kittymacs)
 
+(defun kittymacs--remote-user (vec)
+  "Return the user VEC logs in as: the one in its name, or the machine's answer.
+The answer is kept per connection.  Nil if the machine gives none."
+  (or (tramp-file-name-user vec)
+      (tramp-get-connection-property vec "kittymacs-user")
+      (let ((user (tramp-send-command-and-read vec "echo \\\"`id -un`\\\"" 'noerror)))
+        (and (stringp user)
+             (not (string-empty-p user))
+             (tramp-set-connection-property vec "kittymacs-user" user)))))
+
 (defun kittymacs--remote-expand-home (original vec)
-  "Call ORIGINAL, `tramp-get-remote-path', with `~/' expanded for VEC.
-Tramp's existence check quotes the name, so it never sees a home directory."
+  "Call ORIGINAL, `tramp-get-remote-path', with `~/' and `$USER' expanded for VEC.
+Tramp's existence check quotes the name, so it never sees either."
   (let ((tramp-remote-path
          (mapcar (lambda (entry)
-                   (if (and (stringp entry) (string-prefix-p "~/" entry))
-                       (concat (tramp-get-home-directory vec) (substring entry 1))
-                     entry))
+                   (cond ((not (stringp entry)) entry)
+                         ((string-prefix-p "~/" entry)
+                          (concat (tramp-get-home-directory vec) (substring entry 1)))
+                         ((string-search "$USER" entry)
+                          (let ((user (kittymacs--remote-user vec)))
+                            (if user (string-replace "$USER" user entry) entry)))
+                         (t entry)))
                  tramp-remote-path)))
     (funcall original vec)))
 

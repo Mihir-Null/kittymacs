@@ -116,12 +116,13 @@ in
           rpcServer = true;
         };
       };
-      unasked = nixos { backend.rpcServer = true; };
+      full = nixos { backend.rpcServer = true; };
     in
     !(lib.elem "tramp-rpc-server" (packagesOfHost off))
+    && !(lib.elem "tramp-rpc-server" (packagesOfHost plain))
     && !(lib.elem "tramp-rpc-server" backendTools)
     && lib.elem "tramp-rpc-server" (packagesOfHost on)
-    && !(lib.elem "tramp-rpc-server" (packagesOfHost unasked))
+    && lib.elem "tramp-rpc-server" (packagesOfHost full)
   );
 
   tools-follow-selection = check "tools-follow-selection" (

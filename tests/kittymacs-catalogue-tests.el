@@ -247,17 +247,19 @@ INIT-GATES are the chapters init.el gates, and DECLARATIONS come from
                             (seq-uniq asked)))))
 
 (ert-deftest kittymacs-catalogue-experimental-is-one-sentence-of-plain-text ()
-  "Three places show it as it stands, and a blank one would label nothing."
-  (let ((found 0))
-    (pcase-dolist (`(,feature . ,plist) kittymacs-catalogue)
-      (when (plist-member plist :experimental)
-        (setq found (1+ found))
-        (let ((value (plist-get plist :experimental)))
-          (ert-info ((format "%s" feature))
-            (should (stringp value))
-            (should (string-match-p "[[:alpha:]].*\\.\\'" value))
-            (should-not (string-search "=" value))))))
-    (should (> found 0))))
+  "Three places show it as it stands, and a blank one would label nothing.
+No feature has it now, so this holds for the next one."
+  (pcase-dolist (`(,feature . ,plist) kittymacs-catalogue)
+    (when (plist-member plist :experimental)
+      (let ((value (plist-get plist :experimental)))
+        (ert-info ((format "%s" feature))
+          (should (stringp value))
+          (should (string-match-p "[[:alpha:]].*\\.\\'" value))
+          (should-not (string-search "=" value)))))))
+
+(ert-deftest kittymacs-catalogue-wsl-rpc-is-not-experimental ()
+  "The owner's tests on Windows passed, so `wsl-rpc' is offered as `wsl' is."
+  (should-not (plist-member (alist-get 'wsl-rpc kittymacs-catalogue) :experimental)))
 
 (ert-deftest kittymacs-catalogue-experimental-reaches-the-nix-options ()
   (let ((json (with-temp-buffer

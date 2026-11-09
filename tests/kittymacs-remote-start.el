@@ -640,6 +640,19 @@ It uses the real direnv, not the one `kittymacs-remote-start--fake-programs' add
   (let ((default-directory (kittymacs-backend-root "here")))
     (kittymacs-remote-start-value 'tramp-loaded-on-demand (featurep 'tramp))
     (kittymacs-remote-start-value 'nix-tool (executable-find "kfake" t))
+    ;; The backend's name has no user, so the machine says who it is.
+    (kittymacs-remote-start-value 'remote-path-expanded
+      (let ((vec (tramp-dissect-file-name default-directory)))
+        (list :user (kittymacs--remote-user vec)
+              :kept (tramp-get-connection-property vec "kittymacs-user")
+              :login (user-real-login-name)
+              :home (tramp-get-home-directory vec)
+              :path (kittymacs--remote-expand-home (lambda (_vec) tramp-remote-path) vec))))
+    ;; A name with a user needs no question.
+    (kittymacs-remote-start-value 'remote-user-named
+      (cl-letf (((symbol-function 'tramp-send-command-and-read)
+                 (lambda (&rest _) (error "Asked the machine"))))
+        (kittymacs--remote-user (tramp-dissect-file-name "/kmock:someone@elsewhere:/"))))
     (kittymacs-remote-start-value 'direct-async
       (with-connection-local-variables tramp-direct-async-process))
     (kittymacs-remote-start-value 'direct-process
