@@ -1,7 +1,7 @@
 name: Windows first start
 
 # A person's first start on native Windows: a fresh clone, no package cache, the
-# default profile, with no gpg, Git for Windows' gpg, or Gpg4win's, in batch and
+# default profile, with no gpg, Git for Windows' gpg, or a native GnuPG, in batch and
 # in a frame.  Every error that reaches the debugger is in the report with its
 # backtrace.  It stays out of ci.yml, and nothing waits for it.
 
@@ -48,10 +48,13 @@ jobs:
           emacs_exe=$(find "$tmp/emacs" -path '*/bin/emacs.exe' | head -n 1)
           test -n "$emacs_exe"
           cygpath -w "$(dirname "$emacs_exe")" >> "$GITHUB_PATH"
-      - name: Install Gpg4win
+      # GnuPG's own installer puts gpg where Gpg4win puts it, which is where
+      # early-init.el looks.  Gpg4win's installer never returned on a runner.
+      - name: Install GnuPG
         if: matrix.gpg == 'gpg4win'
         shell: pwsh
-        run: choco install gpg4win -y --no-progress
+        timeout-minutes: 10
+        run: choco install gnupg -y --no-progress
       - name: Start once, as a person's first start
         shell: pwsh
         timeout-minutes: 30

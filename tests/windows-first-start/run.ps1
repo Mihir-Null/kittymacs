@@ -61,7 +61,7 @@ if ($Ui -eq 'batch') {
     # the checkout does; the trailing separator keeps the default load-path.
     $site = Join-Path $env:RUNNER_TEMP 'first-start-site'
     New-Item -ItemType Directory -Force -Path $site | Out-Null
-    "(load `"$record`" nil t)" | Set-Content -Path (Join-Path $site 'site-start.el')
+    ";;; -*- lexical-binding: t; -*-`n(load `"$record`" nil t)" | Set-Content -Path (Join-Path $site 'site-start.el')
     $env:EMACSLOADPATH = "$site;"
     $arguments = @("--init-directory=$init")
 }
