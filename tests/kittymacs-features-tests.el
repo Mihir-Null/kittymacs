@@ -77,17 +77,18 @@ Nothing the older options set is bound, and no machine has run kittymacs yet."
     (makunbound 'kittymacs-msys2-root)))
 
 (ert-deftest kittymacs-features-an-experimental-feature-does-not-warn ()
-  "You opted in by name, and `SPC o B' shows the label when you look."
-  (let ((experimental (seq-filter (lambda (entry) (plist-get (cdr entry) :experimental))
-                                  kittymacs-catalogue)))
-    (should experimental)
-    (pcase-dolist (`(,feature . ,_) experimental)
-      (kittymacs-features-test-with ((system-type 'windows-nt) (kittymacs-profile 'minimal)
-                                     (kittymacs-features (list feature)))
-          warnings
-        (kittymacs-features-resolve)
-        (should (kittymacs-feature-p feature))
-        (should-not warnings)))))
+  "You opted in by name, and `SPC o B' shows the label when you look.
+No feature has the label now, so a stand-in carries it."
+  (let ((kittymacs-catalogue
+         (cons '(stand-in :group shells :packages () :profile optional
+                          :experimental "A stand-in sentence, for this test.")
+               kittymacs-catalogue)))
+    (kittymacs-features-test-with ((system-type 'windows-nt) (kittymacs-profile 'minimal)
+                                   (kittymacs-features '(stand-in)))
+        warnings
+      (kittymacs-features-resolve)
+      (should (kittymacs-feature-p 'stand-in))
+      (should-not warnings))))
 
 (ert-deftest kittymacs-features-default-to-minimal ()
   "A machine with no choice and no sign of use gets the small default."

@@ -40,6 +40,7 @@
   + [[id:c8e2f1a7-4b60-49d3-8a15-7d3e96b0c421][Onboarding]] shows it on the feature's row, =SPC o B= names it for a backend whose transport has the feature's name, and the Nix chapter adds it to the feature's option.
   + No start warns about it, because you opted in by name, and =SPC o B= shows it when you look.
   + Those three places read the sentence as it stands, so it holds no markup.
+  + No feature has it now, and it stays for the next feature that needs it.
 - =:hidden= keeps a feature that the owner chose not to advertise, and did not want to delete, because it still works for whoever set it.
   + [[id:c8e2f1a7-4b60-49d3-8a15-7d3e96b0c421][Onboarding]] lists it on no screen, and keeps it where a =private.el= already selects it.
   + Its keys need no rule of their own: its chapter binds them, and with the feature off that chapter does not load, so the =SPC= menu never shows them.
@@ -236,7 +237,6 @@
      :group shells :packages (msgpack tramp-rpc) :module kittymacs-remote-rpc :profile optional
      :vc (msgpack tramp-rpc)
      :not-on (gnu/linux gnu gnu/kfreebsd berkeley-unix darwin cygwin haiku android)
-     :experimental "Its server is built separately, by cargo in the hosted job that tested it; a server built by Nix has not yet run over wsl.exe, and it has had no daily use."
      :summary "A quicker, sturdier way into a WSL backend, through a small server there."
      :example "=SPC o B= on a backend with =:transport wsl-rpc= names the server and how processes start.")
     (eshell-highlight

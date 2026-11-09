@@ -491,20 +491,38 @@ quits as a minibuffer would."
       (should (equal (kittymacs-onboard--status state 'icons)
                      '("[x]" . "pulled in: file-tree needs it"))))))
 
+(defconst kittymacs-onboard-test-untested "A stand-in sentence, for this test."
+  "What the tests give a feature as its `:experimental', since none has one now.")
+
+(defun kittymacs-onboard-test--labelled (feature)
+  "Return the catalogue with FEATURE labelled `kittymacs-onboard-test-untested'."
+  (mapcar (lambda (entry)
+            (if (eq (car entry) feature)
+                (cons feature (append (list :experimental kittymacs-onboard-test-untested)
+                                      (cdr entry)))
+              entry))
+          kittymacs-catalogue))
+
 (ert-deftest kittymacs-onboard-labels-an-experimental-feature ()
   (kittymacs-onboard-test-with-machine
-    (let* ((state (kittymacs-onboard--initial-state))
+    (let* ((kittymacs-catalogue
+            (cons `(stand-in :group shells :packages () :profile optional
+                             :summary "A stand-in." :example "None."
+                             :experimental ,kittymacs-onboard-test-untested)
+                  kittymacs-catalogue))
+           (state (kittymacs-onboard--initial-state))
            ;; After reading the machine, since reading files differs on Windows.
-           (system-type 'windows-nt)
-           (untested (plist-get (alist-get 'wsl-rpc kittymacs-catalogue) :experimental)))
+           (system-type 'windows-nt))
       (setf (kittymacs-onboard--profile state) 'minimal)
-      (should (equal (kittymacs-onboard--status state 'wsl-rpc)
+      (should (equal (kittymacs-onboard--status state 'stand-in)
                      '("[ ]" . "experimental: off until you choose it")))
-      (kittymacs-onboard--toggle state 'wsl-rpc)
-      (should (equal (kittymacs-onboard--status state 'wsl-rpc) '("[x]" . "experimental")))
-      (should (string-search (concat "Experimental: " untested)
+      (kittymacs-onboard--toggle state 'stand-in)
+      (should (equal (kittymacs-onboard--status state 'stand-in) '("[x]" . "experimental")))
+      (should (string-search (concat "Experimental: " kittymacs-onboard-test-untested)
                              (kittymacs-onboard--render-features state 'shells '(1 . 1) 0 nil)))
       ;; Plain optional features keep their label, with no sentence.
+      (should (equal (kittymacs-onboard--status state 'wsl-rpc)
+                     '("[ ]" . "optional: off until you choose it")))
       (should (equal (kittymacs-onboard--status state 'lang-nix)
                      '("[ ]" . "optional: off until you choose it")))
       (should-not (string-search "Experimental:"
@@ -1082,8 +1100,9 @@ A stand-in, since this machine has no `wsl.exe'.  A STATUS of `missing' means no
         (should list)
         (should (< form list))
         (dolist (offer '("Transport: wsl\n" "Host: Ubuntu\n" "SPC takes the next of: Ubuntu, Debian."
-                         "wsl-rpc (experimental)" "Add this backend\n"))
-          (should (< form (string-search offer page) list))))))
+                         "wsl, wsl-rpc, ssh" "Add this backend\n"))
+          (should (< form (string-search offer page) list)))
+        (should-not (string-search "experimental" page)))))
   (kittymacs-onboard-test-with-machine
     (kittymacs-onboard-test--write-bytes
      private (format "(setopt kittymacs-backends '(%S))\n" kittymacs-onboard-test-build))
@@ -1186,7 +1205,8 @@ A stand-in, since this machine has no `wsl.exe'.  A STATUS of `missing' means no
         (should (string-search "Host: Ubuntu\n" screens))
         (should (string-search "Host: Debian\n" screens))
         (should (string-search "SPC takes the next of: Ubuntu, Debian." screens))
-        (should (string-search "wsl-rpc (experimental)" screens))))))
+        (should (string-search "wsl, wsl-rpc, ssh" screens))
+        (should-not (string-search "experimental" screens))))))
 
 (ert-deftest kittymacs-onboard-windows-without-a-distribution-gets-the-plain-form ()
   (dolist (machine `((missing . "")
@@ -1204,23 +1224,35 @@ A stand-in, since this machine has no `wsl.exe'.  A STATUS of `missing' means no
 (ert-deftest kittymacs-onboard-choosing-wsl-rpc-selects-the-feature ()
   (kittymacs-onboard-test-with-machine
     (kittymacs-onboard-test-on-windows kittymacs-onboard-test-two-distributions 0
-      (let* ((untested (plist-get (alist-get 'wsl-rpc kittymacs-catalogue) :experimental))
-             (result (kittymacs-onboard-test--run
-                      (kittymacs-onboard-test--keys
-                       ?m nil nil nil
-                       (list ?\s "wsl" ?n ?\s ?n ?n ?\s "~/project" ?n ?\s ?\r)))))
+      (let ((result (kittymacs-onboard-test--run
+                     (kittymacs-onboard-test--keys
+                      ?m nil nil nil
+                      (list ?\s "wsl" ?n ?\s ?n ?n ?\s "~/project" ?n ?\s ?\r)))))
         (should (= 0 (car result)))
         (should (equal (kittymacs-onboard-test--value private 'kittymacs-backends)
                        '('(("wsl" :transport wsl-rpc :host "Ubuntu" :root "~/project/")))))
         (should (equal (kittymacs-onboard-test--value private 'kittymacs-features)
                        '('(wsl-rpc))))
-        (should (string-search (concat "Experimental: " untested)
-                               (string-join kittymacs-onboard-test-screens)))
+        (should-not (string-search "Experimental:" (string-join kittymacs-onboard-test-screens)))
         (should (string-search "On: wsl-rpc." (string-join kittymacs-onboard-test-screens)))
         (should-not (string-search "Warning: "
                                    (car kittymacs-onboard-test-screens)))
         (should (string-search "SPC o B and then wsl" (cdr result)))
         (should (string-search "needs a server" (cdr result)))))))
+
+(ert-deftest kittymacs-onboard-a-labelled-transport-says-so-in-the-form ()
+  "No transport has the label now, so the test lends one to `wsl-rpc'."
+  (kittymacs-onboard-test-with-machine
+    (kittymacs-onboard-test-on-windows kittymacs-onboard-test-two-distributions 0
+      (let ((kittymacs-catalogue (kittymacs-onboard-test--labelled 'wsl-rpc)))
+        (should (= 0 (car (kittymacs-onboard-test--run
+                           (kittymacs-onboard-test--keys
+                            ?m nil nil nil
+                            (list ?\s "wsl" ?n ?\s ?n ?n ?\s "~/project" ?n ?\s ?\r))))))
+        (let ((screens (string-join kittymacs-onboard-test-screens)))
+          (should (string-search "wsl, wsl-rpc (experimental), ssh" screens))
+          (should (string-search (concat "Experimental: " kittymacs-onboard-test-untested)
+                                 screens)))))))
 
 (ert-deftest kittymacs-onboard-going-to-ssh-does-not-keep-a-distribution-as-the-host ()
   (kittymacs-onboard-test-with-machine

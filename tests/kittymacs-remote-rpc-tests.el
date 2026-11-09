@@ -375,10 +375,23 @@ That is `unset' if the hook left it alone, and it records any connecting."
       (kittymacs-remote-rpc--server '(:host "D" :server "/opt/server")))
     (should (string-match-p "command -v /opt/server\\'" (car (last (car kittymacs-rpc-test--calls)))))))
 
+(defconst kittymacs-rpc-test--untested "A stand-in sentence, for this test."
+  "What a test gives `wsl-rpc' as its `:experimental', since no feature has one now.")
+
+(defun kittymacs-rpc-test--labelled ()
+  "Return the catalogue with `wsl-rpc' labelled `kittymacs-rpc-test--untested'."
+  (mapcar (lambda (entry)
+            (if (eq (car entry) 'wsl-rpc)
+                (cons 'wsl-rpc (append (list :experimental kittymacs-rpc-test--untested)
+                                       (cdr entry)))
+              entry))
+          kittymacs-catalogue))
+
 (ert-deftest kittymacs-rpc-the-doctor-stops-at-a-missing-server ()
   "It must not ask the machine anything through a transport that cannot start."
   (kittymacs-rpc-test--with-module
-    (let (asked)
+    (let ((kittymacs-catalogue (kittymacs-rpc-test--labelled))
+          asked)
       (cl-letf (((symbol-function 'call-process)
                  (lambda (_program _input destination _display &rest arguments)
                    (when (and destination (member "--list" arguments))
@@ -392,12 +405,16 @@ That is `unset' if the hook left it alone, and it records any connecting."
           (should (string-search "NOT FOUND" (buffer-string)))
           (should (string-search "cargo install" (buffer-string)))
         ;; A backend that cannot start yet still says it.
-        (should (string-search "Experimental: " (buffer-string))))))))
+        (should (string-search (concat "Experimental: " kittymacs-rpc-test--untested)
+                               (buffer-string))))))))
 
 (ert-deftest kittymacs-rpc-only-an-experimental-transport-is-labelled ()
-  (should (kittymacs-remote--experimental 'wsl-rpc))
+  (should-not (kittymacs-remote--experimental 'wsl-rpc))
   (should-not (kittymacs-remote--experimental 'wsl))
-  (should-not (kittymacs-remote--experimental 'ssh)))
+  (should-not (kittymacs-remote--experimental 'ssh))
+  (let ((kittymacs-catalogue (kittymacs-rpc-test--labelled)))
+    (should (equal (kittymacs-remote--experimental 'wsl-rpc) kittymacs-rpc-test--untested))
+    (should-not (kittymacs-remote--experimental 'wsl))))
 
 (ert-deftest kittymacs-rpc-the-doctor-reports-processes-through-the-server ()
   (kittymacs-rpc-test--with-module
@@ -413,10 +430,7 @@ That is `unset' if the hook left it alone, and it records any connecting."
       (with-current-buffer "*kittymacs backend*"
         (should (string-search "Server   /nix/server" (buffer-string)))
         (should (string-search "Processes start through tramp-rpc-server" (buffer-string)))
-        (should (string-search
-                 (concat "Experimental: "
-                         (plist-get (alist-get 'wsl-rpc kittymacs-catalogue) :experimental))
-                 (buffer-string)))
+        (should-not (string-search "Experimental:" (buffer-string)))
         (should-not (string-search "directly" (buffer-string)))))))
 
 ;;; kittymacs-open
