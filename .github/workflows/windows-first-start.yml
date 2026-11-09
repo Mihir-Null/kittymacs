@@ -3,7 +3,9 @@ name: Windows first start
 # A person's first start on native Windows: a fresh clone, no package cache, the
 # default profile, with no gpg, Git for Windows' gpg, or a native GnuPG, in batch and
 # in a frame.  Every error that reaches the debugger is in the report with its
-# backtrace.  It stays out of ci.yml, and nothing waits for it.
+# backtrace.  It stays out of ci.yml, and nothing waits for it.  Six Windows
+# runners are too many for every change to the startup code, so it runs by hand
+# (gh workflow run windows-first-start.yml) and when its own files change.
 
 on:
   workflow_dispatch:
@@ -11,10 +13,6 @@ on:
     paths:
       - .github/workflows/windows-first-start.yml
       - tests/windows-first-start/**
-      - early-init.el
-      - init.el
-      - lisp/kittymacs-features.el
-      - lisp/kittymacs-catalogue.el
 
 permissions:
   contents: read

@@ -7,11 +7,13 @@
 # -Gpg none     no gpg on PATH, as Git for Windows' default install leaves it
 # -Gpg git      Git for Windows' own gpg on PATH, as its Unix tools option does
 # -Gpg gpg4win  Gpg4win installed, and its gpg on PATH
+# -Gpg asis     PATH as it is: for a run on your own machine
 #
 # The checkout must not have started before: no var/ and no lisp/private.el.
+# Needs PowerShell 7 (pwsh), as the workflow's runner has it.
 
 param(
-    [ValidateSet('none', 'git', 'gpg4win')][string]$Gpg = 'none',
+    [ValidateSet('none', 'git', 'gpg4win', 'asis')][string]$Gpg = 'none',
     [ValidateSet('batch', 'gui')][string]$Ui = 'batch',
     [string]$Results = 'windows-first-start-results',
     [int]$LimitMinutes = 25
@@ -33,6 +35,7 @@ $entries = $env:PATH -split ';' | Where-Object { $_ } | Where-Object {
     -not ($unixTools -or ($hasGpg -and $_ -ne $gpg4win))
 }
 switch ($Gpg) {
+    'asis' { $entries = $env:PATH -split ';' | Where-Object { $_ } }
     'git' { $entries = @('C:\Program Files\Git\usr\bin') + $entries }
     'gpg4win' {
         if (-not $gpg4win) { throw 'Gpg4win is not installed' }
@@ -59,7 +62,7 @@ if ($Ui -eq 'batch') {
 } else {
     # site-start.el loads after early-init.el and before init.el, as nothing in
     # the checkout does; the trailing separator keeps the default load-path.
-    $site = Join-Path $env:RUNNER_TEMP 'first-start-site'
+    $site = Join-Path ($env:RUNNER_TEMP ?? $env:TEMP) 'first-start-site'
     New-Item -ItemType Directory -Force -Path $site | Out-Null
     ";;; -*- lexical-binding: t; -*-`n(load `"$record`" nil t)" | Set-Content -Path (Join-Path $site 'site-start.el')
     $env:EMACSLOADPATH = "$site;"
