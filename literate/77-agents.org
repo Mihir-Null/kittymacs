@@ -183,6 +183,8 @@
   + claude-code-ide's Claude reads its servers from =~/.claude=, as the command line does.
   + ECA reads them from its own configuration, and =M-x eca-mcp-toggle-server= starts and stops them.
 - An empty list leaves =agent-shell-mcp-servers= alone, so setting that option directly still works.
+- A list set while agent-shell is off warns at startup, because the catalogue names it as =agents='s =:option=.
+  + A host that moves to another agent then sees the setting it no longer needs.
 
 #+begin_src emacs-lisp
 (defcustom kittymacs-agent-mcp-servers nil
@@ -212,8 +214,10 @@ before this module loads, in `private.el' or a host file."
   + =M-x package-vc-upgrade= moves it; change =:rev= here to move everyone.
 - Installing it runs =git clone= on the first start, so it can fail where an archive install would not: no network, a proxy =git= is not told about, or a =git= that is not the one you expect.
   + A failed install is a warning, not an error: =use-package= would otherwise stop =init.el= there, and every chapter after this one would go unloaded.
-  + The warning names the cause and the =git= Emacs found; once =git clone= of the repository works from a terminal, a restart installs it. Until then =SPC a j= and =SPC a d= do nothing, and the rest of the chapter works.
+  + The warning names the cause and the =git= Emacs found; once =git clone= of the repository works from a terminal, a restart installs it. Until then =SPC a j= and =SPC a d= stay unbound, and the rest of the chapter works.
 - =kittymacs-agent-vc-warning= writes that warning, for claude-code-ide's install as well.
+- A key whose package did not install stays unbound, so which-key offers nothing that would fail when pressed.
+  + =locate-library= finds the package wherever it came from: =package-vc=, an archive, or a Nix build.
 
 #+begin_src emacs-lisp
 (defun kittymacs-agent-notify (_buffer title body)
@@ -251,8 +255,9 @@ Check that `git clone %s' works from a terminal, and which git Emacs runs: %s"
      (kittymacs-agent-vc-warning "agent-shell-attention"
                                  "https://github.com/ultronozm/agent-shell-attention.el" err)))
 
-  (keymap-set kittymacs-agent-map "j" (cons "jump to waiting shell" #'agent-shell-attention-jump))
-  (keymap-set kittymacs-agent-map "d" (cons "all shells" #'agent-shell-attention-dashboard)))
+  (when (locate-library "agent-shell-attention")
+    (keymap-set kittymacs-agent-map "j" (cons "jump to waiting shell" #'agent-shell-attention-jump))
+    (keymap-set kittymacs-agent-map "d" (cons "all shells" #'agent-shell-attention-dashboard))))
 
 #+end_src
 
@@ -312,6 +317,7 @@ Check that `git clone %s' works from a terminal, and which git Emacs runs: %s"
 - =claude-code-ide-emacs-tools-setup= gives Claude five tools that read Emacs: references and definitions through xref, the symbols in a file through Imenu, the tree-sitter node at a point, and the project's root and files.
   + None of them changes a buffer, so Claude gains reach and no power to edit outside its own diffs.
 - Not on MELPA, so it installs from Git, pinned to a commit, with the warning [[*Knowing when a shell waits for you][agent-shell-attention]] uses if =git clone= fails.
+  + Until it installs, its =SPC a= keys stay unbound, as agent-shell-attention's do.
 - Its start command always opens a new instance, so =SPC a a= switches to this project's instance and starts one only where there is none.
 
 #+begin_src emacs-lisp
@@ -339,16 +345,17 @@ Check that `git clone %s' works from a terminal, and which git Emacs runs: %s"
      (kittymacs-agent-vc-warning "claude-code-ide"
                                  "https://github.com/manzaltu/claude-code-ide.el" err)))
 
-  (keymap-set kittymacs-agent-map "a"
-              (cons "start or switch" #'kittymacs-agent-claude-code-ide-start-or-switch))
-  (keymap-set kittymacs-agent-map "n" (cons "new instance" #'claude-code-ide))
-  (keymap-set kittymacs-agent-map "t" (cons "toggle" #'claude-code-ide-toggle))
-  (keymap-set kittymacs-agent-map "b" (cons "switch instance" #'claude-code-ide-list-sessions))
-  (keymap-set kittymacs-agent-map "r" (cons "resume session" #'claude-code-ide-resume))
-  (keymap-set kittymacs-agent-map "s" (cons "send region" #'claude-code-ide-insert-at-mentioned))
-  (keymap-set kittymacs-agent-map "p" (cons "send a prompt" #'claude-code-ide-send-prompt))
-  (keymap-set kittymacs-agent-map "i" (cons "interrupt" #'claude-code-ide-send-escape))
-  (keymap-set kittymacs-agent-map "?" (cons "menu" #'claude-code-ide-menu)))
+  (when (locate-library "claude-code-ide")
+    (keymap-set kittymacs-agent-map "a"
+                (cons "start or switch" #'kittymacs-agent-claude-code-ide-start-or-switch))
+    (keymap-set kittymacs-agent-map "n" (cons "new instance" #'claude-code-ide))
+    (keymap-set kittymacs-agent-map "t" (cons "toggle" #'claude-code-ide-toggle))
+    (keymap-set kittymacs-agent-map "b" (cons "switch instance" #'claude-code-ide-list-sessions))
+    (keymap-set kittymacs-agent-map "r" (cons "resume session" #'claude-code-ide-resume))
+    (keymap-set kittymacs-agent-map "s" (cons "send region" #'claude-code-ide-insert-at-mentioned))
+    (keymap-set kittymacs-agent-map "p" (cons "send a prompt" #'claude-code-ide-send-prompt))
+    (keymap-set kittymacs-agent-map "i" (cons "interrupt" #'claude-code-ide-send-escape))
+    (keymap-set kittymacs-agent-map "?" (cons "menu" #'claude-code-ide-menu))))
 
 #+end_src
 
@@ -366,6 +373,8 @@ Check that `git clone %s' works from a terminal, and which git Emacs runs: %s"
 - The server comes from =PATH= first, so a package manager can pin it.
   + Without one there, ECA downloads its release from GitHub on the first =SPC a a=, as Copilot's chapter does for its server.
   + The download lands under the cache directory, beside Copilot's, rather than in =~/.emacs.d=.
+  + On x86-64 Linux the release is a static binary, so it runs on NixOS too.
+  + On ARM Linux it links against the system's libraries, which NixOS does not have where a downloaded binary looks; there, install =eca= yourself or enable =programs.nix-ld=.
 - Its chat buffer is a prompt, so it starts in Insert, as agent-shell's does.
   + A chat waiting on you shows in the chat list, and =SPC a j= goes to the next one, across projects.
 

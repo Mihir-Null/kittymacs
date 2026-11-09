@@ -237,7 +237,7 @@
     ;; Assistants
     (agents
      :group assistants :packages (agent-shell agent-shell-attention) :module kittymacs-agents :profile full
-     :vc (agent-shell-attention) :one-of agent
+     :vc (agent-shell-attention) :one-of agent :option kittymacs-agent-mcp-servers
      :summary "Runs Claude Code through agent-shell, in an Emacs buffer of its own."
      :example "=SPC a a= starts an agent in this project.")
     (agent-claude-code-ide

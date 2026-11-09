@@ -264,6 +264,24 @@ No feature has the label now, so a stand-in carries it."
     (should-not (kittymacs-feature-p 'agents))
     (should-not warnings)))
 
+(ert-deftest kittymacs-features-agent-shell-servers-warn-under-another-agent ()
+  "Only agent-shell reads `kittymacs-agent-mcp-servers', so another agent warns."
+  ;; What a host file does before the agents module has loaded.
+  (set 'kittymacs-agent-mcp-servers '(((name . "docs") (command . "docs-mcp"))))
+  (unwind-protect
+      (progn
+        (kittymacs-features-test-with ((kittymacs-profile 'full)) warnings
+          (kittymacs-features-resolve)
+          (should-not warnings))
+        (kittymacs-features-test-with ((kittymacs-profile 'full)
+                                       (kittymacs-features '(agent-claude-code-ide)))
+            warnings
+          (kittymacs-features-resolve)
+          (should (= (length warnings) 1))
+          (should (string-match-p "kittymacs-agent-mcp-servers' does nothing while agents is off"
+                                  (car warnings)))))
+    (makunbound 'kittymacs-agent-mcp-servers)))
+
 (ert-deftest kittymacs-features-members-reached-through-deps-win-nearest-first ()
   "Elisp walks dependencies in the order of the Nix module's `withDeps'.
 The two must agree on a winner that only dependencies reach."

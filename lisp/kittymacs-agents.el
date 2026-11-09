@@ -77,8 +77,9 @@ Check that `git clone %s' works from a terminal, and which git Emacs runs: %s"
      (kittymacs-agent-vc-warning "agent-shell-attention"
                                  "https://github.com/ultronozm/agent-shell-attention.el" err)))
 
-  (keymap-set kittymacs-agent-map "j" (cons "jump to waiting shell" #'agent-shell-attention-jump))
-  (keymap-set kittymacs-agent-map "d" (cons "all shells" #'agent-shell-attention-dashboard)))
+  (when (locate-library "agent-shell-attention")
+    (keymap-set kittymacs-agent-map "j" (cons "jump to waiting shell" #'agent-shell-attention-jump))
+    (keymap-set kittymacs-agent-map "d" (cons "all shells" #'agent-shell-attention-dashboard))))
 (when (kittymacs-feature-p 'agents)
   (with-eval-after-load 'meow
     (dolist (entry '((agent-shell-mode . insert)
@@ -121,16 +122,17 @@ Check that `git clone %s' works from a terminal, and which git Emacs runs: %s"
      (kittymacs-agent-vc-warning "claude-code-ide"
                                  "https://github.com/manzaltu/claude-code-ide.el" err)))
 
-  (keymap-set kittymacs-agent-map "a"
-              (cons "start or switch" #'kittymacs-agent-claude-code-ide-start-or-switch))
-  (keymap-set kittymacs-agent-map "n" (cons "new instance" #'claude-code-ide))
-  (keymap-set kittymacs-agent-map "t" (cons "toggle" #'claude-code-ide-toggle))
-  (keymap-set kittymacs-agent-map "b" (cons "switch instance" #'claude-code-ide-list-sessions))
-  (keymap-set kittymacs-agent-map "r" (cons "resume session" #'claude-code-ide-resume))
-  (keymap-set kittymacs-agent-map "s" (cons "send region" #'claude-code-ide-insert-at-mentioned))
-  (keymap-set kittymacs-agent-map "p" (cons "send a prompt" #'claude-code-ide-send-prompt))
-  (keymap-set kittymacs-agent-map "i" (cons "interrupt" #'claude-code-ide-send-escape))
-  (keymap-set kittymacs-agent-map "?" (cons "menu" #'claude-code-ide-menu)))
+  (when (locate-library "claude-code-ide")
+    (keymap-set kittymacs-agent-map "a"
+                (cons "start or switch" #'kittymacs-agent-claude-code-ide-start-or-switch))
+    (keymap-set kittymacs-agent-map "n" (cons "new instance" #'claude-code-ide))
+    (keymap-set kittymacs-agent-map "t" (cons "toggle" #'claude-code-ide-toggle))
+    (keymap-set kittymacs-agent-map "b" (cons "switch instance" #'claude-code-ide-list-sessions))
+    (keymap-set kittymacs-agent-map "r" (cons "resume session" #'claude-code-ide-resume))
+    (keymap-set kittymacs-agent-map "s" (cons "send region" #'claude-code-ide-insert-at-mentioned))
+    (keymap-set kittymacs-agent-map "p" (cons "send a prompt" #'claude-code-ide-send-prompt))
+    (keymap-set kittymacs-agent-map "i" (cons "interrupt" #'claude-code-ide-send-escape))
+    (keymap-set kittymacs-agent-map "?" (cons "menu" #'claude-code-ide-menu))))
 (when (kittymacs-feature-p 'agent-eca)
   (use-package eca
     :ensure t
