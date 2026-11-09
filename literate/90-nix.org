@@ -175,6 +175,7 @@
 | Program                | Chapter         | For                                   |
 |------------------------+-----------------+---------------------------------------|
 | =git=                  | [[id:f6ccd2da-4b3f-4392-b439-3966fc9d3db8][version control]] | Magit                                 |
+| =difft=                | [[id:f6ccd2da-4b3f-4392-b439-3966fc9d3db8][version control]] | diffs by syntax tree, from difftastic |
 | =ripgrep=, =fd=        | [[id:e4d65984-892d-4046-b718-d4265ab74215][navigation]]      | project search and file finding       |
 | =gnupg=                | [[id:40302e33-d2b2-4c0b-9bc3-1f9e121307e1][startup]]         | GNU ELPA's signed index               |
 | =hunspell= + =en_US=   | [[id:afa6b7fd-742a-4c15-86a6-32e3e8027b0e][platform]]        | spell checking                        |
@@ -234,6 +235,7 @@ let
     with pkgs;
     [
       (tool "version-control" "git" git) # version control chapter (Magit)
+      (tool "structural-diffs" "difft" difftastic) # version control chapter: structural diffs
       (tool "completion" "rg" ripgrep) # navigation chapter (consult-ripgrep)
       (tool "completion" "fd" fd) # navigation chapter (consult-fd)
       (tool null "gpg" gnupg) # startup chapter: GNU ELPA's signed index

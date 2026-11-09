@@ -10,6 +10,11 @@
 - Magit is the Git interface: =SPC v s= opens the status buffer for the repository you are in, and everything happens from there.
   + Stage with =s=, commit with =c c=, push with =P p=; every prefix opens a menu that lists its options.
 - Emacs's own VC layer handles the small things: following symlinks, annotating lines, resolving conflict markers.
+- Four optional features extend Magit, each behind its own entry in [[id:3f8a6c02-9d14-4b7e-a2c5-1e7d90b64f31][the catalogue]]:
+  + =pull-requests=: issues and pull requests from the forge, and line-by-line review;
+  + =git-extras=: modes for Git's own files, and the repository's TODOs in the status buffer;
+  + =git-links=: links to a line on the forge, and Org links to commits;
+  + =structural-diffs=: diffs that compare syntax trees instead of lines.
 - Leans on [[id:e5942eb0-4389-447d-9317-d9178adcaaae][the leader]] for =SPC m=, [[id:afa6b7fd-742a-4c15-86a6-32e3e8027b0e][the platform chapter]] for the spell checker, and [[id:f1d045c2-e2dc-4514-ab17-dd982ed6be00][the frames chapter]] for frames-only mode.
 - Distilled from Lambda-Emacs by Colin McLear (=lem-setup-vc=).
 
@@ -225,6 +230,182 @@ Falls back to `magit-status', which asks, when neither is a repository."
 
 #+end_src
 
+* Pull requests: Forge and pr-review
+:PROPERTIES:
+:ID: 0d6b1f3e-5a2c-4c8e-9f71-2b4e8a6d3c15
+:END:
+
+- Issues and pull requests live on the forge, and Forge brings them into Magit, so a pull request is one more section of the status buffer.
+  + Forge keeps a copy of each repository's topics in a SQLite database in the cache, so lists open at once and read offline.
+  + =N / a= in the status buffer adds a repository to that database; after that, =f n= pulls what changed.
+  + =SPC v g= opens Forge's menu: list, create, check out and merge pull requests, and the same for issues.
+  + Forge's buffers are Magit buffers, so they start in Motion state and share =SPC m= with Magit.
+- Forge cannot comment on a line of a diff, which is most of a review, so pr-review does that part.
+  + One buffer holds one pull request: its description, commits, diff, review threads and checks.
+  + =SPC v R= runs =kittymacs-pr-review=, which reviews the pull request at point in a Forge list or buffer, or else the current branch's; anywhere else, it asks for a URL.
+  + =SPC v N= lists GitHub's notifications, with the pull requests waiting on your review among them.
+- One token serves both: pr-review reads Forge's entry, rather than one of its own.
+  + The entry is a line in an =auth-sources= file such as =~/.authinfo.gpg=: =machine api.github.com login USERNAME^forge password TOKEN=.
+  + The token is a classic one with the =repo=, =user= and =read:org= scopes; =SPC v N= also needs =notifications=.
+  + Forge's manual has the full setup, with the =github.user= Git setting, in its Initial Setup node: =M-x info-display-manual RET forge=.
+  + kittymacs stores no token.
+- orgit-forge adds an =orgit-topic:= Org link: =org-store-link= in a Forge topic stores one, and export turns it into the topic's URL.
+
+#+begin_src emacs-lisp
+(declare-function forge-current-pullreq "forge-pullreq" (&optional demand))
+(declare-function forge-get-url "forge-commands" (obj))
+
+(defun kittymacs-pr-review ()
+  "Review a pull request with pr-review.
+The one at point in Forge, or else the current branch's; otherwise ask."
+  (interactive)
+  (if-let* ((pullreq (and (featurep 'forge)
+                          (magit-toplevel)
+                          (forge-current-pullreq))))
+      (pr-review (forge-get-url pullreq))
+    (call-interactively #'pr-review)))
+
+(when (kittymacs-feature-p 'pull-requests)
+  (use-package forge
+    :ensure t
+    :after magit
+    :custom
+    (forge-database-file (expand-file-name "forge-database.sqlite" kittymacs-cache-dir)))
+
+  (use-package pr-review
+    :ensure t
+    :defer t
+    :custom
+    (pr-review-ghub-auth-name 'forge))
+
+  (use-package orgit-forge
+    :ensure t
+    :defer t)
+
+  (keymap-set kittymacs-vc-map "g" (cons "forge menu" #'forge-dispatch))
+  (keymap-set kittymacs-vc-map "R" (cons "review a pull request" #'kittymacs-pr-review))
+  (keymap-set kittymacs-vc-map "N" (cons "notifications" #'pr-review-notification)))
+
+#+end_src
+
+* Meow in pull request reviews :meow:
+:PROPERTIES:
+:ID: 5e2a9c74-1b3d-4f86-a0c9-7d8e1f4b2a63
+:END:
+
+- A review buffer is for reading and moving between threads, so it starts in Motion state, as do its lists of notifications and searches.
+- The buffer where you write a comment is for typing, so it starts in Insert state, as [[*The commit message buffer][a commit message]] does.
+- pr-review acts on the thing at point: the same key comments on a line, replies to a thread or edits your own comment.
+  + =SPC m= labels its everyday commands; =C-c C-c= and the rest of pr-review's own keys work too.
+
+| =SPC m= | Does                          | =SPC m= | Does            |
+|---------+-------------------------------+---------+-----------------|
+| =c=     | comment or reply here         | =v=     | view whole file |
+| =s=     | resolve thread, submit review | =f=     | go to a file    |
+| =e=     | edit here                     | =d=     | Ediff a file    |
+| =g=     | refresh                       | =o=     | open in browser |
+
+#+begin_src emacs-lisp
+(declare-function pr-review-context-comment "pr-review-action" ())
+(declare-function pr-review-context-action "pr-review-action" ())
+(declare-function pr-review-context-edit "pr-review-action" ())
+(declare-function pr-review-refresh "pr-review" (&optional clear-pending-reviews))
+(declare-function pr-review-view-file "pr-review-action" (head-or-base filepath &optional line))
+(declare-function pr-review-goto-file "pr-review-action" (filepath))
+(declare-function pr-review-ediff-file "pr-review-action" (filepath))
+(declare-function pr-review-open-in-external-browser "pr-review-action" ())
+
+(when (kittymacs-feature-p 'pull-requests)
+  (with-eval-after-load 'meow
+    (add-to-list 'meow-mode-state-list '(pr-review-mode . motion))
+    (add-to-list 'meow-mode-state-list '(pr-review-listview-mode . motion))
+    (add-to-list 'meow-mode-state-list '(pr-review-input-mode . insert)))
+
+  (kittymacs-define-localleader 'pr-review-mode
+    "c" (cons "comment or reply" #'pr-review-context-comment)
+    "s" (cons "resolve or submit" #'pr-review-context-action)
+    "e" (cons "edit" #'pr-review-context-edit)
+    "g" (cons "refresh" #'pr-review-refresh)
+    "v" (cons "view whole file" #'pr-review-view-file)
+    "f" (cons "go to file" #'pr-review-goto-file)
+    "d" (cons "Ediff file" #'pr-review-ediff-file)
+    "o" (cons "open in browser" #'pr-review-open-in-external-browser)))
+
+#+end_src
+
+* Git's own files and the repository's TODOs
+
+- git-modes gives =.gitignore=, =.gitattributes= and =.git/config= files major modes of their own: comments, highlighting and indentation that know the format.
+- magit-todos adds a section to the status buffer that lists every =TODO=, =FIXME= and the like in the repository.
+  + Its words are the ones [[id:0286f652-e861-4e61-9ca6-91e225c8939d][the appearance chapter]]'s hl-todo highlights, so what stands out in a buffer is what the section lists.
+  + It searches with =rg= in the background, so a refresh does not wait for it.
+  + It skips repositories on a remote machine unless asked, because a search there runs over the connection: =M-x magit-todos-update= scans one by hand.
+  + =SPC v t= lists the TODOs in a buffer of their own.
+
+#+begin_src emacs-lisp
+(when (kittymacs-feature-p 'git-extras)
+  (use-package git-modes
+    :ensure t
+    :defer t)
+
+  (use-package magit-todos
+    :ensure t
+    :after magit
+    :config
+    (magit-todos-mode 1))
+
+  (keymap-set kittymacs-vc-map "t" (cons "TODOs" #'magit-todos-list)))
+
+#+end_src
+
+* Links to lines and commits
+
+- =SPC v o= runs =git-link=: it copies the forge's URL for this line, or for the selected lines, at the commit or branch you are on.
+- orgit adds Org links to Magit buffers: =orgit:= for a status buffer, =orgit-log:= for a log and =orgit-rev:= for a commit.
+  + =SPC m L= in a Magit buffer stores one, for each selected commit if there are several; =org-store-link= does the same.
+  + Exported, an =orgit-rev:= link becomes the commit's URL on the forge.
+  + Both register only once Org and Magit have loaded, so neither loads the other.
+
+#+begin_src emacs-lisp
+(when (kittymacs-feature-p 'git-links)
+  (use-package git-link
+    :ensure t
+    :defer t)
+
+  (use-package orgit
+    :ensure t
+    :defer t)
+
+  (keymap-set kittymacs-vc-map "o" (cons "copy link to line" #'git-link)))
+
+#+end_src
+
+* Diffs by syntax
+
+- A line diff marks a moved function, or a rewrapped argument list, as lines deleted and lines added; =difft= compares syntax trees, so it shows what changed.
+- difftastic shows its output in a buffer of its own, beside Magit's diff rather than instead of it.
+  + =SPC v D= compares this file with the last commit.
+  + In Magit's diff menu, =M-d= shows the diff at point this way and =M-c= a whole commit; in a blame, =M-RET= shows the commit of the line.
+  + Magit's menus gain those keys when Magit loads, because the keys extend them.
+- =difft= is a separate program: the Nix modules install it with the feature, and elsewhere it comes from the system's packages.
+- It runs =git= on this machine, so it works in local repositories only.
+
+#+begin_src emacs-lisp
+(when (kittymacs-feature-p 'structural-diffs)
+  (use-package difftastic
+    :ensure t
+    :defer t)
+
+  (with-eval-after-load 'magit
+    (difftastic-bindings-mode 1))
+
+  (with-eval-after-load 'meow
+    (add-to-list 'meow-mode-state-list '(difftastic-mode . motion)))
+
+  (keymap-set kittymacs-vc-map "D" (cons "diff file by syntax" #'difftastic-magit-diff-buffer-file)))
+
+#+end_src
+
 * Meow in Magit :meow:
 :PROPERTIES:
 :ID: 8c1af730-24e5-4926-88dd-d2f54a63c584
@@ -234,14 +415,16 @@ Falls back to `magit-status', which asks, when neither is a repository."
 - Commit message buffers are for typing: [[*The commit message buffer]] starts them in Insert state.
 - =SPC m= labels the most common Magit commands for anyone who does not yet know them.
   + Most open Magit's own menu; stage, unstage, discard and refresh act directly.
+  + =L= stores an Org link to the commits or buffer at point, with the =git-links= feature on.
 
-| =SPC m= | Does    | =SPC m= | Does   | =SPC m= | Does         |
-|---------+---------+---------+--------+---------+--------------|
-| =s=     | stage   | =F=     | pull   | =z=     | stash        |
-| =u=     | unstage | =f=     | fetch  | =l=     | log          |
-| =c=     | commit  | =b=     | branch | =d=     | diff         |
-| =p=     | push    | =m=     | merge  | =x=     | discard      |
-| =g=     | refresh | =r=     | rebase | =?=     | all commands |
+| =SPC m= | Does    | =SPC m= | Does   | =SPC m= | Does           |
+|---------+---------+---------+--------+---------+----------------|
+| =s=     | stage   | =F=     | pull   | =z=     | stash          |
+| =u=     | unstage | =f=     | fetch  | =l=     | log            |
+| =c=     | commit  | =b=     | branch | =d=     | diff           |
+| =p=     | push    | =m=     | merge  | =x=     | discard        |
+| =g=     | refresh | =r=     | rebase | =?=     | all commands   |
+|         |         |         |        | =L=     | store Org link |
 
 #+begin_src emacs-lisp
 (with-eval-after-load 'meow
@@ -262,7 +445,8 @@ Falls back to `magit-status', which asks, when neither is a repository."
   "d" (cons "diff" #'magit-diff)
   "x" (cons "discard" #'magit-discard)
   "g" (cons "refresh" #'magit-refresh)
-  "?" (cons "all commands" #'magit-dispatch))
+  "?" (cons "all commands" #'magit-dispatch)
+  "L" (and (kittymacs-feature-p 'git-links) (cons "store Org link" #'orgit-store-link)))
 
 (provide 'kittymacs-vc)
 ;;; kittymacs-vc.el ends here
@@ -276,3 +460,9 @@ Falls back to `magit-status', which asks, when neither is a repository."
 - Edit a tracked file: the fringe marks the changed lines.
 - =*Warnings*= stays empty after the first =SPC v s= of a session.
 - =just test-packages=: the startup verifier replays a real startup and fails on any warning, such as the =defvaralias= one above.
+- With =pull-requests= on and a token stored: =N / a= in a GitHub repository's status buffer adds it; =SPC v g= then lists its pull requests.
+  + On a pull request, =SPC v R= opens the review; =SPC m c= on a diff line starts a comment in Insert state.
+- With =git-extras= on: the status buffer of a repository with a =TODO= has a TODOs section; a =.gitignore= opens in its own mode.
+- With =git-links= on: =SPC v o= in a tracked file copies a URL that opens that line on the forge.
+  + =SPC m L= on a commit in a Magit log, then =C-c C-l= in an Org buffer, inserts an =orgit-rev:= link.
+- With =structural-diffs= on and =difft= installed: =SPC v D= in a changed file opens a difftastic buffer in Motion state.

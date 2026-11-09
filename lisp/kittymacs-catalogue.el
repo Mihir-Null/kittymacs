@@ -157,6 +157,22 @@
      :group git :packages (diff-hl) :module kittymacs-vc :profile minimal
      :summary "Marks changed lines in the fringe each time you save."
      :example "=SPC t g= turns the marks on or off in this buffer.")
+    (pull-requests
+     :group git :packages (forge pr-review orgit-forge) :module kittymacs-vc :profile full :deps (version-control)
+     :summary "Issues and pull requests in Magit, and line-by-line review; it needs a GitHub token."
+     :example "=SPC v g= opens Forge's menu, and =SPC v R= reviews a pull request.")
+    (git-extras
+     :group git :packages (git-modes magit-todos) :module kittymacs-vc :profile full :deps (version-control)
+     :summary "Modes for Git's own files, and the repository's TODOs in Magit's status."
+     :example "=SPC v t= lists every TODO in this repository.")
+    (git-links
+     :group git :packages (git-link orgit) :module kittymacs-vc :profile full :deps (version-control)
+     :summary "Links to a line on the forge, and Org links to commits and Magit buffers."
+     :example "=SPC v o= copies a link to this line on GitHub.")
+    (structural-diffs
+     :group git :packages (difftastic) :module kittymacs-vc :profile full :deps (version-control)
+     :summary "Diffs that compare syntax trees, so moved and rewrapped code reads as such."
+     :example "=SPC v D= compares this file with the last commit by syntax.")
 
     ;; Shells and environments
     (project-environment
