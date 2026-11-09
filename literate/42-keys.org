@@ -180,7 +180,7 @@
 | =SPC o= | open   | (=e= terminal)       | =p= project terminal, =t= file tree, =s= eshell, =a= agenda dashboard, =h= home, =b= a backend's project |
 | =SPC t= | toggle | =t= light/dark theme | =n= line numbers, =w= writeroom, =P= prose font, =s= spelling, =f= frames-only mode, =d= file tree, =a= suggestions |
 | =SPC C= | config | (=c= reading guide)  | =f= find chapter, =t= tangle, =k= check tangle, =p= =private.el=, =o= onboarding, =r= restart |
-| =SPC q= | quit   | =q= save and quit    | =Q= without saving, =r= restart, =f= close frame               |
+| =SPC q= | quit   | =q= save and quit    | =Q= without saving, =K= stop the daemon, =r= restart, =f= close frame |
 | =SPC u= | user   | (empty)              | yours                                                          |
 
 - These groups' keys and commands belong to the chapters they serve:
@@ -200,8 +200,39 @@
 (keymap-set kittymacs-toggle-map "m" (cons "menu bar" #'menu-bar-mode))
 (keymap-set kittymacs-toggle-map "z" (cons "zone out" #'zone))
 
-(keymap-set kittymacs-quit-map "q" (cons "save and quit" #'save-buffers-kill-emacs))
-(keymap-set kittymacs-quit-map "Q" (cons "quit without saving" #'kill-emacs))
+#+end_src
+
+** Quitting a client leaves the daemon running
+
+- A frame that =emacsclient -c= opened belongs to a client of a daemon: quitting it should close that client, not end the daemon.
+  + Under systemd, the daemon is a user service, and a launcher opens each window with =emacsclient -c=.
+  + Ending the daemon from such a frame is a clean exit, which systemd does not restart: the launcher then has nothing to connect to until the service starts again.
+- =SPC q q= is =save-buffers-kill-terminal=, which is also =C-x C-c=.
+  + In a client's frame, it offers to save that client's files, then closes the client.
+  + In a standalone Emacs, it offers to save every buffer, then quits.
+- =SPC q Q= follows the same rule without saving.
+  + In a client's frame, it closes the client and asks nothing; unsaved buffers stay in the daemon.
+  + In a standalone Emacs, it quits at once.
+- =SPC q K= ends the daemon on purpose, after offering to save every buffer; in a standalone Emacs it is the same as =SPC q q=.
+- =(frame-parameter nil 'client)= tells the two apart: a process or =nowait= in a client's frame, and nil otherwise.
+
+#+begin_src emacs-lisp
+(declare-function server-delete-client "server" (proc &optional noframe))
+
+(defun kittymacs-quit-without-saving ()
+  "Quit without saving: close this frame's client, or Emacs if there is none.
+In a frame that `emacsclient' opened, close the client as
+`save-buffers-kill-terminal' does, but ask nothing: unsaved buffers stay
+in the server, which keeps running."
+  (interactive)
+  (let ((client (frame-parameter nil 'client)))
+    (cond ((processp client) (server-delete-client client))
+          ((and client (cdr (frame-list))) (delete-frame))
+          (t (kill-emacs)))))
+
+(keymap-set kittymacs-quit-map "q" (cons "save and quit" #'save-buffers-kill-terminal))
+(keymap-set kittymacs-quit-map "Q" (cons "quit without saving" #'kittymacs-quit-without-saving))
+(keymap-set kittymacs-quit-map "K" (cons "save and stop the daemon" #'save-buffers-kill-emacs))
 (keymap-set kittymacs-quit-map "r" (cons "restart" #'restart-emacs))
 (keymap-set kittymacs-quit-map "f" (cons "close frame" #'delete-frame))
 

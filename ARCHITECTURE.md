@@ -88,6 +88,7 @@ Design decisions, with the reason:
 ### Keys and Meow
 
 - **Buffer-local emulation entry over a `menu-item :filter`.** Both work; only the emulation entry is visible to `where-is`, which Marginalia uses for M-x annotations.
+- **Quitting from a client's frame closes the client, not the daemon.** `SPC q q` is `save-buffers-kill-terminal` (`C-x C-c`), and `SPC q Q` closes the client without asking; both end Emacs only in a frame no `emacsclient` opened. A systemd user service does not restart a daemon that exits cleanly, so a quit that ended it left a launcher running `emacsclient -c` nothing to connect to. `SPC q K` ends the daemon on purpose. (`literate/42-keys.org`)
 - **Motion state for Magit and Dired.** In Normal state Meow's grammar shadows Magit's `s`, `u`, `c`; Motion keeps the package's keys and adds only `j`/`k` and the leader.
 - **Meow colours its own expansion hints.** `meow-use-dynamic-face-color` is at its default: Meow derives the hint backgrounds from the cursor and region colours of the active theme and recomputes them through its `enable-theme` advice. doom-themes and the Sonokai port style none of Meow's faces, so turning it off left the numbered hints as plain text.
 - **The home page is the first landing page.** It carries the kittymacs `:3` banner, buttons for every place the README sends a new user (cheat sheet, reading guide, keys chapter, Meow tutor) and a six-key guide at the bottom, so a fresh install explains itself before anything is opened.

@@ -193,7 +193,8 @@ New editing surfaces are OS windows (frames); your window manager arranges them.
 | SPC C f | Open a configuration chapter      | kittymacs-find-config-file          |
 | SPC C o | Choose what kittymacs installs    | kittymacs-onboard                   |
 | SPC C t | Rebuild the configuration         | kittymacs-literate-tangle           |
-| SPC q q | Save everything and quit          | save-buffers-kill-emacs           |
+| SPC q q | Save, then close client or quit   | save-buffers-kill-terminal        |
+| SPC q K | Save and stop the daemon too      | save-buffers-kill-emacs           |
 | SPC q r | Restart Emacs                     | restart-emacs                     |
 
 * The localleader: SPC m

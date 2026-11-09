@@ -79,9 +79,22 @@
 (keymap-set kittymacs-toggle-map "s" (cons "spell check" #'flyspell-mode))
 (keymap-set kittymacs-toggle-map "m" (cons "menu bar" #'menu-bar-mode))
 (keymap-set kittymacs-toggle-map "z" (cons "zone out" #'zone))
+(declare-function server-delete-client "server" (proc &optional noframe))
 
-(keymap-set kittymacs-quit-map "q" (cons "save and quit" #'save-buffers-kill-emacs))
-(keymap-set kittymacs-quit-map "Q" (cons "quit without saving" #'kill-emacs))
+(defun kittymacs-quit-without-saving ()
+  "Quit without saving: close this frame's client, or Emacs if there is none.
+In a frame that `emacsclient' opened, close the client as
+`save-buffers-kill-terminal' does, but ask nothing: unsaved buffers stay
+in the server, which keeps running."
+  (interactive)
+  (let ((client (frame-parameter nil 'client)))
+    (cond ((processp client) (server-delete-client client))
+          ((and client (cdr (frame-list))) (delete-frame))
+          (t (kill-emacs)))))
+
+(keymap-set kittymacs-quit-map "q" (cons "save and quit" #'save-buffers-kill-terminal))
+(keymap-set kittymacs-quit-map "Q" (cons "quit without saving" #'kittymacs-quit-without-saving))
+(keymap-set kittymacs-quit-map "K" (cons "save and stop the daemon" #'save-buffers-kill-emacs))
 (keymap-set kittymacs-quit-map "r" (cons "restart" #'restart-emacs))
 (keymap-set kittymacs-quit-map "f" (cons "close frame" #'delete-frame))
 (keymap-set kittymacs-leader-map "SPC" (cons "M-x" #'execute-extended-command))
