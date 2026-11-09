@@ -157,6 +157,17 @@
             rpcServer = true;
           };
         });
+        home-rpc-server =
+          let
+            host = linuxHome {
+              package = emacsOf "x86_64-linux";
+              backend.rpcServer = true;
+            };
+            names = map lib.getName host.config.home.packages;
+          in
+          assert lib.elem "tramp-rpc-server" names;
+          assert lib.elem "emacs" names;
+          host.activationPackage.drvPath;
         home-old-unused =
           (linuxHome {
             package = oldEmacs;

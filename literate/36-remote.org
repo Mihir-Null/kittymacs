@@ -711,7 +711,8 @@ A file with line endings keeps them.  This never connects."
 - The next start installs =tramp-rpc= and =msgpack= from Git, and they load only when a =/rpc:= name first appears.
 - Install the server in the distribution, because nothing downloads it for you.
   + =SPC o B= prints the line to run.
-  + With Nix, =programs.kittymacs.backend.rpcServer = true= in the host beside =backend.enable=, or =nix profile install github:Mihir-Null/kittymacs#rpc-server=, gives the same revision ([[id:d25a5063-1439-4ae0-8fbe-b0162d05a0e0][the Nix chapter]]).
+  + With Nix, =programs.kittymacs.backend.rpcServer = true= in the distribution's host, or =nix profile install github:Mihir-Null/kittymacs#rpc-server=, gives the same revision ([[id:d25a5063-1439-4ae0-8fbe-b0162d05a0e0][the Nix chapter]]).
+  + The option works in a backend-only host, with =backend.enable=, and in one that runs kittymacs itself, with =enable=.
   + Without Nix, that line builds from source at the pinned revision with =cargo=, and needs Rust 1.88.
 - Each process Emacs starts there runs a local =cat=, because tramp-rpc pipes its output through one, and it has no fallback.
   + GNU's Emacs ships none, so it comes from Git for Windows, which [[id:af9044c2-44a8-4795-9f1b-2c0d83d66d76][the platform chapter]] already puts on =exec-path=.

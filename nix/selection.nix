@@ -133,9 +133,10 @@ rec {
     '';
 
     backend.rpcServer = lib.mkEnableOption ''
-      tramp-rpc-server beside the headless tools, for a backend reached with
-      `:transport wsl-rpc`.  It builds from source, and it matters only with
-      `backend.enable`
+      tramp-rpc-server, for a machine that another Emacs reaches with
+      `:transport wsl-rpc`.  It builds from source.  It installs beside the
+      headless tools under `backend.enable`, and beside Emacs on a machine
+      that runs kittymacs too
     '';
   };
 
