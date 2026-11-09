@@ -302,7 +302,8 @@ That is `unset' if the hook left it alone, and it records any connecting."
       (dolist (directory (split-string kittymacs-remote-wsl-path ":"))
         (should (member directory path)))
       (should (member "/run/current-system/sw/bin" path))
-      (dolist (directory '("$HOME/.nix-profile/bin"
+      (dolist (directory '("/run/wrappers/bin"
+                           "$HOME/.nix-profile/bin"
                            "/nix/var/nix/profiles/default/bin"
                            "/etc/profiles/per-user/$USER/bin"
                            "$HOME/.local/state/nix/profiles/home-manager/home-path/bin"

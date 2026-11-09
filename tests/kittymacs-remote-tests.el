@@ -330,8 +330,27 @@ The job in .github/workflows/wsl-backend.yml runs it against real WSL2."
 (ert-deftest kittymacs-remote-tramp-finds-the-nix-profile ()
   (should (eq (kittymacs-remote-test--value 'working 'remote-path-head) 'tramp-own-remote-path))
   (should (equal (kittymacs-remote-test--value 'working 'remote-path-nix)
-                 '("~/.nix-profile/bin" "/nix/var/nix/profiles/default/bin" "/run/current-system/sw/bin")))
+                 '("/run/wrappers/bin" "~/.nix-profile/bin" "/etc/profiles/per-user/$USER/bin"
+                   "/nix/var/nix/profiles/default/bin" "/run/current-system/sw/bin")))
   (should (string-suffix-p ".nix-profile/bin/kfake" (kittymacs-remote-test--value 'working 'nix-tool))))
+
+(ert-deftest kittymacs-remote-tramp-checks-the-home-and-the-user-it-logs-in-as ()
+  "Tramp's check expands neither `~' nor `$USER', and NixOS keeps a user's packages
+under a directory with the name in it."
+  (let* ((expanded (kittymacs-remote-test--value 'working 'remote-path-expanded))
+         (login (plist-get expanded :login))
+         (path (plist-get expanded :path)))
+    (should (stringp login))
+    ;; No user in the name: the machine's answer, kept for the connection.
+    (should (equal (plist-get expanded :user) login))
+    (should (equal (plist-get expanded :kept) login))
+    (should (member (format "/etc/profiles/per-user/%s/bin" login) path))
+    (should (member (concat (plist-get expanded :home) "/.nix-profile/bin") path))
+    (should (member "/run/wrappers/bin" path))
+    (should-not (seq-some (lambda (entry) (and (stringp entry) (string-match-p "[~$]" entry)))
+                          path)))
+  ;; A user in the name: that one, without asking.
+  (should (equal (kittymacs-remote-test--value 'working 'remote-user-named) "someone")))
 
 (ert-deftest kittymacs-remote-a-backend-starts-processes-directly ()
   (kittymacs-remote-test--skip-on-a-mac)
