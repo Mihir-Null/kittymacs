@@ -340,9 +340,17 @@ A command, or a function taking the key's ARGS."
   + A server that asks for a cookie, as xrdp's does, then refuses EXWM with "Authorization required, but no authorization protocol specified".
   + Emacs's own frame still opens, because libX11 reads =~/.Xauthority= itself, so the session shows a plain frame that nothing manages, and its windows take no input and do not resize.
   + So the start says so first, in =*Warnings*=, and still tries, because a server with no cookie, such as a bare Xvfb, accepts EXWM anyway.
-  + The check is defined inside the gate, so a machine that never runs EXWM does not load it.
 
 #+begin_src emacs-lisp
+
+(defun kittymacs-exwm--warn-without-xauth ()
+  "Warn if xelb cannot find the X server's cookie, because there is no xauth."
+  (unless (executable-find "xauth")
+    (display-warning
+     'kittymacs
+     "No xauth on PATH, so EXWM connects to X with no cookie, and a server that asks for one refuses it.
+If EXWM does not start, install xauth where this Emacs's PATH finds it, then start the session again."
+     :warning)))
 
 (defun kittymacs-exwm--keysyms-or-failure (keysyms)
   "Return KEYSYMS, or what `xcb:keysyms:event->keysyms' documents for a failure."
@@ -351,14 +359,6 @@ A command, or a function taking the key's ARGS."
 ;; `when' rather than `:if': `use-package' installs before it reads `:if', so
 ;; every machine would download a window manager it cannot use.
 (when (and kittymacs-exwm (kittymacs-feature-p 'window-manager))
-  (defun kittymacs-exwm--warn-without-xauth ()
-    "Warn if xelb cannot find the X server's cookie, because there is no xauth."
-    (unless (executable-find "xauth")
-      (display-warning
-       'kittymacs
-       "No xauth on PATH, so EXWM connects to X with no cookie, and a server that asks for one refuses it.
-  If EXWM does not start, install xauth where this Emacs's PATH finds it, then start the session again."
-       :warning)))
   (use-package exwm
     :ensure t
     :demand t
