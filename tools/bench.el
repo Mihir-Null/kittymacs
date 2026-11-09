@@ -2,13 +2,10 @@
 ;; Run from any directory:
 ;;   emacs -Q --batch -l /path/to/tools/bench.el -- --size
 ;;   emacs -Q --batch -l /path/to/tools/bench.el -- --startup
-;;   emacs -Q --batch -l /path/to/tools/bench.el -- --check [BASE]
-;; Add --write to record the measured counts as the budget in tests/budgets.eld.
-;; (`just size', `just bench' and `just budget-check' do exactly this.)
+;; (`just size' and `just bench' do exactly this.)
 ;;
-;; --size and --startup report, and exit 0 on a measurement that completes.
-;; --check exits 1 when a budget rose with no stated reason.  See "Measuring" in
-;; literate/80-maintenance.org.
+;; Both only report, and exit 0 on a measurement that completes.  See
+;; "Measuring" in literate/80-maintenance.org.
 (require 'cl-lib)
 (require 'package)
 (require 'seq)
@@ -107,10 +104,6 @@ tests/kittymacs-startup-tests.el, which leaves out `:vc' for the Nix list."
                 (kittymacs-bench--path "README.md"))
           (kittymacs-bench--org-files)))
 
-(defun kittymacs-bench--metric (&rest parts)
-  "Return the metric named by joining PARTS."
-  (intern (string-join parts "/")))
-
 (defun kittymacs-bench--declared-packages ()
   "Every package a module declares, in any gate, by name."
   (seq-uniq (seq-mapcat (lambda (file)
@@ -172,31 +165,25 @@ Follows `require' from init.el, the way a start does, without starting."
 
 (defun kittymacs-bench-size ()
   "Return an alist of metric and number for what needs no packages to count."
-  (let ((total-lines 0) (total-conses 0) metrics)
+  (let ((total-lines 0) (total-conses 0))
     (dolist (file (kittymacs-bench--elisp-files))
-      (let ((name (file-name-base file))
-            (lines (kittymacs-bench--line-count file))
-            (conses (kittymacs-bench--conses (kittymacs-bench--forms file))))
-        (setq total-lines (+ total-lines lines)
-              total-conses (+ total-conses conses))
-        (push (cons (kittymacs-bench--metric "module-lines" name) lines) metrics)
-        (push (cons (kittymacs-bench--metric "module-conses" name) conses) metrics)))
-    (append
-     `((elisp-lines . ,total-lines)
-       (elisp-conses . ,total-conses)
-       (default-loaded-lines . ,(apply #'+ (mapcar #'kittymacs-bench--line-count
+      (setq total-lines (+ total-lines (kittymacs-bench--line-count file))
+            total-conses (+ total-conses
+                            (kittymacs-bench--conses (kittymacs-bench--forms file)))))
+    `((elisp-lines . ,total-lines)
+      (elisp-conses . ,total-conses)
+      (default-loaded-lines . ,(apply #'+ (mapcar #'kittymacs-bench--line-count
+                                                  (kittymacs-bench--default-files))))
+      (default-loaded-conses . ,(apply #'+ (mapcar (lambda (file)
+                                                     (kittymacs-bench--conses
+                                                      (kittymacs-bench--forms file)))
                                                    (kittymacs-bench--default-files))))
-       (default-loaded-conses . ,(apply #'+ (mapcar (lambda (file)
-                                                      (kittymacs-bench--conses
-                                                       (kittymacs-bench--forms file)))
-                                                    (kittymacs-bench--default-files))))
-       (default-packages . ,(length (kittymacs-bench--default-packages)))
-       (declared-packages . ,(length (kittymacs-bench--declared-packages)))
-       (org-lines . ,(apply #'+ (mapcar #'kittymacs-bench--line-count
-                                        (kittymacs-bench--org-files))))
-       (prose-lines . ,(apply #'+ (mapcar #'kittymacs-bench--line-count
-                                          (kittymacs-bench--prose-files)))))
-     (nreverse metrics))))
+      (default-packages . ,(length (kittymacs-bench--default-packages)))
+      (declared-packages . ,(length (kittymacs-bench--declared-packages)))
+      (org-lines . ,(apply #'+ (mapcar #'kittymacs-bench--line-count
+                                       (kittymacs-bench--org-files))))
+      (prose-lines . ,(apply #'+ (mapcar #'kittymacs-bench--line-count
+                                         (kittymacs-bench--prose-files)))))))
 
 ;;; Dependency closure
 
@@ -343,51 +330,11 @@ DISPLAY is the extra arguments of the run: empty asks for a frame."
 
 ;;; Reporting
 
-(defun kittymacs-bench--compare (budgets measured)
-  "Return (METRIC BUDGET CURRENT) for each METRIC in MEASURED that differs.
-BUDGET is nil for a metric that BUDGETS does not hold yet."
-  (cl-loop for (metric . current) in measured
-           for budget = (alist-get metric budgets)
-           unless (eql budget current)
-           collect (list metric budget current)))
-
-(defun kittymacs-bench--budgets ()
-  "Return the alist in tests/budgets.eld, or nil when it does not exist."
-  (let ((file (kittymacs-bench--path "tests/budgets.eld")))
-    (when (file-exists-p file)
-      (with-temp-buffer
-        (insert-file-contents file)
-        (read (current-buffer))))))
-
-(defun kittymacs-bench--write-budgets (measured)
-  "Merge MEASURED into tests/budgets.eld, sorted by metric."
-  (let ((merged (kittymacs-bench--budgets)))
-    (pcase-dolist (`(,metric . ,value) measured)
-      (setf (alist-get metric merged) value))
-    (with-temp-file (kittymacs-bench--path "tests/budgets.eld")
-      (insert ";;; budgets.eld --- What kittymacs may cost -*- mode: lisp-data; -*-\n"
-              ";; Written by tools/bench.el --write.  `just budget-check' holds them to the\n"
-              ";; merge base.  Counts from a start are of the default profile.\n"
-              ";; See \"Measuring\" in literate/80-maintenance.org.\n"
-              "(\n")
-      (dolist (entry (sort merged (lambda (a b) (string< (car a) (car b)))))
-        (insert (format " %S\n" entry)))
-      (insert ")\n"))))
-
-(defun kittymacs-bench--report-budgets (measured)
-  "Print how MEASURED differs from the budgets."
-  (let ((differences (kittymacs-bench--compare (kittymacs-bench--budgets) measured)))
-    (princ (format "\n## Against tests/budgets.eld\n\n%s\n"
-                   (if differences "| Metric | Budget | Now |\n|---|---|---|" "No differences.")))
-    (pcase-dolist (`(,metric ,budget ,current) differences)
-      (princ (format "| %s | %s | %s |\n" metric (or budget "none") current)))))
-
 (defun kittymacs-bench--report-totals (measured)
-  "Print the totals in MEASURED, leaving out the per-module rows."
+  "Print the counts in MEASURED."
   (princ "| Metric | Now |\n|---|---|\n")
   (pcase-dolist (`(,metric . ,value) measured)
-    (unless (string-match-p "/" (symbol-name metric))
-      (princ (format "| %s | %s |\n" metric value)))))
+    (princ (format "| %s | %s |\n" metric value))))
 
 (defun kittymacs-bench--report-startup (name baseline reports)
   "Print the timing table for display NAME, of REPORTS against BASELINE."
@@ -406,9 +353,6 @@ BUDGET is nil for a metric that BUDGETS does not hold yet."
                        (kittymacs-bench--cell reports key)
                        (if ratio (format "%.2f" ratio) "n/a")))))))
 
-(defvar kittymacs-bench--off-default nil
-  "The profile the measured starts ran on, when it was not the default.")
-
 (defun kittymacs-bench--default-profile ()
   "Return the profile a machine with no choice starts on, from the catalogue's module."
   (kittymacs-bench--default-features)
@@ -419,7 +363,6 @@ BUDGET is nil for a metric that BUDGETS does not hold yet."
 They are exact and repeat from run to run, unlike the times."
   (let ((report (car (last reports))))
     (unless (eq (plist-get report :profile) (kittymacs-bench--default-profile))
-      (setq kittymacs-bench--off-default (plist-get report :profile))
       (princ (format "\n**Warning:** these starts ran on the %s profile, not the default.\n"
                      (plist-get report :profile))))
     `((features . ,(plist-get report :features))
@@ -484,150 +427,16 @@ They default to what init.el names, read rather than repeated here."
         (princ (format "- %s\n" failure))))
     (cons (cons 'dependency-closure (length closure)) counts)))
 
-;;; Holding the budgets to the merge base
-
-(defun kittymacs-bench--git (&rest arguments)
-  "Run git with ARGUMENTS in this checkout; return its output, or nil if it failed."
-  (let ((default-directory kittymacs-bench-root))
-    (with-temp-buffer
-      (when (eql 0 (apply #'call-process "git" nil '(t nil) nil arguments))
-        (buffer-string)))))
-
-(defun kittymacs-bench--merge-base (&optional base)
-  "Return the commit where HEAD left BASE, or signal an error that says what is missing.
-BASE defaults to what this pull request targets, or else origin/main."
-  (let* ((target (or base
-                     (when-let* ((ref (getenv "GITHUB_BASE_REF"))
-                                 ((not (string-empty-p ref))))
-                       (concat "origin/" ref))
-                     "origin/main"))
-         (found (kittymacs-bench--git "merge-base" "HEAD" target)))
-    (if found
-        (string-trim found)
-      (error "No merge base between HEAD and %s: this needs that ref and enough history"
-             target))))
-
-(defun kittymacs-bench--budgets-at (commit)
-  "Return the alist in tests/budgets.eld at COMMIT."
-  (let ((text (kittymacs-bench--git "show" (concat commit ":tests/budgets.eld"))))
-    (unless text
-      (error "No tests/budgets.eld at %s" commit))
-    (car (read-from-string text))))
-
-(defun kittymacs-bench--parse-reason (line)
-  "Return (NAMES . REASON) from the trailer value LINE, or nil if it names no reason."
-  (when (string-match "\\`\\([^:]+\\):[ \t]*\\(.*[^ \t].*\\)\\'" line)
-    (let ((reason (match-string 2 line)))
-      (cons (mapcar #'intern (split-string (match-string 1 line) "[, \t]+" t)) reason))))
-
-(defun kittymacs-bench--stated-reasons (base)
-  "Return an alist of budget and reason, from the commits after BASE up to HEAD.
-Each reason comes from a trailer: Budget-rise: NAME, NAME: why."
-  (let (reasons)
-    (dolist (line (split-string
-                   (or (kittymacs-bench--git
-                        "log" "--format=%(trailers:key=Budget-rise,valueonly,unfold)"
-                        (concat base "..HEAD"))
-                       "")
-                   "\n" t))
-      (when-let* ((parsed (kittymacs-bench--parse-reason (string-trim line))))
-        (dolist (name (car parsed))
-          (push (cons name (cdr parsed)) reasons))))
-    reasons))
-
-(defun kittymacs-bench--current (recorded measured)
-  "Return RECORDED with what MEASURED holds in its place, so a count cannot go stale."
-  (append measured (seq-remove (lambda (entry) (assq (car entry) measured)) recorded)))
-
-(defun kittymacs-bench--stale (recorded measured)
-  "Return the metrics in MEASURED whose count differs from RECORDED, as a list."
-  (mapcar #'car (kittymacs-bench--compare recorded measured)))
-
-(defun kittymacs-bench--rises (base current)
-  "Return (METRIC BEFORE NOW) for each budget in BASE that CURRENT holds higher.
-A metric BASE lacks has nothing to rise from: a new module also moves the totals."
-  (cl-loop for (metric . before) in base
-           for now = (alist-get metric current)
-           when (and now (> now before))
-           collect (list metric before now)))
-
-(defun kittymacs-bench--missing (base current)
-  "Return the budgets in BASE that CURRENT has dropped.
-A module's rows may go with the module.  Dropping any other would end its ratchet."
-  (cl-loop for (metric . _) in base
-           unless (or (assq metric current)
-                      (string-prefix-p "module-" (symbol-name metric)))
-           collect metric))
-
-(defun kittymacs-bench--report-check (base-commit base current reasons)
-  "Print how CURRENT moved from BASE at BASE-COMMIT, and the REASONS stated."
-  (princ (format "\n## Budgets against %s\n\n" (substring base-commit 0 (min 10 (length base-commit)))))
-  (let ((moved (cl-loop for (metric . before) in base
-                        for now = (alist-get metric current)
-                        unless (or (null now) (= now before))
-                        collect (list metric before now))))
-    (if (null moved)
-        (princ "Nothing moved.\n")
-      (princ "| Budget | Base | Now | Reason |\n|---|---|---|---|\n")
-      (pcase-dolist (`(,metric ,before ,now) moved)
-        (princ (format "| %s | %s | %s | %s |\n" metric before now
-                       (if (> now before)
-                           (or (alist-get metric reasons) "**none**")
-                         "")))))))
-
-(defun kittymacs-bench-check (&optional base)
-  "Fail unless each budget held against the merge base with BASE.
-Return nil on success, and otherwise the list of failures it printed."
-  (let* ((commit (kittymacs-bench--merge-base base))
-         (before (kittymacs-bench--budgets-at commit))
-         (recorded (kittymacs-bench--budgets))
-         (measured (kittymacs-bench-size))
-         (current (kittymacs-bench--current recorded measured))
-         (reasons (kittymacs-bench--stated-reasons commit))
-         (stale (kittymacs-bench--stale recorded measured))
-         (missing (kittymacs-bench--missing before current))
-         (unstated (seq-remove (lambda (rise) (assq (car rise) reasons))
-                               (kittymacs-bench--rises before current)))
-         failures)
-    (kittymacs-bench--report-check commit before current reasons)
-    (when stale
-      (push (format "tests/budgets.eld is out of date for %s: run `just size --write'."
-                    (mapconcat #'symbol-name stale ", "))
-            failures))
-    (when missing
-      (push (format "tests/budgets.eld no longer holds %s."
-                    (mapconcat #'symbol-name missing ", "))
-            failures))
-    (when unstated
-      (push (format "These rose with no stated reason.  End a commit message with the trailer:\n\n  Budget-rise: %s: WHY\n"
-                    (mapconcat (lambda (rise) (symbol-name (car rise))) unstated ", "))
-            failures))
-    (dolist (failure failures)
-      (princ (format "\n**Fail:** %s\n" failure)))
-    (unless failures
-      (princ "\nEvery budget held.\n"))
-    failures))
-
 (when (and noninteractive (not kittymacs-bench-library-only))
-  (let* ((args (delete "--" command-line-args-left))
-         (write (member "--write" args))
-         (mode (car (delete "--write" args)))
-         measured)
+  (let ((args (delete "--" command-line-args-left))
+        measured)
     (setq command-line-args-left nil)
-    (pcase mode
-      ("--size" nil)
-      ("--startup" (setq measured (kittymacs-bench-startup)))
-      ("--check" (kill-emacs (if (kittymacs-bench-check (cadr args)) 1 0)))
-      (_ (error "Usage: emacs -Q --batch -l tools/bench.el -- --size|--startup [--write], or --check [BASE]")))
+    (pcase args
+      ('("--size") nil)
+      ('("--startup") (setq measured (kittymacs-bench-startup)))
+      (_ (error "Usage: emacs -Q --batch -l tools/bench.el -- --size|--startup")))
     (setq measured (append measured (kittymacs-bench-size)))
     (princ "\n## Counts\n\n")
-    (kittymacs-bench--report-totals measured)
-    (kittymacs-bench--report-budgets measured)
-    (when write
-      (when kittymacs-bench--off-default
-        (error "These starts ran on the %s profile, and tests/budgets.eld holds the default's"
-               kittymacs-bench--off-default))
-      (kittymacs-bench--write-budgets measured)
-      (princ "\nWrote tests/budgets.eld.\n"))))
+    (kittymacs-bench--report-totals measured)))
 
 ;;; bench.el ends here
