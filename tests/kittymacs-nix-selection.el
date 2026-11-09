@@ -53,7 +53,7 @@
 (defun kittymacs-nix--answer (system)
   "Return the features on for SYSTEM, the report's name for a host's system.
 A start here runs on this machine.  Another system's answer comes from the same
-four steps with `system-type' bound, since a feature may not be for that system."
+five steps with `system-type' bound, since a feature may not be for that system."
   (if (equal system "gnu/linux")
       (kittymacs-features-enabled)
     (let ((system-type (intern system)))

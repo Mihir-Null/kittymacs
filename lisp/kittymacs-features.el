@@ -143,18 +143,37 @@ Press SPC C o to choose, or set `kittymacs-profile' to `full' or `minimal' in pr
                               kittymacs-catalogue))))
 
 (defun kittymacs-features--with-deps (features)
-  "Return FEATURES and everything they depend on, however indirectly."
-  (let (result)
-    (while features
-      (let ((feature (pop features)))
-        (unless (memq feature result)
-          (push feature result)
-          (setq features (append (kittymacs-features--property feature :deps) features)))))
-    result))
+  "Return FEATURES and everything they depend on, however indirectly.
+FEATURES come first, then their dependencies, nearest first, as the Nix
+module's `withDeps' orders them."
+  (let ((grown (seq-uniq (append features
+                                 (seq-mapcat (lambda (feature)
+                                               (kittymacs-features--property feature :deps))
+                                             features)))))
+    (if (= (length grown) (length features))
+        features
+      (kittymacs-features--with-deps grown))))
 
 (defun kittymacs-features--applies-p (feature)
   "Return non-nil unless the catalogue rules FEATURE out on this system."
   (not (memq system-type (kittymacs-features--property feature :not-on))))
+
+(defun kittymacs-features--one-of-winner (feature features selected)
+  "Return the member of FEATURE's `:one-of' set that stays among FEATURES.
+That is the first of them in SELECTED, which holds what the selection names
+and then what it needs, nearest first, or else the first in FEATURES."
+  (let ((set (kittymacs-features--property feature :one-of)))
+    (seq-find (lambda (name) (eq (kittymacs-features--property name :one-of) set))
+              (append (seq-filter (lambda (name) (memq name features)) selected)
+                      features))))
+
+(defun kittymacs-features--keep-one-of-each (features selected)
+  "Return FEATURES with one member left of each `:one-of' set.
+SELECTED decides between members, as `kittymacs-features--one-of-winner' says."
+  (seq-filter (lambda (feature)
+                (or (not (kittymacs-features--property feature :one-of))
+                    (eq feature (kittymacs-features--one-of-winner feature features selected))))
+              features))
 
 (defun kittymacs-features--drop-unmet (features)
   "Return FEATURES without any whose dependencies are not all among them."
@@ -174,10 +193,12 @@ They come in the catalogue's order."
          (wanted (append (kittymacs-features--in-profile profile)
                          (kittymacs-features--with-deps selected)))
          (on (kittymacs-features--drop-unmet
-              (seq-filter (lambda (feature)
-                            (and (not (memq feature removed))
-                                 (kittymacs-features--applies-p feature)))
-                          wanted))))
+              (kittymacs-features--keep-one-of-each
+               (seq-filter (lambda (feature)
+                             (and (not (memq feature removed))
+                                  (kittymacs-features--applies-p feature)))
+                           wanted)
+               (kittymacs-features--with-deps selected)))))
     (mapcar #'car (seq-filter (lambda (entry) (memq (car entry) on)) kittymacs-catalogue))))
 
 (defun kittymacs-features-resolve ()
@@ -199,8 +220,15 @@ names what was asked for and cannot be had."
     (dolist (feature asked)
       (when (and (not (memq feature enabled))
                  (kittymacs-features--applies-p feature))
-        (kittymacs-features--warn
-         "%s is selected but stays off: it, or a feature it depends on, is excluded" feature)))
+        (if-let* ((set (kittymacs-features--property feature :one-of))
+                  (winner (seq-find (lambda (name)
+                                      (eq (kittymacs-features--property name :one-of) set))
+                                    (seq-intersection asked enabled))))
+            (kittymacs-features--warn
+             "%s is selected but stays off: %s, selected before it, is on, and only one of the %s set can be"
+             feature winner set)
+          (kittymacs-features--warn
+           "%s is selected but stays off: it, or a feature it depends on, is excluded" feature))))
     (pcase-dolist (`(,feature . ,plist) kittymacs-catalogue)
       (let ((option (plist-get plist :option)))
         (when (and option (boundp option) (not (memq feature enabled))

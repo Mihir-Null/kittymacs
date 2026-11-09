@@ -510,6 +510,7 @@ A name the catalogue lacks goes in NOTES."
 - =kittymacs-onboard--toggle= changes one feature and reports what else moved, by comparing the answer before and after.
   + The screen therefore shows =:deps= coming in, and what depends on a feature leaving with it, with no rule of its own.
   + A feature that a dependency's exclusion would hold off has that exclusion lifted when you turn it on, because you just asked for it.
+  + A member of a =:one-of= set works as a radio button with no rule here either: turning it on puts it first among the selected, so it wins its set, and the member it replaced, now off, leaves the selection.
 - =kittymacs-onboard--written-selection= is the "only the differences" rule.
   + A selected feature stays only if it is on and its profile would not have turned it on, so changing profile leaves no leftovers.
   + An excluded feature stays only if it would otherwise be on, and =minimal= features never stay.

@@ -5,6 +5,7 @@ let
   catalogue = builtins.fromJSON (builtins.readFile ./features.json);
   names = builtins.attrNames catalogue;
   depsOf = name: catalogue.${name}.deps or [ ];
+  setOf = name: catalogue.${name}.one-of or null;
   withDeps =
     features:
     let
@@ -155,6 +156,16 @@ rec {
           kept = lib.filter (name: lib.all (dep: lib.elem dep features) (depsOf name)) features;
         in
         if lib.length kept == lib.length features then features else dropUnmet kept;
+      keepOneOfEach =
+        features:
+        let
+          winner =
+            name:
+            lib.findFirst (other: setOf other == setOf name) null (
+              lib.filter (other: lib.elem other features) (withDeps selected) ++ features
+            );
+        in
+        lib.filter (name: setOf name == null || winner name == name) features;
       removed = lib.subtractLists floor excluded;
       wanted = lib.unique (
         floor ++ lib.optionals (cfg.profile != "minimal") (inProfile "full") ++ withDeps selected
@@ -164,7 +175,7 @@ rec {
     if cfg.profile == null && selected == [ ] && excluded == [ ] then
       null
     else
-      dropUnmet (lib.filter (name: !(lib.elem name removed) && applies name) wanted);
+      dropUnmet (keepOneOfEach (lib.filter (name: !(lib.elem name removed) && applies name) wanted));
 
   # Emacs's name for the system PKGS is for.
   systemType = pkgs: if pkgs.stdenv.hostPlatform.isDarwin then "darwin" else "gnu/linux";
@@ -213,9 +224,19 @@ rec {
         map (
           dep: "${option name} is true, but ${name} needs ${dep} and ${option dep} is false. Change one."
         ) (lib.intersectLists (withDeps (depsOf name)) excluded);
+      refuseTwoOf =
+        set:
+        let
+          chosen = lib.filter (name: setOf name == set) (answered cfg true);
+          listed = lib.concatMapStringsSep " and " option chosen;
+          message = "${listed} are true, but only one of the ${set} set can be on. Keep one.";
+        in
+        lib.optional (lib.length chosen > 1) message;
+      sets = lib.unique (lib.filter (set: set != null) (map setOf names));
       conflicts =
         map refuseExcluded (lib.filter alwaysKept excluded)
-        ++ lib.concatMap refuseSelected (answered cfg true);
+        ++ lib.concatMap refuseSelected (answered cfg true)
+        ++ lib.concatMap refuseTwoOf sets;
     in
     [
       {
