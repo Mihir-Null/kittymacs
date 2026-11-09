@@ -1,0 +1,63 @@
+name: Windows first start
+
+# A person's first start on native Windows: a fresh clone, no package cache, the
+# default profile, with no gpg, Git for Windows' gpg, or Gpg4win's, in batch and
+# in a frame.  Every error that reaches the debugger is in the report with its
+# backtrace.  It stays out of ci.yml, and nothing waits for it.
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - .github/workflows/windows-first-start.yml
+      - tests/windows-first-start/**
+      - early-init.el
+      - init.el
+      - lisp/kittymacs-features.el
+      - lisp/kittymacs-catalogue.el
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  start:
+    name: First start (gpg ${{ matrix.gpg }}, ${{ matrix.ui }})
+    runs-on: windows-latest
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        gpg: [none, git, gpg4win]
+        ui: [batch, gui]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      # GNU's own Windows build, as ci.yml installs it.
+      - name: Install Emacs from GNU
+        shell: bash
+        run: |
+          tmp=$(cygpath -u "$RUNNER_TEMP")
+          curl -sSfL -o "$tmp/emacs.zip" \
+            "https://ftp.gnu.org/gnu/emacs/windows/emacs-31/emacs-31.1.zip"
+          7z x -y "-o$(cygpath -w "$tmp/emacs")" "$(cygpath -w "$tmp/emacs.zip")" > /dev/null
+          emacs_exe=$(find "$tmp/emacs" -path '*/bin/emacs.exe' | head -n 1)
+          test -n "$emacs_exe"
+          cygpath -w "$(dirname "$emacs_exe")" >> "$GITHUB_PATH"
+      - name: Install Gpg4win
+        if: matrix.gpg == 'gpg4win'
+        shell: pwsh
+        run: choco install gpg4win -y --no-progress
+      - name: Start once, as a person's first start
+        shell: pwsh
+        timeout-minutes: 30
+        run: tests/windows-first-start/run.ps1 -Gpg ${{ matrix.gpg }} -Ui ${{ matrix.ui }}
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        if: always()
+        with:
+          name: windows-first-start-${{ matrix.gpg }}-${{ matrix.ui }}
+          path: windows-first-start-results
