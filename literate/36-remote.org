@@ -386,25 +386,29 @@ It never connects."
 - =:transport wsl= connects through =wsl.exe=, and =:host= is the distribution's name in =wsl --list=, with no sshd and no key; [[file:../ARCHITECTURE.md][ARCHITECTURE.md]] has the decision and its numbers.
 - The Tramp method behind it is =wslm=, as in =/wslm:Ubuntu-24.04:~/src/project/=, because Tramp may ship a =wsl= method one day, and this row must not replace it.
 - Tramp's load adds the method where =wsl.exe= exists, so a start pays nothing, and elsewhere =:transport wsl= is an error that names =wsl.exe=.
-- The row is the =distrobox= row of Emacs's =net/tramp-container.el= (=tramp-enable-distrobox-method=) with =wsl.exe= as the program, and two differences.
+- The row is the =distrobox= row of Emacs's =net/tramp-container.el= (=tramp-enable-distrobox-method=) with =wsl.exe= as the program, and three differences.
   + It merges stderr into stdout: =wsl.exe= relays them separately and =sh= prompts on stderr, so a prompt can overtake the output before it, and Tramp, waiting for a prompt at the end, never sees one.
   + It starts from a Linux =PATH=: =wsl.exe= appends the Windows =PATH=, =tramp-own-remote-path= reads it, and Tramp writes it unquoted, so =Program Files (x86)= is a syntax error.
-    That =PATH= ends with NixOS's =/run/current-system/sw/bin=, because the shell here is not a login shell, and Tramp asks it for =uname= before it sets a =PATH= of its own.
+    That =PATH= holds NixOS's =/run/current-system/sw/bin=, because the shell here is not a login shell, and Tramp asks it for =uname= before it sets a =PATH= of its own.
     =kittymacs-remote-wsl-path= holds it, and =wsl-rpc= reads the same one.
   + Both sit in the group that holds =%l=, which a direct process expands to nothing, and Tramp drops a group with an empty element, so a direct process runs without them.
+  + Its shell is =sh= on that =PATH=, not =/bin/sh=, because NixOS-WSL's =/bin/sh= is a Bash script that starts the real one, and a Bash that is not interactive unsets =PS1=.
+    Tramp starts its shell with a =PS1= of its own, then waits for that prompt with no time limit, so through =/bin/sh= a connection to NixOS-WSL stopped at "Setup connection" for good.
+    So the =PATH= starts with =/run/current-system/sw/bin=, whose =sh= is Bash itself, and on any other distribution =sh= is the one in =/usr/bin= or =/bin=.
 - Direct processes are on, because the row names =tramp-direct-async=, with two known limits.
   + A non-ASCII argument gets its encoding doubled: 11 bytes became 23.
   + Tramp refuses a direct command over =PIPE_BUF= with =Command too long=.
   + =:direct-async nil= passes both, though in the same run a 1 MiB write into a process arrived wrong through it.
 - =M-x shell= in one of the backend's buffers runs =:shell=, or =/bin/sh= without one, and =SPC o e= there runs a login shell ([[id:6b1d7f30-2e94-4a58-9c07-d3f81e5a2b64][a terminal in the distribution]]).
 - [[file:../tests/wsl-backend/connect.el][A small job]] connects to real WSL2 on a hosted Windows runner when this chapter changes.
+  + [[file:../tests/wsl-backend/nixos.el][Another]] connects to a pinned NixOS-WSL release, with Tramp's traces kept.
 
 #+begin_src emacs-lisp
 (defconst kittymacs-remote-wsl-method "wslm"
   "The Tramp method behind the `wsl' transport.")
 
 (defconst kittymacs-remote-wsl-path
-  "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/run/current-system/sw/bin"
+  "/run/current-system/sw/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
   "A Linux PATH, in place of the one `wsl.exe' gives, which ends in Windows's.")
 
 (defun kittymacs-remote--add-wsl-method ()
@@ -418,7 +422,7 @@ It never connects."
                                        ,(concat "\"PATH=" kittymacs-remote-wsl-path)
                                        "exec" "%l" "2>&1\"")))
                    (tramp-direct-async ("/bin/sh" "-c"))
-                   (tramp-remote-shell "/bin/sh")
+                   (tramp-remote-shell "sh")
                    (tramp-remote-shell-login ("-l"))
                    (tramp-remote-shell-args ("-c"))
                    (tramp-completion-use-cache nil)))))

@@ -195,7 +195,7 @@ job in .github/workflows/wsl-backend.yml covers them on real WSL2."
   (kittymacs-remote-test--skip-on-a-mac)
   (should (equal (kittymacs-remote-test--value 'working 'wsl-root) "/wslm:Fake-24.04:/tmp/"))
   (let ((login (kittymacs-remote-test--value 'working 'wsl-row-login)))
-    (should (string-match-p "PATH=/usr/local/sbin" login))
+    (should (string-match-p "PATH=/run/current-system/sw/bin:/usr/local/sbin" login))
     (should (string-match-p "2>&1" login)))
   (should (eq (kittymacs-remote-test--value 'working 'wsl-connects) t))
   (should (equal (kittymacs-remote-test--value 'working 'wsl-process-file) '(0 "wsl-ran\n")))
