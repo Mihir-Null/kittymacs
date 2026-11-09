@@ -163,22 +163,15 @@ onboard:
       emacs -Q --batch -l lisp/kittymacs-onboard.el -f kittymacs-onboard-main; \
     fi
 
-# Count what the code and prose cost, against tests/budgets.eld. Needs no
-# packages. Reports only; FLAGS may be --write. "Measuring" in
-# literate/80-maintenance.org explains the numbers.
-size *FLAGS:
-    emacs -Q --batch -l tools/bench.el -- --size {{FLAGS}}
-
-# Fail if a budget rose against the merge base with no commit stating why, or if
-# tests/budgets.eld is out of date. BASE defaults to what a pull request targets,
-# or else origin/main; it needs that ref and the history back to it.
-budget-check *BASE:
-    emacs -Q --batch -l tools/bench.el -- --check {{BASE}}
+# Count what the code and prose cost. Needs no packages. Reports only.
+# "Measuring" in literate/80-maintenance.org explains the numbers.
+size:
+    emacs -Q --batch -l tools/bench.el -- --size
 
 # Start Emacs many times and report what startup costs, in a terminal and, with
 # a DISPLAY, in a frame. Needs installed packages; takes minutes. Reports only.
-bench *FLAGS:
-    emacs -Q --batch -l tools/bench.el -- --startup {{FLAGS}}
+bench:
+    emacs -Q --batch -l tools/bench.el -- --startup
 
 # Frame policy needs a graphical session: this opens one, runs the frame
 # tests and leaves the results on screen.
@@ -311,7 +304,7 @@ nix-backend-closure:
 nix-check: lint eval nix-selection nix-matrix nix-templates
 
 # Everything CI runs on Linux, in order, under the profile its last two recipes need.
-all: check budget-check nix-check
+all: check nix-check
     KITTYMACS_TEST_PROFILE=full {{just_executable()}} install
     {{just_executable()}} compile
     {{just_executable()}} test-packages

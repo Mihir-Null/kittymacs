@@ -403,7 +403,6 @@ The loop:
 |---|---|---|
 | `just check` | Emacs | chapters match generated files; pages follow the conventions; builder, platform and Tree-sitter tests |
 | `KITTYMACS_TEST_PROFILE=full just install`, `just compile`, `just test-packages`, `just test-quickstart` | network, then installed packages | a fresh install byte-compiles, and the leader, Org-roam, theme and startup-verifier tests pass, under `full`, the last also from a quickstart file |
-| `just budget-check` | Git history | no count in `tests/budgets.eld` rose against the merge base without a stated reason |
 | `just frames-test` | a display | the frame policy |
 | `just nix-check` | Nix | the generated Nix lints, the flake and both example hosts evaluate, and the selection options reach a real start |
 

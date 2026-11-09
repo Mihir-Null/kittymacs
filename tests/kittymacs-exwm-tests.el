@@ -66,5 +66,46 @@
 (ert-deftest kittymacs-exwm-the-fix-is-on-before-exwm-starts ()
   (should (equal kittymacs-exwm-test--keysyms '((0 . 0)))))
 
+(defvar exwm-input-global-keys)
+
+(ert-deftest kittymacs-exwm-h-d-launches ()
+  "The default table binds H-d to the launcher, everywhere EXWM binds keys."
+  (should (equal (assoc "H-d" kittymacs-wm-keys) '("H-d" launch)))
+  (should (eq (alist-get (kbd "H-d") exwm-input-global-keys nil nil #'equal)
+              #'kittymacs-exwm-launch)))
+
+(ert-deftest kittymacs-exwm-the-launcher-does-not-wait ()
+  "The program starts with no buffer, through a pipe, and Emacs returns at once."
+  (let (calls)
+    (cl-letf (((symbol-function 'start-process-shell-command)
+               (lambda (name buffer command)
+                 (push (list name buffer command process-connection-type) calls)
+                 (make-pipe-process :name "kittymacs-exwm-test" :noquery nil)))
+              ((symbol-function 'call-process)
+               (lambda (&rest _) (error "The launcher waited in `call-process'")))
+              ((symbol-function 'shell-command)
+               (lambda (&rest _) (error "The launcher waited in `shell-command'"))))
+      (let ((process (kittymacs-exwm-launch "google-chrome")))
+        (unwind-protect
+            (progn
+              (should (equal calls '(("google-chrome" nil "google-chrome" nil))))
+              (should (process-live-p process))
+              (should-not (process-query-on-exit-flag process))
+              (should (eq (process-sentinel process) #'kittymacs-exwm--launch-sentinel)))
+          (delete-process process))))))
+
+(ert-deftest kittymacs-exwm-a-failed-launch-says-so ()
+  "A program that cannot start puts its shell's complaint in the echo area."
+  (let (messages)
+    (cl-letf (((symbol-function 'message)
+               (lambda (format &rest args) (push (apply #'format format args) messages))))
+      (let ((process (kittymacs-exwm-launch "kittymacs-no-such-program"))
+            (deadline (+ (float-time) 10)))
+        (while (and (process-live-p process) (< (float-time) deadline))
+          (accept-process-output process 0.1))
+        (accept-process-output nil 0.1)))
+    (should (seq-find (lambda (m) (string-match-p "code 127: .*not found" m))
+                      messages))))
+
 (provide 'kittymacs-exwm-tests)
 ;;; kittymacs-exwm-tests.el ends here
