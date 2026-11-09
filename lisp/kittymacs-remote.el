@@ -267,7 +267,7 @@ It never connects."
   "The Tramp method behind the `wsl' transport.")
 
 (defconst kittymacs-remote-wsl-path
-  "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/run/current-system/sw/bin"
+  "/run/current-system/sw/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
   "A Linux PATH, in place of the one `wsl.exe' gives, which ends in Windows's.")
 
 (defun kittymacs-remote--add-wsl-method ()
@@ -281,7 +281,7 @@ It never connects."
                                        ,(concat "\"PATH=" kittymacs-remote-wsl-path)
                                        "exec" "%l" "2>&1\"")))
                    (tramp-direct-async ("/bin/sh" "-c"))
-                   (tramp-remote-shell "/bin/sh")
+                   (tramp-remote-shell "sh")
                    (tramp-remote-shell-login ("-l"))
                    (tramp-remote-shell-args ("-c"))
                    (tramp-completion-use-cache nil)))))
