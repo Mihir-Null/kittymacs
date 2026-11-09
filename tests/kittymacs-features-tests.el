@@ -244,6 +244,33 @@ No feature has the label now, so a stand-in carries it."
       (should (= (length warnings) 1))
       (should (string-match-p "needs-second is selected" (car warnings))))))
 
+(ert-deftest kittymacs-features-members-reached-through-deps-win-nearest-first ()
+  "Elisp walks dependencies in the order of the Nix module's `withDeps'.
+The two must agree on a winner that only dependencies reach."
+  (let ((kittymacs-catalogue '((first-agent :profile full :one-of agent)
+                               (agent-1 :profile optional :one-of agent)
+                               (agent-2 :profile optional :one-of agent)
+                               (step :profile optional :deps (agent-1))
+                               (needs-1 :profile optional :deps (agent-1))
+                               (needs-1-later :profile optional :deps (step))
+                               (needs-2 :profile optional :deps (agent-2)))))
+    (should (equal (kittymacs-features--with-deps '(needs-1-later needs-2))
+                   '(needs-1-later needs-2 step agent-2 agent-1)))
+    ;; Both one step away: the first selection's member wins.
+    (kittymacs-features-test-with ((kittymacs-profile 'full)
+                                   (kittymacs-features '(needs-1 needs-2)))
+        warnings
+      (should (equal (kittymacs-features-enabled) '(agent-1 needs-1)))
+      (should (= (length warnings) 1))
+      (should (string-match-p "needs-2 is selected" (car warnings))))
+    ;; One step against two: the nearer member wins, whichever was selected first.
+    (kittymacs-features-test-with ((kittymacs-profile 'full)
+                                   (kittymacs-features '(needs-1-later needs-2)))
+        warnings
+      (should (equal (kittymacs-features-enabled) '(agent-2 needs-2)))
+      (should (= (length warnings) 1))
+      (should (string-match-p "needs-1-later is selected" (car warnings))))))
+
 (ert-deftest kittymacs-features-the-minimal-profile-cannot-be-excluded ()
   (kittymacs-features-test-with ((kittymacs-features-excluded '(meow))) warnings
     (should (kittymacs-feature-p 'meow))

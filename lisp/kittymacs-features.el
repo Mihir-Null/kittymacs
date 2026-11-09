@@ -143,14 +143,16 @@ Press SPC C o to choose, or set `kittymacs-profile' to `full' or `minimal' in pr
                               kittymacs-catalogue))))
 
 (defun kittymacs-features--with-deps (features)
-  "Return FEATURES and everything they depend on, however indirectly."
-  (let (result)
-    (while features
-      (let ((feature (pop features)))
-        (unless (memq feature result)
-          (push feature result)
-          (setq features (append (kittymacs-features--property feature :deps) features)))))
-    result))
+  "Return FEATURES and everything they depend on, however indirectly.
+FEATURES come first, then their dependencies, nearest first, as the Nix
+module's `withDeps' orders them."
+  (let ((grown (seq-uniq (append features
+                                 (seq-mapcat (lambda (feature)
+                                               (kittymacs-features--property feature :deps))
+                                             features)))))
+    (if (= (length grown) (length features))
+        features
+      (kittymacs-features--with-deps grown))))
 
 (defun kittymacs-features--applies-p (feature)
   "Return non-nil unless the catalogue rules FEATURE out on this system."
@@ -158,8 +160,8 @@ Press SPC C o to choose, or set `kittymacs-profile' to `full' or `minimal' in pr
 
 (defun kittymacs-features--one-of-winner (feature features selected)
   "Return the member of FEATURE's `:one-of' set that stays among FEATURES.
-That is the first of them in SELECTED, which holds what the selection needs
-after what it names, or else the first in FEATURES."
+That is the first of them in SELECTED, which holds what the selection names
+and then what it needs, nearest first, or else the first in FEATURES."
   (let ((set (kittymacs-features--property feature :one-of)))
     (seq-find (lambda (name) (eq (kittymacs-features--property name :one-of) set))
               (append (seq-filter (lambda (name) (memq name features)) selected)
@@ -196,7 +198,7 @@ They come in the catalogue's order."
                              (and (not (memq feature removed))
                                   (kittymacs-features--applies-p feature)))
                            wanted)
-               (append selected (kittymacs-features--with-deps selected))))))
+               (kittymacs-features--with-deps selected)))))
     (mapcar #'car (seq-filter (lambda (entry) (memq (car entry) on)) kittymacs-catalogue))))
 
 (defun kittymacs-features-resolve ()
