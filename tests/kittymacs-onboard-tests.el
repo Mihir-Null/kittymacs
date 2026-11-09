@@ -1057,8 +1057,57 @@ A stand-in, since this machine has no `wsl.exe'.  A STATUS of `missing' means no
   "The backend `kittymacs-onboard-test-build-keys' names.")
 
 (defconst kittymacs-onboard-test-build-keys
-  (list ?\s ?\s "build" ?n ?n ?\s "build.example.org" ?n ?\s "~/src" ?\r ?\r)
-  "Keys on an empty backends screen: add the backend, keep it, and go on.")
+  (list ?\s "build" ?n ?n ?\s "build.example.org" ?n ?\s "~/src" ?n ?\s ?\r)
+  "Keys on the backends page: fill in the form, add the backend, and go on.")
+
+(defconst kittymacs-onboard-test-to-the-list
+  (make-list (1+ (length kittymacs-onboard--backend-fields)) ?n)
+  "Keys from the top of the backends page to the first backend it lists.")
+
+(defun kittymacs-onboard-test--first-backend-page ()
+  "Return the backends page as the last run first showed it."
+  (car (last (seq-filter (lambda (screen)
+                           (string-search "A backend, if you work on another machine" screen))
+                         kittymacs-onboard-test-screens))))
+
+(ert-deftest kittymacs-onboard-the-backends-page-opens-on-the-form-above-the-list ()
+  "The owner found an empty list with the form one key away confusing."
+  (kittymacs-onboard-test-with-machine
+    (kittymacs-onboard-test-on-windows kittymacs-onboard-test-two-distributions 0
+      (should (= 0 (car (kittymacs-onboard-test--run (kittymacs-onboard-test--keys ?m nil)))))
+      (let* ((page (kittymacs-onboard-test--first-backend-page))
+             (form (string-search "Add a backend\n> Name: " page))
+             (list (string-search "Backends on this machine\n  None yet" page)))
+        (should form)
+        (should list)
+        (should (< form list))
+        (dolist (offer '("Transport: wsl\n" "Host: Ubuntu\n" "SPC takes the next of: Ubuntu, Debian."
+                         "wsl-rpc (experimental)" "Add this backend\n"))
+          (should (< form (string-search offer page) list))))))
+  (kittymacs-onboard-test-with-machine
+    (kittymacs-onboard-test--write-bytes
+     private (format "(setopt kittymacs-backends '(%S))\n" kittymacs-onboard-test-build))
+    (kittymacs-onboard-test--run (kittymacs-onboard-test--keys ?m nil))
+    (let ((page (kittymacs-onboard-test--first-backend-page)))
+      (should (< (string-search "Add this backend" page)
+                 (string-search "Backends on this machine\n  build: ssh, build.example.org, ~/src/"
+                                page))))))
+
+(ert-deftest kittymacs-onboard-the-page-says-when-the-form-holds-a-backend-not-kept ()
+  (kittymacs-onboard-test-with-machine
+    (should (= 0 (car (kittymacs-onboard-test--run
+                       (kittymacs-onboard-test--keys ?m nil nil nil (list ?\s "half" ?\r ?\r))))))
+    (should (string-search "you have not kept.  SPC on its last line keeps it, and RET again goes on"
+                           (string-join kittymacs-onboard-test-screens)))
+    (should-not (kittymacs-onboard-test--value private 'kittymacs-backends))))
+
+(ert-deftest kittymacs-onboard-d-on-the-form-clears-it ()
+  (kittymacs-onboard-test-with-machine
+    ;; Cleared, the form holds nothing to warn about, so one RET goes on.
+    (should (= 0 (car (kittymacs-onboard-test--run
+                       (kittymacs-onboard-test--keys ?m nil nil nil (list ?\s "half" ?n ?d ?\r))))))
+    (should-not (string-search "you have not kept" (string-join kittymacs-onboard-test-screens)))
+    (should-not (kittymacs-onboard-test--value private 'kittymacs-backends))))
 
 (ert-deftest kittymacs-onboard-backends-can-be-skipped ()
   (kittymacs-onboard-test-with-machine
@@ -1089,7 +1138,9 @@ A stand-in, since this machine has no `wsl.exe'.  A STATUS of `missing' means no
   (kittymacs-onboard-test-with-machine
     (should (= 0 (car (kittymacs-onboard-test--run
                        (kittymacs-onboard-test--keys
-                        ?m nil nil nil (list ?\s ?\r ?\s "half" ?\r ?b ?\r))))))
+                        ?m nil nil nil
+                        (append kittymacs-onboard-test-to-the-list
+                                (list ?\s ?p ?p ?p ?p ?\s "half" ?n ?n ?n ?n ?\s ?\r ?\r)))))))
     (let ((screens (string-join kittymacs-onboard-test-screens)))
       (should (string-search "still needs a name and a host and a directory" screens))
       (should (string-search "still needs a host and a directory" screens)))
@@ -1101,7 +1152,7 @@ A stand-in, since this machine has no `wsl.exe'.  A STATUS of `missing' means no
      private (format "(setopt kittymacs-backends '(%S))\n" kittymacs-onboard-test-build))
     (kittymacs-onboard-test--run
      (kittymacs-onboard-test--keys
-      ?m nil nil nil (list ?n ?\s ?\s "build" ?n ?n ?\s "h" ?n ?\s "/d" ?\r ?b ?\r)))
+      ?m nil nil nil (list ?\s "build" ?n ?n ?\s "h" ?n ?\s "/d" ?n ?\s ?\r ?\r)))
     (should (string-search "already a backend called build"
                            (string-join kittymacs-onboard-test-screens)))
     ;; Going back without it leaves the one that was there.
@@ -1127,7 +1178,7 @@ A stand-in, since this machine has no `wsl.exe'.  A STATUS of `missing' means no
                          (kittymacs-onboard-test--keys
                           ?m nil nil nil
                           ;; Name, past the transport, then the second distribution.
-                          (list ?\s ?\s "wsl" ?n ?n ?\s ?n ?\s "~/project" ?\r ?\r))))))
+                          (list ?\s "wsl" ?n ?n ?\s ?n ?\s "~/project" ?n ?\s ?\r))))))
       (should (equal (kittymacs-onboard-test--value private 'kittymacs-backends)
                      '('(("wsl" :transport wsl :host "Debian" :root "~/project/")))))
       (let ((screens (string-join kittymacs-onboard-test-screens)))
@@ -1157,7 +1208,7 @@ A stand-in, since this machine has no `wsl.exe'.  A STATUS of `missing' means no
              (result (kittymacs-onboard-test--run
                       (kittymacs-onboard-test--keys
                        ?m nil nil nil
-                       (list ?\s ?\s "wsl" ?n ?\s ?n ?n ?\s "~/project" ?\r ?\r)))))
+                       (list ?\s "wsl" ?n ?\s ?n ?n ?\s "~/project" ?n ?\s ?\r)))))
         (should (= 0 (car result)))
         (should (equal (kittymacs-onboard-test--value private 'kittymacs-backends)
                        '('(("wsl" :transport wsl-rpc :host "Ubuntu" :root "~/project/")))))
@@ -1222,7 +1273,7 @@ A stand-in, since this machine has no `wsl.exe'.  A STATUS of `missing' means no
     (kittymacs-onboard-test--run (kittymacs-onboard-test--keys ?m nil))
     (let ((screens (string-join kittymacs-onboard-test-screens)))
       (should (string-search "build: ssh, build.example.org, ~/src/" screens))
-      (should (string-search "10-nix.el line 1 sets these" screens)))
+      (should (string-search "10-nix.el line 1 sets the backends listed below" screens)))
     ;; No form in the block, and no claim that the block beats anything.
     (should-not (kittymacs-onboard-test--value private 'kittymacs-backends))
     (should-not (string-search "10-nix.el line 1: kittymacs-backends"
@@ -1236,7 +1287,7 @@ A stand-in, since this machine has no `wsl.exe'.  A STATUS of `missing' means no
      (format "(setopt kittymacs-backends '(%S))\n" kittymacs-onboard-test-build))
     (kittymacs-onboard-test--run
      (kittymacs-onboard-test--keys
-      ?m nil nil nil (list ?n ?\s ?\s "far" ?n ?n ?\s "far.example.org" ?n ?\s "/srv" ?\r ?\r)))
+      ?m nil nil nil (list ?\s "far" ?n ?n ?\s "far.example.org" ?n ?\s "/srv" ?n ?\s ?\r)))
     (should (equal (kittymacs-onboard-test--value private 'kittymacs-backends)
                    `('(,kittymacs-onboard-test-build
                        ("far" :transport ssh :host "far.example.org" :root "/srv/")))))
@@ -1251,7 +1302,9 @@ A stand-in, since this machine has no `wsl.exe'.  A STATUS of `missing' means no
      (format "(setopt kittymacs-backends '(%S))\n" kittymacs-onboard-test-build))
     (kittymacs-onboard-test--run
      (kittymacs-onboard-test--keys
-      ?m nil nil nil (list ?n ?\s ?\s "far" ?n ?n ?\s "f" ?n ?\s "/s" ?\r ?d ?\r)))
+      ?m nil nil nil (append (list ?\s "far" ?n ?n ?\s "f" ?n ?\s "/s" ?n ?\s)
+                             ;; Past the form and build, to far.
+                             kittymacs-onboard-test-to-the-list (list ?n ?d ?\r))))
     (should-not (kittymacs-onboard-test--value private 'kittymacs-backends))))
 
 (ert-deftest kittymacs-onboard-removing-a-host-value-is-an-answer-the-preview-names ()
@@ -1260,7 +1313,9 @@ A stand-in, since this machine has no `wsl.exe'.  A STATUS of `missing' means no
     (kittymacs-onboard-test--write-bytes
      (expand-file-name "10-nix.el" host)
      (format "(setopt kittymacs-backends '(%S))\n" kittymacs-onboard-test-build))
-    (kittymacs-onboard-test--run (kittymacs-onboard-test--keys ?m nil nil nil '(?d ?\r)))
+    (kittymacs-onboard-test--run
+     (kittymacs-onboard-test--keys
+      ?m nil nil nil (append kittymacs-onboard-test-to-the-list '(?d ?\r))))
     (should (equal (kittymacs-onboard-test--value private 'kittymacs-backends) '(nil)))
     (should (string-search "10-nix.el line 1: kittymacs-backends"
                            (car kittymacs-onboard-test-screens)))))
@@ -1270,9 +1325,15 @@ A stand-in, since this machine has no `wsl.exe'.  A STATUS of `missing' means no
     (kittymacs-onboard-test--write-bytes
      private "(setopt kittymacs-backends '((\"a\" :transport ssh :host \"h\" :root \"/r/\" :shell \"/bin/bash\")))\n")
     (kittymacs-onboard-test--run
-     (kittymacs-onboard-test--keys ?m nil nil nil (list ?\s ?n ?n ?\s "other" ?\r ?\r)))
+     (kittymacs-onboard-test--keys
+      ?m nil nil nil (append kittymacs-onboard-test-to-the-list
+                             (list ?\s ?n ?n ?\s "other" ?n ?n ?\s ?\r))))
     (should (equal (kittymacs-onboard-test--value private 'kittymacs-backends)
-                   '('(("a" :transport ssh :host "other" :root "/r/" :shell "/bin/bash")))))))
+                   '('(("a" :transport ssh :host "other" :root "/r/" :shell "/bin/bash")))))
+    (let ((screens (string-join kittymacs-onboard-test-screens)))
+      (should (string-search "Change the backend a\n> Name: a\n" screens))
+      (should (string-search "Keep the changes to a\n" screens))
+      (should (string-search "Changed a." screens)))))
 
 (defun kittymacs-onboard-test--locked (text &optional written-before)
   "Check that a `private.el' holding TEXT leaves the backends alone.
@@ -1326,7 +1387,9 @@ With WRITTEN-BEFORE, the block already held those backends, and must go on holdi
       (should (string-search "already says this" (cdr result)))
       (should-not (string-search "SPC o B" (cdr result))))
     (should (string-search "build: ssh" (string-join kittymacs-onboard-test-screens)))
-    (kittymacs-onboard-test--run (kittymacs-onboard-test--keys ?m nil nil nil '(?d ?\r)))
+    (kittymacs-onboard-test--run
+     (kittymacs-onboard-test--keys
+      ?m nil nil nil (append kittymacs-onboard-test-to-the-list '(?d ?\r))))
     (should-not (kittymacs-onboard-test--value private 'kittymacs-backends))))
 
 (ert-deftest kittymacs-onboard-says-what-to-do-next-about-a-backend ()
@@ -1510,7 +1573,7 @@ Return its exit status, what it drew, and the directory it ran in, as a list."
   (pcase-let* ((returns (make-string (length (kittymacs-onboard--groups)) ?\r))
                (`(,status ,screen ,root)
                 (kittymacs-onboard-test--pty
-                 (concat "m" returns "  build\rnn host.example\rn ~/src\r\r\r\rw") "Where to start"))
+                 (concat "m" returns " build\rnn host.example\rn ~/src\rn \r\rw") "Where to start"))
                (file (expand-file-name "lisp/private.el" root)))
     (unwind-protect
         (progn
@@ -1526,7 +1589,7 @@ Return its exit status, what it drew, and the directory it ran in, as a list."
   (pcase-let* ((returns (make-string (length (kittymacs-onboard--groups)) ?\r))
                (`(,status ,screen ,root)
                 (kittymacs-onboard-test--pty
-                 (concat "m" returns "  wsl\rn nn ~/project\r\r\r\rw") "Where to start"
+                 (concat "m" returns " wsl\rn nn ~/project\rn \r\rw") "Where to start"
                  (lambda (root)
                    (let ((program (expand-file-name "wsl.exe" root)))
                      (with-temp-file program
