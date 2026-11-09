@@ -1112,8 +1112,14 @@ A name the catalogue lacks goes in NOTES."
 :END:
 
 - A person who works on another machine can name it here, rather than copy a form from [[id:2f9c41d7-8a36-4e0b-b5d2-7c1e6a93f048][the remote chapter]].
-- One screen on every platform lists the backends and adds one, and =RET= skips it, so a machine with none answers one key.
-  + The form asks for a name and for what that chapter calls =:transport=, =:host= and =:root=.
+- One page on every platform adds, changes and removes backends, and =RET= skips it, so a machine with none answers one key.
+- The page reads from the top down, with the same keys as the other screens.
+  + The form to add a backend comes first, already filled with what this machine offers, so the page shows its choices before any key.
+  + The form asks for a name and for what that chapter calls =:transport=, =:host= and =:root=. =SPC= changes a line, and =SPC= on its last line adds the backend.
+  + The backends this machine has come below the form, or "None yet" when there are none.
+  + =SPC= on one of them moves it into the form, whose last line then keeps the changes. =d= on it removes it.
+  + =d= on the form clears it.
+  + =RET=, =b= or picking another backend while the form holds something not kept says so, and the same key again goes on without it.
   + A key the form does not ask about, such as =:server=, stays on a backend you change.
   + =:root= stays as typed, since =~= there means the backend's home, and not this machine's.
 - What the form offers depends on the machine.
@@ -1226,39 +1232,16 @@ A name the catalogue lacks goes in NOTES."
       (format "%s line %d sets this after the block, so it beats anything here.  Edit it there.\n\n"
               (file-name-nondirectory (plist-get lock :file)) (plist-get lock :line)))
      (outside
-      (format "%s line %d sets these, and they stay as they are unless you change them here.\nA change writes the whole list to the block, which then beats that line.\n\n"
+      (format "%s line %d sets the backends listed below.  They stay as they are unless you change them here.\nA change writes the whole list to the block, which then beats that line.\n\n"
               (file-name-nondirectory (plist-get outside :file)) (plist-get outside :line)))
      (t ""))))
 
-(defun kittymacs-onboard--render-backends (state place cursor note)
-  "Return the backends screen for STATE: PLACE, row CURSOR and NOTE."
-  (let ((lock (kittymacs-onboard--backends-lock state))
-        (backends (kittymacs-onboard--backends state))
-        (index -1))
-    (concat
-     (kittymacs-onboard--screen-title place "A backend, if you work on another machine")
-     (if lock
-         "\nRET next.  b back.  C-g quit.\n"
-       "\nSPC changes a line.  d removes it.  n, p move.  RET next.  b back.  C-g quit.\n")
-     (if note (concat note "\n") "")
-     "\nA backend is a machine that runs your programs while this Emacs is the screen.\n"
-     "SPC o b opens its project, and SPC o B says what it has.\n"
-     "This is optional: RET goes on, and leaves the backends as they are.\n\n"
-     (kittymacs-onboard--backends-source state)
-     (mapconcat (lambda (entry)
-                  (setq index (1+ index))
-                  (format "%s%s\n"
-                          (if (and (not lock) (= index cursor)) "> " "  ")
-                          (kittymacs-onboard--backend-line entry)))
-                backends "")
-     (if lock ""
-       (format "%sAdd a backend\n" (if (= cursor (length backends)) "> " "  "))))))
-
 (defconst kittymacs-onboard--backend-fields '(name transport host root)
-  "The lines of the form, in order.")
+  "The lines of the form, in order.  The line after them adds or keeps the backend.")
 
-(defun kittymacs-onboard--render-backend-form (state place entry cursor note)
-  "Return the form for ENTRY in STATE: PLACE, row CURSOR and NOTE."
+(defun kittymacs-onboard--backend-form-lines (state entry old cursor)
+  "Return the form for ENTRY in STATE, adding a backend or changing OLD.
+Row CURSOR is marked."
   (let* ((plist (cdr entry))
          (transport (kittymacs-onboard--transport-of plist))
          (distributions (and (memq transport kittymacs-onboard-wsl-transports)
@@ -1266,9 +1249,8 @@ A name the catalogue lacks goes in NOTES."
          (untested (kittymacs-features--property transport :experimental))
          (index -1))
     (concat
-     (kittymacs-onboard--screen-title place "A backend, if you work on another machine")
-     "\nSPC changes a line.  n, p move.  RET keeps this backend.  b back, without it.  C-g quit.\n"
-     (if note (concat note "\n") "")
+     (kittymacs-onboard--title
+      (if old (format "Change the backend %s" (car old)) "Add a backend"))
      "\n"
      (mapconcat
       (pcase-lambda (`(,label ,value ,help))
@@ -1277,9 +1259,10 @@ A name the catalogue lacks goes in NOTES."
       (list
        (list "Name" (car entry) "What SPC o b and SPC o B ask for.")
        (list "Transport" transport
-             (format "SPC takes the next of: %s."
-                     (mapconcat #'kittymacs-onboard--transport-label
-                                (kittymacs-onboard--transports state) ", ")))
+             (concat (format "SPC takes the next of: %s."
+                             (mapconcat #'kittymacs-onboard--transport-label
+                                        (kittymacs-onboard--transports state) ", "))
+                     (if untested (format "\n      Experimental: %s" untested) "")))
        (list "Host" (plist-get plist :host)
              (if distributions
                  (format "SPC takes the next of: %s." (string-join distributions ", "))
@@ -1287,7 +1270,46 @@ A name the catalogue lacks goes in NOTES."
        (list "Directory" (plist-get plist :root)
              "The project's directory there, such as ~/src/project/."))
       "")
-     (if untested (format "\nExperimental: %s\n" untested) ""))))
+     (format "%s%s\n"
+             (if (= cursor (length kittymacs-onboard--backend-fields)) "> " "  ")
+             (if old (format "Keep the changes to %s" (car old)) "Add this backend")))))
+
+(defun kittymacs-onboard--backend-list (state cursor first)
+  "Return the backends in STATE, the one on row CURSOR marked.
+FIRST is the row of the first backend, or nil where none can be chosen."
+  (let ((backends (kittymacs-onboard--backends state))
+        (index (or first 0)))
+    (concat
+     (kittymacs-onboard--title "Backends on this machine")
+     "\n"
+     (if backends
+         (mapconcat (lambda (entry)
+                      (prog1 (format "%s%s\n"
+                                     (if (and first (= index cursor)) "> " "  ")
+                                     (kittymacs-onboard--backend-line entry))
+                        (setq index (1+ index))))
+                    backends "")
+       (if first "  None yet: the form above adds one.\n" "  None.\n")))))
+
+(defun kittymacs-onboard--render-backends (state place entry old cursor note)
+  "Return the backends page for STATE: PLACE, row CURSOR and NOTE.
+The form holds ENTRY, a new backend or a change to OLD.  It comes first,
+and the backends after it, unless the page cannot change them."
+  (let ((lock (kittymacs-onboard--backends-lock state)))
+    (concat
+     (kittymacs-onboard--screen-title place "A backend, if you work on another machine")
+     (if lock
+         "\nRET next.  b back.  C-g quit.\n"
+       "\nSPC changes a line or picks a backend.  d removes one or clears the form.  n, p move.  RET next.  b back.  C-g quit.\n")
+     (if note (concat note "\n") "")
+     "\nA backend is a machine that runs your programs while this Emacs is the screen.\n"
+     "SPC o b opens its project, and SPC o B says what it has.\n"
+     "This is optional: RET goes on, and leaves the backends as they are.\n\n"
+     (kittymacs-onboard--backends-source state)
+     (if lock ""
+       (concat (kittymacs-onboard--backend-form-lines state entry old cursor) "\n"))
+     (kittymacs-onboard--backend-list
+      state cursor (and (not lock) (1+ (length kittymacs-onboard--backend-fields)))))))
 
 (defun kittymacs-onboard--new-backend (state)
   "Return a backend for the form in STATE, with only its defaults filled in."
@@ -1345,7 +1367,7 @@ A name the catalogue lacks goes in NOTES."
                          (unless (plist-get (cdr entry) :host) '("a host"))
                          (unless (plist-get (cdr entry) :root) '("a directory")))))
     (cond
-     (missing (format "This backend still needs %s.  b goes back without it."
+     (missing (format "This backend still needs %s.  d clears the form."
                       (string-join missing " and ")))
      ((assoc (car entry) (remq old (kittymacs-onboard--backends state)))
       (format "There is already a backend called %s." (car entry))))))
@@ -1361,48 +1383,78 @@ A name the catalogue lacks goes in NOTES."
              (not (memq 'wsl-rpc (kittymacs-onboard--on state))))
     (kittymacs-onboard--toggle state 'wsl-rpc)))
 
-(defun kittymacs-onboard--backend-form (state place old)
-  "Ask about one backend in STATE, the backend OLD or a new one.
-Return what keeping it moved, or nil."
-  (let ((entry (or old (kittymacs-onboard--new-backend state)))
-        (last (1- (length kittymacs-onboard--backend-fields)))
-        (cursor 0)
-        note answer)
-    (while (not answer)
-      (kittymacs-onboard--show
-       (kittymacs-onboard--render-backend-form state place entry cursor note))
-      (setq note nil)
-      (pcase (kittymacs-onboard--key "SPC change, n/p move, RET keep, b back, C-g quit: ")
-        ((or ?n 'down) (setq cursor (min (1+ cursor) last)))
-        ((or ?p 'up) (setq cursor (max (1- cursor) 0)))
-        (?\s (setq entry (kittymacs-onboard--change-field
-                          state entry (nth cursor kittymacs-onboard--backend-fields))))
-        ((or ?\r 'return 'right)
-         (if-let* ((problem (kittymacs-onboard--backend-problem state old entry)))
-             (setq note problem)
-           (setq answer 'keep)))
-        ((or ?b 'left) (setq answer 'cancel))))
-    (when (eq answer 'keep)
-      (kittymacs-onboard--keep-backend state old entry))))
+(defun kittymacs-onboard--kept-note (old entry moved)
+  "Return what the page says once ENTRY took the place of OLD.
+MOVED says what else that changed, or is nil."
+  (concat (format (if old "Changed %s." "Added %s.") (car entry))
+          (if moved (concat "  " moved) "")))
+
+(defun kittymacs-onboard--unkept-note (again)
+  "Return the warning that the form holds a backend not kept.
+AGAIN says what pressing the same key again does."
+  (format "The form holds a backend you have not kept.  SPC on its last line keeps it, and %s without it."
+          again))
 
 (defun kittymacs-onboard--backends-screen (state place)
-  "Ask about the backends in STATE; return `next' or `back'."
-  (let ((cursor 0) note answer)
+  "Ask about the backends in STATE on one page; return `next' or `back'."
+  (let* ((fields kittymacs-onboard--backend-fields)
+         (keep (length fields))
+         (blank (kittymacs-onboard--new-backend state))
+         (entry blank)
+         (start blank)
+         (cursor 0)
+         old note warned answer)
     (while (not answer)
       (let* ((lock (kittymacs-onboard--backends-lock state))
              (backends (kittymacs-onboard--backends state))
-             (entry (nth cursor backends)))
-        (kittymacs-onboard--show (kittymacs-onboard--render-backends state place cursor note))
+             (chosen (and (> cursor keep) (nth (- cursor keep 1) backends)))
+             (unkept (not (equal entry start)))
+             warning)
+        (kittymacs-onboard--show
+         (kittymacs-onboard--render-backends state place entry old cursor note))
         (setq note nil)
-        (pcase (kittymacs-onboard--key "SPC change, d remove, n/p move, RET next, b back, C-g quit: ")
-          ((or ?n 'down) (setq cursor (min (1+ cursor) (length backends))))
-          ((or ?p 'up) (setq cursor (max (1- cursor) 0)))
-          (?\s (unless lock
-                 (setq note (kittymacs-onboard--backend-form state place entry))))
-          (?d (when (and entry (not lock))
-                (setf (kittymacs-onboard--backends state) (remq entry backends))))
-          ((or ?\r 'return 'right) (setq answer 'next))
-          ((or ?b 'left) (setq answer 'back)))))
+        (let ((key (kittymacs-onboard--key
+                    "SPC change or pick, d remove or clear, n/p move, RET next, b back, C-g quit: ")))
+          (pcase key
+            ((or ?n 'down)
+             (unless lock (setq cursor (min (1+ cursor) (+ keep (length backends))))))
+            ((or ?p 'up) (setq cursor (max (1- cursor) 0)))
+            (?\s
+             (cond
+              (lock nil)
+              ((< cursor keep)
+               (setq entry (kittymacs-onboard--change-field state entry (nth cursor fields))))
+              ((= cursor keep)
+               (if-let* ((problem (kittymacs-onboard--backend-problem state old entry)))
+                   (setq note problem)
+                 (setq note (kittymacs-onboard--kept-note
+                             old entry (kittymacs-onboard--keep-backend state old entry))
+                       entry blank start blank old nil cursor 0)))
+              ((and unkept (not (eql warned key)))
+               (setq note (kittymacs-onboard--unkept-note "SPC again opens that backend")
+                     warning key))
+              (t (setq entry chosen start chosen old chosen cursor 0))))
+            (?d
+             (cond
+              (lock nil)
+              (chosen
+               (setf (kittymacs-onboard--backends state) (remq chosen backends))
+               (when (eq chosen old)
+                 (setq entry blank start blank old nil))
+               (setq note (format "Removed %s." (car chosen))
+                     cursor (min cursor (+ keep (1- (length backends))))))
+              (t (setq entry blank start blank old nil))))
+            ((or ?\r 'return 'right)
+             (if (and unkept (not (eql warned key)))
+                 (setq note (kittymacs-onboard--unkept-note "RET again goes on")
+                       warning key)
+               (setq answer 'next)))
+            ((or ?b 'left)
+             (if (and unkept (not (eql warned key)))
+                 (setq note (kittymacs-onboard--unkept-note "b again goes back")
+                       warning key)
+               (setq answer 'back)))))
+        (setq warned warning)))
     answer))
 
 #+end_src
@@ -1813,8 +1865,9 @@ This Emacs keeps running as it is: a change takes effect at the next start."
 - =SPC C o= in a started Emacs: the same screens; =M-: (featurep 'kittymacs-onboard)= was nil until you pressed it.
 - Add a line after the block that sets =kittymacs-features=, and run it again: the last screen names that line.
 - With =(setopt kittymacs-features '(which-key-frame))= in =private.el=: no screen lists it, and the last screen's block still selects it.
-- On the backends screen, press =SPC= on the last line, fill in the form, and press =RET= twice: the block holds =kittymacs-backends=, and the last line names =SPC o B=.
-- On native Windows with two distributions: the form starts at =wsl= on the first, and marks =wsl-rpc= experimental. [[file:../tests/kittymacs-onboard-tests.el][The tests]] run the same form in a real terminal, with a stand-in for =wsl.exe=.
+- On the backends page, the form comes first, and the list below it says "None yet" when there are none. Fill in the form and press =SPC= on its last line: the list shows the new backend. Press =RET=: the block holds =kittymacs-backends=, and the last line names =SPC o B=.
+- Press =SPC= on a listed backend, change its host, and press =SPC= on the form's last line: the list shows the new host. =d= on it removes it.
+- On native Windows with two distributions: the page opens with the form at =wsl= on the first, lists both distributions, and marks =wsl-rpc= experimental. [[file:../tests/kittymacs-onboard-tests.el][The tests]] run the same form in a real terminal, with a stand-in for =wsl.exe=.
 - Set =kittymacs-backends= in a host file, and press =RET= past that screen: the block does not hold it.
 - =just test= runs [[file:../tests/kittymacs-onboard-tests.el][the onboarding tests]], which include a run in a real pty.
 - =just test-onboard-start= writes a =private.el= with these screens for several selections, and starts the verifier on each.
