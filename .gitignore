@@ -10,6 +10,8 @@
 /projects.eld
 /recentf.eld
 /tabsession.el
+# Tramp's history, when init.el stops before the remote module moves it to var/
+/tramp
 /tree-sitter/
 *.elc
 /result
