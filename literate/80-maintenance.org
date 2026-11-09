@@ -46,8 +46,7 @@
 | =test-quickstart= | installed packages | the startup verifier, starting from a quickstart file it writes first        |
 | =test-new-machine= | Emacs, network | a machine with nothing, start by start: the quickstart file comes, a new feature installs, removing it lasts |
 | =quickstart=, =quickstart-remove= | installed packages | write the file that starts this machine without scanning =var/elpa=, or delete it and keep it off |
-| =size=            | Emacs              | count the code and prose against =tests/budgets.eld=                         |
-| =budget-check=    | Emacs, Git history | fail if a budget rose against the merge base with no stated reason           |
+| =size=            | Emacs              | count the code and prose, and report the counts                              |
 | =bench=           | installed packages | start Emacs many times and report what startup costs                         |
 | =frames-test=     | a display          | the frame-policy tests, in a graphical Emacs                                 |
 | =lint=            | Nix tools          | =deadnix=, =statix= and =nixfmt= over the generated Nix                      |
@@ -68,7 +67,6 @@
 - =flake.lock= moves by itself: Dependabot opens a pull request each week, and CI's =merge-flake-bump= job merges it once the =tangle=, =startup=, =features= and =nix= jobs pass.
   + That job merges directly, so it needs no branch rule or repository setting, and a failed job leaves the pull request open for a person.
   + =bench= is not among them, because it reports and never decides.
-  + =just budget-check= runs inside =tangle=, and a bump passes it: it counts files in this repository, and a bump changes only =flake.lock=.
   + CI evaluates the flake and does not build it, so a bump can reach =main= that then fails to build on a machine: =git revert= it, and pin the input until upstream is fixed.
 - =just update= is for a machine: it runs three recipes, and each also works alone:
   + =update-flake= :: =nix flake update=: moves nixpkgs, and so the Emacs, its packages and the tools the Nix modules install. Commit =flake.lock=.
@@ -129,7 +127,7 @@
 
 - A claim that a change is faster needs a number from before the change, and a cost nothing counts only grows.
 - =just size= counts without starting Emacs:
-  + Lisp lines and cons cells, in total and per module, because joining lines lowers the first and not the second;
+  + Lisp lines and cons cells, because joining lines lowers the first and not the second;
   + declared packages, in any gate, =:vc= included;
   + lines of prose across every =literate/*.org=, =ARCHITECTURE.md= and the README, so moving text between pages changes nothing;
   + =org-lines=, those chapters alone, because a target for the literate source compares with them and not with the two Markdown pages;
@@ -153,26 +151,11 @@
 | =SPC t m=               | work moved from startup to the first key                               |
 | ratio to =emacs -Q=     | a slow or busy machine: both sides run in the same job                 |
 
-- The counts of features, loaded files and activated packages come from a real start and repeat exactly on one machine, so they are what a budget can hold; times differ between machines and stay a report.
-- =tests/budgets.eld= holds the counts from the last =--write=, and every run prints how the checkout differs from them.
-  + The counts from a start, =features=, =files-loaded=, =packages-activated=, =dependency-closure=, =org-loaded-at-start= and =magit-loaded-at-start=, are of the default profile, =minimal=; =just bench= warns if its starts ran on another, and =--write= refuses.
-  + They come from CI's =bench= job, which runs the dev shell's Emacs on a fresh clone with no profile.
-  + Another build of Emacs loads a different number of features and files, so compare under =nix develop=; even there a machine can differ from CI by a few.
-- =just budget-check= holds the file to the merge base with the branch a pull request targets, or with =origin/main=. It fails when:
-  + a budget is higher than at the merge base, and no commit since then states a reason for that budget;
-  + the file disagrees with what =just size= counts, because a stale fall leaves room for a later rise, and a stale rise lands on the next change: =just size --write= fixes it;
-  + the file no longer holds a budget, unless that is a row of a module that has gone.
-- A reason is a trailer in the last paragraph of a commit message since the merge base:
-  #+begin_example
-  Budget-rise: elisp-lines, module-lines/kittymacs-ui: the Modus fallback needs naming
-  #+end_example
-  + It names each budget it covers, and the check prints the names it wants, so a reason cannot wave through a rise nobody looked at.
-  + A trailer works the same locally and in CI, and it stays in the history beside the change.
-- A metric the merge base lacks has nothing to rise from, and a new module also moves the totals.
-- What =just size= counts is compared as measured, and the counts from a start are compared as recorded.
-  + A start's counts move with the Emacs build and with upstream packages, so a measured rise could fail a pull request, or a =flake.lock= bump, for a reason nobody can state.
-  + A real rise in one of them therefore fails nothing by itself: it shows in the =bench= job's report, and whoever runs =just bench --write= has to state it.
-- Times stay a report.
+- The counts of features, loaded files and activated packages come from a real start and repeat exactly on one machine, while times differ between machines.
+  + The counts from a start, =features=, =files-loaded=, =packages-activated=, =dependency-closure=, =org-loaded-at-start= and =magit-loaded-at-start=, are of the default profile, =minimal=, and =just bench= warns if its starts ran on another.
+  + CI's =bench= job reports them from the dev shell's Emacs, on a fresh clone with no profile.
+  + Another build of Emacs loads a different number of features and files, so compare under =nix develop=, where a machine can still differ from CI by a few.
+- Every count and time is a report, and none fails a change.
 - =TERM= is =linux= under the pty: an xterm-like =TERM= makes Emacs wait up to =xterm-query-timeout= for a reply a bare pty never sends.
 - A run that dies is listed with its exit status and last output, and the rest carry on, because one Emacs failing among dozens is itself a result.
 - A =lisp/private.el= changes every number, so =just bench= warns when one exists.
@@ -208,7 +191,6 @@
 
 - [[file:../.github/workflows/ci.yml][The CI workflow]] runs the recipes above on every push and pull request; it never deploys anything.
   + =tangle= job :: =just check=: the chapters match the generated files, and the package-free tests pass.
-    Then =just budget-check=, which is why this job fetches the whole history ([[*Measuring]]).
   + =startup= job :: a fresh clone runs =just install=, =just compile= and =just test-packages= on Emacs 31.1 on Linux, plus informational macOS and Windows runs.
     A second Linux run installs the minimal profile and runs =just test-minimal=: it has a package cache of its own that nothing older can seed, so leftovers cannot hide a removal, and the verifier fails on a package too many or too few.
     Every run then ends with =just test-quickstart=, which fails if the start ignored [[id:7b4e2f19-6d03-4a58-9c21-e8f05d7a3c64][the quickstart file]] or lost a package to it.
@@ -566,8 +548,7 @@
 - =SPC C k=: =*kittymacs literate build*= ends with =LITERATE CHECK PASS=.
 - =SPC C p= on a fresh clone: =private.el= opens, a copy of the example.
 - A start with no selection: the echo area names the profile and =SPC C o=, and =*Messages*= keeps the line.
-- =just size=: a table of counts, and how they differ from =tests/budgets.eld=.
-- =just budget-check=: every budget against the merge base, and =Every budget held= at the end.
+- =just size=: a table of counts.
 - =KITTYMACS_BENCH_RUNS=3 just bench=: a table of times against =emacs -Q=, with a number in every row but the =emacs -Q= cell of =SPC t m=.
 - From a shell:
 
