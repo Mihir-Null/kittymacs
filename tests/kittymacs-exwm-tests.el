@@ -42,6 +42,27 @@
 (ert-deftest kittymacs-exwm-a-real-translation-passes-through ()
   (should (equal (kittymacs-exwm--keysyms-or-failure '((97 . 64))) '((97 . 64)))))
 
+(defun kittymacs-exwm-test--warnings-with-xauth (found)
+  "Return the warnings a start gives when `xauth' is FOUND, or is not."
+  (let (warnings)
+    (cl-letf (((symbol-function 'executable-find)
+               (lambda (name &rest _) (and found (equal name "xauth") "/usr/bin/xauth")))
+              ((symbol-function 'display-warning)
+               (lambda (_type message &rest _) (push message warnings))))
+      (kittymacs-exwm--warn-without-xauth))
+    warnings))
+
+(ert-deftest kittymacs-exwm-a-start-without-xauth-says-why ()
+  "xelb finds the cookie through xauth, and an X server that asks for one refuses EXWM."
+  (should (string-match-p "No xauth on PATH" (car (kittymacs-exwm-test--warnings-with-xauth nil))))
+  (should-not (kittymacs-exwm-test--warnings-with-xauth t)))
+
+(ert-deftest kittymacs-exwm-the-xauth-check-runs-before-exwm-starts ()
+  (should (string-search "(kittymacs-exwm--warn-without-xauth)\n    (exwm-wm-mode 1)"
+                         (with-temp-buffer
+                           (insert-file-contents (locate-library "kittymacs-exwm.el"))
+                           (buffer-string)))))
+
 (ert-deftest kittymacs-exwm-the-fix-is-on-before-exwm-starts ()
   (should (equal kittymacs-exwm-test--keysyms '((0 . 0)))))
 

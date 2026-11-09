@@ -336,8 +336,21 @@ A command, or a function taking the key's ARGS."
   + EXWM's input code treats that value as a failed key, and its input-method code sends key 0 where nil would signal an error.
   + The =H-= keys are dead while the modifier is missing, with a warning for each, and the rest of EXWM works.
   + When the modifier returns, xelb reads the new masks and EXWM grabs the keys again, so a session that reloads its keymap gets them back.
+- xelb asks =xauth= for the X server's cookie, and without one on =PATH= it connects with none.
+  + A server that asks for a cookie, as xrdp's does, then refuses EXWM with "Authorization required, but no authorization protocol specified".
+  + Emacs's own frame still opens, because libX11 reads =~/.Xauthority= itself, so the session shows a plain frame that nothing manages, and its windows take no input and do not resize.
+  + So the start says so first, in =*Warnings*=, and still tries, because a server with no cookie, such as a bare Xvfb, accepts EXWM anyway.
 
 #+begin_src emacs-lisp
+
+(defun kittymacs-exwm--warn-without-xauth ()
+  "Warn if xelb cannot find the X server's cookie, because there is no xauth."
+  (unless (executable-find "xauth")
+    (display-warning
+     'kittymacs
+     "No xauth on PATH, so EXWM connects to X with no cookie, and a server that asks for one refuses it.
+If EXWM does not start, install xauth where this Emacs's PATH finds it, then start the session again."
+     :warning)))
 
 (defun kittymacs-exwm--keysyms-or-failure (keysyms)
   "Return KEYSYMS, or what `xcb:keysyms:event->keysyms' documents for a failure."
@@ -363,6 +376,7 @@ A command, or a function taking the key's ARGS."
                  (format "%s: %s" exwm-class-name exwm-title))))
     (require 'exwm-randr)
     (exwm-randr-mode 1)
+    (kittymacs-exwm--warn-without-xauth)
     (exwm-wm-mode 1)))
 #+end_src
 

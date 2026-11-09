@@ -214,6 +214,15 @@ A command, or a function taking the key's ARGS."
                     (cons (kbd (car entry))
                           (kittymacs-exwm--command (cadr entry) (cddr entry))))
                   kittymacs-wm-keys)))
+(defun kittymacs-exwm--warn-without-xauth ()
+  "Warn if xelb cannot find the X server's cookie, because there is no xauth."
+  (unless (executable-find "xauth")
+    (display-warning
+     'kittymacs
+     "No xauth on PATH, so EXWM connects to X with no cookie, and a server that asks for one refuses it.
+If EXWM does not start, install xauth where this Emacs's PATH finds it, then start the session again."
+     :warning)))
+
 (defun kittymacs-exwm--keysyms-or-failure (keysyms)
   "Return KEYSYMS, or what `xcb:keysyms:event->keysyms' documents for a failure."
   (or keysyms '((0 . 0))))
@@ -238,6 +247,7 @@ A command, or a function taking the key's ARGS."
                  (format "%s: %s" exwm-class-name exwm-title))))
     (require 'exwm-randr)
     (exwm-randr-mode 1)
+    (kittymacs-exwm--warn-without-xauth)
     (exwm-wm-mode 1)))
 (defvar meow-mode-state-list)
 (with-eval-after-load 'meow
