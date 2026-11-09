@@ -547,6 +547,26 @@ quits as a minibuffer would."
         (should (string-search "not available" (kittymacs-onboard--toggle state 'window-manager)))
         (should-not (memq 'window-manager (kittymacs-onboard--on state)))))))
 
+(ert-deftest kittymacs-onboard-a-one-of-set-works-as-a-radio-button ()
+  "No feature has `:one-of' now, so two stand-ins make a set."
+  (kittymacs-onboard-test-with-machine
+    (let* ((kittymacs-catalogue
+            (append kittymacs-catalogue
+                    '((stand-in-a :group assistants :packages () :profile full :one-of stand-in
+                                  :summary "A stand-in." :example "None.")
+                      (stand-in-b :group assistants :packages () :profile optional :one-of stand-in
+                                  :summary "A stand-in." :example "None."))))
+           (state (kittymacs-onboard--initial-state)))
+      (setf (kittymacs-onboard--profile state) 'full)
+      (should (memq 'stand-in-a (kittymacs-onboard--on state)))
+      (should (equal (kittymacs-onboard--toggle state 'stand-in-b)
+                     "On: stand-in-b.  Off: stand-in-a."))
+      (should (equal (kittymacs-onboard--written-selection state) '((stand-in-b))))
+      ;; Back again: the profile's member returns, and nothing is left to write.
+      (should (equal (kittymacs-onboard--toggle state 'stand-in-a)
+                     "On: stand-in-a.  Off: stand-in-b."))
+      (should (equal (kittymacs-onboard--written-selection state) '(nil))))))
+
 (ert-deftest kittymacs-onboard-the-optional-profile-stays-off-until-chosen ()
   (kittymacs-onboard-test-with-machine
     (let ((state (kittymacs-onboard--initial-state)))

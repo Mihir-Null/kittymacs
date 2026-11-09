@@ -463,6 +463,7 @@ let
   catalogue = builtins.fromJSON (builtins.readFile ./features.json);
   names = builtins.attrNames catalogue;
   depsOf = name: catalogue.${name}.deps or [ ];
+  setOf = name: catalogue.${name}.one-of or null;
   withDeps =
     features:
     let
@@ -605,7 +606,7 @@ rec {
 
 ** From the options to the features
 
-- =enabled= answers which features are on, so the module can build their packages, and takes the same four steps as [[id:0fb86d27-93c1-4ea5-b2d8-6a1e47c3f9d0][From the options to the answer]].
+- =enabled= answers which features are on, so the module can build their packages, and takes the same five steps as [[id:0fb86d27-93c1-4ea5-b2d8-6a1e47c3f9d0][From the options to the answer]].
   + =just nix-selection= holds the two answers equal on real starts.
 - It answers null for a host that chose nothing, which builds every package as it always did.
 - With no =profile= it starts from =full=, whatever the configuration's default is.
@@ -630,6 +631,16 @@ rec {
           kept = lib.filter (name: lib.all (dep: lib.elem dep features) (depsOf name)) features;
         in
         if lib.length kept == lib.length features then features else dropUnmet kept;
+      keepOneOfEach =
+        features:
+        let
+          winner =
+            name:
+            lib.findFirst (other: setOf other == setOf name) null (
+              lib.filter (other: lib.elem other features) (withDeps selected) ++ features
+            );
+        in
+        lib.filter (name: setOf name == null || winner name == name) features;
       removed = lib.subtractLists floor excluded;
       wanted = lib.unique (
         floor ++ lib.optionals (cfg.profile != "minimal") (inProfile "full") ++ withDeps selected
@@ -639,7 +650,7 @@ rec {
     if cfg.profile == null && selected == [ ] && excluded == [ ] then
       null
     else
-      dropUnmet (lib.filter (name: !(lib.elem name removed) && applies name) wanted);
+      dropUnmet (keepOneOfEach (lib.filter (name: !(lib.elem name removed) && applies name) wanted));
 
   # Emacs's name for the system PKGS is for.
   systemType = pkgs: if pkgs.stdenv.hostPlatform.isDarwin then "darwin" else "gnu/linux";
@@ -707,9 +718,11 @@ rec {
   + A =backend.enable= host installs no Emacs at all.
 - A host that does install the default on nixos-26.05, which has no Emacs 31, now fails here instead of at its first start.
   + So its message names the override, and [[*The templates][each template]] shows it: =kittymacs.packages.<system>.default= is Emacs 31 once the =kittymacs= input stops following that nixpkgs.
-- The last two refuse a selection that contradicts itself, because a host's own file should not ask for what it cannot get.
+- The last three refuse a selection that contradicts itself, because a host's own file should not ask for what it cannot get.
   + One refuses =false= on a feature the =minimal= profile always keeps, such as =features.meow.enable=.
-  + The other refuses =true= on a feature while its dependency, direct or through other dependencies, is =false=.
+  + One refuses =true= on a feature while its dependency, direct or through other dependencies, is =false=.
+  + One refuses =true= on two members of one =:one-of= set.
+    Elisp keeps the first one =kittymacs-features= names, and options have no order to say which that is.
   + Leaving a feature to the profile is no conflict: excluding =icons= under =full= still drops =file-tree= quietly, as [[*From the options to the features][the steps above]] say.
   + Elisp still warns about both, because a hand-written setting and a checkout can drift.
 
@@ -729,9 +742,19 @@ rec {
         map (
           dep: "${option name} is true, but ${name} needs ${dep} and ${option dep} is false. Change one."
         ) (lib.intersectLists (withDeps (depsOf name)) excluded);
+      refuseTwoOf =
+        set:
+        let
+          chosen = lib.filter (name: setOf name == set) (answered cfg true);
+          listed = lib.concatMapStringsSep " and " option chosen;
+          message = "${listed} are true, but only one of the ${set} set can be on. Keep one.";
+        in
+        lib.optional (lib.length chosen > 1) message;
+      sets = lib.unique (lib.filter (set: set != null) (map setOf names));
       conflicts =
         map refuseExcluded (lib.filter alwaysKept excluded)
-        ++ lib.concatMap refuseSelected (answered cfg true);
+        ++ lib.concatMap refuseSelected (answered cfg true)
+        ++ lib.concatMap refuseTwoOf sets;
     in
     [
       {
@@ -810,7 +833,7 @@ rec {
 :END:
 
 - What =packages.<system>= holds, as a function of the package set, so =overlays.default= gives a host the same set built from its own nixpkgs.
-- =minimal= and =full= come from the catalogue: =profileFeatures= reads =nix/features.json= and takes [[id:b7e4d1a6-20c9-4f3e-8a57-c61f09d3e248][the same four steps]] as a host's options, so no list here names a feature.
+- =minimal= and =full= come from the catalogue: =profileFeatures= reads =nix/features.json= and takes [[id:b7e4d1a6-20c9-4f3e-8a57-c61f09d3e248][the same five steps]] as a host's options, so no list here names a feature.
 - Each is one environment: Emacs with that profile's packages built in, with its tools and fonts.
   + So installing one compiles the Emacs packages on the machine ([[id:3c7f2a90-8e15-4b6d-a2c4-5d9e0f1b7a68][why no cache has them]]), as =with-packages= always has.
   + =default= and =tools= stay the way to get Emacs and the tools with nothing compiled, and the configuration then installs its packages from the archives.
@@ -2327,7 +2350,7 @@ in
 - The check's starts have no packages in CI, because Elisp settles the selection before any package loads.
 - A nix-darwin host evaluates on Linux, and its start runs here, on Linux.
   + Its generated files are the real ones, and they load through the real host layer.
-  + Elisp's answer for it comes from the same four steps with =system-type= bound to =darwin=, so a feature that is not for a Mac drops out on both sides. =darwinFull= selects =window-manager= to prove that.
+  + Elisp's answer for it comes from the same five steps with =system-type= bound to =darwin=, so a feature that is not for a Mac drops out on both sides. =darwinFull= selects =window-manager= to prove that.
   + What stays untested without a Mac: a start under =darwin= itself, the launchd agent, and that nix-darwin puts the files in =/etc=.
 
 #+begin_src nix

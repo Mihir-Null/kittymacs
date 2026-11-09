@@ -27,6 +27,7 @@
 | =:profile=      | =minimal= for everyone, =full= for what that profile adds, =optional= for what stays off even then |
 | =:deps=         | features it cannot work without                                        |
 | =:not-on=       | values of =system-type= where it does not apply                        |
+| =:one-of=       | a set of features, named by a symbol, of which at most one is on       |
 | =:option=       | a setting that does nothing with the feature off, so setting it alone warns |
 | =:experimental= | one sentence, in plain text with no markup: what is still untested     |
 | =:hidden=       | =t= for a feature that works and that nothing offers, so it is on only where a setting names it |
@@ -36,6 +37,12 @@
 - =minimal= is the default on a new machine, and =full= is what a machine had before that default ([[id:2ea4f7b0-6c19-4d85-93f2-c07a1be58d36][A machine with no choice keeps what it has]]).
 - =:not-on= lists exceptions rather than systems, because nearly every feature runs everywhere.
 - =:vc= is a subset of =:packages=, so a list of everything stays one property.
+- =:one-of= serves features that each want the same keys, such as two coding agents that both take =SPC a=.
+  + Every member names the set, so a new member changes only its own entry.
+  + [[id:0fb86d27-93c1-4ea5-b2d8-6a1e47c3f9d0][From the options to the answer]] lets a feature you select win over one your profile brings, so selecting a member needs no exclusion of the others.
+  + A set has at least two members, and at most one of them is outside =optional=, so a profile alone never brings two.
+  + No member depends on another member of its set, because the two could never both be on.
+  + No feature has it yet, and the coding agents are its first set.
 - =:experimental= marks a feature that works and has not earned the same trust, so a person choosing it can see why.
   + [[id:c8e2f1a7-4b60-49d3-8a15-7d3e96b0c421][Onboarding]] shows it on the feature's row, =SPC o B= names it for a backend whose transport has the feature's name, and the Nix chapter adds it to the feature's option.
   + No start warns about it, because you opted in by name, and =SPC o B= shows it when you look.

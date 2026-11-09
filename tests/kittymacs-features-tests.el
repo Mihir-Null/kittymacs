@@ -182,6 +182,68 @@ No feature has the label now, so a stand-in carries it."
     (should (= (length warnings) 1))
     (should (string-match-p "doom-look is selected" (car warnings)))))
 
+(defconst kittymacs-features-test-one-of
+  '((first-agent :profile full :one-of agent)
+    (second-agent :profile optional :one-of agent)
+    (third-agent :profile optional :one-of agent :not-on (android))
+    (needs-second :profile optional :deps (second-agent)))
+  "A stand-in `:one-of' set, since no feature in the catalogue has one now.")
+
+(ert-deftest kittymacs-features-a-selected-member-replaces-the-profiles-quietly ()
+  (let ((kittymacs-catalogue kittymacs-features-test-one-of))
+    (kittymacs-features-test-with ((kittymacs-profile 'full)) warnings
+      (should (equal (kittymacs-features-enabled) '(first-agent)))
+      (should-not warnings))
+    (kittymacs-features-test-with ((kittymacs-profile 'full)
+                                   (kittymacs-features '(second-agent)))
+        warnings
+      (should (equal (kittymacs-features-enabled) '(second-agent)))
+      (should-not warnings))))
+
+(ert-deftest kittymacs-features-the-first-selected-member-wins-and-the-next-warns ()
+  (let ((kittymacs-catalogue kittymacs-features-test-one-of))
+    (kittymacs-features-test-with ((kittymacs-profile 'full)
+                                   (kittymacs-features '(third-agent second-agent)))
+        warnings
+      (should (equal (kittymacs-features-enabled) '(third-agent)))
+      (should (= (length warnings) 1))
+      (should (string-match-p "second-agent is selected but stays off: third-agent" (car warnings))))))
+
+(ert-deftest kittymacs-features-a-member-that-cannot-be-on-leaves-the-set-to-the-next ()
+  (let ((kittymacs-catalogue kittymacs-features-test-one-of))
+    ;; Excluded: the profile's member stays, and the warning blames the exclusion.
+    (kittymacs-features-test-with ((kittymacs-profile 'full)
+                                   (kittymacs-features '(second-agent))
+                                   (kittymacs-features-excluded '(second-agent)))
+        warnings
+      (should (equal (kittymacs-features-enabled) '(first-agent)))
+      (should (= (length warnings) 1))
+      (should (string-match-p "second-agent is selected but stays off: it, or a feature it depends on, is excluded"
+                              (car warnings))))
+    ;; Not on this system: the next selected member wins, and nothing warns.
+    (kittymacs-features-test-with ((system-type 'android)
+                                   (kittymacs-profile 'full)
+                                   (kittymacs-features '(third-agent second-agent)))
+        warnings
+      (should (equal (kittymacs-features-enabled) '(second-agent)))
+      (should-not warnings))))
+
+(ert-deftest kittymacs-features-a-member-a-selection-needs-beats-the-profiles ()
+  "Selecting `needs-second' asks for `second-agent' too."
+  (let ((kittymacs-catalogue kittymacs-features-test-one-of))
+    (kittymacs-features-test-with ((kittymacs-profile 'full)
+                                   (kittymacs-features '(needs-second)))
+        warnings
+      (should (equal (kittymacs-features-enabled) '(second-agent needs-second)))
+      (should-not warnings))
+    ;; A member named first still wins, and what needed the other drops with it.
+    (kittymacs-features-test-with ((kittymacs-profile 'full)
+                                   (kittymacs-features '(third-agent needs-second)))
+        warnings
+      (should (equal (kittymacs-features-enabled) '(third-agent)))
+      (should (= (length warnings) 1))
+      (should (string-match-p "needs-second is selected" (car warnings))))))
+
 (ert-deftest kittymacs-features-the-minimal-profile-cannot-be-excluded ()
   (kittymacs-features-test-with ((kittymacs-features-excluded '(meow))) warnings
     (should (kittymacs-feature-p 'meow))
