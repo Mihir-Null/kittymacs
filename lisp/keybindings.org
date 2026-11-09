@@ -131,9 +131,17 @@ Press =SPC=, then:
 | SPC v d | Diff         | magit-diff   |
 | SPC v b | Blame        | magit-blame  |
 | SPC v c | Commit       | magit-commit |
+| SPC v g | Forge menu: pull requests and issues | forge-dispatch |
+| SPC v R | Review a pull request | kittymacs-pr-review |
+| SPC v t | TODOs in this repository | magit-todos-list |
+| SPC v o | Copy a link to this line on the forge | git-link |
+| SPC v D | Diff this file by syntax | difftastic-magit-diff-buffer-file |
 
 In the status buffer: =s= stage, =u= unstage, =c c= commit, =P p= push,
 =TAB= fold, =SPC m= for a labelled menu.
+
+The last five rows need the =pull-requests=, =git-extras=, =git-links= and
+=structural-diffs= features, which the =full= profile turns on.
 
 * Windows and frames
 

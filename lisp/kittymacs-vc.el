@@ -110,6 +110,99 @@ Falls back to `magit-status', which asks, when neither is a repository."
     (add-hook 'magit-post-refresh-hook #'diff-hl-magit-post-refresh)))
 
 (keymap-set kittymacs-toggle-map "g" (cons "git gutter" #'diff-hl-mode))
+(declare-function forge-current-pullreq "forge-pullreq" (&optional demand))
+(declare-function forge-get-url "forge-commands" (obj))
+
+(defun kittymacs-pr-review ()
+  "Review a pull request with pr-review.
+The one at point in Forge, or else the current branch's; otherwise ask."
+  (interactive)
+  (if-let* ((pullreq (and (require 'forge nil t)
+                          (magit-toplevel)
+                          (forge-current-pullreq))))
+      (pr-review (forge-get-url pullreq))
+    (call-interactively #'pr-review)))
+
+(when (kittymacs-feature-p 'pull-requests)
+  (use-package forge
+    :ensure t
+    :after magit
+    :custom
+    (forge-database-file (expand-file-name "forge-database.sqlite" kittymacs-cache-dir)))
+
+  (use-package pr-review
+    :ensure t
+    :defer t
+    :custom
+    (pr-review-ghub-auth-name 'forge))
+
+  (use-package orgit-forge
+    :ensure t
+    :defer t)
+
+  (keymap-set kittymacs-vc-map "g" (cons "forge menu" #'forge-dispatch))
+  (keymap-set kittymacs-vc-map "R" (cons "review a pull request" #'kittymacs-pr-review))
+  (keymap-set kittymacs-vc-map "N" (cons "notifications" #'pr-review-notification)))
+(declare-function pr-review-context-comment "pr-review-action" ())
+(declare-function pr-review-context-action "pr-review-action" ())
+(declare-function pr-review-context-edit "pr-review-action" ())
+(declare-function pr-review-refresh "pr-review" (&optional clear-pending-reviews))
+(declare-function pr-review-view-file "pr-review-action" (head-or-base filepath &optional line))
+(declare-function pr-review-goto-file "pr-review-action" (filepath))
+(declare-function pr-review-ediff-file "pr-review-action" (filepath))
+(declare-function pr-review-open-in-external-browser "pr-review-action" ())
+
+(when (kittymacs-feature-p 'pull-requests)
+  (with-eval-after-load 'meow
+    (add-to-list 'meow-mode-state-list '(pr-review-mode . motion))
+    (add-to-list 'meow-mode-state-list '(pr-review-listview-mode . motion))
+    (add-to-list 'meow-mode-state-list '(pr-review-input-mode . insert)))
+
+  (kittymacs-define-localleader 'pr-review-mode
+    "c" (cons "comment or reply" #'pr-review-context-comment)
+    "s" (cons "resolve or submit" #'pr-review-context-action)
+    "e" (cons "edit" #'pr-review-context-edit)
+    "g" (cons "refresh" #'pr-review-refresh)
+    "v" (cons "view whole file" #'pr-review-view-file)
+    "f" (cons "go to file" #'pr-review-goto-file)
+    "d" (cons "Ediff file" #'pr-review-ediff-file)
+    "o" (cons "open in browser" #'pr-review-open-in-external-browser)))
+(when (kittymacs-feature-p 'git-extras)
+  (use-package git-modes
+    :ensure t
+    :defer t)
+
+  (use-package magit-todos
+    :ensure t
+    :after magit
+    :config
+    (magit-todos-mode 1))
+
+  (keymap-set kittymacs-vc-map "t" (cons "TODOs" #'magit-todos-list)))
+(when (kittymacs-feature-p 'git-links)
+  (use-package git-link
+    :ensure t
+    :defer t
+    :custom
+    (git-link-use-commit t))
+
+  (use-package orgit
+    :ensure t
+    :defer t)
+
+  (keymap-set kittymacs-vc-map "o" (cons "copy link to line" #'git-link)))
+(when (kittymacs-feature-p 'structural-diffs)
+  (use-package difftastic
+    :ensure t
+    :defer t)
+
+  (with-eval-after-load 'magit
+    (difftastic-bindings-mode 1))
+
+  (with-eval-after-load 'meow
+    (add-to-list 'meow-mode-state-list '(difftastic-mode . motion)))
+
+  (keymap-set kittymacs-vc-map "D" (cons "diff file by syntax" #'difftastic-magit-diff-buffer-file)))
 (with-eval-after-load 'meow
   (add-to-list 'meow-mode-state-list '(magit-mode . motion)))
 
@@ -128,7 +221,8 @@ Falls back to `magit-status', which asks, when neither is a repository."
   "d" (cons "diff" #'magit-diff)
   "x" (cons "discard" #'magit-discard)
   "g" (cons "refresh" #'magit-refresh)
-  "?" (cons "all commands" #'magit-dispatch))
+  "?" (cons "all commands" #'magit-dispatch)
+  "L" (and (kittymacs-feature-p 'git-links) (cons "store Org link" #'orgit-store-link)))
 
 (provide 'kittymacs-vc)
 ;;; kittymacs-vc.el ends here

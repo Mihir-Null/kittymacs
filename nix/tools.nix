@@ -15,6 +15,7 @@ let
     with pkgs;
     [
       (tool "version-control" "git" git) # version control chapter (Magit)
+      (tool "structural-diffs" "difft" difftastic) # version control chapter: structural diffs
       (tool "completion" "rg" ripgrep) # navigation chapter (consult-ripgrep)
       (tool "completion" "fd" fd) # navigation chapter (consult-fd)
       (tool null "gpg" gnupg) # startup chapter: GNU ELPA's signed index
