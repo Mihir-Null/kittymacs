@@ -237,9 +237,23 @@
     ;; Assistants
     (agents
      :group assistants :packages (agent-shell agent-shell-attention) :module kittymacs-agents :profile full
-     :vc (agent-shell-attention)
-     :summary "Runs a coding agent such as Claude Code in a buffer."
+     :vc (agent-shell-attention) :one-of agent :option kittymacs-agent-mcp-servers
+     :summary "Runs Claude Code through agent-shell, in an Emacs buffer of its own."
      :example "=SPC a a= starts an agent in this project.")
+    (agent-claude-code-ide
+     :group assistants :packages (claude-code-ide) :module kittymacs-agents :profile optional
+     :vc (claude-code-ide) :deps (terminal) :one-of agent
+     :summary "Runs Claude Code's own screen in a terminal, with Emacs's code navigation as its tools."
+     :example "=SPC a a= opens Claude Code beside this project's files.")
+    (agent-eca
+     :group assistants :packages (eca) :module kittymacs-agents :profile optional :one-of agent
+     :summary "Runs ECA, one coding agent for many model providers, in a chat buffer."
+     :example "=SPC a a= opens this project's ECA chat.")
+    (agent-gptel
+     :group assistants :packages (gptel gptel-agent) :module kittymacs-agents :profile optional
+     :one-of agent
+     :summary "Runs gptel's agent, written in Emacs Lisp, with a model you choose, local ones included."
+     :example "=SPC a a= opens this project's agent buffer.")
     (suggestions
      :group assistants :packages (copilot) :module kittymacs-suggestions :profile full
      :summary "Copilot's ghost text, offered as you type once you turn it on."

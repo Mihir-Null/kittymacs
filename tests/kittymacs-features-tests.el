@@ -187,7 +187,7 @@ No feature has the label now, so a stand-in carries it."
     (second-agent :profile optional :one-of agent)
     (third-agent :profile optional :one-of agent :not-on (android))
     (needs-second :profile optional :deps (second-agent)))
-  "A stand-in `:one-of' set, since no feature in the catalogue has one now.")
+  "A stand-in `:one-of' set, so the tests do not move with the catalogue.")
 
 (ert-deftest kittymacs-features-a-selected-member-replaces-the-profiles-quietly ()
   (let ((kittymacs-catalogue kittymacs-features-test-one-of))
@@ -243,6 +243,44 @@ No feature has the label now, so a stand-in carries it."
       (should (equal (kittymacs-features-enabled) '(third-agent)))
       (should (= (length warnings) 1))
       (should (string-match-p "needs-second is selected" (car warnings))))))
+
+(ert-deftest kittymacs-features-an-alternative-agent-replaces-agent-shell ()
+  "The catalogue's own set: `full' brings `agents', and a selection replaces it."
+  (kittymacs-features-test-with ((kittymacs-profile 'full)) warnings
+    (should (kittymacs-feature-p 'agents))
+    (should-not warnings))
+  (dolist (agent '(agent-claude-code-ide agent-eca agent-gptel))
+    (kittymacs-features-test-with ((kittymacs-profile 'full)
+                                   (kittymacs-features (list agent)))
+        warnings
+      (should (equal (list agent t nil)
+                     (list agent (kittymacs-feature-p agent) (kittymacs-feature-p 'agents))))
+      (should-not warnings)))
+  ;; claude-code-ide's screen runs in the terminal, so it brings one.
+  (kittymacs-features-test-with ((kittymacs-profile 'minimal)
+                                 (kittymacs-features '(agent-claude-code-ide)))
+      warnings
+    (should (kittymacs-feature-p 'terminal))
+    (should-not (kittymacs-feature-p 'agents))
+    (should-not warnings)))
+
+(ert-deftest kittymacs-features-agent-shell-servers-warn-under-another-agent ()
+  "Only agent-shell reads `kittymacs-agent-mcp-servers', so another agent warns."
+  ;; What a host file does before the agents module has loaded.
+  (set 'kittymacs-agent-mcp-servers '(((name . "docs") (command . "docs-mcp"))))
+  (unwind-protect
+      (progn
+        (kittymacs-features-test-with ((kittymacs-profile 'full)) warnings
+          (kittymacs-features-resolve)
+          (should-not warnings))
+        (kittymacs-features-test-with ((kittymacs-profile 'full)
+                                       (kittymacs-features '(agent-claude-code-ide)))
+            warnings
+          (kittymacs-features-resolve)
+          (should (= (length warnings) 1))
+          (should (string-match-p "kittymacs-agent-mcp-servers' does nothing while agents is off"
+                                  (car warnings)))))
+    (makunbound 'kittymacs-agent-mcp-servers)))
 
 (ert-deftest kittymacs-features-members-reached-through-deps-win-nearest-first ()
   "Elisp walks dependencies in the order of the Nix module's `withDeps'.

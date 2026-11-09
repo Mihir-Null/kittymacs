@@ -27,13 +27,23 @@
     (pdf-reading . kittymacs-reading)
     (notebooks . kittymacs-notebooks)
     (agents . kittymacs-agents)
+    (agent-claude-code-ide . kittymacs-agents)
+    (agent-eca . kittymacs-agents)
+    (agent-gptel . kittymacs-agents)
     (suggestions . kittymacs-suggestions)
     (smooth-scroll . kittymacs-smooth-scroll)
     (hover-docs . kittymacs-hover-docs)
     (which-key-frame . kittymacs-which-key-frame)
     (buffer-tabs . kittymacs-buffer-tabs)
     (meow-state-cursor . kittymacs-meow-state-cursor))
-  "The features `init.el' loads a whole chapter for, and that chapter's module.")
+  "The features `init.el' loads a whole chapter for, and that chapter's module.
+Several features may load one module, as the coding agents do.")
+
+(defun kittymacs-check--chapter-wanted-p (module)
+  "Return non-nil if a feature that is on loads MODULE."
+  (seq-some (lambda (entry)
+              (and (eq (cdr entry) module) (kittymacs-feature-p (car entry))))
+            kittymacs-check-chapter-features))
 
 (defun kittymacs-check--binding (binding)
   "Return what the keymap entry BINDING runs, without its label."
@@ -188,11 +198,11 @@ Batch `format-mode-line' returns nothing, so this reads the option it obeys."
          (list (format "*scratch* has no valid pointer: %S, SPC C o is %S" pointer key)))))))
 
 (defun kittymacs-check-chapters-off ()
-  "Return the chapters that loaded although their feature is off."
-  (mapcar #'cdr (seq-filter (lambda (entry)
-                              (and (not (kittymacs-feature-p (car entry)))
-                                   (featurep (cdr entry))))
-                            kittymacs-check-chapter-features)))
+  "Return the chapters that loaded although every feature that loads them is off."
+  (seq-uniq (seq-filter (lambda (module)
+                          (and (featurep module)
+                               (not (kittymacs-check--chapter-wanted-p module))))
+                        (mapcar #'cdr kittymacs-check-chapter-features))))
 
 (defun kittymacs-check-msys2-inactive ()
   "Return what shows the MSYS2 module at work while its feature is off."

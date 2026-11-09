@@ -20,6 +20,9 @@ and a sign of use, and the warning for that fails it.")
 (defvar kittymacs-verify-expected
   (car (read-from-string (or (getenv "KITTYMACS_TEST_EXPECT") "nil")))
   "An alist of features and whether `kittymacs-feature-p' must say they are on.")
+(defvar kittymacs-verify-host-mcp (member kittymacs-verify-profile '("full" "every"))
+  "Non-nil where the profile brings agent-shell, so a host file sets its MCP servers.
+Elsewhere the setting would warn that it does nothing, as it should.")
 (defvar kittymacs-verify-failures nil)
 (defun kittymacs-verify-check (predicate description)
   (unless predicate (push description kittymacs-verify-failures)))
@@ -104,7 +107,9 @@ Types the configuration deliberately silences are left out."
 (with-temp-file (expand-file-name "10-first.el" (car kittymacs-host-directories))
   (insert ";;; -*- lexical-binding: t; -*-\n"
           "(setq kittymacs-verify-host-order (list 'first))\n"
-          "(setopt kittymacs-agent-mcp-servers '(((name . \"host-server\"))))\n"
+          (if kittymacs-verify-host-mcp
+              "(setopt kittymacs-agent-mcp-servers '(((name . \"host-server\"))))\n"
+            "")
           "(when (boundp 'kittymacs-verify-private-loads) (error \"Host file loaded after private.el\"))\n"))
 (when (getenv "KITTYMACS_TEST_PACKAGES")
   (advice-add 'kittymacs-activate-packages :before
@@ -225,7 +230,7 @@ Types the configuration deliberately silences are left out."
       (kittymacs-verify-check (= kittymacs-verify-private-loads 1) "private.el must load once")
       (kittymacs-verify-check (equal (bound-and-true-p kittymacs-verify-host-order) '(second first))
                        "Host files did not load, or not in name order")
-      (when (kittymacs-feature-p 'agents)
+      (when (and kittymacs-verify-host-mcp (kittymacs-feature-p 'agents))
         (kittymacs-verify-check (equal (bound-and-true-p agent-shell-mcp-servers)
                                        '(((name . "host-server"))))
                                 "A host file's MCP servers did not reach agent-shell"))

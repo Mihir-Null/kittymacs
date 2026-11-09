@@ -174,6 +174,12 @@
           full = fullOptions;
           minimal = minimalOptions;
           noProfile.features.jump.enable = false;
+          # An alternative agent replaces the one full brings, on both sides.
+          agentAlternative = {
+            profile = "full";
+            features.agent-gptel.enable = true;
+            packagesFromNix = true;
+          };
           extraOnly = {
             extraPackages = epkgs: [ epkgs.vundo ];
             daemon = true;
@@ -191,8 +197,12 @@
           darwinMinimal = darwinReport minimalOptions;
         };
 
-      # These three must fail evaluation.
+      # These four must fail evaluation.
       typo = report { features.no-such-feature.enable = true; };
+      twoAgents = report {
+        features.agent-eca.enable = true;
+        features.agent-gptel.enable = true;
+      };
       reserved = report { hostFiles."10-nix" = ""; };
       darwinReserved = (darwinHost { hostFiles."10-nix" = ""; }).system.drvPath;
     };

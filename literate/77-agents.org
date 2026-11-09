@@ -2,31 +2,73 @@
 :ID: 94d55283-5011-4f98-a7f0-8c6bcb51aab9
 :END:
 
-#+TITLE: Agents: Claude Code in a buffer
+#+TITLE: Agents: a coding agent in a buffer
 #+FILETAGS: :apps:
 #+STARTUP: overview
 #+PROPERTY: header-args:emacs-lisp :tangle ../lisp/kittymacs-agents.el :eval never :comments no :padline no :mkdirp yes
 
-- A coding agent you talk to in an Emacs buffer: =SPC a a= opens Claude Code in the current project, and every change it wants to make waits for your answer.
-- Two packages:
-  + [[https://github.com/xenodium/agent-shell][agent-shell]], the buffer: a prompt, the agent's replies, its tool calls, and a diff for each edit it proposes;
-  + [[https://github.com/ultronozm/agent-shell-attention.el][agent-shell-attention]], the doorbell: a count in the mode line, and a desktop notification, when a shell is waiting for you.
-- What the agent itself is allowed to do lives outside Emacs, in =~/.claude/settings.json=, so the command line and this buffer share it ([[*What lives in Emacs, and what does not]]).
-- Leans on [[id:e5942eb0-4389-447d-9317-d9178adcaaae][the leader]] for =SPC m= and the =SPC a= group, and on [[id:d2e0bc37-0bd4-4b28-a8ee-04f94ac451f8][the shells chapter]] for the login environment.
-- This chapter is the =agents= feature: [[id:40302e33-d2b2-4c0b-9bc3-1f9e121307e1][=init.el=]] loads it only when that is on.
+- A coding agent you talk to in Emacs: =SPC a a= opens one in the current project, and a change it wants to make waits for your answer.
+- Four packages can be that agent, and one is on at a time, so =SPC a= always means the one you chose.
+  + [[*Four agents, one at a time]] has the rule and the keys.
+  + =agents= is [[https://github.com/xenodium/agent-shell][agent-shell]], with [[https://github.com/ultronozm/agent-shell-attention.el][agent-shell-attention]] as its doorbell: Claude Code in a buffer of its own.
+  + =agent-claude-code-ide=, =agent-eca= and =agent-gptel= are the alternatives.
+- What Claude itself may do lives outside Emacs, in =~/.claude/settings.json=, so the command line and this buffer share it ([[*What lives in Emacs, and what does not]]).
+- Leans on [[id:e5942eb0-4389-447d-9317-d9178adcaaae][the leader]] for =SPC m= and the =SPC a= group, on [[id:d2e0bc37-0bd4-4b28-a8ee-04f94ac451f8][the shells chapter]] for the login environment, and on [[id:5c1e7a94-8f30-4d26-b7a1-3e92d06f4c18][the features chapter]] for the gates.
+- [[id:40302e33-d2b2-4c0b-9bc3-1f9e121307e1][=init.el=]] loads this chapter when any of the four is on, and each section below runs only for its own.
 - Read [[*How agent-shell talks to Claude]] first.
 
 #+begin_src emacs-lisp
-;;; kittymacs-agents.el --- Claude Code in a buffer -*- lexical-binding: t; -*-
+;;; kittymacs-agents.el --- A coding agent in a buffer -*- lexical-binding: t; -*-
 ;; Generated from literate/77-agents.org; edit the Org source, then tangle.
 
 ;;; Code:
 
+(require 'kittymacs-defaults)
 (require 'kittymacs-leader)
 
 (declare-function notifications-notify "notifications" (&rest params))
+(declare-function claude-code-ide "claude-code-ide" ())
+(declare-function claude-code-ide-switch-to-buffer "claude-code-ide" ())
+(declare-function gptel-agent "gptel-agent" (&optional project-dir agent-preset))
 
 #+end_src
+
+* Four agents, one at a time :decision:
+:PROPERTIES:
+:ID: 12165e78-6e8d-4b49-bf80-e3bf7ff1cf24
+:END:
+
+- Each agent takes =SPC a=, so two could never both be on: the catalogue puts them in one =:one-of= set, =agent=.
+  + =full= brings =agents=; selecting an alternative replaces it, with no exclusion to write and no warning.
+  + Onboarding shows the four as a radio button: turning one on turns the others off.
+  + [[id:3f8a6c02-9d14-4b7e-a2c5-1e7d90b64f31][The catalogue]] and [[id:0fb86d27-93c1-4ea5-b2d8-6a1e47c3f9d0][From the options to the answer]] have the rule.
+
+| Feature                 | Package                            | The agent                                       | It signs in with                  |
+|-------------------------+------------------------------------+-------------------------------------------------+-----------------------------------|
+| =agents=                | agent-shell, from MELPA            | Claude Code, through ACP, in an Emacs buffer    | your Claude login                 |
+| =agent-claude-code-ide= | claude-code-ide, from Git          | Claude Code's own screen, in a terminal buffer  | your Claude login                 |
+| =agent-eca=             | eca, from MELPA                    | the =eca= server, with any provider             | a provider ECA asks you for       |
+| =agent-gptel=           | gptel and gptel-agent, from MELPA  | Emacs Lisp, with the model you set              | an API key, or a local model      |
+
+- The keys are the same for every agent wherever it has the command, so changing agent changes nothing you type:
+
+| =SPC a= | Does                     | agents | claude-code-ide | eca | gptel |
+|---------+--------------------------+--------+-----------------+-----+-------|
+| =a=     | start, or switch to it   | yes    | yes             | yes | yes   |
+| =n=     | a new session            | yes    | yes             | yes | yes   |
+| =t=     | show or hide it          | yes    | yes             | yes |       |
+| =b=     | pick a session           | yes    | yes             | yes |       |
+| =r=     | resume a past session    | yes    | yes             | yes |       |
+| =s=     | send the region or file  | yes    | yes             | yes | yes   |
+| =f=     | send a file              | yes    |                 | yes | yes   |
+| =j=     | jump to one waiting      | yes    |                 | yes |       |
+| =p=     | send a prompt            |        | yes             |     | yes   |
+| =i=     | interrupt                |        | yes             |     | yes   |
+| =?=     | the menu of commands     | yes    | yes             | yes | yes   |
+
+- A key an agent lacks stays unbound rather than doing something else, so =SPC a= shows only what works.
+- =SPC a c= is not here: [[id:0b43a1e9-2e16-4d5b-985d-342c4897634f][the suggestions chapter]] owns it, for Copilot at point, whichever agent is on.
+- agent-shell and ECA interrupt from =SPC m=, inside their buffers. claude-code-ide's is a terminal and gptel's is a plain Org or Markdown buffer, and neither has a mode of its own for =SPC m=, so =SPC a i= does it.
 
 * How agent-shell talks to Claude :concept:
 :PROPERTIES:
@@ -69,28 +111,29 @@
 - Per-project state goes in =.agent-shell/= at the project root: transcripts (with the session ID, model and folder in their header) and screenshots; agent-shell adds it to =.gitignore= itself.
 
 #+begin_src emacs-lisp
-(use-package agent-shell
-  :ensure t
-  :commands (agent-shell agent-shell-toggle agent-shell-new-shell agent-shell-switch-buffer
-             agent-shell-resume-session agent-shell-send-dwim agent-shell-send-file
-             agent-shell-help-menu)
-  :custom
-  (agent-shell-preferred-agent-config 'claude-code)
-  (agent-shell-activity-group-expand-by-default nil)
-  (agent-shell-highlight-blocks nil)
-  (agent-shell-header-style 'text)
-  :config
-  (setopt agent-shell-anthropic-claude-environment
-          (agent-shell-make-environment-variables :inherit-env t)))
+(when (kittymacs-feature-p 'agents)
+  (use-package agent-shell
+    :ensure t
+    :commands (agent-shell agent-shell-toggle agent-shell-new-shell agent-shell-switch-buffer
+               agent-shell-resume-session agent-shell-send-dwim agent-shell-send-file
+               agent-shell-help-menu)
+    :custom
+    (agent-shell-preferred-agent-config 'claude-code)
+    (agent-shell-activity-group-expand-by-default nil)
+    (agent-shell-highlight-blocks nil)
+    (agent-shell-header-style 'text)
+    :config
+    (setopt agent-shell-anthropic-claude-environment
+            (agent-shell-make-environment-variables :inherit-env t)))
 
-(keymap-set kittymacs-agent-map "a" (cons "start or switch" #'agent-shell))
-(keymap-set kittymacs-agent-map "n" (cons "new shell" #'agent-shell-new-shell))
-(keymap-set kittymacs-agent-map "t" (cons "toggle" #'agent-shell-toggle))
-(keymap-set kittymacs-agent-map "b" (cons "switch shell" #'agent-shell-switch-buffer))
-(keymap-set kittymacs-agent-map "r" (cons "resume session" #'agent-shell-resume-session))
-(keymap-set kittymacs-agent-map "s" (cons "send region or file" #'agent-shell-send-dwim))
-(keymap-set kittymacs-agent-map "f" (cons "send a file" #'agent-shell-send-file))
-(keymap-set kittymacs-agent-map "?" (cons "menu" #'agent-shell-help-menu))
+  (keymap-set kittymacs-agent-map "a" (cons "start or switch" #'agent-shell))
+  (keymap-set kittymacs-agent-map "n" (cons "new shell" #'agent-shell-new-shell))
+  (keymap-set kittymacs-agent-map "t" (cons "toggle" #'agent-shell-toggle))
+  (keymap-set kittymacs-agent-map "b" (cons "switch shell" #'agent-shell-switch-buffer))
+  (keymap-set kittymacs-agent-map "r" (cons "resume session" #'agent-shell-resume-session))
+  (keymap-set kittymacs-agent-map "s" (cons "send region or file" #'agent-shell-send-dwim))
+  (keymap-set kittymacs-agent-map "f" (cons "send a file" #'agent-shell-send-file))
+  (keymap-set kittymacs-agent-map "?" (cons "menu" #'agent-shell-help-menu)))
 
 #+end_src
 
@@ -104,8 +147,13 @@
 
 - The agent's policy belongs to the agent, not to the editor: the same rules must hold whether Claude runs here or in a terminal.
   + So permissions, the output style, commit attribution and the skills live in =~/.claude=, written by you or by the machine's configuration, never here.
-- This chapter holds only what is about Emacs: the buffer, the keys and the notifications.
-- The two halves share one name: =claude-agent-acp=, the command agent-shell runs, which must be on =PATH=.
+- This chapter holds only what is about Emacs: the buffers, the keys and the notifications.
+- agent-shell and claude-code-ide both run the =claude= command line, so =~/.claude= governs both.
+  + agent-shell runs it through =claude-agent-acp=, and claude-code-ide runs =claude= itself; each must be on =PATH=.
+- ECA and gptel-agent are agents of their own, so =~/.claude= does not reach them.
+  + ECA keeps its rules in its own configuration, which =M-x eca-open-global-config= opens.
+  + gptel-agent asks before every tool that changes a file or runs a command, and its presets live in Emacs.
+  + This chapter changes neither's rules: choosing one of them means choosing its rules too.
 
 * MCP servers: none until you declare them
 :PROPERTIES:
@@ -131,8 +179,12 @@
 
 - agent-shell finds a =command= on =PATH=, so your package manager can pin it and nothing downloads when a session starts.
 - =headers= may be a =lambda=, which agent-shell calls as each session starts, so a key added to =auth-source= later reaches the next shell.
-- The list is global: every agent you start from here gets these servers.
+- The list reaches agent-shell alone.
+  + claude-code-ide's Claude reads its servers from =~/.claude=, as the command line does.
+  + ECA reads them from its own configuration, and =M-x eca-mcp-toggle-server= starts and stops them.
 - An empty list leaves =agent-shell-mcp-servers= alone, so setting that option directly still works.
+- A list set while agent-shell is off warns at startup, because the catalogue names it as =agents='s =:option=.
+  + A host that moves to another agent then sees the setting it no longer needs.
 
 #+begin_src emacs-lisp
 (defcustom kittymacs-agent-mcp-servers nil
@@ -142,7 +194,7 @@ before this module loads, in `private.el' or a host file."
   :type '(repeat sexp)
   :group 'kittymacs)
 
-(when kittymacs-agent-mcp-servers
+(when (and (kittymacs-feature-p 'agents) kittymacs-agent-mcp-servers)
   (setopt agent-shell-mcp-servers kittymacs-agent-mcp-servers))
 
 #+end_src
@@ -162,7 +214,10 @@ before this module loads, in `private.el' or a host file."
   + =M-x package-vc-upgrade= moves it; change =:rev= here to move everyone.
 - Installing it runs =git clone= on the first start, so it can fail where an archive install would not: no network, a proxy =git= is not told about, or a =git= that is not the one you expect.
   + A failed install is a warning, not an error: =use-package= would otherwise stop =init.el= there, and every chapter after this one would go unloaded.
-  + The warning names the cause and the =git= Emacs found; once =git clone= of the repository works from a terminal, a restart installs it. Until then =SPC a j= and =SPC a d= do nothing, and the rest of the chapter works.
+  + The warning names the cause and the =git= Emacs found; once =git clone= of the repository works from a terminal, a restart installs it. Until then =SPC a j= and =SPC a d= stay unbound, and the rest of the chapter works.
+- =kittymacs-agent-vc-warning= writes that warning, for claude-code-ide's install as well.
+- A key whose package did not install stays unbound, so which-key offers nothing that would fail when pressed.
+  + =locate-library= finds the package wherever it came from: =package-vc=, an archive, or a Nix build.
 
 #+begin_src emacs-lisp
 (defun kittymacs-agent-notify (_buffer title body)
@@ -177,25 +232,32 @@ The value of `agent-shell-attention-notify-function'."
        (ignore-errors
          (notifications-notify :app-name "agent-shell" :title title :body body))))))
 
-(condition-case err
-    (use-package agent-shell-attention
-      :vc (:url "https://github.com/ultronozm/agent-shell-attention.el"
-           :rev "aaf599121445ead597a14da62bad580c8897ee6c")
-      :after agent-shell
-      :demand t
-      :custom
-      (agent-shell-attention-notify-function #'kittymacs-agent-notify)
-      :config
-      (agent-shell-attention-mode 1))
-  (error
-   (display-warning 'kittymacs
-                    (format "agent-shell-attention was not installed: %s
-Check that `git clone https://github.com/ultronozm/agent-shell-attention.el' works from a terminal, and which git Emacs runs: %s"
-                            (error-message-string err) (executable-find "git"))
-                    :warning)))
+(defun kittymacs-agent-vc-warning (package url err)
+  "Warn that PACKAGE, from the Git repository URL, did not install: ERR."
+  (display-warning 'kittymacs
+                   (format "%s was not installed: %s
+Check that `git clone %s' works from a terminal, and which git Emacs runs: %s"
+                           package (error-message-string err) url (executable-find "git"))
+                   :warning))
 
-(keymap-set kittymacs-agent-map "j" (cons "jump to waiting shell" #'agent-shell-attention-jump))
-(keymap-set kittymacs-agent-map "d" (cons "all shells" #'agent-shell-attention-dashboard))
+(when (kittymacs-feature-p 'agents)
+  (condition-case err
+      (use-package agent-shell-attention
+        :vc (:url "https://github.com/ultronozm/agent-shell-attention.el"
+             :rev "aaf599121445ead597a14da62bad580c8897ee6c")
+        :after agent-shell
+        :demand t
+        :custom
+        (agent-shell-attention-notify-function #'kittymacs-agent-notify)
+        :config
+        (agent-shell-attention-mode 1))
+    (error
+     (kittymacs-agent-vc-warning "agent-shell-attention"
+                                 "https://github.com/ultronozm/agent-shell-attention.el" err)))
+
+  (when (locate-library "agent-shell-attention")
+    (keymap-set kittymacs-agent-map "j" (cons "jump to waiting shell" #'agent-shell-attention-jump))
+    (keymap-set kittymacs-agent-map "d" (cons "all shells" #'agent-shell-attention-dashboard))))
 
 #+end_src
 
@@ -220,34 +282,224 @@ Check that `git clone https://github.com/ultronozm/agent-shell-attention.el' wor
 | =?=     | every command (menu)    |         |                            |
 
 #+begin_src emacs-lisp
-(with-eval-after-load 'meow
-  (dolist (entry '((agent-shell-mode . insert)
-                   (agent-shell-diff-mode . motion)
-                   (agent-shell-viewport-view-mode . motion)
-                   (agent-shell-viewport-edit-mode . insert)))
-    (add-to-list 'meow-mode-state-list entry)))
+(when (kittymacs-feature-p 'agents)
+  (with-eval-after-load 'meow
+    (dolist (entry '((agent-shell-mode . insert)
+                     (agent-shell-diff-mode . motion)
+                     (agent-shell-viewport-view-mode . motion)
+                     (agent-shell-viewport-edit-mode . insert)))
+      (add-to-list 'meow-mode-state-list entry)))
 
-(kittymacs-define-localleader 'agent-shell-mode
-  "i" (cons "interrupt" #'agent-shell-interrupt)
-  "m" (cons "next permission mode" #'agent-shell-cycle-session-mode)
-  "M" (cons "choose model" #'agent-shell-set-session-model)
-  "c" (cons "compose prompt" #'agent-shell-prompt-compose)
-  "f" (cons "send file" #'agent-shell-send-file)
-  "y" (cons "copy last reply" #'agent-shell-copy-last-output)
-  "t" (cons "open transcript" #'agent-shell-open-transcript)
-  "r" (cons "restart" #'agent-shell-restart)
-  "?" (cons "menu" #'agent-shell-help-menu))
+  (kittymacs-define-localleader 'agent-shell-mode
+    "i" (cons "interrupt" #'agent-shell-interrupt)
+    "m" (cons "next permission mode" #'agent-shell-cycle-session-mode)
+    "M" (cons "choose model" #'agent-shell-set-session-model)
+    "c" (cons "compose prompt" #'agent-shell-prompt-compose)
+    "f" (cons "send file" #'agent-shell-send-file)
+    "y" (cons "copy last reply" #'agent-shell-copy-last-output)
+    "t" (cons "open transcript" #'agent-shell-open-transcript)
+    "r" (cons "restart" #'agent-shell-restart)
+    "?" (cons "menu" #'agent-shell-help-menu)))
+
+#+end_src
+
+* claude-code-ide: Claude Code's own screen
+:PROPERTIES:
+:ID: 9fccd657-dc0b-4ad1-99a2-d7615024f438
+:END:
+
+- [[https://github.com/manzaltu/claude-code-ide.el][claude-code-ide]] runs the =claude= command line itself, in a terminal buffer, so you get Claude Code's own screen rather than an Emacs rendering of it.
+- It also answers Claude's IDE protocol, the one Claude Code speaks to editors:
+  + Claude sees the file and selection in front of you, and the diagnostics of the files it touches;
+  + a proposed edit opens in Ediff, where you can change it before you accept it.
+- The terminal is [[id:bd2638bc-735d-4849-bafe-3dab5e8e30b7][ghostel]], which upstream recommends for Claude's screen, so the feature needs =terminal=.
+  + The terminal chapter's key passing applies: the screen gets its keys, and Meow keeps =SPC=.
+- =claude-code-ide-emacs-tools-setup= gives Claude five tools that read Emacs: references and definitions through xref, the symbols in a file through Imenu, the tree-sitter node at a point, and the project's root and files.
+  + None of them changes a buffer, so Claude gains reach and no power to edit outside its own diffs.
+- Not on MELPA, so it installs from Git, pinned to a commit, with the warning [[*Knowing when a shell waits for you][agent-shell-attention]] uses if =git clone= fails.
+  + Until it installs, its =SPC a= keys stay unbound, as agent-shell-attention's do.
+- Its start command always opens a new instance, so =SPC a a= switches to this project's instance and starts one only where there is none.
+
+#+begin_src emacs-lisp
+(defun kittymacs-agent-claude-code-ide-start-or-switch ()
+  "Switch to this project's Claude Code, or start one where there is none."
+  (interactive)
+  (condition-case nil
+      (claude-code-ide-switch-to-buffer)
+    (user-error (claude-code-ide))))
+
+(when (kittymacs-feature-p 'agent-claude-code-ide)
+  (condition-case err
+      (use-package claude-code-ide
+        :vc (:url "https://github.com/manzaltu/claude-code-ide.el"
+             :rev "50a3d55262805d7207889ed429ff30da96fbf68b")
+        :commands (claude-code-ide claude-code-ide-toggle claude-code-ide-resume
+                   claude-code-ide-list-sessions claude-code-ide-switch-to-buffer
+                   claude-code-ide-insert-at-mentioned claude-code-ide-send-prompt
+                   claude-code-ide-send-escape claude-code-ide-menu)
+        :custom
+        (claude-code-ide-terminal-backend 'ghostel)
+        :config
+        (claude-code-ide-emacs-tools-setup))
+    (error
+     (kittymacs-agent-vc-warning "claude-code-ide"
+                                 "https://github.com/manzaltu/claude-code-ide.el" err)))
+
+  (when (locate-library "claude-code-ide")
+    (keymap-set kittymacs-agent-map "a"
+                (cons "start or switch" #'kittymacs-agent-claude-code-ide-start-or-switch))
+    (keymap-set kittymacs-agent-map "n" (cons "new instance" #'claude-code-ide))
+    (keymap-set kittymacs-agent-map "t" (cons "toggle" #'claude-code-ide-toggle))
+    (keymap-set kittymacs-agent-map "b" (cons "switch instance" #'claude-code-ide-list-sessions))
+    (keymap-set kittymacs-agent-map "r" (cons "resume session" #'claude-code-ide-resume))
+    (keymap-set kittymacs-agent-map "s" (cons "send region" #'claude-code-ide-insert-at-mentioned))
+    (keymap-set kittymacs-agent-map "p" (cons "send a prompt" #'claude-code-ide-send-prompt))
+    (keymap-set kittymacs-agent-map "i" (cons "interrupt" #'claude-code-ide-send-escape))
+    (keymap-set kittymacs-agent-map "?" (cons "menu" #'claude-code-ide-menu))))
+
+#+end_src
+
+- The wrapper takes the =user-error= the switch signals when the project has no instance; any other error still reaches you.
+- =SPC a i= sends =ESC=, which is how Claude's own screen interrupts.
+
+* ECA: one agent, any provider
+:PROPERTIES:
+:ID: 07ce1d75-ea11-42dc-99e6-64e476315ea1
+:END:
+
+- [[https://github.com/editor-code-assistant/eca-emacs][ECA]] is a coding agent with a server of its own, =eca=, and a client for each editor; this is Emacs's client.
+- The server speaks to many providers: Anthropic, OpenAI, GitHub Copilot, Ollama and others.
+  + It signs in through the chat: =/login= there, then the provider it asks for.
+- The server comes from =PATH= first, so a package manager can pin it.
+  + Without one there, ECA downloads its release from GitHub on the first =SPC a a=, as Copilot's chapter does for its server.
+  + The download lands under the cache directory, beside Copilot's, rather than in =~/.emacs.d=.
+  + On x86-64 Linux the release is a static binary, so it runs on NixOS too.
+  + On ARM Linux it links against the system's libraries, which NixOS does not have where a downloaded binary looks; there, install =eca= yourself or enable =programs.nix-ld=.
+- Its chat buffer is a prompt, so it starts in Insert, as agent-shell's does.
+  + A chat waiting on you shows in the chat list, and =SPC a j= goes to the next one, across projects.
+
+| =SPC m= | Does                     | =SPC m= | Does                       |
+|---------+--------------------------+---------+----------------------------|
+| =i=     | stop the reply           | =y=     | accept the next tool call  |
+| =m=     | next agent               | =x=     | reject the next tool call  |
+| =M=     | choose the model         | =Y=     | accept every waiting call  |
+| =?=     | the menu of commands     |         |                            |
+
+#+begin_src emacs-lisp
+(when (kittymacs-feature-p 'agent-eca)
+  (use-package eca
+    :ensure t
+    :commands (eca eca-chat-new eca-chat-toggle-window eca-chat-select eca-chat-resume
+               eca-chat-add-context-to-user-prompt eca-chat-add-filepath-to-user-prompt
+               eca-chat-go-to-next-attention eca-transient-menu)
+    :custom
+    (eca-server-install-path
+     (expand-file-name (if (eq system-type 'windows-nt) "eca/eca.exe" "eca/eca")
+                       kittymacs-cache-dir)))
+
+  (keymap-set kittymacs-agent-map "a" (cons "start or switch" #'eca))
+  (keymap-set kittymacs-agent-map "n" (cons "new chat" #'eca-chat-new))
+  (keymap-set kittymacs-agent-map "t" (cons "toggle" #'eca-chat-toggle-window))
+  (keymap-set kittymacs-agent-map "b" (cons "switch chat" #'eca-chat-select))
+  (keymap-set kittymacs-agent-map "r" (cons "resume chat" #'eca-chat-resume))
+  (keymap-set kittymacs-agent-map "s" (cons "send region or file" #'eca-chat-add-context-to-user-prompt))
+  (keymap-set kittymacs-agent-map "f" (cons "send a file path" #'eca-chat-add-filepath-to-user-prompt))
+  (keymap-set kittymacs-agent-map "j" (cons "jump to waiting chat" #'eca-chat-go-to-next-attention))
+  (keymap-set kittymacs-agent-map "?" (cons "menu" #'eca-transient-menu))
+
+  (with-eval-after-load 'meow
+    (dolist (entry '((eca-chat-mode . insert)
+                     (eca-chat-compose-mode . insert)))
+      (add-to-list 'meow-mode-state-list entry)))
+
+  (kittymacs-define-localleader 'eca-chat-mode
+    "i" (cons "stop" #'eca-chat-stop-prompt)
+    "m" (cons "next agent" #'eca-chat-cycle-agent)
+    "M" (cons "choose model" #'eca-chat-select-model)
+    "y" (cons "accept tool call" #'eca-chat-tool-call-accept-next)
+    "x" (cons "reject tool call" #'eca-chat-tool-call-reject-next)
+    "Y" (cons "accept every call" #'eca-chat-tool-call-accept-all)
+    "?" (cons "menu" #'eca-transient-menu)))
+
+#+end_src
+
+- =eca= itself starts a session or switches to the project's, so =SPC a a= needs no wrapper.
+
+* gptel-agent: an agent written in Emacs Lisp
+:PROPERTIES:
+:ID: 99f6054d-a275-4def-bb12-98d09ce66070
+:END:
+
+- [[https://github.com/karthink/gptel-agent][gptel-agent]] is a set of tools and prompts for [[https://github.com/karthink/gptel][gptel]], the model client; no program runs outside Emacs.
+  + It reads, searches and edits files, and runs commands, asking you first for each tool that changes something.
+  + Its header line switches between agent and plan, where plan has only the tools that read.
+- It talks to whichever model you give gptel, so it works offline with a local one.
+  + It cannot use a Claude or ChatGPT login: Anthropic and OpenAI give an agent that is not their own an API key, not a subscription.
+- This chapter sets no model, because which one is yours to pay for or to run.
+  + Without a setting, gptel uses OpenAI and asks for a key, so set one of these in =private.el=:
+
+#+begin_src emacs-lisp :tangle no
+;; Anthropic, with the key in ~/.authinfo.gpg on the line
+;; "machine api.anthropic.com login apikey password <the key>".
+(with-eval-after-load 'gptel
+  (setq gptel-backend (gptel-make-anthropic "Claude" :stream t)
+        gptel-model 'claude-sonnet-5-5))
+
+;; A model Ollama runs on this machine, with no key.
+(with-eval-after-load 'gptel
+  (setq gptel-backend (gptel-make-ollama "Ollama" :stream t :models '(qwen3-coder))
+        gptel-model 'qwen3-coder))
+#+end_src
+
+- gptel reads the key from =auth-source= when a request starts, so the key never sits in =private.el=.
+- gptel-agent opens a new buffer each time, so =SPC a a= switches to this project's buffer and starts one only where there is none.
+- Its buffer is an Org or Markdown buffer with =gptel-mode= on, a minor mode, so =SPC m= stays the buffer's own and =SPC a p= sends.
+
+#+begin_src emacs-lisp
+(defun kittymacs-agent-gptel-start-or-switch ()
+  "Switch to this project's gptel-agent buffer, or start one where there is none."
+  (interactive)
+  (let ((root (expand-file-name (if-let* ((project (project-current)))
+                                    (project-root project)
+                                  default-directory))))
+    (if-let* ((buffer (seq-find (lambda (buffer)
+                                  (and (string-prefix-p "*gptel-agent:" (buffer-name buffer))
+                                       (equal (expand-file-name
+                                               (buffer-local-value 'default-directory buffer))
+                                              root)))
+                                (buffer-list))))
+        (pop-to-buffer buffer)
+      (gptel-agent root))))
+
+(when (kittymacs-feature-p 'agent-gptel)
+  (use-package gptel
+    :ensure t
+    :commands (gptel gptel-send gptel-menu gptel-add gptel-add-file gptel-abort))
+
+  (use-package gptel-agent
+    :ensure t
+    :commands (gptel-agent))
+
+  (keymap-set kittymacs-agent-map "a" (cons "start or switch" #'kittymacs-agent-gptel-start-or-switch))
+  (keymap-set kittymacs-agent-map "n" (cons "new agent" #'gptel-agent))
+  (keymap-set kittymacs-agent-map "s" (cons "add region or buffer" #'gptel-add))
+  (keymap-set kittymacs-agent-map "f" (cons "add a file" #'gptel-add-file))
+  (keymap-set kittymacs-agent-map "p" (cons "send" #'gptel-send))
+  (keymap-set kittymacs-agent-map "i" (cons "interrupt" #'gptel-abort))
+  (keymap-set kittymacs-agent-map "?" (cons "menu" #'gptel-menu)))
 
 (provide 'kittymacs-agents)
 ;;; kittymacs-agents.el ends here
 #+end_src
 
+- gptel adds a region or file to the context of the next request, rather than pasting it into the prompt; =SPC a s= again on the same region takes it out.
+
 * Check
 
-- Once, in a terminal: =claude=, then =/login=.
-- =SPC a a= in a project: a shell opens in Insert state, and its header names Claude Code; no agent picker appears.
-- Ask it to read a file: the read happens; ask it to change one: a permission prompt appears, and the diff opens in Motion with =y= to accept.
-- Ask "which MCP tools do you have?": tools from the servers in =kittymacs-agent-mcp-servers=, plus any your Claude configuration adds.
-- Switch frames while it works: the mode line shows =AS:1= when it stops, and the desktop shows a notification.
-- =SPC a j= jumps back to it; =SPC m t= opens its transcript under =.agent-shell/=.
+- For =agents= or =agent-claude-code-ide=, once, in a terminal: =claude=, then =/login=.
+- =SPC a a= in a project: the agent you chose opens, in Insert for agent-shell and ECA, and in the terminal for claude-code-ide.
+- Ask it to read a file: the read happens; ask it to change one: it asks first, and agent-shell's diff opens in Motion with =y= to accept, claude-code-ide's in Ediff.
+- Ask "which MCP tools do you have?": for agent-shell, the servers in =kittymacs-agent-mcp-servers= plus any your Claude configuration adds; for claude-code-ide, the five Emacs tools as well.
+- With agent-shell, switch frames while it works: the mode line shows =AS:1= when it stops, and the desktop shows a notification.
+- Select a different agent in onboarding: the one before turns off, and =SPC a= shows the new one's keys.
 - =just test-packages=: the verifier fails on any warning at startup, and checks that every =SPC= key runs a command.

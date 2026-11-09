@@ -2344,7 +2344,9 @@ in
   + =minimal= also builds its packages, with one extra.
   + Each report also says which tools the host installs, and the test holds them against the features that start answers, as =tools-follow-selection= does for NixOS alone.
   + =noProfile= sets features alone, and =extraOnly= builds in one package with =packagesFromNix= off.
+  + =agentAlternative= selects =agent-gptel= under =full=, so both sides must drop =agents= from the =agent= set, and it builds gptel's packages.
   + =typo= and =reserved= must fail evaluation, each with a message naming the option.
+  + =twoAgents= must fail too, because it sets two members of the =agent= set to =true=.
   + =nixosPlain=, =nixosFull= and =nixosMinimal=, and =darwinPlain=, =darwinFull= and =darwinMinimal=, are =plain=, =full= and =minimal= again, through [[*The system modules][the system module]].
   + =darwinReserved= must fail too, through its own module.
 - The check's starts have no packages in CI, because Elisp settles the selection before any package loads.
@@ -2530,6 +2532,12 @@ in
           full = fullOptions;
           minimal = minimalOptions;
           noProfile.features.jump.enable = false;
+          # An alternative agent replaces the one full brings, on both sides.
+          agentAlternative = {
+            profile = "full";
+            features.agent-gptel.enable = true;
+            packagesFromNix = true;
+          };
           extraOnly = {
             extraPackages = epkgs: [ epkgs.vundo ];
             daemon = true;
@@ -2547,8 +2555,12 @@ in
           darwinMinimal = darwinReport minimalOptions;
         };
 
-      # These three must fail evaluation.
+      # These four must fail evaluation.
       typo = report { features.no-such-feature.enable = true; };
+      twoAgents = report {
+        features.agent-eca.enable = true;
+        features.agent-gptel.enable = true;
+      };
       reserved = report { hostFiles."10-nix" = ""; };
       darwinReserved = (darwinHost { hostFiles."10-nix" = ""; }).system.drvPath;
     };

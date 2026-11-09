@@ -114,7 +114,7 @@ Add a command with `keymap-set'.  Add a labelled group with
 (defvar-keymap kittymacs-diagnostics-map :doc "Diagnostics (Flymake).")
 (defvar-keymap kittymacs-insert-map :doc "Insert.")
 (defvar-keymap kittymacs-notes-map :doc "Linked notes in the current graph.")
-(defvar-keymap kittymacs-agent-map :doc "Coding agents (agent-shell), and a suggestion at point.")
+(defvar-keymap kittymacs-agent-map :doc "The coding agent that is on, and a suggestion at point.")
 (defvar-keymap kittymacs-open-map :doc "Open applications.")
 (defvar-keymap kittymacs-toggle-map :doc "Toggles.")
 (defvar-keymap kittymacs-config-map :doc "This configuration.")
