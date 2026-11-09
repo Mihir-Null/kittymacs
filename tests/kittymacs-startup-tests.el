@@ -179,6 +179,74 @@ The Nix chapter's \"The Emacs packages\" says why each one.")
         (should (= (length warnings) 1))
         (should (string-match-p "Could not refresh.*Offline" (car warnings)))))))
 
+;;; The Emacs server
+
+(require 'server)
+
+(defun kittymacs-startup-test--define-server-start ()
+  "Define `kittymacs--server-start' from the defaults module, and nothing else from it."
+  (let ((form (seq-find (lambda (form)
+                          (and (eq (car-safe form) 'defun)
+                               (eq (cadr form) 'kittymacs--server-start)))
+                        (kittymacs-startup-test--forms
+                         (expand-file-name "lisp/kittymacs-defaults.el"
+                                           kittymacs-startup-test-root)))))
+    (should form)
+    (eval form t)))
+
+(defmacro kittymacs-startup-test-with-server (failures &rest body)
+  "Run BODY with a stand-in server whose first FAILURES starts signal.
+Each failure is an error message.  In BODY, `dirs' lists the socket directories
+the starts used, oldest first, and `warnings' the warning texts."
+  (declare (indent 1))
+  `(let ((server-socket-dir "/a/long/runtime/dir/emacs")
+         (process-environment (cons "TMPDIR" process-environment))
+         (pending ,failures)
+         (dirs nil))
+     (kittymacs-startup-test--define-server-start)
+     (cl-letf (((symbol-function 'server-running-p) #'ignore)
+               ((symbol-function 'server-start)
+                (lambda (&rest _)
+                  (setq dirs (append dirs (list server-socket-dir)))
+                  (when pending (error "%s" (pop pending))))))
+       (kittymacs-startup-test-with-warnings warnings
+         ,@body))))
+
+(ert-deftest kittymacs-startup-a-socket-name-too-long-tries-server-el-s-own-directory ()
+  "A long `XDG_RUNTIME_DIR' must not stop init.el, and gets one more try."
+  (let ((short (format "/tmp/emacs%d" (user-uid))))
+    ;; Both starts fail: the start goes on, with one warning.
+    (kittymacs-startup-test-with-server '("Service name too long" "Service name too long")
+      (kittymacs--server-start)
+      (should (equal dirs (list "/a/long/runtime/dir/emacs" short)))
+      (should (= (length warnings) 1))
+      (should (string-search "Service name too long" (car warnings)))
+      (should (string-search short (car warnings))))
+    ;; The second start works: no warning, and the socket stays there.
+    (kittymacs-startup-test-with-server '("Service name too long")
+      (kittymacs--server-start)
+      (should (equal dirs (list "/a/long/runtime/dir/emacs" short)))
+      (should (equal server-socket-dir short))
+      (should-not warnings))))
+
+(ert-deftest kittymacs-startup-another-server-error-warns-without-a-retry ()
+  (kittymacs-startup-test-with-server '("Unsafe directory")
+    (kittymacs--server-start)
+    (should (equal dirs '("/a/long/runtime/dir/emacs")))
+    (should (= (length warnings) 1))
+    (should (string-search "Unsafe directory" (car warnings)))
+    (should (string-search "/a/long/runtime/dir/emacs" (car warnings)))))
+
+(ert-deftest kittymacs-startup-the-module-starts-the-server-through-the-guard ()
+  (let ((form (seq-find (lambda (form)
+                          (and (eq (car-safe form) 'when)
+                               (equal (cadr form) '(or window-system (daemonp)))))
+                        (kittymacs-startup-test--forms
+                         (expand-file-name "lisp/kittymacs-defaults.el"
+                                           kittymacs-startup-test-root)))))
+    (should (member '(kittymacs--server-start) form))
+    (should-not (memq 'server-start (flatten-tree form)))))
+
 ;;; kittymacs-startup-tests.el ends here
 
 (defvar kittymacs-host-directories nil)

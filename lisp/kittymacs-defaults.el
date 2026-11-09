@@ -149,11 +149,34 @@
 (add-hook 'after-init-hook #'kittymacs--restore-scratch)
 (add-hook 'kill-emacs-hook #'kittymacs--save-scratch)
 (run-with-idle-timer 300 t #'kittymacs--save-scratch)
+(defvar server-socket-dir)
+(declare-function server-running-p "server" (&optional name))
+
+(defun kittymacs--server-start ()
+  "Start the server unless one is running, and warn if it cannot.
+A socket name the system finds too long gets one more try where `server.el'
+puts the socket without `XDG_RUNTIME_DIR'."
+  (let ((start (lambda () (unless (server-running-p) (server-start))))
+        (warn (lambda (err)
+                (display-warning
+                 'kittymacs
+                 (format "The Emacs server did not start in %s, so emacsclient cannot reach this Emacs: %s"
+                         server-socket-dir (error-message-string err))))))
+    (condition-case err
+        (funcall start)
+      (error
+       (if (not (string-search "too long" (error-message-string err)))
+           (funcall warn err)
+         (setq server-socket-dir (expand-file-name (format "emacs%d" (user-uid))
+                                                   (or (getenv "TMPDIR") "/tmp")))
+         (condition-case err
+             (funcall start)
+           (error (funcall warn err))))))))
+
 (when (or window-system (daemonp))
   (require 'server)
   (setopt server-client-instructions nil)
-  (unless (server-running-p)
-    (server-start)))
+  (kittymacs--server-start))
 (setopt switch-to-prev-buffer-skip-regexp "\\`[ *]")
 (defun kittymacs-new-buffer (&optional frame)
   "Create an empty buffer; with FRAME (prefix argument), show it in a new frame."
