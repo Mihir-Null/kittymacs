@@ -557,8 +557,11 @@ Set before init.el loads to change them, because they are read during init.")
   (kittymacs-require-module 'kittymacs-reading))
 (when (kittymacs-feature-p 'notebooks)
   (kittymacs-require-module 'kittymacs-notebooks))
-;; One chapter holds every agent, and at most one of them is on.
+;; One chapter holds every agent: at most one owns SPC a, and claude-code-ide
+;; may run beside it.
 (when (kittymacs-feature-p 'agents)
+  (kittymacs-require-module 'kittymacs-agents))
+(when (kittymacs-feature-p 'claude-code-ide)
   (kittymacs-require-module 'kittymacs-agents))
 (when (kittymacs-feature-p 'agent-claude-code-ide)
   (kittymacs-require-module 'kittymacs-agents))

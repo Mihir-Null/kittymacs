@@ -12,9 +12,12 @@
   + [[*Four agents, one at a time]] has the rule and the keys.
   + =agents= is [[https://github.com/xenodium/agent-shell][agent-shell]], with [[https://github.com/ultronozm/agent-shell-attention.el][agent-shell-attention]] as its doorbell: Claude Code in a buffer of its own.
   + =agent-claude-code-ide=, =agent-eca= and =agent-gptel= are the alternatives.
+- =claude-code-ide= runs beside whichever agent is on: Claude Code's own screen, its sessions under =SPC a w= ([[*claude-code-ide: Claude Code's own screen]]).
+  + With =agents=, you can talk to Claude in agent-shell and keep other sessions in Claude Code's own screen.
 - What Claude itself may do lives outside Emacs, in =~/.claude/settings.json=, so the command line and this buffer share it ([[*What lives in Emacs, and what does not]]).
 - Leans on [[id:e5942eb0-4389-447d-9317-d9178adcaaae][the leader]] for =SPC m= and the =SPC a= group, on [[id:d2e0bc37-0bd4-4b28-a8ee-04f94ac451f8][the shells chapter]] for the login environment, and on [[id:5c1e7a94-8f30-4d26-b7a1-3e92d06f4c18][the features chapter]] for the gates.
-- [[id:40302e33-d2b2-4c0b-9bc3-1f9e121307e1][=init.el=]] loads this chapter when any of the four is on, and each section below runs only for its own.
+- [[id:40302e33-d2b2-4c0b-9bc3-1f9e121307e1][=init.el=]] loads this chapter when any of the four, or =claude-code-ide=, is on, and each section below runs only for its own.
+- Code outside kittymacs builds on a few names here: [[*What an integration may rely on]].
 - Read [[*How agent-shell talks to Claude]] first.
 
 #+begin_src emacs-lisp
@@ -42,11 +45,12 @@
   + =full= brings =agents=; selecting an alternative replaces it, with no exclusion to write and no warning.
   + Onboarding shows the four as a radio button: turning one on turns the others off.
   + [[id:3f8a6c02-9d14-4b7e-a2c5-1e7d90b64f31][The catalogue]] and [[id:0fb86d27-93c1-4ea5-b2d8-6a1e47c3f9d0][From the options to the answer]] have the rule.
+- One owns =SPC a=, but not every agent is one of them: =claude-code-ide= takes =SPC a w= and runs beside whichever is on.
 
 | Feature                 | Package                            | The agent                                       | It signs in with                  |
 |-------------------------+------------------------------------+-------------------------------------------------+-----------------------------------|
 | =agents=                | agent-shell, from MELPA            | Claude Code, through ACP, in an Emacs buffer    | your Claude login                 |
-| =agent-claude-code-ide= | claude-code-ide, from Git          | Claude Code's own screen, in a terminal buffer  | your Claude login                 |
+| =agent-claude-code-ide= | claude-code-ide, from Git, via =claude-code-ide= | Claude Code's own screen, in a terminal buffer  | your Claude login                 |
 | =agent-eca=             | eca, from MELPA                    | the =eca= server, with any provider             | a provider ECA asks you for       |
 | =agent-gptel=           | gptel and gptel-agent, from MELPA  | Emacs Lisp, with the model you set              | an API key, or a local model      |
 
@@ -67,6 +71,7 @@
 | =?=     | the menu of commands     | yes    | yes             | yes | yes   |
 
 - A key an agent lacks stays unbound rather than doing something else, so =SPC a= shows only what works.
+- =SPC a w= is not in the table: it belongs to =claude-code-ide=, which runs beside any of the four.
 - =SPC a c= is not here: [[id:0b43a1e9-2e16-4d5b-985d-342c4897634f][the suggestions chapter]] owns it, for Copilot at point, whichever agent is on.
 - agent-shell and ECA interrupt from =SPC m=, inside their buffers. claude-code-ide's is a terminal and gptel's is a plain Org or Markdown buffer, and neither has a mode of its own for =SPC m=, so =SPC a i= does it.
 
@@ -315,10 +320,16 @@ Check that `git clone %s' works from a terminal, and which git Emacs runs: %s"
 - The terminal is [[id:bd2638bc-735d-4849-bafe-3dab5e8e30b7][ghostel]], which upstream recommends for Claude's screen, so the feature needs =terminal=.
   + The terminal chapter's key passing applies: the screen gets its keys, and Meow keeps =SPC=.
 - =claude-code-ide-emacs-tools-setup= gives Claude five tools that read Emacs: references and definitions through xref, the symbols in a file through Imenu, the tree-sitter node at a point, and the project's root and files.
-  + None of them changes a buffer, so Claude gains reach and no power to edit outside its own diffs.
+- The IDE protocol adds =executeCode=, on by default: Claude evaluates any Emacs Lisp in this Emacs, and can write in your buffers with it.
+  + Whether a call runs without asking is Claude's permission setting in =~/.claude=, not this chapter's ([[*What lives in Emacs, and what does not]]).
 - Not on MELPA, so it installs from Git, pinned to a commit, with the warning [[*Knowing when a shell waits for you][agent-shell-attention]] uses if =git clone= fails.
   + Until it installs, its =SPC a= keys stay unbound, as agent-shell-attention's do.
 - Its start command always opens a new instance, so =SPC a a= switches to this project's instance and starts one only where there is none.
+- Two features share it:
+  + =claude-code-ide= installs it beside whichever agent owns =SPC a=, and puts its session keys in =kittymacs-claude-code-ide-map=, on =SPC a w=;
+  + =agent-claude-code-ide= makes it the agent on lowercase =SPC a= too, and depends on =claude-code-ide=, so the package is configured once.
+- =SPC a w=, claude-code-ide sessions: =n= a new instance, =b= pick one, =p= send it a prompt, =i= interrupt it (=ESC=), =r= resume a past one.
+  + =w=, =d= and =j= stay free there, for code outside kittymacs that adds its own commands about these sessions ([[*What an integration may rely on]]).
 
 #+begin_src emacs-lisp
 (defun kittymacs-agent-claude-code-ide-start-or-switch ()
@@ -328,7 +339,11 @@ Check that `git clone %s' works from a terminal, and which git Emacs runs: %s"
       (claude-code-ide-switch-to-buffer)
     (user-error (claude-code-ide))))
 
-(when (kittymacs-feature-p 'agent-claude-code-ide)
+(defvar-keymap kittymacs-claude-code-ide-map
+  :doc "claude-code-ide's sessions, on SPC a w.
+w, d and j are left free for an integration's own commands.")
+
+(when (kittymacs-feature-p 'claude-code-ide)
   (condition-case err
       (use-package claude-code-ide
         :vc (:url "https://github.com/manzaltu/claude-code-ide.el"
@@ -345,6 +360,16 @@ Check that `git clone %s' works from a terminal, and which git Emacs runs: %s"
      (kittymacs-agent-vc-warning "claude-code-ide"
                                  "https://github.com/manzaltu/claude-code-ide.el" err)))
 
+  (keymap-set kittymacs-agent-map "w" (cons "claude-code-ide sessions" kittymacs-claude-code-ide-map))
+  ;; w, d and j stay unbound here: an integration adds its own there.
+  (when (locate-library "claude-code-ide")
+    (keymap-set kittymacs-claude-code-ide-map "n" (cons "new instance" #'claude-code-ide))
+    (keymap-set kittymacs-claude-code-ide-map "b" (cons "pick a session" #'claude-code-ide-list-sessions))
+    (keymap-set kittymacs-claude-code-ide-map "p" (cons "send a prompt" #'claude-code-ide-send-prompt))
+    (keymap-set kittymacs-claude-code-ide-map "i" (cons "interrupt" #'claude-code-ide-send-escape))
+    (keymap-set kittymacs-claude-code-ide-map "r" (cons "resume a session" #'claude-code-ide-resume))))
+
+(when (kittymacs-feature-p 'agent-claude-code-ide)
   (when (locate-library "claude-code-ide")
     (keymap-set kittymacs-agent-map "a"
                 (cons "start or switch" #'kittymacs-agent-claude-code-ide-start-or-switch))
@@ -494,6 +519,20 @@ Check that `git clone %s' works from a terminal, and which git Emacs runs: %s"
 
 - gptel adds a region or file to the context of the next request, rather than pasting it into the prompt; =SPC a s= again on the same region takes it out.
 
+* What an integration may rely on :decision:
+:PROPERTIES:
+:ID: 4b8d2e61-9c37-4f05-a1e8-6d3b7c0f2a95
+:END:
+
+- Code outside kittymacs, such as a Claude stack that adds its own agent workflow, loads from =conf.d= ([[id:40302e33-d2b2-4c0b-9bc3-1f9e121307e1][startup]]) and builds on these names, kept stable:
+  + =kittymacs-agent-map=: the keymap on =SPC a=;
+  + =kittymacs-claude-code-ide-map=: claude-code-ide's sessions on =SPC a w=, where =w=, =d= and =j= are left free;
+  + =(kittymacs-agent-notify BUFFER TITLE BODY)=: a desktop notification, on macOS or over D-Bus, silent where there is none;
+  + =(kittymacs-feature-p FEATURE)=: whether a catalogue feature is on;
+  + =(kittymacs-diff-review-at HOST DIRECTORY BRANCH)=: a branch's review, here or over TRAMP ([[id:3f0450b0-881e-4487-b90f-49a4d03f17a7][version control]]);
+  + the features =kittymacs-agents= and =kittymacs-vc=, to wait for with =with-eval-after-load=.
+- Anything else here may change without notice.
+
 * Check
 
 - For =agents= or =agent-claude-code-ide=, once, in a terminal: =claude=, then =/login=.
@@ -502,4 +541,5 @@ Check that `git clone %s' works from a terminal, and which git Emacs runs: %s"
 - Ask "which MCP tools do you have?": for agent-shell, the servers in =kittymacs-agent-mcp-servers= plus any your Claude configuration adds; for claude-code-ide, the five Emacs tools as well.
 - With agent-shell, switch frames while it works: the mode line shows =AS:1= when it stops, and the desktop shows a notification.
 - Select a different agent in onboarding: the one before turns off, and =SPC a= shows the new one's keys.
+- With =agents= and =claude-code-ide= both on: =SPC a a= opens agent-shell, =SPC a w n= a claude-code-ide instance, =SPC a w b= picks one, and =SPC a j= and =SPC a d= stay agent-shell-attention's.
 - =just test-packages=: the verifier fails on any warning at startup, and checks that every =SPC= key runs a command.

@@ -105,7 +105,11 @@ Check that `git clone %s' works from a terminal, and which git Emacs runs: %s"
       (claude-code-ide-switch-to-buffer)
     (user-error (claude-code-ide))))
 
-(when (kittymacs-feature-p 'agent-claude-code-ide)
+(defvar-keymap kittymacs-claude-code-ide-map
+  :doc "claude-code-ide's sessions, on SPC a w.
+w, d and j are left free for an integration's own commands.")
+
+(when (kittymacs-feature-p 'claude-code-ide)
   (condition-case err
       (use-package claude-code-ide
         :vc (:url "https://github.com/manzaltu/claude-code-ide.el"
@@ -122,6 +126,16 @@ Check that `git clone %s' works from a terminal, and which git Emacs runs: %s"
      (kittymacs-agent-vc-warning "claude-code-ide"
                                  "https://github.com/manzaltu/claude-code-ide.el" err)))
 
+  (keymap-set kittymacs-agent-map "w" (cons "claude-code-ide sessions" kittymacs-claude-code-ide-map))
+  ;; w, d and j stay unbound here: an integration adds its own there.
+  (when (locate-library "claude-code-ide")
+    (keymap-set kittymacs-claude-code-ide-map "n" (cons "new instance" #'claude-code-ide))
+    (keymap-set kittymacs-claude-code-ide-map "b" (cons "pick a session" #'claude-code-ide-list-sessions))
+    (keymap-set kittymacs-claude-code-ide-map "p" (cons "send a prompt" #'claude-code-ide-send-prompt))
+    (keymap-set kittymacs-claude-code-ide-map "i" (cons "interrupt" #'claude-code-ide-send-escape))
+    (keymap-set kittymacs-claude-code-ide-map "r" (cons "resume a session" #'claude-code-ide-resume))))
+
+(when (kittymacs-feature-p 'agent-claude-code-ide)
   (when (locate-library "claude-code-ide")
     (keymap-set kittymacs-agent-map "a"
                 (cons "start or switch" #'kittymacs-agent-claude-code-ide-start-or-switch))

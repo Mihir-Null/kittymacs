@@ -57,7 +57,7 @@ A new installation starts small: Meow, Vertico, Orderless, Marginalia, Consult, 
 - **Notes:** Org with an agenda, Org QL queries by tag and TODO state, and Org-roam graphs scoped per project.
 - **Reading papers:** pdf-tools renders PDFs inside Emacs; org-noter keeps a notes file beside each one, in step with the page; `pdf:` links point at a page or a highlight.
 - **Notebooks:** Jupyter notebooks edited as [Jupytext](https://jupytext.readthedocs.io) scripts: `# %%` cells you run with `C-c C-c`, an optional Jupyter kernel, LaTeX in Markdown cells drawn in place, and each project's own environment through direnv.
-- **A coding agent:** Claude Code in an Emacs buffer through [agent-shell](https://github.com/xenodium/agent-shell), under `SPC a`; every edit it proposes waits for your answer.
+- **A coding agent:** Claude Code in an Emacs buffer through [agent-shell](https://github.com/xenodium/agent-shell), under `SPC a`; every edit it proposes waits for your answer. Optionally, Claude Code's own screen through claude-code-ide beside it, its sessions under `SPC a w`.
 - **Suggestions as you type:** GitHub Copilot's grey ghost text and next-edit suggestions through [copilot.el](https://github.com/copilot-emacs/copilot.el), off until you turn them on (`SPC t a`, or `kittymacs-suggestions`).
 - **Programming:** Eglot language servers (opt-in per mode), Flymake, structural editing, pinned Tree-sitter grammars that load only when they work.
 - **Every platform:** Linux, macOS, Windows (PowerShell, with Linux on a WSL2 backend) and the Android port, each with its own tested policy.

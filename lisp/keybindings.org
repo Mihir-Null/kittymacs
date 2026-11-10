@@ -296,6 +296,8 @@ In that list, =g= runs the query again and =v= changes it or its grouping.
 
 Every edit the agent proposes waits for =y= (once), =!= (always) or a rejection. =AS:n= in the mode line counts the shells waiting for you.
 
+With the =claude-code-ide= feature on beside it, =SPC a w= holds Claude Code's own sessions: =n= a new instance, =b= pick one, =p= send it a prompt, =i= interrupt it, =r= resume one.
+
 * Suggestions (Copilot)
 
 Off until you turn them on; GitHub Copilot and =M-x copilot-login= once.
