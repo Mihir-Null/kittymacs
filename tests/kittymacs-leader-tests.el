@@ -81,6 +81,70 @@
     (kittymacs-test-with-mode #'emacs-lisp-mode 'normal
       (should-not (key-binding (kbd "SPC m"))))))
 
+;;; Minor-mode groups
+
+(define-minor-mode kittymacs-test-review-mode
+  "A stand-in for a minor mode that turns on over any file, as a review does.")
+
+(ert-deftest kittymacs-minor-localleader-group-follows-its-mode ()
+  "The group is there while the mode is on and gone once it is off."
+  (let ((kittymacs-localleader-alist nil)
+        (kittymacs-minor-localleader-alist nil))
+    (kittymacs-define-minor-localleader 'kittymacs-test-review-mode "R" "review"
+      "n" (cons "next" #'next-line))
+    (kittymacs-test-with-mode #'text-mode 'normal
+      (should-not (key-binding (kbd "SPC m")))
+      (kittymacs-test-review-mode 1)
+      (should (eq (key-binding (kbd "SPC m R n")) #'next-line))
+      (should (member "SPC m R n" (mapcar #'key-description (where-is-internal #'next-line))))
+      (kittymacs-test-review-mode -1)
+      (should-not (key-binding (kbd "SPC m R")))
+      (should-not kittymacs--localleader-alist))))
+
+(ert-deftest kittymacs-minor-localleader-leaves-the-major-menu-alone ()
+  "Only the group's own key changes; every other key of the major menu stays."
+  (let ((kittymacs-localleader-alist nil)
+        (kittymacs-minor-localleader-alist nil))
+    (kittymacs-define-localleader 'prog-mode "c" #'compile "r" #'recompile)
+    (kittymacs-define-minor-localleader 'kittymacs-test-review-mode "R" "review"
+      "n" #'next-line)
+    (kittymacs-test-with-mode #'emacs-lisp-mode 'normal
+      (kittymacs-test-review-mode 1)
+      (should (eq (key-binding (kbd "SPC m c")) #'compile))
+      (should (eq (key-binding (kbd "SPC m r")) #'recompile))
+      (should (eq (key-binding (kbd "SPC m R n")) #'next-line))
+      (kittymacs-test-review-mode -1)
+      (should (eq (key-binding (kbd "SPC m c")) #'compile))
+      (should-not (key-binding (kbd "SPC m R"))))))
+
+(ert-deftest kittymacs-minor-localleader-takes-a-keymap-as-it-is ()
+  "A package's own prefix map serves as the group, and later changes to it show."
+  (let ((kittymacs-localleader-alist nil)
+        (kittymacs-minor-localleader-alist nil)
+        (map (define-keymap "n" #'next-line)))
+    (kittymacs-define-minor-localleader 'kittymacs-test-review-mode "R" "review" map)
+    (keymap-set map "p" #'previous-line)
+    (kittymacs-test-with-mode #'text-mode 'normal
+      (kittymacs-test-review-mode 1)
+      (should (eq (key-binding (kbd "SPC m R n")) #'next-line))
+      (should (eq (key-binding (kbd "SPC m R p")) #'previous-line)))))
+
+(ert-deftest kittymacs-minor-localleader-leaves-out-a-nil-definition ()
+  "A nil definition leaves its key out, and nothing left means no group."
+  (let ((kittymacs-localleader-alist nil)
+        (kittymacs-minor-localleader-alist nil))
+    (kittymacs-define-minor-localleader 'kittymacs-test-review-mode "R" "review"
+      "n" #'next-line "x" nil)
+    (kittymacs-test-with-mode #'text-mode 'normal
+      (kittymacs-test-review-mode 1)
+      (should (eq (key-binding (kbd "SPC m R n")) #'next-line))
+      (should-not (key-binding (kbd "SPC m R x"))))
+    (kittymacs-define-minor-localleader 'kittymacs-test-review-mode "R" "review" "x" nil)
+    (should-not (assq 'kittymacs-test-review-mode kittymacs-minor-localleader-alist))
+    (kittymacs-test-with-mode #'text-mode 'normal
+      (kittymacs-test-review-mode 1)
+      (should-not (key-binding (kbd "SPC m"))))))
+
 (ert-deftest kittymacs-leader-drops-a-group-nothing-bound-a-key-in ()
   "An empty group would show in which-key and lead nowhere."
   (let* ((kittymacs-leader-map (make-sparse-keymap))
