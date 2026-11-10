@@ -430,7 +430,12 @@ The one at point in Forge, or else the current branch's; otherwise ask."
 - =SPC v V= reviews what this worktree has not committed yet, against the same base.
   + Its file is =review/NAME.worktree.json= in the same place, NAME being the worktree's directory, so it never meets a branch's review: =git worktree add ../feature= names the new branch =feature= too.
   + =kittymacs-diff-review-worktree= passes diff-review the worktree as well as the file, because diff-review cannot find a worktree from a file inside =.git=, and its own =M-x diff-review-find-file= asks for a file name with no default.
+- =SPC v u= reviews a pull request from GitHub here: it fetches it into the branch =pr-N=, then reviews that branch like any other.
+  + N is the pull request at point in Forge, or the current branch's, as =SPC v R= finds it; otherwise it asks.
+  + A fetch again updates =pr-N= to the pull request's new head.
+  + The review stays in this clone: whoever wrote the branch, a person or an agent on another machine, does not see its threads. =SPC v R= comments on GitHub instead.
 - The review is a JSON file, =review/BRANCH.json=, under the =.git= that every worktree shares.
+  + A slash in BRANCH makes a folder: =feature/x= is =review/feature/x.json=.
   + Git never commits it, and every worktree of the repository opens the same review.
   + It follows the branch: after a new commit, =g= rescans, viewed marks clear on the files that changed, and threads follow their lines.
 - =diff-review-magit-mode= adds two things to Magit once Magit loads:
@@ -447,6 +452,32 @@ The one at point in Forge, or else the current branch's; otherwise ask."
 (declare-function diff-review-find-file "diff-review" (file &optional root base head))
 (declare-function magit-gitdir "magit-git" (&optional directory common))
 (defvar diff-review-file-command-map)
+
+(declare-function forge-current-pullreq "forge-commands" ())
+(declare-function eieio-oref "eieio-core" (obj slot))
+(declare-function diff-review-branch "diff-review" (branch))
+
+(defun kittymacs--forge-pullreq-number ()
+  "The number of the pull request Forge has at point, or the current branch's."
+  (when-let* (((require 'forge nil t))
+              ((magit-toplevel))
+              (pullreq (forge-current-pullreq)))
+    (eieio-oref pullreq 'number)))
+
+(defun kittymacs-diff-review-pull-request (number)
+  "Fetch pull request NUMBER into the branch pr-NUMBER, and review it.
+Interactively, the pull request at point in Forge, or the current
+branch's; otherwise ask.  The review stays in this clone."
+  (interactive (list (or (kittymacs--forge-pullreq-number)
+                         (read-number "Pull request: "))))
+  (let* ((default-directory (or (locate-dominating-file default-directory ".git")
+                                (user-error "Not in a Git repository")))
+         (branch (format "pr-%d" number)))
+    (with-temp-buffer
+      (unless (eq 0 (process-file "git" nil t nil "fetch" "origin"
+                                  (format "+pull/%d/head:%s" number branch)))
+        (user-error "Fetching pull request %d failed: %s" number (string-trim (buffer-string)))))
+    (diff-review-branch branch)))
 
 (defun kittymacs-diff-review-worktree ()
   "Review this worktree's uncommitted changes against its base.
@@ -482,7 +513,89 @@ Check that `git clone https://github.com/xiaoxinghu/diff-review' works from a te
       (kittymacs-define-minor-localleader 'diff-review-file-mode "R" "review"
         diff-review-file-command-map))
     (keymap-set kittymacs-vc-map "v" (cons "review a branch" #'diff-review-branch))
-    (keymap-set kittymacs-vc-map "V" (cons "review uncommitted changes" #'kittymacs-diff-review-worktree))))
+    (keymap-set kittymacs-vc-map "V" (cons "review uncommitted changes" #'kittymacs-diff-review-worktree))
+    (keymap-set kittymacs-vc-map "u" (cons "review a pull request here" #'kittymacs-diff-review-pull-request))))
+
+#+end_src
+
+* diff-review on another machine, over TRAMP
+:PROPERTIES:
+:ID: 7c2e9a41-5d08-4b36-a1f7-3e8b6d0c9f52
+:END:
+
+- A branch on another machine reviews from there: =SPC v v= with =default-directory= under =/ssh:HOST:=, and the review file stays in that machine's =.git=, where whoever wrote the branch reads the threads.
+- diff-review takes some paths from git's own output, which names them as the other machine sees them, without TRAMP's =/ssh:HOST:= in front; on this machine those paths do not exist, or are different files.
+  + Three places: the repository's root (=rev-parse --show-toplevel=), the shared Git directory (=rev-parse --git-common-dir=) and the worktrees (=worktree list=).
+  + The reverse holds for what it hands git: a throwaway worktree's path must lose the prefix.
+- So, only for a remote =default-directory=, advice puts the prefix back on what git prints, and takes it off what git is given; on this machine both are the identity.
+- A comment's blob is the one place diff-review runs git with =call-process-region=, which never goes through TRAMP, so it would hash on this machine; for a remote file, the buffer is written to a temporary file there and hashed with =process-file=.
+- Not covered: =SPC v V= on another machine's worktree, whose file hashes use the same =call-process-region=.
+- A stopgap until diff-review knows TRAMP itself; each advised function is internal to the pinned version, and the behaviour check fails if one is renamed.
+
+#+begin_src emacs-lisp
+(declare-function diff-review--review-buffer "diff-review" ())
+(declare-function diff-review--git-at "diff-review" (directory &rest args))
+(defvar diff-review--root)
+(defvar diff-review--file-path)
+(defvar diff-review--blob)
+
+(defun kittymacs-diff-review--here (directory path)
+  "PATH, which git printed on DIRECTORY's machine, as this Emacs reaches it."
+  (let ((prefix (file-remote-p directory)))
+    (if (and prefix (stringp path) (file-name-absolute-p path) (not (file-remote-p path)))
+        (concat prefix path)
+      path)))
+
+(defun kittymacs-diff-review--there (arg)
+  "ARG as git takes it: a remote file name without its TRAMP prefix."
+  (if (and (stringp arg) (file-remote-p arg)) (file-local-name arg) arg))
+
+(defun kittymacs-diff-review--toplevel (toplevel directory)
+  "Call TOPLEVEL on DIRECTORY, and name its answer from here."
+  (kittymacs-diff-review--here directory (funcall toplevel directory)))
+
+(defun kittymacs-diff-review--common-dir (common-dir root)
+  "Call COMMON-DIR on ROOT, and name its answer from here."
+  (kittymacs-diff-review--here root (funcall common-dir root)))
+
+(defun kittymacs-diff-review--worktrees (worktrees root)
+  "Call WORKTREES on ROOT, and name each worktree's path from here."
+  (mapcar (lambda (worktree)
+            (plist-put worktree :path (kittymacs-diff-review--here root (plist-get worktree :path))))
+          (funcall worktrees root)))
+
+(defun kittymacs-diff-review--git-at (git-at directory &rest args)
+  "Call GIT-AT in DIRECTORY with ARGS, each file name as git takes it."
+  (apply git-at directory (mapcar #'kittymacs-diff-review--there args)))
+
+(defun kittymacs-diff-review--git-maybe (args)
+  "ARGS, each file name as git takes it."
+  (mapcar #'kittymacs-diff-review--there args))
+
+(defun kittymacs-diff-review--buffer-blob (buffer-blob)
+  "Call BUFFER-BLOB, or for a remote file hash its text with git there."
+  (let ((root (with-current-buffer (or (diff-review--review-buffer) (current-buffer))
+                diff-review--root)))
+    (if (or diff-review--blob (not (and root (file-remote-p root))))
+        (funcall buffer-blob)
+      (let ((default-directory root)
+            (temp (make-nearby-temp-file "diff-review-blob")))
+        (unwind-protect
+            (progn
+              (save-restriction
+                (widen)
+                (write-region (point-min) (point-max) temp nil 'silent))
+              (diff-review--git-at root "hash-object" "-w" "--path" diff-review--file-path temp))
+          (delete-file temp))))))
+
+(when (kittymacs-feature-p 'branch-review)
+  (with-eval-after-load 'diff-review
+    (advice-add 'diff-review--toplevel :around #'kittymacs-diff-review--toplevel)
+    (advice-add 'diff-review--common-dir :around #'kittymacs-diff-review--common-dir)
+    (advice-add 'diff-review--worktrees :around #'kittymacs-diff-review--worktrees)
+    (advice-add 'diff-review--git-at :around #'kittymacs-diff-review--git-at)
+    (advice-add 'diff-review--git-maybe :filter-args #'kittymacs-diff-review--git-maybe)
+    (advice-add 'diff-review--buffer-blob :around #'kittymacs-diff-review--buffer-blob)))
 
 #+end_src
 

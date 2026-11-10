@@ -4,6 +4,7 @@
 ;;; Code:
 
 (require 'cl-lib)
+(require 'json)
 (require 'subr-x)
 (require 'kittymacs-defaults)
 (require 'kittymacs-leader)
@@ -315,10 +316,11 @@ The function `kittymacs-pair-status-functions' runs."
                   'mouse-face 'mode-line-highlight
                   'local-map (make-mode-line-mouse-map 'mouse-1 #'kittymacs-pair-board)))))
 
-(defun kittymacs-pair--common-dir (root)
+(defun kittymacs-pair--common-dir (root &optional remote)
   "The Git directory every worktree of ROOT shares, or nil.
-Read from the files, so it starts no process; nil for a remote ROOT."
-  (unless (file-remote-p root)
+Read from the files, so it starts no process.  A remote ROOT gives nil
+unless REMOTE is non-nil, so a scan never reaches another machine unasked."
+  (unless (and (file-remote-p root) (not remote))
     (let ((dotgit (expand-file-name ".git" root)))
       (cond
        ((file-directory-p dotgit) (file-name-as-directory dotgit))
@@ -442,14 +444,48 @@ Each is a string, empty when there is no review yet."
         (pop-to-buffer buffer)
       (kittymacs-pair--outside status))))
 
+(defcustom kittymacs-pair-tramp-method "ssh"
+  "The TRAMP method that reaches a Change session on another machine."
+  :type 'string
+  :group 'kittymacs)
+
+(defun kittymacs-pair--this-host-p (host)
+  "Whether HOST names this machine, compared by the short name."
+  (let ((short (lambda (name) (car (split-string name "\\.")))))
+    (equal (funcall short host) (funcall short (system-name)))))
+
+(defun kittymacs-pair--path (host worktree)
+  "WORKTREE as this Emacs reaches it.
+The local path when it is here, else a TRAMP path on HOST."
+  (if (or (null host) (string-empty-p host) (kittymacs-pair--this-host-p host)
+          (file-directory-p worktree))
+      worktree
+    (format "/%s:%s:%s" kittymacs-pair-tramp-method host worktree)))
+
+(defun kittymacs-pair-review (host worktree branch)
+  "Review BRANCH in diff-review, from WORKTREE on HOST.
+Over TRAMP when HOST is another machine, so the review file stays in that
+machine's Git directory, where the session reads the threads.
+Interactively, the defaults come from the board's row at point."
+  (interactive
+   (let ((status (and (derived-mode-p 'kittymacs-pair-board-mode)
+                      (gethash (tabulated-list-get-id) kittymacs-pair--sessions))))
+     (list (read-string "Host: " (or (alist-get 'host status) (system-name)))
+           (read-string "Worktree: " (alist-get 'worktree status))
+           (read-string "Branch: " (alist-get 'branch status)))))
+  (unless (fboundp 'diff-review-branch)
+    (user-error "diff-review is not installed: turn on the branch-review feature"))
+  (when (equal host "cloud")
+    (user-error "A cloud session has no worktree to reach: review its pull request instead"))
+  (let ((default-directory (file-name-as-directory (kittymacs-pair--path host worktree))))
+    (diff-review-branch branch)))
+
 (defun kittymacs-pair-board-review ()
-  "Review the branch of the session on this row, in diff-review."
+  "Review the branch of the session on this row, where the session runs."
   (interactive)
   (let ((status (kittymacs-pair--board-status)))
-    (unless (fboundp 'diff-review-branch)
-      (user-error "diff-review is not installed: turn on the branch-review feature"))
-    (let ((default-directory (file-name-as-directory (alist-get 'worktree status))))
-      (diff-review-branch (alist-get 'branch status)))))
+    (kittymacs-pair-review (alist-get 'host status) (alist-get 'worktree status)
+                           (alist-get 'branch status))))
 
 (defvar-keymap kittymacs-pair-board-mode-map
   :doc "The board of Change sessions."
@@ -650,15 +686,16 @@ buffer name."
 (defvar diff-review--comments)
 
 (defcustom kittymacs-pair-verdict-prompt
-  "The owner's verdict on %s is %s, with %d open threads. Read the review's threads and answer them."
+  "The owner's verdict on %s is %s; open threads: %d. Read the review's threads and answer them."
   "The message a Change session gets on a verdict.
 Its arguments are the commit, the verdict and the number of open threads."
   :type 'string
   :group 'kittymacs)
 
 (defun kittymacs-pair--status-for-branch (root branch)
-  "The status file and contents of BRANCH's session in ROOT's repository, a cons."
-  (when-let* ((common (kittymacs-pair--common-dir root))
+  "The status file and contents of BRANCH's session in ROOT's repository, a cons.
+ROOT may be remote: the review asked for it."
+  (when-let* ((common (kittymacs-pair--common-dir root t))
               (dir (expand-file-name "agents/" common))
               ((file-directory-p dir)))
     (cl-loop for file in (directory-files dir t "\\.json\\'")
@@ -666,18 +703,44 @@ Its arguments are the commit, the verdict and the number of open threads."
              when (equal (alist-get 'branch status) branch)
              return (cons file status))))
 
+(defun kittymacs-pair--tmux-target (name)
+  "The tmux window named NAME on the machine of `default-directory', or nil.
+As SESSION:INDEX, from one list of every window."
+  (with-temp-buffer
+    (when (eq 0 (ignore-errors
+                  (process-file "tmux" nil t nil "list-windows" "-a"
+                                "-F" "#{session_name}:#{window_index} #{window_name}")))
+      (goto-char (point-min))
+      (when (re-search-forward (concat "^\\(\\S-+\\) " (regexp-quote name) "$") nil t)
+        (match-string 1)))))
+
+(defun kittymacs-pair--tmux-send (name prompt)
+  "Type PROMPT into the tmux window NAME, on the machine of `default-directory'.
+Say so in the echo area when there is no such window."
+  (if-let* ((target (kittymacs-pair--tmux-target name)))
+      (progn (process-file "tmux" nil nil nil "send-keys" "-t" target "-l" prompt)
+             (process-file "tmux" nil nil nil "send-keys" "-t" target "Enter")
+             t)
+    (message "No tmux window %s on %s: the session did not get the verdict"
+             name (or (file-remote-p default-directory 'host) (system-name)))
+    nil))
+
 (defun kittymacs-pair--nudge (state)
   "Tell the Change session of this review's branch about the verdict STATE.
 Runs after `diff-review--set-verdict', in the review's buffer."
   (when-let* ((branch diff-review--head-name)
               (tip diff-review--tip)
-              (found (kittymacs-pair--status-for-branch diff-review--root branch))
-              (session (kittymacs-pair--session (cdr found))))
-    (claude-code-ide-send-prompt
-     (format kittymacs-pair-verdict-prompt (substring tip 0 (min 7 (length tip))) state
-             (cl-count-if-not (lambda (c) (eq (gethash "resolved" c) t))
-                              diff-review--comments))
-     session)))
+              (root diff-review--root)
+              (found (kittymacs-pair--status-for-branch root branch)))
+    (let* ((status (cdr found))
+           (prompt (format kittymacs-pair-verdict-prompt (substring tip 0 (min 7 (length tip)))
+                           state (cl-count-if-not (lambda (c) (eq (gethash "resolved" c) t))
+                                                  diff-review--comments)))
+           (session (unless (file-remote-p root) (kittymacs-pair--session status))))
+      (if session
+          (claude-code-ide-send-prompt prompt session)
+        (let ((default-directory (file-name-as-directory root)))
+          (kittymacs-pair--tmux-send (alist-get 'session status) prompt))))))
 (when (kittymacs-feature-p 'agent-claude-code-ide)
   (add-hook 'kittymacs-pair-status-functions #'kittymacs-pair-status-update)
   (add-to-list 'mode-line-misc-info '(:eval (kittymacs-pair-mode-line)))

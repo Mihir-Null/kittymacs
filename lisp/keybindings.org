@@ -138,6 +138,7 @@ Press =SPC=, then:
 | SPC v D | Diff this file by syntax | difftastic-magit-diff-buffer-file |
 | SPC v v | Review a branch locally | diff-review-branch |
 | SPC v V | Review this worktree's uncommitted changes | kittymacs-diff-review-worktree |
+| SPC v u | Fetch a pull request and review it locally | kittymacs-diff-review-pull-request |
 
 In the status buffer: =s= stage, =u= unstage, =c c= commit, =P p= push,
 =TAB= fold, =SPC m= for a labelled menu.

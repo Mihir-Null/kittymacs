@@ -24,6 +24,7 @@
 ;;; Code:
 
 (require 'cl-lib)
+(require 'json)
 (require 'subr-x)
 (require 'kittymacs-defaults)
 (require 'kittymacs-leader)
@@ -507,11 +508,7 @@ nowhere else: the caller sees only this function's value."
 
 - A /Change session/ is Claude working on a branch of its own, in a worktree of its own, while you do something else: several can run at once, and each stops to ask you in its own buffer.
   + What a session may do, and when it starts one, is Claude's policy in =~/.claude= ([[*What lives in Emacs, and what does not]]). This section is the Emacs half: seeing them, reaching them, starting them.
-- Each session keeps a /status file/, =agents/NAME.json= under the Git directory every worktree shares (=git rev-parse --git-common-dir=), beside diff-review's =review/=.
-  + Its fields: =branch=, =worktree=, =session= (the name), =how= (=emacs= or =tmux=), =brief=, =state=, =message= and =at=.
-  + =state= is one of =starting=, =working=, =waiting=, =idle=, =review= and =done=; =message= is what Claude said when it last stopped to ask.
-- Whatever writes the file calls =kittymacs-pair-status-functions= with its path, through =emacsclient=, so Emacs need not watch any directory.
-  + That hook, and the file's fields, are this chapter's interface to the outside: names a session's tools rely on, kept stable.
+- Each session keeps a /status file/ under the Git directory every worktree shares, and calls a hook here each time it writes it: [[*The status file: what a session's tools rely on]].
 - The mode line counts the sessions by state, and only when one is live: =CC ⚙2 ⏳1 ✓1= is two working, one waiting for you, one ready for review.
   + /Waiting/ includes /idle/: a session that ended its turn without asking for review is waiting for you too.
   + Clicking it opens the board.
@@ -594,10 +591,11 @@ The function `kittymacs-pair-status-functions' runs."
                   'mouse-face 'mode-line-highlight
                   'local-map (make-mode-line-mouse-map 'mouse-1 #'kittymacs-pair-board)))))
 
-(defun kittymacs-pair--common-dir (root)
+(defun kittymacs-pair--common-dir (root &optional remote)
   "The Git directory every worktree of ROOT shares, or nil.
-Read from the files, so it starts no process; nil for a remote ROOT."
-  (unless (file-remote-p root)
+Read from the files, so it starts no process.  A remote ROOT gives nil
+unless REMOTE is non-nil, so a scan never reaches another machine unasked."
+  (unless (and (file-remote-p root) (not remote))
     (let ((dotgit (expand-file-name ".git" root)))
       (cond
        ((file-directory-p dotgit) (file-name-as-directory dotgit))
@@ -672,6 +670,23 @@ Pressed again from that session, go on to the next one."
 
 #+end_src
 
+** The status file: what a session's tools rely on :concept:
+:PROPERTIES:
+:ID: 0e6b4d29-7f13-4a8c-b5d2-9c1a3e7f4b60
+:END:
+
+- The tools that start and run a Change session live outside Emacs, so this is the interface between the two, kept stable: a file's fields, a hook, and two naming rules.
+- The file is =agents/NAME.json= under the Git directory every worktree shares (=git rev-parse --git-common-dir=), beside diff-review's =review/=. Its fields:
+  + =branch=, =worktree= (an absolute path on the session's machine), =session= (the session's name, NAME), =how= (=emacs= or =tmux=) and =brief= (a path);
+  + =state=: =starting=, =working=, =waiting=, =idle=, =review= or =done=; =message=: what Claude said when it last stopped to ask; =at=: when the file was written, ISO 8601;
+  + =host=: the name this Emacs reaches the session's machine by over SSH, or =cloud= for a session in the cloud;
+  + =route=: how the branch is reviewed once the session finishes, =tramp=, =fetch= or =pr-review=, and null until then.
+- After each write, whatever wrote the file calls =kittymacs-pair-status-functions= with its path, through =emacsclient=, so Emacs need not watch any directory.
+- The review of a session on another machine opens over TRAMP, at =/ssh:HOST:WORKTREE= (=kittymacs-pair-tramp-method= names another method).
+  + When =host= is this machine's short name, or =worktree= exists here, it opens the local path instead.
+  + The review file then stays in that machine's =.git=, where the session reads your threads.
+- A session started in tmux runs in a window named after =session=, on =host=, so a verdict reaches it with =tmux send-keys=.
+
 ** The board
 :PROPERTIES:
 :ID: 8e3a6f21-5b7c-4d94-a0e2-1c9f4b7d5e36
@@ -679,6 +694,8 @@ Pressed again from that session, go on to the next one."
 
 - One row per status file: =RET= opens the session's buffer, =r= reviews its branch in [[id:3f0450b0-881e-4487-b90f-49a4d03f17a7][diff-review]], =g= reads the files again, =q= closes.
   + A session started in tmux has no buffer here: =RET= says where it runs instead.
+  + =r= opens the review where the session runs: here, or over TRAMP on its =host=. =M-x kittymacs-pair-review= does the same for any host, worktree and branch, starting from the row at point.
+  + A session in the cloud has no worktree to reach: its branch is reviewed as a pull request, with =SPC v R= or =SPC v u= ([[id:3f0450b0-881e-4487-b90f-49a4d03f17a7][the version-control chapter]]).
 - The review's columns come from =review/BRANCH.json=, the file diff-review and the session both write: the files marked viewed, the threads not resolved, and the verdict.
   + Reading the verdict asks Git for the branch's tip once per row, the only process the board starts.
 
@@ -735,14 +752,48 @@ Each is a string, empty when there is no review yet."
         (pop-to-buffer buffer)
       (kittymacs-pair--outside status))))
 
+(defcustom kittymacs-pair-tramp-method "ssh"
+  "The TRAMP method that reaches a Change session on another machine."
+  :type 'string
+  :group 'kittymacs)
+
+(defun kittymacs-pair--this-host-p (host)
+  "Whether HOST names this machine, compared by the short name."
+  (let ((short (lambda (name) (car (split-string name "\\.")))))
+    (equal (funcall short host) (funcall short (system-name)))))
+
+(defun kittymacs-pair--path (host worktree)
+  "WORKTREE as this Emacs reaches it.
+The local path when it is here, else a TRAMP path on HOST."
+  (if (or (null host) (string-empty-p host) (kittymacs-pair--this-host-p host)
+          (file-directory-p worktree))
+      worktree
+    (format "/%s:%s:%s" kittymacs-pair-tramp-method host worktree)))
+
+(defun kittymacs-pair-review (host worktree branch)
+  "Review BRANCH in diff-review, from WORKTREE on HOST.
+Over TRAMP when HOST is another machine, so the review file stays in that
+machine's Git directory, where the session reads the threads.
+Interactively, the defaults come from the board's row at point."
+  (interactive
+   (let ((status (and (derived-mode-p 'kittymacs-pair-board-mode)
+                      (gethash (tabulated-list-get-id) kittymacs-pair--sessions))))
+     (list (read-string "Host: " (or (alist-get 'host status) (system-name)))
+           (read-string "Worktree: " (alist-get 'worktree status))
+           (read-string "Branch: " (alist-get 'branch status)))))
+  (unless (fboundp 'diff-review-branch)
+    (user-error "diff-review is not installed: turn on the branch-review feature"))
+  (when (equal host "cloud")
+    (user-error "A cloud session has no worktree to reach: review its pull request instead"))
+  (let ((default-directory (file-name-as-directory (kittymacs-pair--path host worktree))))
+    (diff-review-branch branch)))
+
 (defun kittymacs-pair-board-review ()
-  "Review the branch of the session on this row, in diff-review."
+  "Review the branch of the session on this row, where the session runs."
   (interactive)
   (let ((status (kittymacs-pair--board-status)))
-    (unless (fboundp 'diff-review-branch)
-      (user-error "diff-review is not installed: turn on the branch-review feature"))
-    (let ((default-directory (file-name-as-directory (alist-get 'worktree status))))
-      (diff-review-branch (alist-get 'branch status)))))
+    (kittymacs-pair-review (alist-get 'host status) (alist-get 'worktree status)
+                           (alist-get 'branch status))))
 
 (defvar-keymap kittymacs-pair-board-mode-map
   :doc "The board of Change sessions."
@@ -966,7 +1017,9 @@ buffer name."
 
 - Approving a branch in diff-review (=A=), or asking for changes (=C=), sends that branch's session a message, so it starts on your threads without you switching to it.
   + The message names the verdict, the commit and how many threads are open; the session reads the threads from the review file itself.
-  + With no session for the branch, or one in tmux, it sends nothing.
+  + A claude-code-ide session in this Emacs gets it typed into its buffer.
+  + Any other, in tmux here or on the machine the review was opened from over TRAMP, gets it through =tmux send-keys=, run by =process-file= so TRAMP runs it there; one =tmux list-windows= finds the window first.
+  + With no status file for the branch, nothing happens; with one but no window, the echo area says the message was not sent.
 - diff-review has no hook for a verdict, so this follows =diff-review--set-verdict=, the one function both commands end in, with =:after= advice.
   + That name is internal to diff-review, which is pinned; the behaviour check fails if a newer version drops it.
 
@@ -977,15 +1030,16 @@ buffer name."
 (defvar diff-review--comments)
 
 (defcustom kittymacs-pair-verdict-prompt
-  "The owner's verdict on %s is %s, with %d open threads. Read the review's threads and answer them."
+  "The owner's verdict on %s is %s; open threads: %d. Read the review's threads and answer them."
   "The message a Change session gets on a verdict.
 Its arguments are the commit, the verdict and the number of open threads."
   :type 'string
   :group 'kittymacs)
 
 (defun kittymacs-pair--status-for-branch (root branch)
-  "The status file and contents of BRANCH's session in ROOT's repository, a cons."
-  (when-let* ((common (kittymacs-pair--common-dir root))
+  "The status file and contents of BRANCH's session in ROOT's repository, a cons.
+ROOT may be remote: the review asked for it."
+  (when-let* ((common (kittymacs-pair--common-dir root t))
               (dir (expand-file-name "agents/" common))
               ((file-directory-p dir)))
     (cl-loop for file in (directory-files dir t "\\.json\\'")
@@ -993,18 +1047,44 @@ Its arguments are the commit, the verdict and the number of open threads."
              when (equal (alist-get 'branch status) branch)
              return (cons file status))))
 
+(defun kittymacs-pair--tmux-target (name)
+  "The tmux window named NAME on the machine of `default-directory', or nil.
+As SESSION:INDEX, from one list of every window."
+  (with-temp-buffer
+    (when (eq 0 (ignore-errors
+                  (process-file "tmux" nil t nil "list-windows" "-a"
+                                "-F" "#{session_name}:#{window_index} #{window_name}")))
+      (goto-char (point-min))
+      (when (re-search-forward (concat "^\\(\\S-+\\) " (regexp-quote name) "$") nil t)
+        (match-string 1)))))
+
+(defun kittymacs-pair--tmux-send (name prompt)
+  "Type PROMPT into the tmux window NAME, on the machine of `default-directory'.
+Say so in the echo area when there is no such window."
+  (if-let* ((target (kittymacs-pair--tmux-target name)))
+      (progn (process-file "tmux" nil nil nil "send-keys" "-t" target "-l" prompt)
+             (process-file "tmux" nil nil nil "send-keys" "-t" target "Enter")
+             t)
+    (message "No tmux window %s on %s: the session did not get the verdict"
+             name (or (file-remote-p default-directory 'host) (system-name)))
+    nil))
+
 (defun kittymacs-pair--nudge (state)
   "Tell the Change session of this review's branch about the verdict STATE.
 Runs after `diff-review--set-verdict', in the review's buffer."
   (when-let* ((branch diff-review--head-name)
               (tip diff-review--tip)
-              (found (kittymacs-pair--status-for-branch diff-review--root branch))
-              (session (kittymacs-pair--session (cdr found))))
-    (claude-code-ide-send-prompt
-     (format kittymacs-pair-verdict-prompt (substring tip 0 (min 7 (length tip))) state
-             (cl-count-if-not (lambda (c) (eq (gethash "resolved" c) t))
-                              diff-review--comments))
-     session)))
+              (root diff-review--root)
+              (found (kittymacs-pair--status-for-branch root branch)))
+    (let* ((status (cdr found))
+           (prompt (format kittymacs-pair-verdict-prompt (substring tip 0 (min 7 (length tip)))
+                           state (cl-count-if-not (lambda (c) (eq (gethash "resolved" c) t))
+                                                  diff-review--comments)))
+           (session (unless (file-remote-p root) (kittymacs-pair--session status))))
+      (if session
+          (claude-code-ide-send-prompt prompt session)
+        (let ((default-directory (file-name-as-directory root)))
+          (kittymacs-pair--tmux-send (alist-get 'session status) prompt))))))
 
 #+end_src
 
