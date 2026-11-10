@@ -3,36 +3,55 @@
 
 ;;; Code:
 
+(require 'map)
 (require 'kittymacs-defaults)
 (require 'kittymacs-leader)
 
 (declare-function notifications-notify "notifications" (&rest params))
 (declare-function claude-code-ide "claude-code-ide" ())
 (declare-function claude-code-ide-switch-to-buffer "claude-code-ide" ())
+(declare-function agent-shell-subscribe-to "agent-shell" (&rest args))
+(declare-function agent-shell-attention-acknowledge "agent-shell-attention" (buffer))
+(declare-function agent-shell-attention--mark-buffer "agent-shell-attention" (buffer label &rest args))
+(defvar agent-shell-elicitation--experimental-feature-enabled)
 (declare-function gptel-agent "gptel-agent" (&optional project-dir agent-preset))
 (when (kittymacs-feature-p 'agents)
-  (use-package agent-shell
-    :ensure t
-    :commands (agent-shell agent-shell-toggle agent-shell-new-shell agent-shell-switch-buffer
-               agent-shell-resume-session agent-shell-send-dwim agent-shell-send-file
-               agent-shell-help-menu)
-    :custom
-    (agent-shell-preferred-agent-config 'claude-code)
-    (agent-shell-activity-group-expand-by-default nil)
-    (agent-shell-highlight-blocks nil)
-    (agent-shell-header-style 'text)
-    :config
-    (setopt agent-shell-anthropic-claude-environment
-            (agent-shell-make-environment-variables :inherit-env t)))
+  (condition-case err
+      (progn
+        (use-package acp
+          :vc (:url "https://github.com/xenodium/acp.el"
+               :rev "2959da5fa8657da17a78ac6ceef303a50e3e69de")
+          :defer t)
+        (use-package agent-shell
+          :vc (:url "https://github.com/xenodium/agent-shell"
+               :rev "14e8e2a2f2b495f83c9d7b18be7838e45d75bf56")
+          :commands (agent-shell agent-shell-toggle agent-shell-new-shell agent-shell-switch-buffer
+                     agent-shell-resume-session agent-shell-send-dwim agent-shell-send-file
+                     agent-shell-help-menu)
+          :init
+          ;; Private and experimental: without it agent-shell offers no form,
+          ;; so Claude's AskUserQuestion never reaches you.
+          (setq agent-shell-elicitation--experimental-feature-enabled t)
+          :custom
+          (agent-shell-preferred-agent-config 'claude-code)
+          (agent-shell-activity-group-expand-by-default nil)
+          (agent-shell-highlight-blocks nil)
+          (agent-shell-header-style 'text)
+          :config
+          (setopt agent-shell-anthropic-claude-environment
+                  (agent-shell-make-environment-variables :inherit-env t))))
+    (error
+     (kittymacs-agent-vc-warning "agent-shell" "https://github.com/xenodium/agent-shell" err)))
 
-  (keymap-set kittymacs-agent-map "a" (cons "start or switch" #'agent-shell))
-  (keymap-set kittymacs-agent-map "n" (cons "new shell" #'agent-shell-new-shell))
-  (keymap-set kittymacs-agent-map "t" (cons "toggle" #'agent-shell-toggle))
-  (keymap-set kittymacs-agent-map "b" (cons "switch shell" #'agent-shell-switch-buffer))
-  (keymap-set kittymacs-agent-map "r" (cons "resume session" #'agent-shell-resume-session))
-  (keymap-set kittymacs-agent-map "s" (cons "send region or file" #'agent-shell-send-dwim))
-  (keymap-set kittymacs-agent-map "f" (cons "send a file" #'agent-shell-send-file))
-  (keymap-set kittymacs-agent-map "?" (cons "menu" #'agent-shell-help-menu)))
+  (when (locate-library "agent-shell")
+    (keymap-set kittymacs-agent-map "a" (cons "start or switch" #'agent-shell))
+    (keymap-set kittymacs-agent-map "n" (cons "new shell" #'agent-shell-new-shell))
+    (keymap-set kittymacs-agent-map "t" (cons "toggle" #'agent-shell-toggle))
+    (keymap-set kittymacs-agent-map "b" (cons "switch shell" #'agent-shell-switch-buffer))
+    (keymap-set kittymacs-agent-map "r" (cons "resume session" #'agent-shell-resume-session))
+    (keymap-set kittymacs-agent-map "s" (cons "send region or file" #'agent-shell-send-dwim))
+    (keymap-set kittymacs-agent-map "f" (cons "send a file" #'agent-shell-send-file))
+    (keymap-set kittymacs-agent-map "?" (cons "menu" #'agent-shell-help-menu))))
 (defcustom kittymacs-agent-mcp-servers nil
   "MCP servers every agent-shell session starts with.
 Each element has the shape `agent-shell-mcp-servers' documents.  Set this
@@ -62,11 +81,33 @@ Check that `git clone %s' works from a terminal, and which git Emacs runs: %s"
                            package (error-message-string err) url (executable-find "git"))
                    :warning))
 
+(defun kittymacs-agent--question-event (buffer event)
+  "Count a question form in BUFFER as waiting, from EVENT, until it is answered."
+  (pcase (map-elt event :event)
+    ('elicitation-request
+     (let ((label (concat "Question: " (or (map-elt (map-elt event :data) :message) ""))))
+       (when (fboundp 'agent-shell-attention--mark-buffer)
+         (agent-shell-attention--mark-buffer buffer label :force t))
+       (unless (eq (window-buffer (selected-window)) buffer)
+         (kittymacs-agent-notify buffer (format "%s agent" (buffer-name buffer)) label))))
+    ('elicitation-response
+     (when (fboundp 'agent-shell-attention-acknowledge)
+       (agent-shell-attention-acknowledge buffer)))))
+
+(defun kittymacs-agent-watch-questions ()
+  "Let this agent-shell buffer's question forms count as waiting."
+  (let ((buffer (current-buffer)))
+    (agent-shell-subscribe-to
+     :shell-buffer buffer
+     :on-event (lambda (event)
+                 (when (buffer-live-p buffer)
+                   (kittymacs-agent--question-event buffer event))))))
+
 (when (kittymacs-feature-p 'agents)
   (condition-case err
       (use-package agent-shell-attention
         :vc (:url "https://github.com/ultronozm/agent-shell-attention.el"
-             :rev "aaf599121445ead597a14da62bad580c8897ee6c")
+             :rev "8d5116f174fc35177aedc0f967a8fa3d6784aa1b")
         :after agent-shell
         :demand t
         :custom
@@ -79,7 +120,8 @@ Check that `git clone %s' works from a terminal, and which git Emacs runs: %s"
 
   (when (locate-library "agent-shell-attention")
     (keymap-set kittymacs-agent-map "j" (cons "jump to waiting shell" #'agent-shell-attention-jump))
-    (keymap-set kittymacs-agent-map "d" (cons "all shells" #'agent-shell-attention-dashboard))))
+    (keymap-set kittymacs-agent-map "d" (cons "all shells" #'agent-shell-attention-dashboard))
+    (add-hook 'agent-shell-mode-hook #'kittymacs-agent-watch-questions)))
 (when (kittymacs-feature-p 'agents)
   (with-eval-after-load 'meow
     (dolist (entry '((agent-shell-mode . insert)
@@ -105,7 +147,11 @@ Check that `git clone %s' works from a terminal, and which git Emacs runs: %s"
       (claude-code-ide-switch-to-buffer)
     (user-error (claude-code-ide))))
 
-(when (kittymacs-feature-p 'agent-claude-code-ide)
+(defvar-keymap kittymacs-claude-code-ide-map
+  :doc "claude-code-ide's sessions, on SPC a w.
+w, d and j are left free for an integration's own commands.")
+
+(when (kittymacs-feature-p 'claude-code-ide)
   (condition-case err
       (use-package claude-code-ide
         :vc (:url "https://github.com/manzaltu/claude-code-ide.el"
@@ -122,6 +168,16 @@ Check that `git clone %s' works from a terminal, and which git Emacs runs: %s"
      (kittymacs-agent-vc-warning "claude-code-ide"
                                  "https://github.com/manzaltu/claude-code-ide.el" err)))
 
+  (keymap-set kittymacs-agent-map "w" (cons "claude-code-ide sessions" kittymacs-claude-code-ide-map))
+  ;; w, d and j stay unbound here: an integration adds its own there.
+  (when (locate-library "claude-code-ide")
+    (keymap-set kittymacs-claude-code-ide-map "n" (cons "new instance" #'claude-code-ide))
+    (keymap-set kittymacs-claude-code-ide-map "b" (cons "pick a session" #'claude-code-ide-list-sessions))
+    (keymap-set kittymacs-claude-code-ide-map "p" (cons "send a prompt" #'claude-code-ide-send-prompt))
+    (keymap-set kittymacs-claude-code-ide-map "i" (cons "interrupt" #'claude-code-ide-send-escape))
+    (keymap-set kittymacs-claude-code-ide-map "r" (cons "resume a session" #'claude-code-ide-resume))))
+
+(when (kittymacs-feature-p 'agent-claude-code-ide)
   (when (locate-library "claude-code-ide")
     (keymap-set kittymacs-agent-map "a"
                 (cons "start or switch" #'kittymacs-agent-claude-code-ide-start-or-switch))
