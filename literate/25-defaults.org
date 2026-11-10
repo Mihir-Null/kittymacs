@@ -23,6 +23,7 @@
 | Interface | =y= or =n=, no bell, no dialog boxes, smooth scrolling               |
 | Undo      | about 16 MB per buffer, one edit per step                            |
 | Windows   | undo layouts, move with Shift and the arrow keys                     |
+| Repeat    | =C-x o o o=: one key repeats a command that has a repeat map         |
 | Scratch   | survives restarts                                                    |
 | Server    | =emacsclient= opens files in this Emacs                              |
 
@@ -260,6 +261,23 @@
 
 #+end_src
 
+* Repeating a command with one key
+
+- =repeat-mode= lets a run of related commands take one key each after the first: =C-x o o o= walks the windows, and =C-x u u= undoes twice.
+  + A command repeats this way when Emacs or its package gives it a /repeat map/: window and buffer commands, smerge's conflict commands and diff-review's review commands all have one.
+  + Each repeat names the keys that continue it in the echo area.
+  + The repeat lasts until a key outside the map: =repeat-exit-timeout= stays nil.
+- How it meets Meow, whose states [[id:a1607a41-b741-428a-9de3-c16e7c8d3ecc][the editing chapter]] explains:
+  + right after a repeatable command, a single letter from that command's repeat map takes priority over Meow, because the repeat state lives in =overriding-terminal-local-map=, which Emacs consults before every other keymap;
+  + any other key ends the repeat and does its usual job, so =j= right after =C-c _ n= in a review still runs Meow's =meow-next=;
+  + the repeat follows the command, not the keys that ran it, so a command reached through a =SPC m= group repeats in the same way.
+- Why on for everyone: [[file:../ARCHITECTURE.md][ARCHITECTURE.md]], "repeat-mode is on".
+
+#+begin_src emacs-lisp
+(repeat-mode 1)
+
+#+end_src
+
 * A scratch buffer that survives restarts
 
 - The =*scratch*= buffer is a notepad: killing it only buries it.
@@ -392,5 +410,6 @@ puts the socket without `XDG_RUNTIME_DIR'."
 - =M-x customize-variable RET fill-column=, set and save: the value persists in =var/etc/custom.el=.
 - =M-x split-window-below= (=C-x 2= makes a frame while frames-only mode is on), then =C-c <left>=: winner brings the old layout back.
 - =SPC [= and =SPC ]= cycle your own buffers, skipping =*Messages*=.
+- With two windows: =C-x o o= moves to the second and back, and the echo area names =o= as the key that continues.
 - Type in =*scratch*=, restart Emacs: the text is still there.
 - =just test-packages= runs the startup verifier, which loads this module with the rest and fails on any warning.

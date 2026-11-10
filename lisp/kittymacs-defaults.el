@@ -121,6 +121,7 @@
 (setopt window-divider-default-right-width 10
         window-divider-default-bottom-width 10)
 (window-divider-mode 1)
+(repeat-mode 1)
 (defcustom kittymacs-scratch-file (expand-file-name "scratch" kittymacs-cache-dir)
   "Where the *scratch* buffer's text is kept between sessions."
   :type 'file
