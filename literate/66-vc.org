@@ -35,6 +35,8 @@
   + Its commands live under =C-c v= here as well as the default =C-c ^=: =C-c v n= next conflict, =C-c v u= keep upper, =C-c v l= keep lower.
   + All of them are in =smerge-basic-map=, which =smerge-mode-map= puts under =C-c ^=; binding the same map under =C-c v= makes the shorter prefix work without changing anything else.
   + =C-c ^= keeps working, as the Emacs manual describes.
+  + =SPC m C= holds the same map while a file has conflicts, as a group beside the file's own menu ([[id:f468e425-28ac-46ac-b6d1-92b644d07e61][minor modes in =SPC m=]]): =SPC m C n= next conflict, =SPC m C u= keep upper.
+  + With =repeat-mode= on, =n= again after any of them moves on to the next conflict.
 
 #+begin_src emacs-lisp
 ;;; kittymacs-vc.el --- Magit and version control -*- lexical-binding: t; -*-
@@ -65,7 +67,8 @@
         ediff-window-setup-function #'ediff-setup-windows-plain)
 
 (with-eval-after-load 'smerge-mode
-  (keymap-set smerge-mode-map "C-c v" smerge-basic-map))
+  (keymap-set smerge-mode-map "C-c v" smerge-basic-map)
+  (kittymacs-define-minor-localleader 'smerge-mode "C" "conflicts" smerge-basic-map))
 
 #+end_src
 
@@ -424,6 +427,9 @@ The one at point in Forge, or else the current branch's; otherwise ask."
   + Each file opens as the real file in its own major mode, so xref, Eglot and editing all work during a review.
   + Overlays put each removed line back in place, before the lines that replaced it, and tint the added ones.
   + You mark files viewed, start comment threads on lines, and give the head a verdict: approved, or changes requested.
+- =SPC v V= reviews what this worktree has not committed yet, against the same base.
+  + Its file is =review/NAME.worktree.json= in the same place, NAME being the worktree's directory, so it never meets a branch's review: =git worktree add ../feature= names the new branch =feature= too.
+  + =kittymacs-diff-review-worktree= passes diff-review the worktree as well as the file, because diff-review cannot find a worktree from a file inside =.git=, and its own =M-x diff-review-find-file= asks for a file name with no default.
 - The review is a JSON file, =review/BRANCH.json=, under the =.git= that every worktree shares.
   + Git never commits it, and every worktree of the repository opens the same review.
   + It follows the branch: after a new commit, =g= rescans, viewed marks clear on the files that changed, and threads follow their lines.
@@ -438,6 +444,23 @@ The one at point in Forge, or else the current branch's; otherwise ask."
 
 #+begin_src emacs-lisp
 (declare-function diff-review-magit-mode "diff-review-magit" (&optional arg))
+(declare-function diff-review-find-file "diff-review" (file &optional root base head))
+(declare-function magit-gitdir "magit-git" (&optional directory common))
+(defvar diff-review-file-command-map)
+
+(defun kittymacs-diff-review-worktree ()
+  "Review this worktree's uncommitted changes against its base.
+The review file is review/NAME.worktree.json under the Git directory every
+worktree shares, NAME being this worktree's directory, so it never meets a
+branch's review/BRANCH.json."
+  (interactive)
+  (require 'magit)
+  (let ((root (or (magit-toplevel) (user-error "Not in a Git repository"))))
+    (diff-review-find-file
+     (expand-file-name (format "review/%s.worktree.json"
+                               (file-name-nondirectory (directory-file-name root)))
+                       (magit-gitdir root t))
+     root)))
 
 (when (kittymacs-feature-p 'branch-review)
   (condition-case err
@@ -455,7 +478,11 @@ Check that `git clone https://github.com/xiaoxinghu/diff-review' works from a te
   (when (locate-library "diff-review")
     (with-eval-after-load 'magit
       (diff-review-magit-mode 1))
-    (keymap-set kittymacs-vc-map "v" (cons "review a branch" #'diff-review-branch))))
+    (with-eval-after-load 'diff-review
+      (kittymacs-define-minor-localleader 'diff-review-file-mode "R" "review"
+        diff-review-file-command-map))
+    (keymap-set kittymacs-vc-map "v" (cons "review a branch" #'diff-review-branch))
+    (keymap-set kittymacs-vc-map "V" (cons "review uncommitted changes" #'kittymacs-diff-review-worktree))))
 
 #+end_src
 
@@ -477,11 +504,14 @@ Check that `git clone https://github.com/xiaoxinghu/diff-review' works from a te
 | =g=      | rescan the diff                          | =q=       | end the review; in the sidebar, hide it |
 
 - A file under review is a file you may edit, so it keeps its usual state, Normal.
-  + The review is a minor mode there, so =SPC m= stays the major mode's menu, as it does in a gptel buffer: see [[id:94d55283-5011-4f98-a7f0-8c6bcb51aab9][Agents]].
-  + diff-review's commands stay under its own prefix, =C-c _=: Meow leaves =C-c= to Emacs in Normal and Insert state alike, so the prefix works unchanged.
-  + kittymacs leaves =repeat-mode= off, so each command takes the prefix; =M-g n= and =M-g p= walk the hunks without it.
+  + The review is a minor mode there, so it adds one group to =SPC m=, =SPC m R=, and the rest stays the major mode's menu ([[id:f468e425-28ac-46ac-b6d1-92b644d07e61][minor modes in =SPC m=]]).
+  + The group holds diff-review's own command map, so =SPC m R c= is =C-c _ c=, and the table below serves both.
+  + =C-c _= keeps working: Meow leaves =C-c= to Emacs in Normal and Insert state alike.
+  + No =kittymacs-define-localleader= binds =R=, so the group hides no key of any major mode's menu.
+  + With =repeat-mode= on, the prefix is needed once for a run: =C-c _ n n v= walks two hunks and marks the file viewed, and =SPC m R n n= does the same; =M-g n= and =M-g p= walk the hunks too.
+- Each key below follows =C-c _= or =SPC m R=.
 
-| =C-c _=  | Does                                | =C-c _=  | Does                                 |
+| Key      | Does                                | Key      | Does                                 |
 |----------+-------------------------------------+----------+--------------------------------------|
 | =n=, =p= | next, previous hunk, across files   | =x=      | resolve the thread, or reopen it     |
 | =v=      | mark viewed, show the next unviewed | =D=      | delete the thread                    |
@@ -509,6 +539,15 @@ Check that `git clone https://github.com/xiaoxinghu/diff-review' works from a te
   + Most open Magit's own menu; stage, unstage, discard and refresh act directly.
   + =L= stores an Org link to the commits or buffer at point, with the =git-links= feature on.
   + =v= reviews the selected commits, or the one at point, with =branch-review= on: [[*Reviewing a branch: diff-review]].
+- A blame (=SPC v b=, then =b=) is a minor mode over the file, so its commands are the group =SPC m B= while it is on, beside the file's own menu.
+  + Its keys are Magit's own blame keys, which a blamed buffer also takes directly where Meow leaves them free.
+  + Magit gives these commands no repeat map, so each takes the group keys.
+
+| =SPC m B= | Does                         | =SPC m B= | Does               |
+|-----------+------------------------------+-----------+--------------------|
+| =n=, =p=  | next, previous chunk         | =b=       | blame further back |
+| =N=, =P=  | same commit's next, previous | =c=       | cycle the style    |
+| =s=       | show the commit              | =q=       | stop blaming       |
 
 | =SPC m= | Does    | =SPC m= | Does   | =SPC m= | Does           |
 |---------+---------+---------+--------+---------+----------------|
@@ -544,6 +583,17 @@ Check that `git clone https://github.com/xiaoxinghu/diff-review' works from a te
   "v" (and (kittymacs-feature-p 'branch-review) (locate-library "diff-review")
            (cons "review commits" #'diff-review-magit-commits)))
 
+(with-eval-after-load 'magit-blame
+  (kittymacs-define-minor-localleader 'magit-blame-mode "B" "blame"
+    "n" (cons "next chunk" #'magit-blame-next-chunk)
+    "p" (cons "previous chunk" #'magit-blame-previous-chunk)
+    "N" (cons "same commit's next" #'magit-blame-next-chunk-same-commit)
+    "P" (cons "same commit's previous" #'magit-blame-previous-chunk-same-commit)
+    "s" (cons "show commit" #'magit-show-commit)
+    "b" (cons "blame further back" #'magit-blame-addition)
+    "c" (cons "cycle style" #'magit-blame-cycle-style)
+    "q" (cons "stop blaming" #'magit-blame-quit)))
+
 (provide 'kittymacs-vc)
 ;;; kittymacs-vc.el ends here
 #+end_src
@@ -567,4 +617,8 @@ Check that `git clone https://github.com/xiaoxinghu/diff-review' works from a te
   + =SPC v v= from a file of the repository offers the same branch, and opens the same review;
   + =RET= on a file shows it with removed lines in place; =C-c _ c= there starts a comment, and =C-c _ v= marks the file viewed;
   + =q= in the overview ends the review; =.git/review/BRANCH.json= keeps the comment and the mark;
-  + =SPC m v= on a commit in a Magit log, or =d v=, reviews that commit.
+  + =SPC m v= on a commit in a Magit log, or =d v=, reviews that commit;
+  + in a file under review, =SPC m R n n= walks two hunks, and =SPC m= still shows the major mode's menu beside =R=;
+  + =SPC v V= in a worktree with an uncommitted edit opens a review of that edit, kept in =.git/review/NAME.worktree.json=.
+- In a file with conflict markers: =SPC m C n= moves to the next conflict, and =n= again to the one after.
+- =SPC v b=, then =b=, in a tracked file; then =SPC m B n=: point moves to the next chunk; =SPC m B q= stops blaming and =SPC m B= is gone.

@@ -51,7 +51,7 @@ A new installation starts small: Meow, Vertico, Orderless, Marginalia, Consult, 
 - **Discoverability:** which-key on every prefix, an offline cheat sheet (`SPC h ?`), Meow's tutor (`SPC h t`), Helpful, and Casual menus for the built-in modes.
 - **Completion:** Vertico, Orderless, Marginalia, Consult and Embark in the minibuffer; Corfu and Cape in the buffer; Yasnippet templates.
 - **Files and projects:** Dired with directories first on every platform, a Treemacs sidebar, `project.el` projects in Tabspaces workspaces, ripgrep search.
-- **Version control:** Magit with Meow-friendly Motion state and a `SPC m` menu, VC, diff-hl in the gutter; Forge and pr-review for pull requests, magit-todos, git-link and orgit, difftastic's diffs by syntax, and diff-review for reviewing a branch locally.
+- **Version control:** Magit with Meow-friendly Motion state and a `SPC m` menu, VC, diff-hl in the gutter; Forge and pr-review for pull requests, magit-todos, git-link and orgit, difftastic's diffs by syntax, and diff-review for reviewing a branch or a worktree's uncommitted changes locally.
 - **A real terminal:** [ghostel](https://github.com/dakra/ghostel) (libghostty), with Meow inside it; Eshell alongside.
 - **Remote machines:** Tramp with named backends (`SPC o b`), and guards so that a dead connection cannot stall a start or an idle Emacs.
 - **Notes:** Org with an agenda, Org QL queries by tag and TODO state, and Org-roam graphs scoped per project.
