@@ -296,7 +296,7 @@ In that list, =g= runs the query again and =v= changes it or its grouping.
 
 Every edit the agent proposes waits for =y= (once), =!= (always) or a rejection. =AS:n= in the mode line counts the shells waiting for you.
 
-With claude-code-ide as the agent instead, =SPC a d= is the board of Claude's Change sessions, =SPC a j= jumps to one waiting for you, and =SPC a C= starts one on a new branch. =CC= in the mode line counts them: =⚙= working, =⏳= waiting, =✓= ready for review. On the board, =RET= opens a session, =r= its review, =i= its manifest.
+With =agent-change= on, beside the agent, =SPC a w= holds Claude's Change sessions: =SPC a w d= is their board, =SPC a w j= jumps to one waiting for you, =SPC a w w= starts one on a new branch, and =SPC a w b=, =p=, =i= and =r= pick, prompt, interrupt and resume a claude-code-ide session. =CC= in the mode line counts them: =⚙= working, =⏳= waiting, =✓= ready for review. On the board, =RET= opens a session, =r= its review, =i= its manifest.
 
 * Suggestions (Copilot)
 

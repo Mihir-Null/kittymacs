@@ -257,13 +257,18 @@
 
     ;; Assistants
     (agents
-     :group assistants :packages (agent-shell agent-shell-attention) :module kittymacs-agents :profile full
-     :vc (agent-shell-attention) :one-of agent :option kittymacs-agent-mcp-servers
+     :group assistants :packages (agent-shell acp agent-shell-attention) :module kittymacs-agents :profile full
+     :vc (agent-shell acp agent-shell-attention) :one-of agent :option kittymacs-agent-mcp-servers
      :summary "Runs Claude Code through agent-shell, in an Emacs buffer of its own."
      :example "=SPC a a= starts an agent in this project.")
-    (agent-claude-code-ide
+    (agent-change
      :group assistants :packages (claude-code-ide) :module kittymacs-agents :profile optional
-     :vc (claude-code-ide) :deps (terminal) :one-of agent
+     :vc (claude-code-ide) :deps (terminal)
+     :summary "Lets Claude work on branches of their own beside your chat, and shows them on a board."
+     :example "=SPC a w d= lists Claude's Change sessions.")
+    (agent-claude-code-ide
+     :group assistants :module kittymacs-agents :profile optional
+     :deps (agent-change) :one-of agent
      :summary "Runs Claude Code's own screen in a terminal, with Emacs's code navigation as its tools."
      :example "=SPC a a= opens Claude Code beside this project's files.")
     (agent-eca
