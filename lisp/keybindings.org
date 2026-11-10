@@ -136,12 +136,15 @@ Press =SPC=, then:
 | SPC v t | TODOs in this repository | magit-todos-list |
 | SPC v o | Copy a link to this line on the forge | git-link |
 | SPC v D | Diff this file by syntax | difftastic-magit-diff-buffer-file |
+| SPC v v | Review a branch locally | diff-review-branch |
+| SPC v V | Review this worktree's uncommitted changes | kittymacs-diff-review-worktree |
 
 In the status buffer: =s= stage, =u= unstage, =c c= commit, =P p= push,
 =TAB= fold, =SPC m= for a labelled menu.
 
-The last five rows need the =pull-requests=, =git-extras=, =git-links= and
-=structural-diffs= features, which the =full= profile turns on.
+The last seven rows need the =pull-requests=, =git-extras=, =git-links=,
+=structural-diffs= and =branch-review= features, which the =full= profile
+turns on.
 
 * Windows and frames
 
@@ -232,6 +235,17 @@ New editing surfaces are OS windows (frames); your window manager arranges them.
 | Agent shell  | =i= / =m= / =t=    | interrupt / permission mode / transcript |
 | any of these | =?=            | a menu of everything the mode can do |
 #+TBLFM: $2=SPC m= then
+
+A few minor modes add one group of their own while they are on, beside the
+major mode's menu:
+
+| While              | SPC m then | Does                                     |
+|--------------------+------------+------------------------------------------|
+| a file is reviewed | =R=        | diff-review's keys: =n= next hunk, =c= comment, =v= viewed |
+| a file has conflicts | =C=      | smerge: =n= next conflict, =u= / =l= keep upper / lower |
+| a file is blamed   | =B=        | Magit blame: =n= / =p= chunks, =q= stop  |
+
+With =repeat-mode=, a second =n= after any of those repeats it.
 
 * Plain Emacs keys worth knowing
 

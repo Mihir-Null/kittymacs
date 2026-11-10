@@ -93,10 +93,18 @@ MODE defaults to the current major mode."
                                 (derived-mode-all-parents (or mode major-mode))))))
     (when maps (make-composed-keymap maps))))
 
+(defun kittymacs--buffer-localleader-map ()
+  "Return this buffer's whole SPC m map, or nil if it has none.
+The groups of its minor modes that are on come first, then its major
+mode's menu, so a group shadows only its own key."
+  (let ((maps (delq nil (list (kittymacs--minor-localleader-groups)
+                              (kittymacs-localleader-map)))))
+    (when maps (make-composed-keymap maps))))
+
 (defun kittymacs--install-localleader ()
   "Point this buffer's emulation entry at its localleader, if it has one."
   (setq kittymacs--localleader-alist
-        (when-let* ((local (kittymacs-localleader-map))
+        (when-let* ((local (kittymacs--buffer-localleader-map))
                     (wrapper (define-keymap
                                kittymacs-leader-key
                                (define-keymap kittymacs-localleader-key
@@ -130,12 +138,41 @@ Calling this again for MODE replaces its map."
       (setf (alist-get mode kittymacs-localleader-alist nil 'remove) nil)))
   (kittymacs-refresh-localleaders)
   mode)
+(defvar kittymacs-minor-localleader-alist nil
+  "Alist of (MINOR-MODE KEY LABEL . KEYMAP).
+While MINOR-MODE is on in a buffer, its SPC m menu has KEYMAP under KEY.")
+
+(defun kittymacs--minor-localleader-groups ()
+  "Return a keymap of this buffer's minor-mode groups, or nil if no mode is on."
+  (let (map)
+    (pcase-dolist (`(,mode ,key ,label . ,keymap) kittymacs-minor-localleader-alist)
+      (when (and (boundp mode) (symbol-value mode))
+        (unless map (setq map (make-sparse-keymap)))
+        (keymap-set map key (cons label keymap))))
+    map))
+
+(defun kittymacs-define-minor-localleader (mode key label &rest definitions)
+  "While minor MODE is on, show DEFINITIONS as group KEY, called LABEL, in SPC m.
+DEFINITIONS are KEY DEFINITION pairs, as for `kittymacs-define-localleader',
+where a nil definition leaves its key out; or a single keymap, used as it is.
+With nothing left, MODE adds no group.  The group shadows KEY of the major
+mode's menu while MODE is on.  Calling this again for MODE replaces its group."
+  (declare (indent 3))
+  (let ((map (if (and definitions (null (cdr definitions)))
+                 (car definitions)
+               (when-let* ((present (kittymacs--localleader-present definitions)))
+                 (apply #'define-keymap present)))))
+    (setf (alist-get mode kittymacs-minor-localleader-alist nil 'remove)
+          (and map (cons key (cons label map))))
+    (add-hook (intern (format "%s-hook" mode)) #'kittymacs--install-localleader))
+  (kittymacs-refresh-localleaders)
+  mode)
 (defun kittymacs-describe-leader ()
   "Describe the leader bindings, including this buffer's localleader."
   (interactive)
   (let ((map (make-sparse-keymap)))
     (set-keymap-parent map kittymacs-leader-map)
-    (when-let* ((local (kittymacs-localleader-map)))
+    (when-let* ((local (kittymacs--buffer-localleader-map)))
       (keymap-set map kittymacs-localleader-key (cons "mode" local)))
     (describe-keymap map)))
 

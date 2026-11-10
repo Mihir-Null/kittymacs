@@ -26,7 +26,8 @@
         ediff-window-setup-function #'ediff-setup-windows-plain)
 
 (with-eval-after-load 'smerge-mode
-  (keymap-set smerge-mode-map "C-c v" smerge-basic-map))
+  (keymap-set smerge-mode-map "C-c v" smerge-basic-map)
+  (kittymacs-define-minor-localleader 'smerge-mode "C" "conflicts" smerge-basic-map))
 (defun kittymacs-magit-display-buffer (buffer)
   "Show Magit BUFFER in a frame under frames-only mode, otherwise traditionally."
   (if (and (bound-and-true-p frames-only-mode) (display-graphic-p))
@@ -203,6 +204,50 @@ The one at point in Forge, or else the current branch's; otherwise ask."
     (add-to-list 'meow-mode-state-list '(difftastic-mode . motion)))
 
   (keymap-set kittymacs-vc-map "D" (cons "diff file by syntax" #'difftastic-magit-diff-buffer-file)))
+(declare-function diff-review-magit-mode "diff-review-magit" (&optional arg))
+(declare-function diff-review-find-file "diff-review" (file &optional root base head))
+(declare-function magit-gitdir "magit-git" (&optional directory common))
+(defvar diff-review-file-command-map)
+
+(defun kittymacs-diff-review-worktree ()
+  "Review this worktree's uncommitted changes against its base.
+The review file is review/NAME.worktree.json under the Git directory every
+worktree shares, NAME being this worktree's directory, so it never meets a
+branch's review/BRANCH.json."
+  (interactive)
+  (require 'magit)
+  (let ((root (or (magit-toplevel) (user-error "Not in a Git repository"))))
+    (diff-review-find-file
+     (expand-file-name (format "review/%s.worktree.json"
+                               (file-name-nondirectory (directory-file-name root)))
+                       (magit-gitdir root t))
+     root)))
+
+(when (kittymacs-feature-p 'branch-review)
+  (condition-case err
+      (use-package diff-review
+        :vc (:url "https://github.com/xiaoxinghu/diff-review"
+             :rev "49cba292bb933e2a1a90f61145e29311636544ae")
+        :defer t)
+    (error
+     (display-warning 'kittymacs
+                      (format "diff-review was not installed: %s
+Check that `git clone https://github.com/xiaoxinghu/diff-review' works from a terminal, and which git Emacs runs: %s"
+                              (error-message-string err) (executable-find "git"))
+                      :warning)))
+
+  (when (locate-library "diff-review")
+    (with-eval-after-load 'magit
+      (diff-review-magit-mode 1))
+    (with-eval-after-load 'diff-review
+      (kittymacs-define-minor-localleader 'diff-review-file-mode "R" "review"
+        diff-review-file-command-map))
+    (keymap-set kittymacs-vc-map "v" (cons "review a branch" #'diff-review-branch))
+    (keymap-set kittymacs-vc-map "V" (cons "review uncommitted changes" #'kittymacs-diff-review-worktree))))
+(when (kittymacs-feature-p 'branch-review)
+  (with-eval-after-load 'meow
+    (add-to-list 'meow-mode-state-list '(diff-review-mode . motion))
+    (add-to-list 'meow-mode-state-list '(diff-review-sidebar-mode . motion))))
 (with-eval-after-load 'meow
   (add-to-list 'meow-mode-state-list '(magit-mode . motion)))
 
@@ -222,7 +267,20 @@ The one at point in Forge, or else the current branch's; otherwise ask."
   "x" (cons "discard" #'magit-discard)
   "g" (cons "refresh" #'magit-refresh)
   "?" (cons "all commands" #'magit-dispatch)
-  "L" (and (kittymacs-feature-p 'git-links) (cons "store Org link" #'orgit-store-link)))
+  "L" (and (kittymacs-feature-p 'git-links) (cons "store Org link" #'orgit-store-link))
+  "v" (and (kittymacs-feature-p 'branch-review) (locate-library "diff-review")
+           (cons "review commits" #'diff-review-magit-commits)))
+
+(with-eval-after-load 'magit-blame
+  (kittymacs-define-minor-localleader 'magit-blame-mode "B" "blame"
+    "n" (cons "next chunk" #'magit-blame-next-chunk)
+    "p" (cons "previous chunk" #'magit-blame-previous-chunk)
+    "N" (cons "same commit's next" #'magit-blame-next-chunk-same-commit)
+    "P" (cons "same commit's previous" #'magit-blame-previous-chunk-same-commit)
+    "s" (cons "show commit" #'magit-show-commit)
+    "b" (cons "blame further back" #'magit-blame-addition)
+    "c" (cons "cycle style" #'magit-blame-cycle-style)
+    "q" (cons "stop blaming" #'magit-blame-quit)))
 
 (provide 'kittymacs-vc)
 ;;; kittymacs-vc.el ends here
