@@ -413,6 +413,28 @@ Each is a string, empty when there is no review yet."
                     ((equal (alist-get 'head verdict) tip) (alist-get 'state verdict))
                     (t "stale")))))))
 
+(defun kittymacs-pair--manifest-file (file)
+  "The manifest beside the status FILE."
+  (concat (string-remove-suffix ".json" file) ".manifest.json"))
+
+(defun kittymacs-pair--reach (file)
+  "A short summary of what the session of status FILE reaches, or \"?\".
+JSON's false and null stay apart here: null is a check not made."
+  (if-let* ((manifest (ignore-errors
+                        (with-temp-buffer
+                          (insert-file-contents (kittymacs-pair--manifest-file file))
+                          (json-parse-buffer :object-type 'alist :null-object nil
+                                             :false-object :false)))))
+      (let ((reach (alist-get 'reach manifest))
+            (mark (lambda (value) (if (eq value t) "✓" "✗"))))
+        (string-trim-right
+         (format "E%s gh%s %s"
+                 (funcall mark (and (eq (alist-get 'emacs reach) t)
+                                    (not (eq (alist-get 'emacs_sees_repo reach) :false))))
+                 (funcall mark (alist-get 'gh reach))
+                 (or (alist-get 'route reach) ""))))
+    "?"))
+
 (defun kittymacs-pair--board-print ()
   "Fill the board from the table, keeping point on its row."
   (setq tabulated-list-entries
@@ -423,7 +445,8 @@ Each is a string, empty when there is no review yet."
                                       (or (alist-get 'branch status) "?")
                                       (or (alist-get 'state status) "?")
                                       (append (kittymacs-pair--review file status)
-                                              (list (or (alist-get 'message status) "")))))))
+                                              (list (kittymacs-pair--reach file)
+                                                    (or (alist-get 'message status) "")))))))
   (tabulated-list-print t))
 
 (defun kittymacs-pair--board-revert ()
@@ -487,18 +510,44 @@ Interactively, the defaults come from the board's row at point."
     (kittymacs-pair-review (alist-get 'host status) (alist-get 'worktree status)
                            (alist-get 'branch status))))
 
+(defvar-keymap kittymacs-pair-manifest-mode-map
+  :doc "A Change session's manifest."
+  "q" #'quit-window)
+
+(define-derived-mode kittymacs-pair-manifest-mode js-json-mode "Manifest"
+  "A Change session's manifest, read-only.
+\\{kittymacs-pair-manifest-mode-map}"
+  (setq buffer-read-only t))
+
+(defun kittymacs-pair-board-manifest ()
+  "Show the manifest of the session on this row."
+  (interactive)
+  (let* ((file (kittymacs-pair--manifest-file (tabulated-list-get-id)))
+         (branch (alist-get 'branch (kittymacs-pair--board-status))))
+    (unless (file-readable-p file)
+      (user-error "%s has written no manifest yet" branch))
+    (with-current-buffer (get-buffer-create (format "*Manifest: %s*" branch))
+      (let ((inhibit-read-only t))
+        (erase-buffer)
+        (insert-file-contents file)
+        (json-pretty-print-buffer))
+      (kittymacs-pair-manifest-mode)
+      (goto-char (point-min))
+      (pop-to-buffer (current-buffer)))))
+
 (defvar-keymap kittymacs-pair-board-mode-map
   :doc "The board of Change sessions."
   :parent tabulated-list-mode-map
   "RET" #'kittymacs-pair-board-visit
-  "r" #'kittymacs-pair-board-review)
+  "r" #'kittymacs-pair-board-review
+  "i" #'kittymacs-pair-board-manifest)
 
 (define-derived-mode kittymacs-pair-board-mode tabulated-list-mode "Change sessions"
   "The Change sessions, their state and their reviews.
 \\{kittymacs-pair-board-mode-map}"
-  (setq tabulated-list-format [("Branch" 28 t) ("State" 8 t)
+  (setq tabulated-list-format [("Branch" 22 t) ("State" 7 t)
                                ("Viewed" 6 nil :right-align t) ("Open" 4 nil :right-align t)
-                               ("Verdict" 9 t) ("Message" 0 nil)])
+                               ("Verdict" 8 t) ("Reach" 15 nil) ("Message" 0 nil)])
   (setq tabulated-list-padding 1)
   (add-hook 'tabulated-list-revert-hook #'kittymacs-pair--board-revert nil t)
   (tabulated-list-init-header))
@@ -749,7 +798,8 @@ Runs after `diff-review--set-verdict', in the review's buffer."
   (when (kittymacs-pair--dispatch-program)
     (keymap-set kittymacs-agent-map "C" (cons "start a Change session" #'kittymacs-pair-dispatch)))
   (with-eval-after-load 'meow
-    (add-to-list 'meow-mode-state-list '(kittymacs-pair-board-mode . motion)))
+    (add-to-list 'meow-mode-state-list '(kittymacs-pair-board-mode . motion))
+    (add-to-list 'meow-mode-state-list '(kittymacs-pair-manifest-mode . motion)))
   (with-eval-after-load 'diff-review
     (advice-add 'diff-review--set-verdict :after #'kittymacs-pair--nudge)))
 (when (kittymacs-feature-p 'agent-eca)
