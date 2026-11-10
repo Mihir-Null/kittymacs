@@ -234,6 +234,11 @@
      :group git :packages (difftastic) :module kittymacs-vc :profile full :deps (version-control)
      :summary "Diffs that compare syntax trees, so moved and rewrapped code reads as such."
      :example "=SPC v D= compares this file with the last commit by syntax.")
+    (branch-review
+     :group git :packages (diff-review) :module kittymacs-vc :profile full :deps (version-control)
+     :vc (diff-review)
+     :summary "Reviews a branch in Emacs as a pull request page does, with no forge or token."
+     :example "=SPC v v= reviews a branch: mark files viewed, comment on lines, approve.")
 
     ;; Shells and environments
     (project-environment

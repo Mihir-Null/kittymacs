@@ -10,11 +10,12 @@
 - Magit is the Git interface: =SPC v s= opens the status buffer for the repository you are in, and everything happens from there.
   + Stage with =s=, commit with =c c=, push with =P p=; every prefix opens a menu that lists its options.
 - Emacs's own VC layer handles the small things: following symlinks, annotating lines, resolving conflict markers.
-- Four optional features extend Magit, each behind its own entry in [[id:3f8a6c02-9d14-4b7e-a2c5-1e7d90b64f31][the catalogue]]:
+- Five optional features extend Magit, each behind its own entry in [[id:3f8a6c02-9d14-4b7e-a2c5-1e7d90b64f31][the catalogue]]:
   + =pull-requests=: issues and pull requests from the forge, and line-by-line review;
   + =git-extras=: modes for Git's own files, and the repository's TODOs in the status buffer;
   + =git-links=: links to a line on the forge, and Org links to commits;
-  + =structural-diffs=: diffs that compare syntax trees instead of lines.
+  + =structural-diffs=: diffs that compare syntax trees instead of lines;
+  + =branch-review=: a branch reviewed inside Emacs as a pull request page shows it, with no forge.
 - Leans on [[id:e5942eb0-4389-447d-9317-d9178adcaaae][the leader]] for =SPC m=, [[id:afa6b7fd-742a-4c15-86a6-32e3e8027b0e][the platform chapter]] for the spell checker, and [[id:f1d045c2-e2dc-4514-ab17-dd982ed6be00][the frames chapter]] for frames-only mode.
 - Distilled from Lambda-Emacs by Colin McLear (=lem-setup-vc=).
 
@@ -410,6 +411,93 @@ The one at point in Forge, or else the current branch's; otherwise ask."
 
 #+end_src
 
+* Reviewing a branch: diff-review
+:PROPERTIES:
+:ID: 3f0450b0-881e-4487-b90f-49a4d03f17a7
+:END:
+
+- A pull request page shows a branch's whole change: the files it touched, comments on lines, and a verdict at the end.
+  + diff-review gives a branch that page inside Emacs, from Git alone, so it needs no forge and no token.
+- =SPC v v= reviews a branch against its base: pick one that another worktree has checked out, or type any.
+  + The base is the branch =origin/HEAD= points at, else =main= or =master=.
+  + The overview lists the counts and the changed files as a tree; a sidebar shows the same tree beside each file.
+  + Each file opens as the real file in its own major mode, so xref, Eglot and editing all work during a review.
+  + Overlays put each removed line back in place, before the lines that replaced it, and tint the added ones.
+  + You mark files viewed, start comment threads on lines, and give the head a verdict: approved, or changes requested.
+- The review is a JSON file, =review/BRANCH.json=, under the =.git= that every worktree shares.
+  + Git never commits it, and every worktree of the repository opens the same review.
+  + It follows the branch: after a new commit, =g= rescans, viewed marks clear on the files that changed, and threads follow their lines.
+- =diff-review-magit-mode= adds two things to Magit once Magit loads:
+  + a /Worktree branches/ section in the status buffer: each other worktree's branch, its commits ahead of the base and its review's state, with =RET= opening the review;
+  + =d v=, "Review" in Magit's diff menu, which reviews the selected commits, or the one at point; =SPC m v= in a Magit buffer does the same.
+  + It waits for Magit, so neither package loads at startup.
+- It is not on MELPA, so it installs from Git, pinned to a commit, as [[id:56789f7f-90bb-4c3b-947c-16ecb6d72365][agent-shell-attention]] does.
+  + A failed clone is a warning, not a stopped startup; until a restart installs it, its keys and the Magit additions stay off.
+  + =M-x package-vc-upgrade= moves it; change =:rev= here to move everyone.
+- The keys inside a review, and the Meow state of each buffer: [[*Meow in branch reviews]].
+
+#+begin_src emacs-lisp
+(declare-function diff-review-magit-mode "diff-review-magit" (&optional arg))
+
+(when (kittymacs-feature-p 'branch-review)
+  (condition-case err
+      (use-package diff-review
+        :vc (:url "https://github.com/xiaoxinghu/diff-review"
+             :rev "49cba292bb933e2a1a90f61145e29311636544ae")
+        :defer t)
+    (error
+     (display-warning 'kittymacs
+                      (format "diff-review was not installed: %s
+Check that `git clone https://github.com/xiaoxinghu/diff-review' works from a terminal, and which git Emacs runs: %s"
+                              (error-message-string err) (executable-find "git"))
+                      :warning)))
+
+  (when (locate-library "diff-review")
+    (with-eval-after-load 'magit
+      (diff-review-magit-mode 1))
+    (keymap-set kittymacs-vc-map "v" (cons "review a branch" #'diff-review-branch))))
+
+#+end_src
+
+* Meow in branch reviews :meow:
+:PROPERTIES:
+:ID: 80f63f69-9645-451e-9e8b-1fe1ade12a68
+:END:
+
+- The overview and its sidebar are lists to move through, so they start in Motion state.
+  + Motion adds only =j=, =k= and the leader, so diff-review's own one-letter keys work as its README describes.
+  + They need no =SPC m= menu: the keys are single letters already, and =C-h m= lists them.
+
+| Key      | Does                                     | Key       | Does                                    |
+|----------+------------------------------------------+-----------+-----------------------------------------|
+| =RET=    | show the file at point, or fold a folder | =t=       | show or hide the sidebar                |
+| =n=, =p= | next, previous file                      | =A=       | approve the head                        |
+| =u=      | next unviewed file                       | =C=       | request changes                         |
+| =v=      | toggle the viewed mark                   | =C-c C-c= | the review as its JSON, and back        |
+| =g=      | rescan the diff                          | =q=       | end the review; in the sidebar, hide it |
+
+- A file under review is a file you may edit, so it keeps its usual state, Normal.
+  + The review is a minor mode there, so =SPC m= stays the major mode's menu, as it does in a gptel buffer: see [[id:94d55283-5011-4f98-a7f0-8c6bcb51aab9][Agents]].
+  + diff-review's commands stay under its own prefix, =C-c _=: Meow leaves =C-c= to Emacs in Normal and Insert state alike, so the prefix works unchanged.
+  + kittymacs leaves =repeat-mode= off, so each command takes the prefix; =M-g n= and =M-g p= walk the hunks without it.
+
+| =C-c _=  | Does                                | =C-c _=  | Does                                 |
+|----------+-------------------------------------+----------+--------------------------------------|
+| =n=, =p= | next, previous hunk, across files   | =x=      | resolve the thread, or reopen it     |
+| =v=      | mark viewed, show the next unviewed | =D=      | delete the thread                    |
+| =z=      | fold the unchanged lines            | =o=      | open every thread                    |
+| =d=      | show or hide the removed lines      | =N=, =P= | next, previous thread                |
+| =c=      | comment on the region or the line   | =t=      | show or hide the sidebar             |
+| =r=      | reply to the thread                 | =l=, =q= | back to the overview; end the review |
+
+#+begin_src emacs-lisp
+(when (kittymacs-feature-p 'branch-review)
+  (with-eval-after-load 'meow
+    (add-to-list 'meow-mode-state-list '(diff-review-mode . motion))
+    (add-to-list 'meow-mode-state-list '(diff-review-sidebar-mode . motion))))
+
+#+end_src
+
 * Meow in Magit :meow:
 :PROPERTIES:
 :ID: 8c1af730-24e5-4926-88dd-d2f54a63c584
@@ -420,6 +508,7 @@ The one at point in Forge, or else the current branch's; otherwise ask."
 - =SPC m= labels the most common Magit commands for anyone who does not yet know them.
   + Most open Magit's own menu; stage, unstage, discard and refresh act directly.
   + =L= stores an Org link to the commits or buffer at point, with the =git-links= feature on.
+  + =v= reviews the selected commits, or the one at point, with =branch-review= on: [[*Reviewing a branch: diff-review]].
 
 | =SPC m= | Does    | =SPC m= | Does   | =SPC m= | Does           |
 |---------+---------+---------+--------+---------+----------------|
@@ -429,6 +518,7 @@ The one at point in Forge, or else the current branch's; otherwise ask."
 | =p=     | push    | =m=     | merge  | =x=     | discard        |
 | =g=     | refresh | =r=     | rebase | =?=     | all commands   |
 |         |         |         |        | =L=     | store Org link |
+|         |         |         |        | =v=     | review commits |
 
 #+begin_src emacs-lisp
 (with-eval-after-load 'meow
@@ -450,7 +540,9 @@ The one at point in Forge, or else the current branch's; otherwise ask."
   "x" (cons "discard" #'magit-discard)
   "g" (cons "refresh" #'magit-refresh)
   "?" (cons "all commands" #'magit-dispatch)
-  "L" (and (kittymacs-feature-p 'git-links) (cons "store Org link" #'orgit-store-link)))
+  "L" (and (kittymacs-feature-p 'git-links) (cons "store Org link" #'orgit-store-link))
+  "v" (and (kittymacs-feature-p 'branch-review) (locate-library "diff-review")
+           (cons "review commits" #'diff-review-magit-commits)))
 
 (provide 'kittymacs-vc)
 ;;; kittymacs-vc.el ends here
@@ -470,3 +562,9 @@ The one at point in Forge, or else the current branch's; otherwise ask."
 - With =git-links= on: =SPC v o= in a tracked file copies a URL that opens that line on the forge.
   + =SPC m L= on a commit in a Magit log, then =C-c C-l= in an Org buffer, inserts an =orgit-rev:= link.
 - With =structural-diffs= on and =difft= installed: =SPC v D= in a changed file opens a difftastic buffer in Motion state.
+- With =branch-review= on, in a repository with a second worktree on a branch:
+  + the status buffer has a /Worktree branches/ section; =RET= on the branch opens its review in Motion state;
+  + =SPC v v= from a file of the repository offers the same branch, and opens the same review;
+  + =RET= on a file shows it with removed lines in place; =C-c _ c= there starts a comment, and =C-c _ v= marks the file viewed;
+  + =q= in the overview ends the review; =.git/review/BRANCH.json= keeps the comment and the mark;
+  + =SPC m v= on a commit in a Magit log, or =d v=, reviews that commit.

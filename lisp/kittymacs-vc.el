@@ -203,6 +203,29 @@ The one at point in Forge, or else the current branch's; otherwise ask."
     (add-to-list 'meow-mode-state-list '(difftastic-mode . motion)))
 
   (keymap-set kittymacs-vc-map "D" (cons "diff file by syntax" #'difftastic-magit-diff-buffer-file)))
+(declare-function diff-review-magit-mode "diff-review-magit" (&optional arg))
+
+(when (kittymacs-feature-p 'branch-review)
+  (condition-case err
+      (use-package diff-review
+        :vc (:url "https://github.com/xiaoxinghu/diff-review"
+             :rev "49cba292bb933e2a1a90f61145e29311636544ae")
+        :defer t)
+    (error
+     (display-warning 'kittymacs
+                      (format "diff-review was not installed: %s
+Check that `git clone https://github.com/xiaoxinghu/diff-review' works from a terminal, and which git Emacs runs: %s"
+                              (error-message-string err) (executable-find "git"))
+                      :warning)))
+
+  (when (locate-library "diff-review")
+    (with-eval-after-load 'magit
+      (diff-review-magit-mode 1))
+    (keymap-set kittymacs-vc-map "v" (cons "review a branch" #'diff-review-branch))))
+(when (kittymacs-feature-p 'branch-review)
+  (with-eval-after-load 'meow
+    (add-to-list 'meow-mode-state-list '(diff-review-mode . motion))
+    (add-to-list 'meow-mode-state-list '(diff-review-sidebar-mode . motion))))
 (with-eval-after-load 'meow
   (add-to-list 'meow-mode-state-list '(magit-mode . motion)))
 
@@ -222,7 +245,9 @@ The one at point in Forge, or else the current branch's; otherwise ask."
   "x" (cons "discard" #'magit-discard)
   "g" (cons "refresh" #'magit-refresh)
   "?" (cons "all commands" #'magit-dispatch)
-  "L" (and (kittymacs-feature-p 'git-links) (cons "store Org link" #'orgit-store-link)))
+  "L" (and (kittymacs-feature-p 'git-links) (cons "store Org link" #'orgit-store-link))
+  "v" (and (kittymacs-feature-p 'branch-review) (locate-library "diff-review")
+           (cons "review commits" #'diff-review-magit-commits)))
 
 (provide 'kittymacs-vc)
 ;;; kittymacs-vc.el ends here
