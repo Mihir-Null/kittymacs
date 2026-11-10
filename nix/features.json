@@ -671,11 +671,14 @@
     "group": "assistants",
     "packages": [
       "agent-shell",
+      "acp",
       "agent-shell-attention"
     ],
     "module": "kittymacs-agents",
     "profile": "full",
     "vc": [
+      "agent-shell",
+      "acp",
       "agent-shell-attention"
     ],
     "one-of": "agent",
