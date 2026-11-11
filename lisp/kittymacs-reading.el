@@ -54,11 +54,7 @@
       :config
       (setq pdf-text-kill-together 'from-pdf))
   (error
-   (display-warning 'kittymacs
-                    (format "pdf-text was not installed: %s
-Check that `git clone https://github.com/agzam/pdf-text' works from a terminal, and which git Emacs runs: %s"
-                            (error-message-string err) (executable-find "git"))
-                    :warning)))
+   (kittymacs-features-vc-warning "pdf-text" "https://github.com/agzam/pdf-text" err)))
 (with-eval-after-load 'meow
   (add-to-list 'meow-mode-state-list '(pdf-view-mode . motion)))
 

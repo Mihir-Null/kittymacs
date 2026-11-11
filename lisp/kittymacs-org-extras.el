@@ -94,11 +94,7 @@ Code that is already lexical expands as before."
       :init
       (add-hook 'org-mode-hook #'org-modern-indent-mode 90))
   (error
-   (display-warning 'kittymacs
-                    (format "org-modern-indent was not installed: %s
-Check that `git clone https://github.com/jdtsmith/org-modern-indent' works from a terminal, and which git Emacs runs: %s"
-                            (error-message-string err) (executable-find "git"))
-                    :warning)))
+   (kittymacs-features-vc-warning "org-modern-indent" "https://github.com/jdtsmith/org-modern-indent" err)))
 
 (provide 'kittymacs-org-extras)
 ;;; kittymacs-org-extras.el ends here

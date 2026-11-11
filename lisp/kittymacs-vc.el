@@ -256,11 +256,7 @@ branch's review/BRANCH.json."
              :rev "49cba292bb933e2a1a90f61145e29311636544ae")
         :defer t)
     (error
-     (display-warning 'kittymacs
-                      (format "diff-review was not installed: %s
-Check that `git clone https://github.com/xiaoxinghu/diff-review' works from a terminal, and which git Emacs runs: %s"
-                              (error-message-string err) (executable-find "git"))
-                      :warning)))
+     (kittymacs-features-vc-warning "diff-review" "https://github.com/xiaoxinghu/diff-review" err)))
 
   (when (locate-library "diff-review")
     (with-eval-after-load 'magit

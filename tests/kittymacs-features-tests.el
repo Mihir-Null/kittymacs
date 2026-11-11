@@ -727,4 +727,141 @@ A package's file and the owner's file are on `load-path'; one other is nowhere."
   (should (< (seq-position delayed-warnings-hook #'kittymacs-features--log-compile-warnings)
              (seq-position delayed-warnings-hook #'display-delayed-warnings))))
 
+;;; A Git install that stopped partway
+
+;; Loaded after the features module, as init.el's order is not: the advice
+;; must hold whichever comes first.
+(require 'use-package)
+(defvar package-user-dir)
+(defvar package-directory-list)
+(defvar package-archives)
+(defvar package--initialized)
+(defvar kittymacs-quickstart-loaded)
+
+(defmacro kittymacs-features-test-with-elpa (calls &rest body)
+  "Run BODY with an empty `package-user-dir', recording package-vc's calls in CALLS.
+Every question fails the test: a daemon with no frame could not answer it.
+It goes outside `kittymacs-features-test-with': replacing a primitive such as
+`yes-or-no-p' can reload warnings.el, which would undo that macro's
+`display-warning'."
+  (declare (indent 1))
+  `(let* ((package-user-dir (make-temp-file "kittymacs-elpa-" t))
+          (package-directory-list nil)
+          (package-archives nil)
+          (package-alist nil)
+          (package-activated-list nil)
+          (package--initialized t)
+          (kittymacs-quickstart-loaded nil)
+          (,calls nil))
+     (unwind-protect
+         (cl-letf (((symbol-function 'yes-or-no-p)
+                    (lambda (prompt) (ert-fail (list 'asked prompt))))
+                   ((symbol-function 'y-or-n-p)
+                    (lambda (prompt) (ert-fail (list 'asked prompt))))
+                   ((symbol-function 'package-vc-install)
+                    (lambda (&rest args) (push args ,calls))))
+           ,@body)
+       (delete-directory package-user-dir t))))
+
+(defun kittymacs-features-test--checkout (name &optional described)
+  "Make NAME's checkout under `package-user-dir'; DESCRIBED adds its NAME-pkg.el."
+  (let ((directory (expand-file-name (symbol-name name) package-user-dir)))
+    (make-directory directory t)
+    (with-temp-file (expand-file-name (format "%s.el" name) directory)
+      (insert (format ";;; %s.el --- a checkout -*- lexical-binding: t -*-\n" name)))
+    (when described
+      (with-temp-file (expand-file-name (format "%s-pkg.el" name) directory)
+        (prin1 `(define-package ,(symbol-name name) "0.1.0" "A checkout." nil :kind vc)
+               (current-buffer))))
+    directory))
+
+(defconst kittymacs-features-test--diff-review
+  '(diff-review (:url "https://github.com/xiaoxinghu/diff-review") "49cba29")
+  "`use-package-vc-install''s argument for diff-review, as `:vc' normalizes it.")
+
+(ert-deftest kittymacs-features-a-leftover-checkout-is-refused-without-a-question ()
+  "The start that looped on End of file now signals once and asks nothing."
+  (kittymacs-features-test-with-elpa calls
+    (let ((directory (kittymacs-features-test--checkout 'diff-review)))
+      (should (equal (should-error (use-package-vc-install kittymacs-features-test--diff-review)
+                                   :type 'kittymacs-features-leftover-checkout)
+                     (list 'kittymacs-features-leftover-checkout 'diff-review
+                           (file-name-as-directory directory))))
+      (should-not calls)
+      (should (file-exists-p (expand-file-name "diff-review.el" directory))))))
+
+(ert-deftest kittymacs-features-a-declaration-with-a-leftover-warns-once-and-names-it ()
+  "The warning names the directory and the way out, and does not blame git."
+  (kittymacs-features-test-with-elpa calls
+    (kittymacs-features-test-with ((kittymacs-features '(branch-review))) warnings
+      (let ((directory (kittymacs-features-test--checkout 'diff-review)))
+        (condition-case err
+            (eval '(use-package diff-review
+                     :vc (:url "https://github.com/xiaoxinghu/diff-review" :rev "49cba29")
+                     :commands kittymacs-features-test-review)
+                  t)
+          (error (kittymacs-features-vc-warning
+                  "diff-review" "https://github.com/xiaoxinghu/diff-review" err)))
+        (should-not calls)
+        (should-not (fboundp 'kittymacs-features-test-review))
+        (should (= (length warnings) 1))
+        (should (string-search (abbreviate-file-name (file-name-as-directory directory))
+                               (car warnings)))
+        (should (string-search "kittymacs-features-move-leftovers" (car warnings)))
+        (should-not (string-search "git clone" (car warnings)))))))
+
+(ert-deftest kittymacs-features-a-first-install-still-clones ()
+  (kittymacs-features-test-with-elpa calls
+    (use-package-vc-install kittymacs-features-test--diff-review)
+    (should (equal calls '(((diff-review :url "https://github.com/xiaoxinghu/diff-review")
+                            "49cba29"))))))
+
+(ert-deftest kittymacs-features-an-installed-checkout-is-left-alone ()
+  (kittymacs-features-test-with-elpa calls
+    (kittymacs-features-test--checkout 'diff-review t)
+    (package-initialize t)
+    (use-package-vc-install kittymacs-features-test--diff-review)
+    (should-not calls)))
+
+(ert-deftest kittymacs-features-a-quickstart-start-reads-the-directories-first ()
+  "The quickstart file activated what it knew; the directory may be newer and whole."
+  (kittymacs-features-test-with-elpa calls
+    (kittymacs-features-test--checkout 'diff-review t)
+    (let ((kittymacs-quickstart-loaded t)
+          (package--initialized nil)
+          (package-activated-list '(magit)))
+      (should-not (kittymacs-features--leftover-checkout 'diff-review))
+      (use-package-vc-install kittymacs-features-test--diff-review)
+      (should-not calls))))
+
+(ert-deftest kittymacs-features-another-install-error-shows-first-and-git-only-maybe ()
+  (kittymacs-features-test-with () warnings
+    (kittymacs-features-vc-warning "pdf-text" "https://github.com/agzam/pdf-text"
+                                   '(error "Package `magit-section' is unavailable"))
+    (should (= (length warnings) 1))
+    (should (string-prefix-p "pdf-text was not installed: Package `magit-section' is unavailable\nIf that error comes from git, check that `git clone https://github.com/agzam/pdf-text' works"
+                             (substitute-quotes (car warnings))))))
+
+(ert-deftest kittymacs-features-moving-leftovers-asks-once-and-renames ()
+  (kittymacs-features-test-with-elpa _calls
+    (kittymacs-features-test-with ((kittymacs-features '(branch-review pdf-reading))) _warnings
+      (let ((leftover (kittymacs-features-test--checkout 'diff-review))
+            (whole (kittymacs-features-test--checkout 'pdf-text t))
+            (questions 0))
+        (package-initialize t)
+        (cl-letf (((symbol-function 'yes-or-no-p) (lambda (_) (cl-incf questions) t)))
+          (kittymacs-features-move-leftovers))
+        (should (= questions 1))
+        (should-not (file-exists-p leftover))
+        (should (file-directory-p whole))
+        (should (equal (mapcar (lambda (file) (replace-regexp-in-string "-[0-9-]+\\'" "" file))
+                               (directory-files package-user-dir nil "broken"))
+                       '("diff-review.broken")))
+        (should-not (kittymacs-features--leftovers))))))
+
+(ert-deftest kittymacs-features-moving-leftovers-with-none-asks-nothing ()
+  (kittymacs-features-test-with-elpa _calls
+    (kittymacs-features-test-with ((kittymacs-features '(branch-review))) _warnings
+      (kittymacs-features-move-leftovers))))
+
 ;;; kittymacs-features-tests.el ends here

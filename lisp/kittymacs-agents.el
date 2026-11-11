@@ -41,7 +41,7 @@
           (setopt agent-shell-anthropic-claude-environment
                   (agent-shell-make-environment-variables :inherit-env t))))
     (error
-     (kittymacs-agent-vc-warning "agent-shell" "https://github.com/xenodium/agent-shell" err)))
+     (kittymacs-features-vc-warning "agent-shell" "https://github.com/xenodium/agent-shell" err)))
 
   (when (locate-library "agent-shell")
     (keymap-set kittymacs-agent-map "a" (cons "start or switch" #'agent-shell))
@@ -72,14 +72,6 @@ The value of `agent-shell-attention-notify-function'."
      (when (require 'notifications nil t)
        (ignore-errors
          (notifications-notify :app-name "agent-shell" :title title :body body))))))
-
-(defun kittymacs-agent-vc-warning (package url err)
-  "Warn that PACKAGE, from the Git repository URL, did not install: ERR."
-  (display-warning 'kittymacs
-                   (format "%s was not installed: %s
-Check that `git clone %s' works from a terminal, and which git Emacs runs: %s"
-                           package (error-message-string err) url (executable-find "git"))
-                   :warning))
 
 (defun kittymacs-agent--question-event (buffer event)
   "Count a question form in BUFFER as waiting, from EVENT, until it is answered."
@@ -115,8 +107,8 @@ Check that `git clone %s' works from a terminal, and which git Emacs runs: %s"
         :config
         (agent-shell-attention-mode 1))
     (error
-     (kittymacs-agent-vc-warning "agent-shell-attention"
-                                 "https://github.com/ultronozm/agent-shell-attention.el" err)))
+     (kittymacs-features-vc-warning "agent-shell-attention"
+                                    "https://github.com/ultronozm/agent-shell-attention.el" err)))
 
   (when (locate-library "agent-shell-attention")
     (keymap-set kittymacs-agent-map "j" (cons "jump to waiting shell" #'agent-shell-attention-jump))
@@ -165,8 +157,8 @@ w, d and j are left free for an integration's own commands.")
         :config
         (claude-code-ide-emacs-tools-setup))
     (error
-     (kittymacs-agent-vc-warning "claude-code-ide"
-                                 "https://github.com/manzaltu/claude-code-ide.el" err)))
+     (kittymacs-features-vc-warning "claude-code-ide"
+                                    "https://github.com/manzaltu/claude-code-ide.el" err)))
 
   (keymap-set kittymacs-agent-map "w" (cons "claude-code-ide sessions" kittymacs-claude-code-ide-map))
   ;; w, d and j stay unbound here: an integration adds its own there.
