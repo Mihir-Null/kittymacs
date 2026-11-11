@@ -260,7 +260,7 @@ Types the configuration deliberately silences are left out."
                      (or (not (memq module kittymacs-check-chapter-modules))
                          (kittymacs-check--chapter-wanted-p module)))
             (kittymacs-verify-check (featurep module) (format "Missing feature %s" module)))))
-      ;; The terminal comes from MELPA.  package.el keeps a Git checkout left
+      ;; The terminal comes from MELPA Stable.  package.el keeps a Git checkout left
       ;; by an older :vc install as installed, so name one if it is there.
       (when kittymacs-terminal-ghostel
         (dolist (name '(ghostel consult-ghostel))
@@ -268,7 +268,7 @@ Types the configuration deliberately silences are left out."
             (kittymacs-verify-check
              (and desc (not (package-vc-p desc)))
              (if desc
-                 (format "%s is a Git checkout, not MELPA's package; M-x package-delete it" name)
+                 (format "%s is a Git checkout, not MELPA Stable's package; M-x package-delete it" name)
                (format "%s is not installed" name)))))
         ;; Loading the terminal and Consult turns on consult-ghostel-mode.
         (condition-case err

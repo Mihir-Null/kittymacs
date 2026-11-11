@@ -127,12 +127,23 @@ commonly built without the dynamic module support ghostel needs.
   + =ghostel-bookmark=: bookmarks that reopen a terminal where it was;
   + =ghostel-desktop=: terminals that survive a desktop session;
   + =ghostel-ime=: Lisp input methods (Hangul, Quail) compose into the terminal rather than the buffer.
-- Ghostel and its Consult extension come from MELPA, as upstream's README installs them; =M-x package-upgrade= updates them like any package.
+- Ghostel and its Consult extension are pinned to MELPA Stable, so their Lisp moves only with ghostel's tagged releases, each of which has a prebuilt native module; =M-x package-upgrade= updates them to the next release.
+  + MELPA's snapshots follow every commit, while the module in =var/ghostel/= stays at the release it was downloaded for. *Seen* 2026-11-11: snapshot 20261110.1513 called =ghostel--new= with 6 arguments, the 0.62.0 module took 2 to 5, and every new terminal, claude-code-ide's included, failed with "Wrong number of arguments". Both sides reported 0.62.0, so ghostel's version check passed.
+  + Consult-ghostel is built from the same repository and tag, and calls into ghostel, so it is pinned with it.
+  + The pin is =package-pinned-packages=, set before either declaration, not use-package's =:pin=: that calls =package-initialize= when it loads, which a start from [[id:8d3b6e0f-5a41-4c2e-9f7a-2b6c1e4d9a53][the quickstart file]] exists to skip.
   + Both declarations sit inside =(when kittymacs-terminal-ghostel ...)=: =:ensure= installs a package even when its =:if= is nil, and Android should not download a terminal it will not run.
-  + A Git checkout of either, left by an install made with =:vc=, stays: package.el counts it as installed. =M-x package-delete= =consult-ghostel=, then =ghostel=, and a restart installs MELPA's.
+- An install made before the pin keeps MELPA's snapshot: package.el never replaces it with a release whose version number is lower.
+  + =M-x package-delete= =consult-ghostel=, then =ghostel=, and restart; MELPA Stable's are installed, and the first =SPC o e= offers to download the module that matches the release.
+  + A Git checkout of either, left by an install made with =:vc=, is removed the same way: package.el counts it as installed.
 
 #+begin_src emacs-lisp
 (when kittymacs-terminal-ghostel
+  ;; Install ghostel and consult-ghostel only from MELPA Stable, whose tagged
+  ;; releases have prebuilt native modules.  Not `:pin', which runs
+  ;; `package-initialize' when this file loads.
+  (setopt package-pinned-packages
+          (append '((ghostel . "melpa-stable") (consult-ghostel . "melpa-stable"))
+                  (bound-and-true-p package-pinned-packages)))
   (use-package ghostel
     :ensure t
     :defer t
@@ -470,7 +481,7 @@ is not used at all, Eshell answers this key instead."
 5. Type =ghostel_cmd find-file README.md= in the terminal: Emacs opens it.
 6. =SPC o E= lists every terminal with a preview; a new name creates one.
 
-- [[file:../tests/verify-config.el][The startup verifier]] checks that ghostel and =consult-ghostel= come from MELPA and that loading them turns on =consult-ghostel-mode=.
+- [[file:../tests/verify-config.el][The startup verifier]] checks that ghostel and =consult-ghostel= are archive packages, not Git checkouts, and that loading them turns on =consult-ghostel-mode=.
 
 #+begin_src sh :tangle no
 just test-packages      # includes the startup verifier
