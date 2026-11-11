@@ -276,6 +276,152 @@ With REGEXP, go to the most recent directory matching it."
 
 #+end_src
 
+* A graphical program from =M-!= :decision:
+:PROPERTIES:
+:ID: 54c403c3-dac6-4700-9b3f-25d7a43af6bd
+:END:
+
+- =M-!= (=shell-command=) waits for its command to exit, unless the command ends in =&=.
+  + A program that opens a window, such as =google-chrome=, exits only when its window closes.
+  + Until then Emacs reads no key, draws nothing and answers no =emacsclient=: every frame of this Emacs stops.
+  + Under EXWM the whole desktop stops too, since this Emacs is the window manager: =M-! google-chrome= once froze one for two days.
+- So in a graphical frame, a command you run that starts a graphical program does not wait: the program starts detached, and the echo area says so.
+  + It goes to =kittymacs-exwm-launch=, the launcher behind =H-d= in [[id:66502132-05ee-4b9d-a3ec-3e8ceb585c9f][the EXWM chapter]], which every start loads: no buffer, a pipe rather than a terminal, no question when Emacs exits, and a failure reported in the echo area.
+  + Where that chapter has not loaded, as in a test, =start-process-shell-command= starts it the same way.
+  + Nothing ties the program to a frame, so closing the frame you typed it in leaves it running, as it should in the daemon.
+- The commands it covers are the ones that run a shell command and wait:
+  + =M-!= (=shell-command=), and =SPC p != and =C-x p != (=project-shell-command=), which call it;
+  + in Dired, =!=, =X= and =SPC m != (=dired-do-shell-command=), and =M-!= (=dired-smart-shell-command=).
+- Everything else runs as it always has:
+  + a terminal frame (=emacsclient -t=), and batch;
+  + a command that ends in =&=, which is already asynchronous;
+  + a prefix argument, which asks for the output in this buffer;
+  + a directory on another machine, where the command runs there;
+  + a call from Lisp rather than from you;
+  + =M-|= (=shell-command-on-region=), which filters the region through the command.
+- A program is graphical when a desktop entry starts it and does not ask for a terminal, or when its name is in =kittymacs-gui-programs=.
+  + Menus and launchers list programs from desktop entries, so a program with a window has one, and a program for the terminal says =Terminal=true= in its entry, as =htop='s does.
+  + An entry that stays out of menus (=NoDisplay=true=) does not count: it is usually a handler for links, and Claude Code's names the =claude= command, which runs in a terminal.
+  + The entries are in =applications/= under =XDG_DATA_HOME= and each of =XDG_DATA_DIRS=, read again at each command you run, so a program installed a minute ago counts: about 4 ms on one Linux machine with a dozen entries, against a person typing.
+  + A command's program matches when its name is the entry's or both resolve to one file: =google-chrome= is a link to the =google-chrome-stable= that Chrome's entry runs.
+  + =kittymacs-gui-programs= is for a program with a window and no entry, such as =xdg-open=, which waits for the program it opens.
+- Stopping a synchronous command after a timeout is no alternative: =with-timeout= cannot interrupt =call-process=.
+
+#+begin_src emacs-lisp
+(defcustom kittymacs-gui-programs '("xdg-open" "xterm" "xclock" "xmessage")
+  "Programs that open a window and may have no desktop entry.
+In a graphical frame, a shell command you run that starts one of these,
+or a program a desktop entry starts outside a terminal, starts detached
+instead of making Emacs wait for it."
+  :type '(repeat string)
+  :group 'kittymacs)
+
+(defvar kittymacs--shell-command-from-user nil
+  "Non-nil while a command the user ran calls `shell-command' for them.")
+
+(defun kittymacs--command-program (command)
+  "Return the program the shell COMMAND starts, or nil if its words do not parse.
+Leading `env' and NAME=VALUE words are skipped."
+  (let ((words (condition-case nil (split-string-and-unquote command) (error nil))))
+    (while (and words (or (equal (car words) "env")
+                          (string-match-p "\\`[A-Za-z_][A-Za-z0-9_]*=" (car words))))
+      (pop words))
+    (car words)))
+
+(defun kittymacs--desktop-entry-program (file)
+  "Return the program the desktop entry FILE starts in a window of its own.
+Nil for an entry that runs in a terminal, stays out of menus, or is not
+an application."
+  (with-temp-buffer
+    (ignore-errors (insert-file-contents file))
+    (goto-char (point-min))
+    (when (re-search-forward "^\\[Desktop Entry\\][ \t]*$" nil t)
+      (let ((end (save-excursion
+                   (if (re-search-forward "^\\[" nil t) (match-beginning 0) (point-max))))
+            fields)
+        (while (re-search-forward "^\\([A-Za-z]+\\)[ \t]*=[ \t]*\\(.*\\)$" end t)
+          (push (cons (match-string 1) (match-string 2)) fields))
+        (and (equal (cdr (assoc "Type" fields)) "Application")
+             (not (equal (cdr (assoc "Terminal" fields)) "true"))
+             (not (equal (cdr (assoc "Hidden" fields)) "true"))
+             (not (equal (cdr (assoc "NoDisplay" fields)) "true"))
+             (cdr (assoc "Exec" fields))
+             (kittymacs--command-program (cdr (assoc "Exec" fields))))))))
+
+(defun kittymacs--desktop-entry-programs ()
+  "Return the programs that desktop entries start in a window of their own."
+  (let ((directories (cons (or (getenv "XDG_DATA_HOME") "~/.local/share")
+                           (split-string (or (getenv "XDG_DATA_DIRS")
+                                             "/usr/local/share:/usr/share")
+                                         path-separator t)))
+        programs)
+    (dolist (directory directories)
+      (let ((applications (expand-file-name "applications" directory)))
+        (when (file-directory-p applications)
+          (dolist (file (ignore-errors
+                          (directory-files-recursively applications "\\.desktop\\'")))
+            (when-let* ((program (kittymacs--desktop-entry-program file)))
+              (push program programs))))))
+    programs))
+
+(defun kittymacs--program-file (program)
+  "Return the file PROGRAM runs, with every link resolved, or nil."
+  (when-let* ((file (if (file-name-absolute-p program) program (executable-find program))))
+    (file-truename file)))
+
+(defun kittymacs-gui-program-p (program)
+  "Return non-nil if PROGRAM opens a window of its own.
+It does when its name is in `kittymacs-gui-programs', or when a desktop
+entry that does not run in a terminal starts it, by name or by file."
+  (let ((name (file-name-nondirectory program))
+        (file (kittymacs--program-file program)))
+    (or (member name kittymacs-gui-programs)
+        (seq-some (lambda (entry)
+                    (or (equal (file-name-nondirectory entry) name)
+                        (and file (equal (kittymacs--program-file entry) file))))
+                  (kittymacs--desktop-entry-programs)))))
+
+(defun kittymacs--shell-command-detach-p (command output-buffer from-user)
+  "Return non-nil if `shell-command' should start COMMAND detached.
+FROM-USER is non-nil when the user ran the command; OUTPUT-BUFFER is
+`shell-command's own argument, non-nil when the output is wanted here."
+  (and from-user
+       (display-graphic-p)
+       (not output-buffer)
+       (not (file-remote-p default-directory))
+       (not (string-match-p "&[ \t]*\\'" command))
+       (when-let* ((program (kittymacs--command-program command)))
+         (kittymacs-gui-program-p program))))
+
+(declare-function kittymacs-exwm-launch "kittymacs-exwm" (command))
+
+(defun kittymacs--shell-command-detach (original command &rest arguments)
+  "Call ORIGINAL with COMMAND and ARGUMENTS, unless COMMAND is a graphical program.
+A graphical program that the user asked for in a graphical frame starts
+detached instead, through `kittymacs-exwm-launch' when it is defined."
+  (if (not (kittymacs--shell-command-detach-p
+            command (car arguments)
+            (or kittymacs--shell-command-from-user (called-interactively-p 'any))))
+      (apply original command arguments)
+    (if (fboundp 'kittymacs-exwm-launch)
+        (kittymacs-exwm-launch command)
+      (let ((process-connection-type nil))
+        (set-process-query-on-exit-flag (start-process-shell-command command nil command) nil)))
+    (message "Started %s without waiting for it, because it opens a window"
+             (kittymacs--command-program command))
+    nil))
+
+(defun kittymacs--shell-command-note-user (original &rest arguments)
+  "Call ORIGINAL with ARGUMENTS, telling `shell-command' whether the user ran it."
+  (let ((kittymacs--shell-command-from-user (called-interactively-p 'any)))
+    (apply original arguments)))
+
+(advice-add 'shell-command :around #'kittymacs--shell-command-detach)
+(dolist (command '(dired-do-shell-command dired-smart-shell-command))
+  (advice-add command :around #'kittymacs--shell-command-note-user))
+
+#+end_src
+
 * Meow in shells :meow:
 :PROPERTIES:
 :ID: 992e0cae-874f-4e0c-b84d-ae85ae647c87
@@ -321,4 +467,9 @@ With REGEXP, go to the most recent directory matching it."
 - =ESC= in Eshell, select some output with =x=, =y= copies it; =i= goes back to typing.
 - =M-x shell=, then =git log=: the output lands in the buffer, with no pager waiting for keys.
 - In a project with a =.envrc=, open a file: the mode line shows =envrc= as waiting; =SPC p E a= allows it, and =M-: (executable-find "python3")= then names the project's Python, not the system's.
+- In a graphical frame, =M-! google-chrome RET=: Chrome opens, the echo area says it started without waiting, and Emacs still answers keys while Chrome runs.
+- =M-! date RET= shows the date, as before; =M-! google-chrome & RET= opens a =*Async Shell Command*= buffer, as before.
+- In Dired, on an HTML file, =!= then =google-chrome RET=: Chrome opens that file, and Emacs does not wait.
+- In a terminal frame (=emacsclient -t=), =M-! google-chrome RET= waits for Chrome, as Emacs always has; =C-g= ends the wait.
+- =just test= runs [[file:../tests/kittymacs-shell-detach-tests.el][the detach tests]], with stand-ins for the frame, the launcher and the command.
 - =just test-packages= replays a real startup: this module must load and every =SPC= key must run a command.

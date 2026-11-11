@@ -257,6 +257,7 @@ With =repeat-mode=, a second =n= after any of those repeats it.
 | =C-.=               | act on the thing at point (Embark) |
 | =C-h B=             | every key that works right now     |
 | =M-`=               | toggle the last popup              |
+| =M-!= / =M-&=         | run a shell command / without waiting; in a frame, a program with a window never waits |
 | =C-x C-+= / =C-x C-0= | text bigger / reset                |
 
 * Org headings by tag or query

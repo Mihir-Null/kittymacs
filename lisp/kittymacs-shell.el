@@ -153,6 +153,117 @@ With REGEXP, go to the most recent directory matching it."
 
 (keymap-set kittymacs-open-map "s" (cons "eshell (project)" #'kittymacs-eshell-project))
 (keymap-set kittymacs-open-map "S" (cons "eshell" #'eshell))
+(defcustom kittymacs-gui-programs '("xdg-open" "xterm" "xclock" "xmessage")
+  "Programs that open a window and may have no desktop entry.
+In a graphical frame, a shell command you run that starts one of these,
+or a program a desktop entry starts outside a terminal, starts detached
+instead of making Emacs wait for it."
+  :type '(repeat string)
+  :group 'kittymacs)
+
+(defvar kittymacs--shell-command-from-user nil
+  "Non-nil while a command the user ran calls `shell-command' for them.")
+
+(defun kittymacs--command-program (command)
+  "Return the program the shell COMMAND starts, or nil if its words do not parse.
+Leading `env' and NAME=VALUE words are skipped."
+  (let ((words (condition-case nil (split-string-and-unquote command) (error nil))))
+    (while (and words (or (equal (car words) "env")
+                          (string-match-p "\\`[A-Za-z_][A-Za-z0-9_]*=" (car words))))
+      (pop words))
+    (car words)))
+
+(defun kittymacs--desktop-entry-program (file)
+  "Return the program the desktop entry FILE starts in a window of its own.
+Nil for an entry that runs in a terminal, stays out of menus, or is not
+an application."
+  (with-temp-buffer
+    (ignore-errors (insert-file-contents file))
+    (goto-char (point-min))
+    (when (re-search-forward "^\\[Desktop Entry\\][ \t]*$" nil t)
+      (let ((end (save-excursion
+                   (if (re-search-forward "^\\[" nil t) (match-beginning 0) (point-max))))
+            fields)
+        (while (re-search-forward "^\\([A-Za-z]+\\)[ \t]*=[ \t]*\\(.*\\)$" end t)
+          (push (cons (match-string 1) (match-string 2)) fields))
+        (and (equal (cdr (assoc "Type" fields)) "Application")
+             (not (equal (cdr (assoc "Terminal" fields)) "true"))
+             (not (equal (cdr (assoc "Hidden" fields)) "true"))
+             (not (equal (cdr (assoc "NoDisplay" fields)) "true"))
+             (cdr (assoc "Exec" fields))
+             (kittymacs--command-program (cdr (assoc "Exec" fields))))))))
+
+(defun kittymacs--desktop-entry-programs ()
+  "Return the programs that desktop entries start in a window of their own."
+  (let ((directories (cons (or (getenv "XDG_DATA_HOME") "~/.local/share")
+                           (split-string (or (getenv "XDG_DATA_DIRS")
+                                             "/usr/local/share:/usr/share")
+                                         path-separator t)))
+        programs)
+    (dolist (directory directories)
+      (let ((applications (expand-file-name "applications" directory)))
+        (when (file-directory-p applications)
+          (dolist (file (ignore-errors
+                          (directory-files-recursively applications "\\.desktop\\'")))
+            (when-let* ((program (kittymacs--desktop-entry-program file)))
+              (push program programs))))))
+    programs))
+
+(defun kittymacs--program-file (program)
+  "Return the file PROGRAM runs, with every link resolved, or nil."
+  (when-let* ((file (if (file-name-absolute-p program) program (executable-find program))))
+    (file-truename file)))
+
+(defun kittymacs-gui-program-p (program)
+  "Return non-nil if PROGRAM opens a window of its own.
+It does when its name is in `kittymacs-gui-programs', or when a desktop
+entry that does not run in a terminal starts it, by name or by file."
+  (let ((name (file-name-nondirectory program))
+        (file (kittymacs--program-file program)))
+    (or (member name kittymacs-gui-programs)
+        (seq-some (lambda (entry)
+                    (or (equal (file-name-nondirectory entry) name)
+                        (and file (equal (kittymacs--program-file entry) file))))
+                  (kittymacs--desktop-entry-programs)))))
+
+(defun kittymacs--shell-command-detach-p (command output-buffer from-user)
+  "Return non-nil if `shell-command' should start COMMAND detached.
+FROM-USER is non-nil when the user ran the command; OUTPUT-BUFFER is
+`shell-command's own argument, non-nil when the output is wanted here."
+  (and from-user
+       (display-graphic-p)
+       (not output-buffer)
+       (not (file-remote-p default-directory))
+       (not (string-match-p "&[ \t]*\\'" command))
+       (when-let* ((program (kittymacs--command-program command)))
+         (kittymacs-gui-program-p program))))
+
+(declare-function kittymacs-exwm-launch "kittymacs-exwm" (command))
+
+(defun kittymacs--shell-command-detach (original command &rest arguments)
+  "Call ORIGINAL with COMMAND and ARGUMENTS, unless COMMAND is a graphical program.
+A graphical program that the user asked for in a graphical frame starts
+detached instead, through `kittymacs-exwm-launch' when it is defined."
+  (if (not (kittymacs--shell-command-detach-p
+            command (car arguments)
+            (or kittymacs--shell-command-from-user (called-interactively-p 'any))))
+      (apply original command arguments)
+    (if (fboundp 'kittymacs-exwm-launch)
+        (kittymacs-exwm-launch command)
+      (let ((process-connection-type nil))
+        (set-process-query-on-exit-flag (start-process-shell-command command nil command) nil)))
+    (message "Started %s without waiting for it, because it opens a window"
+             (kittymacs--command-program command))
+    nil))
+
+(defun kittymacs--shell-command-note-user (original &rest arguments)
+  "Call ORIGINAL with ARGUMENTS, telling `shell-command' whether the user ran it."
+  (let ((kittymacs--shell-command-from-user (called-interactively-p 'any)))
+    (apply original arguments)))
+
+(advice-add 'shell-command :around #'kittymacs--shell-command-detach)
+(dolist (command '(dired-do-shell-command dired-smart-shell-command))
+  (advice-add command :around #'kittymacs--shell-command-note-user))
 (with-eval-after-load 'meow
   (dolist (entry '((eshell-mode . insert) (shell-mode . insert) (term-mode . insert)))
     (add-to-list 'meow-mode-state-list entry)))
