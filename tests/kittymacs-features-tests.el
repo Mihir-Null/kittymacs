@@ -835,12 +835,13 @@ It goes outside `kittymacs-features-test-with': replacing a primitive such as
       (should-not calls))))
 
 (ert-deftest kittymacs-features-another-install-error-shows-first-and-git-only-maybe ()
-  (kittymacs-features-test-with () warnings
+  "Quotes are grave, as typed: the locale would otherwise choose curved ones."
+  (kittymacs-features-test-with ((text-quoting-style 'grave)) warnings
     (kittymacs-features-vc-warning "pdf-text" "https://github.com/agzam/pdf-text"
                                    '(error "Package `magit-section' is unavailable"))
     (should (= (length warnings) 1))
     (should (string-prefix-p "pdf-text was not installed: Package `magit-section' is unavailable\nIf that error comes from git, check that `git clone https://github.com/agzam/pdf-text' works"
-                             (substitute-quotes (car warnings))))))
+                             (car warnings)))))
 
 (ert-deftest kittymacs-features-moving-leftovers-asks-once-and-renames ()
   (kittymacs-features-test-with-elpa _calls
