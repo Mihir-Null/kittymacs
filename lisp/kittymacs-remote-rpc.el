@@ -38,12 +38,7 @@
                  :defer t))
             t)
     (error
-     (display-warning 'kittymacs
-                      (format "tramp-rpc was not installed: %s
-Check that `git clone %s' works from a terminal, and which git Emacs runs: %s"
-                              (error-message-string err) kittymacs-remote-rpc-repository
-                              (executable-find "git"))
-                      :warning))))
+     (kittymacs-features-vc-warning "tramp-rpc" kittymacs-remote-rpc-repository err))))
 
 ;;; Where the server is looked for
 

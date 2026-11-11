@@ -312,6 +312,79 @@ A package that cannot be installed warns, and the rest carry on."
     (dolist (warning (reverse held))
       (apply #'display-warning warning))))
 (add-hook 'delayed-warnings-hook #'kittymacs-features--log-compile-warnings)
+(defvar package--initialized)
+(defvar kittymacs-quickstart-loaded)
+(declare-function package-initialize "package" (&optional no-activate))
+
+(define-error 'kittymacs-features-leftover-checkout
+  "An install that did not finish left this checkout")
+
+(defun kittymacs-features--leftover-checkout (package)
+  "Return PACKAGE's directory if it is left from an install that did not finish.
+That is a directory named PACKAGE under `package-user-dir' that package.el
+does not count as installed."
+  (require 'package)
+  (let ((directory (file-name-as-directory
+                    (expand-file-name (symbol-name package) package-user-dir))))
+    (when (and (file-directory-p directory)
+               (not (package-installed-p package))
+               (not (and (bound-and-true-p kittymacs-quickstart-loaded)
+                         (not (bound-and-true-p package--initialized))
+                         (progn (package-initialize t)
+                                (package-installed-p package)))))
+      directory)))
+
+(defun kittymacs-features--refuse-leftover-checkout (install arg &optional local-path)
+  "Call INSTALL with ARG and LOCAL-PATH, unless ARG's package left a checkout.
+Around `use-package-vc-install', whose ARG is (NAME OPTIONS REVISION).
+package-vc would ask whether to overwrite the checkout, which a daemon with
+no frame cannot answer; this signals `kittymacs-features-leftover-checkout'
+instead, for the declaration's `condition-case' to report."
+  (if-let* (((not local-path))
+            (directory (kittymacs-features--leftover-checkout (car arg))))
+      (signal 'kittymacs-features-leftover-checkout (list (car arg) directory))
+    (funcall install arg local-path)))
+(advice-add 'use-package-vc-install :around #'kittymacs-features--refuse-leftover-checkout)
+
+(defun kittymacs-features-vc-warning (package url err)
+  "Warn that PACKAGE, from the Git repository URL, did not install: ERR.
+Every chapter's `:vc' declaration calls this from its `condition-case'."
+  (display-warning
+   'kittymacs
+   (pcase err
+     (`(kittymacs-features-leftover-checkout ,name ,directory)
+      (format-message "%s was not installed: %s is left from an install of %s that did not finish.
+Move it aside, with M-x kittymacs-features-move-leftovers or by hand, then restart Emacs: the restart installs %s afresh."
+                      package (abbreviate-file-name directory) name name))
+     (_
+      (format-message "%s was not installed: %s
+If that error comes from git, check that `git clone %s' works from a terminal, and which git Emacs runs: %s"
+                      package (error-message-string err) url (executable-find "git"))))
+   :warning))
+
+(defun kittymacs-features--leftovers ()
+  "Return the leftover checkouts of the Git packages of the features that are on."
+  (delq nil (mapcar #'kittymacs-features--leftover-checkout
+                    (delete-dups
+                     (seq-mapcat (lambda (feature) (kittymacs-features--property feature :vc))
+                                 (kittymacs-features-enabled))))))
+
+(defun kittymacs-features-move-leftovers ()
+  "Move aside each checkout a Git install that did not finish left, after asking.
+Each becomes NAME.broken-TIMESTAMP beside it, so the next start installs
+NAME afresh."
+  (interactive)
+  (let ((leftovers (kittymacs-features--leftovers))
+        (stamp (format-time-string "%Y%m%d-%H%M%S")))
+    (cond
+     ((null leftovers)
+      (message "No Git install has left a checkout behind"))
+     ((yes-or-no-p (format "Move aside %s? "
+                           (mapconcat #'abbreviate-file-name leftovers ", ")))
+      (dolist (directory leftovers)
+        (let ((directory (directory-file-name directory)))
+          (rename-file directory (format "%s.broken-%s" directory stamp))))
+      (message "Moved %d aside; restart Emacs to install them afresh" (length leftovers))))))
 (put 'kittymacs-org-roam-project 'safe-local-variable #'booleanp)
 (put 'kittymacs-org-roam-excluded-directories 'safe-local-variable #'list-of-strings-p)
 
