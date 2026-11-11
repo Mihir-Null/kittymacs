@@ -374,6 +374,29 @@ puts the socket without `XDG_RUNTIME_DIR'."
 
 #+end_src
 
+* Whether a buffer is remote
+:PROPERTIES:
+:ID: 8a8dfffa-09f1-454a-8888-cd2f08ccdf9b
+:END:
+
+- =kittymacs-remote-buffer-p= says whether this buffer's directory is on another machine.
+  + [[id:8d3b7e15-6f42-4c09-a1e8-5b2d90c7f364][The remote chapter's guards]] put it in front of functions that would reach that machine with nobody asking.
+- It lives here, not in the remote chapter, because modules that load earlier use it too.
+  + The look advises doom-modeline with it, and smooth scrolling asks it on every wheel event.
+  + When it lived in the remote chapter, a file visited before that chapter loaded ran the look's advice before the predicate existed, and a first install of a package from Git failed half done.
+  + This module loads first, so the predicate exists before anything can call it.
+- It never connects: =file-remote-p= with no second argument only reads the name.
+- It ignores its arguments, so it can stand in front of any function as advice.
+
+#+begin_src emacs-lisp
+(defun kittymacs-remote-buffer-p (&rest _)
+  "Return non-nil if this buffer's directory is on another machine.
+This never connects.  The arguments are ignored, so it can stand in front of any
+function as advice."
+  (file-remote-p default-directory))
+
+#+end_src
+
 * Small helpers
 
 - Commands the leader menus use:

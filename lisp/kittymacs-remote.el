@@ -515,12 +515,6 @@ from a new buffer."
               #'kittymacs--remote-envrc-variable-local-p))
 (setopt remote-file-name-inhibit-auto-save-visited t
         remote-file-name-inhibit-auto-save t)
-
-(defun kittymacs-remote-buffer-p (&rest _)
-  "Return non-nil if this buffer's directory is on another machine.
-This never connects.  The arguments are ignored, so it can stand in front of any
-function as advice."
-  (file-remote-p default-directory))
 (defcustom kittymacs-remote-auto-capfs '(eglot-completion-at-point cape-keyword)
   "Completion sources Corfu's automatic popup may call in a remote buffer."
   :type '(repeat function)
