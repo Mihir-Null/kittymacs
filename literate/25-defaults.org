@@ -328,10 +328,21 @@
   + Then it tries once more in =emacs<uid>= under =TMPDIR= or =/tmp=, which is =server.el='s own choice for =server-socket-dir= without =XDG_RUNTIME_DIR=. =emacsclient= looks there too when the first socket is missing.
   + Any other error, or a second failure, is a warning that names the error and the directory.
   + A daemon on such a directory now starts on the shorter one, where before it stopped at this error.
+- An Emacs that is the X session's window manager names its server =exwm=, so the daemon keeps the default server, =server= ([[id:86fcd506-34c8-476d-8903-acbef46275bf][the EXWM chapter]] says why the two run side by side).
+  + =emacsclient= with no =-s= then reaches the daemon, from the session and over SSH alike, and =emacsclient -s exwm= reaches the window manager.
+  + The name is set here, before the first start, from =kittymacs-exwm-session-p= in [[id:5c1e7a94-8f30-4d26-b7a1-3e92d06f4c18][the features chapter]], which loads first.
+  + Such an Emacs never reads, takes or removes the =server= socket, so even frozen it cannot keep the daemon from starting.
+  + Every other Emacs keeps =server-name= as it is.
 
 #+begin_src emacs-lisp
+(require 'kittymacs-features)
+
 (defvar server-socket-dir)
 (declare-function server-running-p "server" (&optional name))
+
+(defconst kittymacs-exwm-server-name "exwm"
+  "The server name of an Emacs that is the X session's window manager.
+`emacsclient -s exwm' reaches it, and the default server stays the daemon's.")
 
 (defun kittymacs--server-start ()
   "Start the server unless one is running, and warn if it cannot.
@@ -357,6 +368,8 @@ puts the socket without `XDG_RUNTIME_DIR'."
 (when (or window-system (daemonp))
   (require 'server)
   (setopt server-client-instructions nil)
+  (when (kittymacs-exwm-session-p)
+    (setopt server-name kittymacs-exwm-server-name))
   (kittymacs--server-start))
 
 #+end_src
