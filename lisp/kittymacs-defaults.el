@@ -179,6 +179,11 @@ puts the socket without `XDG_RUNTIME_DIR'."
   (setopt server-client-instructions nil)
   (kittymacs--server-start))
 (setopt switch-to-prev-buffer-skip-regexp "\\`[ *]")
+(defun kittymacs-remote-buffer-p (&rest _)
+  "Return non-nil if this buffer's directory is on another machine.
+This never connects.  The arguments are ignored, so it can stand in front of any
+function as advice."
+  (file-remote-p default-directory))
 (defun kittymacs-new-buffer (&optional frame)
   "Create an empty buffer; with FRAME (prefix argument), show it in a new frame."
   (interactive "P")

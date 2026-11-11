@@ -10,7 +10,7 @@
 (defvar meow-normal-mode)
 (defvar ultra-scroll-mode)
 (declare-function kittymacs--pulse-line "kittymacs-ui" (&rest _))
-(declare-function kittymacs-remote-buffer-p "kittymacs-remote" (&rest _))
+(declare-function kittymacs-remote-buffer-p "kittymacs-defaults" (&rest _))
 (declare-function mwheel-event-window "mwheel" (event))
 (declare-function mwheel-scroll "mwheel" (event &optional arg))
 (declare-function pixel-scroll-precision-interpolate "pixel-scroll" (delta &optional old-window factor))

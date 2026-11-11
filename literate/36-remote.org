@@ -1274,7 +1274,7 @@ from a new buffer."
 - None is a blanket off switch: a command you run still reaches the machine.
   + Magit, Eglot, =compile= and agent-shell work as they do on any connection, and =SPC c p f= completes a remote file name when you ask.
 - A guard costs a local buffer one call to =file-remote-p=, which matches a regular expression and connects nothing: about 1.4 microseconds, and [[file:../tests/kittymacs-remote-tests.el][the remote tests]] hold it far below a millisecond.
-- =kittymacs-remote-buffer-p= is the test they share.
+- =kittymacs-remote-buffer-p= is the test they share; [[id:8a8dfffa-09f1-454a-8888-cd2f08ccdf9b][the defaults chapter]] defines it, because modules that load before this one use it too.
 
 | What                       | On a remote buffer without a guard                                    | Now                                          |
 |----------------------------+-----------------------------------------------------------------------+----------------------------------------------|
@@ -1304,12 +1304,6 @@ from a new buffer."
 #+begin_src emacs-lisp
 (setopt remote-file-name-inhibit-auto-save-visited t
         remote-file-name-inhibit-auto-save t)
-
-(defun kittymacs-remote-buffer-p (&rest _)
-  "Return non-nil if this buffer's directory is on another machine.
-This never connects.  The arguments are ignored, so it can stand in front of any
-function as advice."
-  (file-remote-p default-directory))
 
 #+end_src
 
