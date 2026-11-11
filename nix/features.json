@@ -704,6 +704,7 @@
   },
   "agent-claude-code-ide": {
     "group": "assistants",
+    "packages": [],
     "module": "kittymacs-agents",
     "profile": "optional",
     "deps": [
