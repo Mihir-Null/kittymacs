@@ -23,7 +23,8 @@
       package-enable-at-startup nil
       package-archives '(("gnu" . "https://elpa.gnu.org/packages/")
                          ("nongnu" . "https://elpa.nongnu.org/nongnu/")
-                         ("melpa" . "https://melpa.org/packages/")))
+                         ("melpa" . "https://melpa.org/packages/")
+                         ("melpa-stable" . "https://stable.melpa.org/packages/")))
 ;; An Emacs.app started from the Dock inherits no shell PATH, so the gpg,
 ;; git and language servers that Nix or Homebrew installed are invisible
 ;; until the shells chapter imports the login environment.  Put those

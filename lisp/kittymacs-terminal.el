@@ -54,6 +54,12 @@ commonly built without the dynamic module support ghostel needs.
 `kittymacs-terminal-open' falls back to Eshell whenever this is nil."
   :type 'boolean)
 (when kittymacs-terminal-ghostel
+  ;; Install ghostel and consult-ghostel only from MELPA Stable, whose tagged
+  ;; releases have prebuilt native modules.  Not `:pin', which runs
+  ;; `package-initialize' when this file loads.
+  (setopt package-pinned-packages
+          (append '((ghostel . "melpa-stable") (consult-ghostel . "melpa-stable"))
+                  (bound-and-true-p package-pinned-packages)))
   (use-package ghostel
     :ensure t
     :defer t

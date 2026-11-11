@@ -90,7 +90,8 @@
   + For the package options that is =package.el= with its URL and EIEIO libraries: some thirty milliseconds before the first frame appears.
   + =init.el= loads them a moment later anyway, once the frame is on screen.
 - Package activation is left to =init.el=, so it happens in one known place (=package-enable-at-startup= is nil).
-- The archives are GNU ELPA, NonGNU ELPA and MELPA; signatures: [[*GNU ELPA's signature check needs a native gpg]].
+- The archives are GNU ELPA, NonGNU ELPA, MELPA and MELPA Stable; signatures: [[*GNU ELPA's signature check needs a native gpg]].
+  + Only packages pinned to it install from MELPA Stable: today ghostel and its Consult extension ([[id:bd2638bc-735d-4849-bafe-3dab5e8e30b7][the terminal chapter]] says why).
 - Three settings make startup quicker:
   + a garbage collection threshold of 128 MB until the end, then 64 MB;
   + no implied frame resizing;
@@ -137,7 +138,8 @@
       package-enable-at-startup nil
       package-archives '(("gnu" . "https://elpa.gnu.org/packages/")
                          ("nongnu" . "https://elpa.nongnu.org/nongnu/")
-                         ("melpa" . "https://melpa.org/packages/")))
+                         ("melpa" . "https://melpa.org/packages/")
+                         ("melpa-stable" . "https://stable.melpa.org/packages/")))
 ;; An Emacs.app started from the Dock inherits no shell PATH, so the gpg,
 ;; git and language servers that Nix or Homebrew installed are invisible
 ;; until the shells chapter imports the login environment.  Put those
