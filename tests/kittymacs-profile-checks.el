@@ -17,33 +17,31 @@
 (declare-function kittymacs-features-enabled "kittymacs-features" ())
 (declare-function kittymacs-features-profile "kittymacs-features" ())
 
-(defconst kittymacs-check-chapter-features
-  '((file-tree . kittymacs-treemacs)
-    (msys2-fallback . kittymacs-msys2)
-    (wsl-rpc . kittymacs-remote-rpc)
-    (home-page . kittymacs-dashboard)
-    (org-extras . kittymacs-org-extras)
-    (linked-notes . kittymacs-org-roam)
-    (pdf-reading . kittymacs-reading)
-    (notebooks . kittymacs-notebooks)
-    (agents . kittymacs-agents)
-    (agent-claude-code-ide . kittymacs-agents)
-    (agent-eca . kittymacs-agents)
-    (agent-gptel . kittymacs-agents)
-    (suggestions . kittymacs-suggestions)
-    (smooth-scroll . kittymacs-smooth-scroll)
-    (hover-docs . kittymacs-hover-docs)
-    (which-key-frame . kittymacs-which-key-frame)
-    (buffer-tabs . kittymacs-buffer-tabs)
-    (meow-state-cursor . kittymacs-meow-state-cursor))
-  "The features `init.el' loads a whole chapter for, and that chapter's module.
-Several features may load one module, as the coding agents do.")
+(defconst kittymacs-check-chapter-modules
+  '(kittymacs-treemacs kittymacs-msys2 kittymacs-remote-rpc kittymacs-dashboard
+    kittymacs-org-extras kittymacs-org-roam kittymacs-reading kittymacs-notebooks
+    kittymacs-agents kittymacs-suggestions kittymacs-smooth-scroll
+    kittymacs-hover-docs kittymacs-which-key-frame kittymacs-buffer-tabs
+    kittymacs-meow-state-cursor)
+  "The modules `init.el' loads only while a feature that owns them is on.
+The features that own one are those whose catalogue `:module' names it, so a
+feature added to a chapter, as the coding agents share one, needs no entry here.")
+
+(defun kittymacs-check-chapter-owners (module)
+  "Return the catalogue's features whose `:module' is MODULE."
+  (seq-keep (lambda (entry)
+              (when (eq (plist-get (cdr entry) :module) module)
+                (car entry)))
+            kittymacs-catalogue))
+
+(defun kittymacs-check-feature-chapter (feature)
+  "Return the chapter module FEATURE owns, or nil if its module always loads."
+  (car (memq (plist-get (alist-get feature kittymacs-catalogue) :module)
+             kittymacs-check-chapter-modules)))
 
 (defun kittymacs-check--chapter-wanted-p (module)
-  "Return non-nil if a feature that is on loads MODULE."
-  (seq-some (lambda (entry)
-              (and (eq (cdr entry) module) (kittymacs-feature-p (car entry))))
-            kittymacs-check-chapter-features))
+  "Return non-nil if a feature that is on owns MODULE."
+  (seq-some #'kittymacs-feature-p (kittymacs-check-chapter-owners module)))
 
 (defun kittymacs-check--binding (binding)
   "Return what the keymap entry BINDING runs, without its label."
@@ -199,10 +197,10 @@ Batch `format-mode-line' returns nothing, so this reads the option it obeys."
 
 (defun kittymacs-check-chapters-off ()
   "Return the chapters that loaded although every feature that loads them is off."
-  (seq-uniq (seq-filter (lambda (module)
-                          (and (featurep module)
-                               (not (kittymacs-check--chapter-wanted-p module))))
-                        (mapcar #'cdr kittymacs-check-chapter-features))))
+  (seq-filter (lambda (module)
+                (and (featurep module)
+                     (not (kittymacs-check--chapter-wanted-p module))))
+              kittymacs-check-chapter-modules))
 
 (defun kittymacs-check-msys2-inactive ()
   "Return what shows the MSYS2 module at work while its feature is off."

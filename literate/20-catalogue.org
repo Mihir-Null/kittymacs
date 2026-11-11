@@ -329,7 +329,7 @@
      :summary "Runs Claude Code's own screen in a terminal beside any agent, its sessions under SPC a w."
      :example "=SPC a w b= picks one of Claude Code's sessions.")
     (agent-claude-code-ide
-     :group assistants :module kittymacs-agents :profile optional
+     :group assistants :packages () :module kittymacs-agents :profile optional
      :deps (claude-code-ide) :one-of agent
      :summary "Makes Claude Code's own screen the agent on SPC a, with Emacs's code navigation as its tools."
      :example "=SPC a a= opens Claude Code beside this project's files.")
