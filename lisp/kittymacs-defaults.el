@@ -150,8 +150,14 @@
 (add-hook 'after-init-hook #'kittymacs--restore-scratch)
 (add-hook 'kill-emacs-hook #'kittymacs--save-scratch)
 (run-with-idle-timer 300 t #'kittymacs--save-scratch)
+(require 'kittymacs-features)
+
 (defvar server-socket-dir)
 (declare-function server-running-p "server" (&optional name))
+
+(defconst kittymacs-exwm-server-name "exwm"
+  "The server name of an Emacs that is the X session's window manager.
+`emacsclient -s exwm' reaches it, and the default server stays the daemon's.")
 
 (defun kittymacs--server-start ()
   "Start the server unless one is running, and warn if it cannot.
@@ -177,6 +183,8 @@ puts the socket without `XDG_RUNTIME_DIR'."
 (when (or window-system (daemonp))
   (require 'server)
   (setopt server-client-instructions nil)
+  (when (kittymacs-exwm-session-p)
+    (setopt server-name kittymacs-exwm-server-name))
   (kittymacs--server-start))
 (setopt switch-to-prev-buffer-skip-regexp "\\`[ *]")
 (defun kittymacs-new-buffer (&optional frame)

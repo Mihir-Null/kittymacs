@@ -33,6 +33,9 @@
         (setq kittymacs-exwm-test--keysyms (xcb:keysyms:event->keysyms nil ?\H-a))))
     (load (locate-library "kittymacs-exwm.el") nil t t)))
 
+;; EXWM's option, bound as its own `defcustom' would be, so `:custom' sets it.
+(defvar exwm-manage-configurations nil)
+
 (kittymacs-exwm-test--load)
 
 (ert-deftest kittymacs-exwm-a-missing-modifier-reads-as-a-failed-conversion ()
@@ -106,6 +109,19 @@
         (accept-process-output nil 0.1)))
     (should (seq-find (lambda (m) (string-match-p "code 127: .*not found" m))
                       messages))))
+
+(defvar exwm-class-name)
+
+(defun kittymacs-exwm-test--configuration (class)
+  "The plist `exwm-manage-configurations' gives an X window of CLASS."
+  (let ((exwm-class-name class))
+    (cdr (seq-find (lambda (entry) (eval (car entry) t))
+                   exwm-manage-configurations))))
+
+(ert-deftest kittymacs-exwm-another-emacs-s-frame-takes-every-key ()
+  "The daemon's frame starts in char mode, so C-x reaches it and not the window manager."
+  (should (plist-get (kittymacs-exwm-test--configuration "Emacs") 'char-mode))
+  (should-not (plist-get (kittymacs-exwm-test--configuration "Google-chrome") 'char-mode)))
 
 (provide 'kittymacs-exwm-tests)
 ;;; kittymacs-exwm-tests.el ends here

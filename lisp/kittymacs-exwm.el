@@ -263,6 +263,7 @@ If EXWM does not start, install xauth where this Emacs's PATH finds it, then sta
     :demand t
     :custom
     (exwm-workspace-number 4)
+    (exwm-manage-configurations '(((equal exwm-class-name "Emacs") char-mode t)))
     :config
     (advice-add 'xcb:keysyms:event->keysyms :filter-return
                 #'kittymacs-exwm--keysyms-or-failure)

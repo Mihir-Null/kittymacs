@@ -24,12 +24,7 @@
 - Selecting the =window-manager= feature installs EXWM for such a session, and turns on nothing by itself.
   + =KITTYMACS_EXWM=1= on X selects the feature too, and =kittymacs-exwm-session-p= in [[id:5c1e7a94-8f30-4d26-b7a1-3e92d06f4c18][the features chapter]] is the one place that asks: the installer needs the answer before this chapter loads.
   + This chapter always loads, because =kittymacs-wm-keys= and the other options are public, and a host may set them on any machine.
-- The first frame is already on X when =init.el= runs, so =window-system= is =x= by then; a daemon has no frame yet, which is why the daemon can never be the window manager here.
-- The session's Emacs takes over from the daemon while the session lasts:
-  + the session stops the daemon before starting it, so [[id:3fd783cd-deb8-48aa-bb44-0d9b16535365][the defaults]], which start a server only if none runs, start one here, under the daemon's name;
-  + =emacsclient=, from a shell in the session or over SSH, then reaches this Emacs and its buffers: one Emacs, not two;
-  + when the session ends, the session starts the daemon again.
-- How the daemon is stopped and started belongs to whatever starts the session, not to this chapter.
+- The first frame is already on X when =init.el= runs, so =window-system= is =x= by then. A daemon has no frame yet, so it never asks for EXWM.
 
 #+begin_src emacs-lisp
 ;;; kittymacs-exwm.el --- Emacs as the X window manager -*- lexical-binding: t; -*-
@@ -48,6 +43,23 @@ frame is on X.  Frames-only mode is off by default while it is on."
   :type 'boolean
   :group 'kittymacs)
 #+end_src
+
+* The window manager is a view on the daemon :decision:
+:PROPERTIES:
+:ID: f7e2f675-60c0-496b-b863-b3eab95a21c2
+:END:
+
+- The daemon holds your buffers and owns the default server, always. The window manager's Emacs only arranges windows, and you work in the daemon's frames.
+  + The session starts this Emacs, then opens a daemon frame on its display with =emacsclient -c=. EXWM manages that frame as it manages Chrome: an X window, shown in a buffer.
+  + [[id:3fd783cd-deb8-48aa-bb44-0d9b16535365][The defaults]] name this Emacs's server =exwm=. So =emacsclient= with no =-s= reaches the daemon, from the session and over SSH, and =emacsclient -s exwm= reaches this Emacs.
+  + Two processes, so a freeze in one leaves the other working. A window manager stuck on a program leaves the daemon and its buffers reachable. A daemon stuck the same way leaves the =H-= keys moving windows.
+- Decided on 2026-11-10, replacing the takeover. Before, the session stopped the daemon, and this Emacs took the default server for as long as the session lasted.
+  + Then a session's Emacs froze for two days on a synchronous =google-chrome= started from Dired. It held the server all that time, and the daemon failed every start with "Another instance of Emacs is running the server".
+- The daemon is not the window manager either, for two reasons:
+  + it has no X frame while =init.el= runs, so nothing there would ask for EXWM;
+  + a GTK build of Emacs can crash when an X server it has frames on goes away, and ending a remote desktop session ends its X server.
+- Opening and closing the daemon's frames, and starting the daemon, belong to whatever starts the session, not to this chapter.
+  + So does closing the daemon's frames on this display before the X server goes, which keeps that crash away from the daemon.
 
 * The key grammar, from LeopardWM :decision:
 :PROPERTIES:
@@ -286,9 +298,12 @@ A command, or a function taking the key's ARGS."
 :END:
 
 - EXWM runs inside this Emacs, so while Emacs waits for a program, nothing manages the windows and no key works.
-- =M-!=, =shell-command=, waits for its command to exit unless the command ends in =&=.
-  + =M-! google-chrome= freezes the whole session until Chrome quits: Emacs sits reading Chrome's output, and EXWM cannot draw, focus or pass on a key meanwhile.
+  + A daemon that waits freezes only its own frames ([[*The window manager is a view on the daemon]]): the =H-= keys still move windows.
+- Emacs's own =M-!=, =shell-command=, waits for its command to exit unless the command ends in =&=.
+  + So a program with a window, started that way, holds Emacs until it quits: =M-! google-chrome= from Dired once froze a session for two days.
   + With a trailing =&=, =M-!= runs the command as =M-&= does.
+  + Whether =M-!=, Dired's =!= and =X=, and =project-shell-command= detach such a program in a graphical frame is [[id:d2e0bc37-0bd4-4b28-a8ee-04f94ac451f8][the shells chapter]]'s decision, not this chapter's.
+- =H-d= stays the launcher: it never waits, whatever the command and whatever the shells chapter does.
 - =M-&=, =async-shell-command=, is the other safe way.
   + It shows the program's output in a buffer, and killing that buffer asks first, then ends the program.
 - =H-d= asks for a command and starts it detached, as [[https://github.com/emacs-exwm/exwm/wiki][EXWM's example configuration]] does on =s-&=.
@@ -381,6 +396,10 @@ with an error, the echo area says so."
 - An X window's buffer is named after its program and title, =Google-chrome: Inbox=, so =C-x b= and Consult find it by either.
 - =exwm-wm-mode= waits for =window-setup-hook= when called while the first frame is still being set up, so it can be turned on from here.
 - =C-x=, =C-h=, =M-x= and the other prefix keys reach Emacs even from an X window ([[https://github.com/emacs-exwm/exwm/wiki][EXWM's wiki]]); =C-q= sends the next key to the program instead.
+- Another Emacs's frame, such as the daemon's, starts in char mode, where every key but the =H-= keys goes to the frame ([[*The window manager is a view on the daemon]]).
+  + In line mode, EXWM's default, =C-x C-f= typed in the daemon's frame would open a file in this Emacs instead.
+  + =exwm-manage-configurations= matches the X class =Emacs=, which every Emacs frame has. This Emacs's own frames are its workspaces, which EXWM never manages as windows.
+  + =H-r= (=exwm-reset=) puts the window in line mode, and =C-c C-k= there puts it back in char mode.
 - A key whose modifier the X server lacks must not stop EXWM.
   + =xcb:keysyms:event->keysyms= documents =((0 . 0))= for a key it cannot convert, and EXWM warns "Key unavailable" on that value.
   + With no mask for a modifier, it returns nil instead, and EXWM's arithmetic on that turns EXWM off, leaving a plain frame.
@@ -417,6 +436,7 @@ If EXWM does not start, install xauth where this Emacs's PATH finds it, then sta
     :demand t
     :custom
     (exwm-workspace-number 4)
+    (exwm-manage-configurations '(((equal exwm-class-name "Emacs") char-mode t)))
     :config
     (advice-add 'xcb:keysyms:event->keysyms :filter-return
                 #'kittymacs-exwm--keysyms-or-failure)
@@ -464,6 +484,8 @@ If EXWM does not start, install xauth where this Emacs's PATH finds it, then sta
 * Check
 
 - Start a session whose script sets =KITTYMACS_EXWM=1= and runs =emacs=; =M-: kittymacs-exwm= is =t=, =M-: exwm-wm-mode= is =t=, =M-: exwm-randr-mode= is =t=.
+- In that Emacs, =M-: server-name= is ="exwm"=. From a shell in the session, =emacsclient --eval '(daemonp)'= answers from the daemon, and =emacsclient -s exwm --eval exwm-wm-mode= answers =t=.
+- The daemon's frame, which the session opens, shows in a workspace as a buffer named =Emacs: …=; =C-x C-f= typed there prompts in that frame, and =H-h= still moves away from it.
 - Resize the RDP client's window (or rotate the tablet): after a moment the workspace fills the new size; =xrandr= in the session shows the new resolution.
 - =M-x= then =xev=, press the Hyper key: =Hyper_L= with =mod3=, and no other modifier.
 - Start Chrome: a buffer named =Google-chrome: …= appears; =H-l= and =H-h= move between it and an Emacs window beside it.

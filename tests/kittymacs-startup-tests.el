@@ -247,6 +247,59 @@ the starts used, oldest first, and `warnings' the warning texts."
     (should (member '(kittymacs--server-start) form))
     (should-not (memq 'server-start (flatten-tree form)))))
 
+(defun kittymacs-startup-test--start-servers (exwm owned)
+  "Run the defaults module's server start, and say what it did.
+EXWM non-nil makes this a window-manager session.  OWNED lists the server
+names another Emacs already runs.  The module's own constant, start
+function and guard run, with stand-ins for `server.el's socket calls.
+Return a plist: the `:name' the server ended with, the names `:probed'
+and the names `:started'."
+  (add-to-list 'load-path (expand-file-name "lisp" kittymacs-startup-test-root))
+  (require 'kittymacs-features)
+  (let* ((forms (kittymacs-startup-test--forms
+                 (expand-file-name "lisp/kittymacs-defaults.el" kittymacs-startup-test-root)))
+         (constant (seq-find (lambda (form)
+                               (and (eq (car-safe form) 'defconst)
+                                    (eq (cadr form) 'kittymacs-exwm-server-name)))
+                             forms))
+         (guard (seq-find (lambda (form)
+                            (and (eq (car-safe form) 'when)
+                                 (equal (cadr form) '(or window-system (daemonp)))))
+                          forms))
+         (server-name "server")
+         (probed nil)
+         (started nil))
+    (should constant)
+    (eval constant t)
+    (kittymacs-startup-test--define-server-start)
+    (cl-letf (((symbol-function 'kittymacs-exwm-session-p) (lambda () exwm))
+              ((symbol-function 'daemonp) (lambda () t))
+              ((symbol-function 'server-running-p)
+               (lambda (&optional name)
+                 (let ((name (or name server-name)))
+                   (push name probed)
+                   (and (member name owned) t))))
+              ((symbol-function 'server-start)
+               (lambda (&rest _) (push server-name started))))
+      (eval guard t))
+    (list :name server-name :probed probed :started started)))
+
+(ert-deftest kittymacs-startup-the-window-manager-names-its-server-exwm ()
+  "Under an EXWM session the server is \"exwm\"; any other Emacs keeps the default."
+  (should (equal (plist-get (kittymacs-startup-test--start-servers t nil) :name) "exwm"))
+  (should (equal (plist-get (kittymacs-startup-test--start-servers t nil) :started) '("exwm")))
+  (should (equal (plist-get (kittymacs-startup-test--start-servers nil nil) :name) "server"))
+  (should (equal (plist-get (kittymacs-startup-test--start-servers nil nil) :started) '("server"))))
+
+(ert-deftest kittymacs-startup-no-start-touches-a-server-another-emacs-owns ()
+  "The daemon owns \"server\": a window manager never asks for it, and another Emacs leaves it."
+  (let ((exwm (kittymacs-startup-test--start-servers t '("server"))))
+    (should (equal (plist-get exwm :started) '("exwm")))
+    (should-not (member "server" (plist-get exwm :probed))))
+  (should-not (plist-get (kittymacs-startup-test--start-servers nil '("server")) :started))
+  ;; A second window manager, while the first still runs, starts nothing.
+  (should-not (plist-get (kittymacs-startup-test--start-servers t '("exwm" "server")) :started)))
+
 ;;; kittymacs-startup-tests.el ends here
 
 (defvar kittymacs-host-directories nil)
