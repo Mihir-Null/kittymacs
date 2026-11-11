@@ -53,7 +53,8 @@ doc-test:
 # The tests that need no packages: the builder; the startup guards and the
 # Nix package list; each operating system's platform branch (on any
 # machine); the Tree-sitter grammar policy, offline; Org table wrapping; the
-# onboarding screens, with scripted keys and through a real pty.
+# onboarding screens, with scripted keys and through a real pty; a program
+# with a window, started from M-! in a graphical frame, not waited for.
 test:
     emacs -Q --batch -l tests/kittymacs-tangle-tests.el -f ert-run-tests-batch-and-exit
     emacs -Q --batch -l tests/kittymacs-startup-tests.el -f ert-run-tests-batch-and-exit
@@ -62,6 +63,7 @@ test:
     emacs -Q --batch -l tests/kittymacs-remote-rpc-tests.el -f ert-run-tests-batch-and-exit
     emacs -Q --batch -l tests/kittymacs-smooth-scroll-tests.el -f ert-run-tests-batch-and-exit
     emacs -Q --batch -l tests/kittymacs-exwm-tests.el -f ert-run-tests-batch-and-exit
+    emacs -Q --batch -l tests/kittymacs-shell-detach-tests.el -f ert-run-tests-batch-and-exit
     emacs -Q --batch -l tests/kittymacs-open-tests.el -f ert-run-tests-batch-and-exit
     emacs -Q --batch -l tests/kittymacs-hover-docs-tests.el -f ert-run-tests-batch-and-exit
     emacs -Q --batch -l tests/kittymacs-treesit-tests.el -f ert-run-tests-batch-and-exit
