@@ -576,6 +576,93 @@ is allowed; so does waiting for the other with `with-eval-after-load'.")
                            (seq-filter (lambda (dep) (assq dep features))
                                        (plist-get (cdr entry) :deps))))))))
 
+;;; Load order: nothing hooks a function that loads later
+
+(defun kittymacs-lint--module-order ()
+  "The modules `init.el' loads, in the order it loads them."
+  (let (order)
+    (dolist (form (kittymacs-lint--forms (kittymacs-lint--path "init.el")))
+      (kittymacs-lint--walk
+       form
+       (lambda (list)
+         (pcase list
+           (`(,(or 'require 'kittymacs-require-module) ',(and module (pred symbolp)))
+            (when (and (file-exists-p (kittymacs-lint--path (format "lisp/%s.el" module)))
+                       (not (memq module order)))
+              (push module order)))))))
+    (nreverse order)))
+
+(defun kittymacs-lint--hooked-functions (forms modules)
+  "Return the named functions FORMS hand to `advice-add' or `add-hook'.
+A use behind `fboundp', or inside `with-eval-after-load' of one of MODULES,
+waits for the function, so it is left out."
+  (let (found)
+    (dolist (form forms)
+      (kittymacs-lint--symbols
+       form
+       (lambda (list)
+         (pcase list
+           (`(,(or 'when 'if 'and) (fboundp . ,_) . ,_) t)
+           (`(with-eval-after-load ',(pred (lambda (feature) (memq feature modules))) . ,_) t)
+           ((or `(advice-add ,_ ,_ ,reference . ,_) `(add-hook ,_ ,reference . ,_))
+            (pcase reference
+              ((or `(function ,(and name (pred symbolp))) `(quote ,(and name (pred symbolp))))
+               (push name found)))
+            nil)))))
+    (seq-uniq found)))
+
+(defun kittymacs-lint--load-order-hazards (modules)
+  "Return (MODULE FUNCTION HOME) for each function MODULE hooks before HOME defines it.
+MODULES is a list of (MODULE . FORMS), in load order."
+  (let ((homes (make-hash-table :test #'eq))
+        (names (mapcar #'car modules))
+        hazards)
+    (pcase-dolist (`(,module . ,forms) modules)
+      (dolist (name (kittymacs-lint--defined-names forms))
+        (unless (gethash name homes) (puthash name module homes))))
+    (pcase-dolist (`(,module . ,forms) modules)
+      (dolist (function (kittymacs-lint--hooked-functions forms names))
+        (when-let* ((home (gethash function homes))
+                    ((memq home (cdr (memq module names)))))
+          (push (list module function home) hazards))))
+    (nreverse hazards)))
+
+(ert-deftest kittymacs-lint-load-order-hazards-find-the-doom-modeline-advice ()
+  "The shape kittymacs #121 fixed by hand: the look advised with a remote predicate."
+  (let ((ui '((with-eval-after-load 'doom-modeline
+                (advice-add 'doom-modeline-update-env :before-until
+                            #'kittymacs-remote-buffer-p))))
+        (remote '((defun kittymacs-remote-buffer-p (&rest _) nil))))
+    (should (equal (kittymacs-lint--load-order-hazards
+                    `((kittymacs-ui . ,ui) (kittymacs-remote . ,remote)))
+                   '((kittymacs-ui kittymacs-remote-buffer-p kittymacs-remote))))
+    (should-not (kittymacs-lint--load-order-hazards
+                 `((kittymacs-remote . ,remote) (kittymacs-ui . ,ui))))))
+
+(ert-deftest kittymacs-lint-hooked-functions-tell-waiting-from-hooking ()
+  (should (equal (sort (kittymacs-lint--hooked-functions
+                        '((add-hook 'a-hook #'by-function)
+                          (add-hook 'a-hook 'by-quote 90)
+                          (advice-add 'f :around #'advised)
+                          (add-hook 'a-hook (lambda () (inner)))
+                          (when (fboundp 'guarded) (add-hook 'a-hook #'guarded))
+                          (with-eval-after-load 'later (add-hook 'a-hook #'waits))
+                          (with-eval-after-load 'other-package (add-hook 'a-hook #'counted)))
+                        '(later))
+                       #'string<)
+                 '(advised by-function by-quote counted))))
+
+(ert-deftest kittymacs-lint-no-module-hooks-a-function-that-loads-later ()
+  "Advice or a hook that names a later module's function fails until that module loads."
+  (let ((order (kittymacs-lint--module-order)))
+    (should (> (length order) 20))
+    (should (equal (kittymacs-lint--load-order-hazards
+                    (mapcar (lambda (module)
+                              (cons module (kittymacs-lint--forms
+                                            (kittymacs-lint--path (format "lisp/%s.el" module)))))
+                            order))
+                   nil))))
+
 ;;; Org waits for its first use
 
 (defconst kittymacs-lint-org-library-regexp "\\`\\(?:org\\|ol\\|ox\\)\\(?:-\\|\\'\\)"
