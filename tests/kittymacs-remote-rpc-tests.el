@@ -29,7 +29,13 @@
   (expand-file-name ".." (file-name-directory (or load-file-name buffer-file-name))))
 (add-to-list 'load-path (expand-file-name "lisp" kittymacs-rpc-test-root))
 (add-to-list 'load-path (expand-file-name "tests/fake-tramp-rpc" kittymacs-rpc-test-root))
-(defvar kittymacs-cache-dir temporary-file-directory)
+(defconst kittymacs-rpc-test-home
+  (file-name-as-directory (make-temp-file "kittymacs-rpc-" t))
+  "This run's own `user-emacs-directory', which the Emacs it starts shares.
+The defaults write savehist and other state into its cache, so a shared
+directory such as /tmp would meet another user's files.")
+(setq user-emacs-directory kittymacs-rpc-test-home)
+(defvar kittymacs-cache-dir (expand-file-name "cache/" kittymacs-rpc-test-home))
 (require 'kittymacs-catalogue)
 (require 'kittymacs-remote)
 
@@ -53,7 +59,8 @@
                          nil t nil "-Q" "--batch"
                          "-L" (expand-file-name "lisp" kittymacs-rpc-test-root)
                          "-L" (expand-file-name "tests/fake-tramp-rpc" kittymacs-rpc-test-root)
-                         "--eval" "(defvar kittymacs-cache-dir temporary-file-directory)"
+                         "--eval" (format "(setq user-emacs-directory %S)" kittymacs-rpc-test-home)
+                         "--eval" (format "(defvar kittymacs-cache-dir %S)" kittymacs-cache-dir)
                          "--eval" (format "%S" kittymacs-rpc-test-no-installs)
                          (seq-mapcat (lambda (form) (list "--eval" (format "%S" form))) forms))))
       (unless (eql status 0) (error "Exit %s: %s" status (buffer-string)))
@@ -513,7 +520,7 @@ That is `unset' if the hook left it alone, and it records any connecting."
                (setq byte-compile-dest-file-function
                      (lambda (file)
                        (expand-file-name (concat (file-name-nondirectory file) "c")
-                                         temporary-file-directory)))
+                                         ,kittymacs-rpc-test-home)))
                (let ((compiled (byte-compile-file
                                 ,(expand-file-name "lisp/kittymacs-remote-rpc.el"
                                                    kittymacs-rpc-test-root))))
