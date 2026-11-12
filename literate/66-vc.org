@@ -445,6 +445,7 @@ The one at point in Forge, or else the current branch's; otherwise ask."
 - It is not on MELPA, so it installs from Git, pinned to a commit, as [[id:56789f7f-90bb-4c3b-947c-16ecb6d72365][agent-shell-attention]] does.
   + A failed clone is a warning, not a stopped startup; until a restart installs it, its keys and the Magit additions stay off.
   + =M-x package-vc-upgrade= moves it; change =:rev= here to move everyone.
+  + Its install log shows byte-compiler warnings from its =test/= folder: [[*Upstream tests in the install log]].
 - The keys inside a review, and the Meow state of each buffer: [[*Meow in branch reviews]].
 
 #+begin_src emacs-lisp
@@ -513,6 +514,17 @@ branch's review/BRANCH.json."
     (keymap-set kittymacs-vc-map "u" (cons "review a pull request here" #'kittymacs-diff-review-pull-request))))
 
 #+end_src
+
+** Upstream tests in the install log :decision:
+:PROPERTIES:
+:ID: 8829e2bc-2cba-46fe-8582-814fac0bc023
+:END:
+
+- =package-vc= byte-compiles every Emacs Lisp file in a checkout when it installs, the upstream =test/= folder included, so a first install of diff-review or [[id:9fccd657-dc0b-4ad1-99a2-d7615024f438][claude-code-ide]] logs warnings about test libraries it does not have.
+  + The package's =:ignored-files= does not help: in Emacs 31.1 it leaves files out of the load path, not out of the compilation.
+- Accepted as noise, decided on 2026-11-11: the warnings are about files nothing loads, and the install succeeds.
+  + Asking each upstream for an =.elpaignore= would fix it per package, at the cost of a request per pin; not done.
+- A warning from a file outside =test/= is not this noise, and is worth reading.
 
 * diff-review on another machine, over TRAMP
 :PROPERTIES:

@@ -370,6 +370,7 @@ The value of `agent-shell-attention-notify-function'."
   + Whether a call runs without asking is Claude's permission setting in =~/.claude=, not this chapter's ([[*What lives in Emacs, and what does not]]).
 - Not on MELPA, so it installs from Git, pinned to a commit, with the warning [[*Knowing when a shell waits for you][agent-shell-attention]] uses if =git clone= fails.
   + Until it installs, its =SPC a= keys stay unbound, as agent-shell-attention's do.
+  + Its install log shows warnings from its =test/= folder, which [[id:8829e2bc-2cba-46fe-8582-814fac0bc023][the version-control chapter]] accepts as noise.
 - Its start command always opens a new instance, so =SPC a a= switches to this project's instance and starts one only where there is none.
 - Two features share it:
   + =claude-code-ide= installs it beside whichever agent owns =SPC a=, and puts its session keys in =kittymacs-claude-code-ide-map=, on =SPC a w=;
