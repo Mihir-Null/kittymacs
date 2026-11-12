@@ -31,7 +31,8 @@ frame is on X.  Frames-only mode is off by default while it is on."
      ("H-s" scratchpad-toggle) ("H-S" scratchpad-stash)
      ("H-t" toggle-tabbed)
      ("H-d" launch)
-     ("H-r" refresh) ("H-R" reload))
+     ("H-r" refresh) ("H-R" reload)
+     ("H-Q" sign-out))
    ;; H-1 … H-9 switch workspace; H-! … H-( (Shift+1 … Shift+9) move there.
    (seq-map-indexed (lambda (key i) (list key 'move-to-workspace (1+ i)))
                     '("H-!" "H-@" "H-#" "H-$" "H-%" "H-^" "H-&" "H-*" "H-("))
@@ -193,7 +194,8 @@ means widths.  Past the last preset, the first comes round again."
     (toggle-tabbed . global-tab-line-mode)
     (refresh . exwm-reset)
     (reload . kittymacs-exwm-apply-keys)
-    (launch . kittymacs-exwm-launch))
+    (launch . kittymacs-exwm-launch)
+    (sign-out . kittymacs-exwm-sign-out))
   "What each action in `kittymacs-wm-keys' does under EXWM.
 A command, or a function taking the key's ARGS."
   :type '(alist :key-type symbol :value-type function)
@@ -224,6 +226,13 @@ with an error, the echo area says so."
     (set-process-filter process #'kittymacs-exwm--launch-filter)
     (set-process-sentinel process #'kittymacs-exwm--launch-sentinel)
     process))
+(defun kittymacs-exwm-sign-out ()
+  "End the X session: ask, then quit this Emacs, the window manager.
+The daemon and its buffers stay; only this Emacs's own unsaved buffers
+are offered for saving first."
+  (interactive)
+  (when (y-or-n-p "Sign out of this X session? ")
+    (save-buffers-kill-emacs)))
 (defun kittymacs-exwm--command (action args)
   "The command for ACTION, called with ARGS."
   (let ((function (alist-get action kittymacs-exwm-actions)))
@@ -263,10 +272,12 @@ If EXWM does not start, install xauth where this Emacs's PATH finds it, then sta
     :demand t
     :custom
     (exwm-workspace-number 4)
-    (exwm-manage-configurations '(((equal exwm-class-name "Emacs") char-mode t)))
+    (exwm-manage-configurations
+     '(((equal exwm-class-name "Emacs") char-mode t tiling-mode-line nil)))
     :config
     (advice-add 'xcb:keysyms:event->keysyms :filter-return
                 #'kittymacs-exwm--keysyms-or-failure)
+    (setenv "KITTYMACS_EXWM")
     (kittymacs-exwm-apply-keys)
     (add-hook 'exwm-update-class-hook
               (lambda () (exwm-workspace-rename-buffer exwm-class-name)))

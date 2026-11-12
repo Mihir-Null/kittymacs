@@ -123,5 +123,32 @@
   (should (plist-get (kittymacs-exwm-test--configuration "Emacs") 'char-mode))
   (should-not (plist-get (kittymacs-exwm-test--configuration "Google-chrome") 'char-mode)))
 
+(ert-deftest kittymacs-exwm-another-emacs-s-frame-keeps-only-its-own-mode-line ()
+  "The workspace window around the daemon's frame draws no mode line."
+  (let ((daemon (kittymacs-exwm-test--configuration "Emacs")))
+    (should (plist-member daemon 'tiling-mode-line))
+    (should-not (plist-get daemon 'tiling-mode-line)))
+  (should-not (plist-member (kittymacs-exwm-test--configuration "Google-chrome")
+                            'tiling-mode-line)))
+
+(ert-deftest kittymacs-exwm-h-shift-q-signs-out-after-asking ()
+  (should (equal (assoc "H-Q" kittymacs-wm-keys) '("H-Q" sign-out)))
+  (should (eq (kittymacs-exwm--command 'sign-out nil) #'kittymacs-exwm-sign-out))
+  (let (killed)
+    (cl-letf (((symbol-function 'save-buffers-kill-emacs) (lambda (&rest _) (setq killed t)))
+              ((symbol-function 'y-or-n-p) #'ignore))
+      (kittymacs-exwm-sign-out)
+      (should-not killed)
+      (cl-letf (((symbol-function 'y-or-n-p) (lambda (&rest _) t)))
+        (kittymacs-exwm-sign-out))
+      (should killed))))
+
+(ert-deftest kittymacs-exwm-programs-it-starts-do-not-inherit-the-session-variable ()
+  "An Emacs started from the window manager must not become one too."
+  (let ((process-environment (cons "KITTYMACS_EXWM=1" process-environment)))
+    (kittymacs-exwm-test--load)
+    (should-not (getenv "KITTYMACS_EXWM"))
+    (should (kittymacs-exwm-test--configuration "Emacs"))))
+
 (provide 'kittymacs-exwm-tests)
 ;;; kittymacs-exwm-tests.el ends here
