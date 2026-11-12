@@ -301,7 +301,7 @@ From the repository root, through the `justfile`:
 just check          # tangle-check, doc-test, and the tangle, startup, platform and Tree-sitter tests: no packages
 just install        # start init.el in batch, installing what this machine's profile needs into var/elpa
 just compile        # byte-compile lisp/*.el, under full
-just test-packages  # leader, Org-roam, theme, load-order and remote tests, and the verifier, under full: KITTYMACS_TEST_PROFILE=full just install
+just test-packages  # leader, Org-roam, theme, load-order, remote and diff-review adapter tests, and the verifier, under full: KITTYMACS_TEST_PROFILE=full just install
 just test-minimal   # the same on a directory with the minimal profile alone: KITTYMACS_TEST_PROFILE=minimal just install
 just test-features  # a real start per feature, off and on: KITTYMACS_TEST_PROFILE=every just install
 just test-quickstart  # the verifier, starting from a quickstart file it writes first

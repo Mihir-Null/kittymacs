@@ -541,7 +541,9 @@ branch's review/BRANCH.json."
 - So, only for a remote =default-directory=, advice puts the prefix back on what git prints, and takes it off what git is given; on this machine both are the identity.
 - A comment's blob is the one place diff-review runs git with =call-process-region=, which never goes through TRAMP, so it would hash on this machine; for a remote file, the buffer is written to a temporary file there and hashed with =process-file=.
 - Not covered: =SPC v V= on another machine's worktree, whose file hashes use the same =call-process-region=.
-- A stopgap until diff-review knows TRAMP itself; each advised function is internal to the pinned version, and the behaviour check fails if one is renamed.
+- A stopgap until diff-review knows TRAMP itself; each advised function is internal to the pinned version.
+  + So =just test-packages= runs [[file:../tests/kittymacs-diff-review-adapter-tests.el][the adapter test]], which records each one's arguments and a hash of its body, and fails when a new pin changes any of them.
+  + When it fails, read the changed functions, fix the adapter where it needs it, then record the new values the failure prints.
 
 #+begin_src emacs-lisp
 (declare-function diff-review--review-buffer "diff-review" ())
@@ -776,5 +778,6 @@ machine, or DIRECTORY exists here."
   + =SPC m v= on a commit in a Magit log, or =d v=, reviews that commit;
   + in a file under review, =SPC m R n n= walks two hunks, and =SPC m= still shows the major mode's menu beside =R=;
   + =SPC v V= in a worktree with an uncommitted edit opens a review of that edit, kept in =.git/review/NAME.worktree.json=.
+  + after a change to =:rev=, =just test-packages= passes [[file:../tests/kittymacs-diff-review-adapter-tests.el][the adapter test]], or names the advised function that changed.
 - In a file with conflict markers: =SPC m C n= moves to the next conflict, and =n= again to the one after.
 - =SPC v b=, then =b=, in a tracked file; then =SPC m B n=: point moves to the next chunk; =SPC m B q= stops blaming and =SPC m B= is gone.
