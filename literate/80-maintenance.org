@@ -40,7 +40,7 @@
 | =check=           | Emacs              | the three above; the default recipe                                          |
 | =install=         | Emacs, network     | start the configuration once in batch, installing what this machine's profile needs into =var/elpa=; on a fresh clone, =minimal= |
 | =compile=         | the full profile's packages | byte-compile every module under =full=, to catch load errors        |
-| =test-packages=   | the full profile's packages | leader, Org-roam, theme, load-order and remote tests, and the startup verifier, under =full= |
+| =test-packages=   | the full profile's packages | leader, Org-roam, theme, load-order, remote and diff-review adapter tests, and the startup verifier, under =full= |
 | =test-minimal=    | the minimal profile's packages | leader, theme and remote tests, and the verifier, which also checks the directory holds exactly those |
 | =test-features=   | every feature's packages | one real start per feature, off in turn and on in turn                 |
 | =test-quickstart= | installed packages | the startup verifier, starting from a quickstart file it writes first        |

@@ -104,7 +104,8 @@ compile:
 # The tests that load installed packages: the SPC and SPC m machinery, real
 # Org-roam graphs in SQLite, the look without doom, a file visited before the
 # remote chapter loads, a remote machine through a Tramp method that needs no
-# ssh, and the startup verifier,
+# ssh, the six diff-review internals the TRAMP adapter advises, and the
+# startup verifier,
 # which replays a real startup and fails on any warning. All under the full
 # profile: `KITTYMACS_TEST_PROFILE=full just install` makes its directory.
 test-packages:
@@ -113,6 +114,7 @@ test-packages:
     KITTYMACS_TEST_PROFILE=full KITTYMACS_TEST_PACKAGES={{quote(packages)}} emacs -Q --batch -l tests/kittymacs-theme-tests.el -f ert-run-tests-batch-and-exit
     KITTYMACS_TEST_PROFILE=full KITTYMACS_TEST_PACKAGES={{quote(packages)}} emacs -Q --batch -l tests/kittymacs-load-order-tests.el -f ert-run-tests-batch-and-exit
     KITTYMACS_TEST_PROFILE=full KITTYMACS_TEST_PACKAGES={{quote(packages)}} emacs -Q --batch -l tests/kittymacs-remote-tests.el -f ert-run-tests-batch-and-exit
+    KITTYMACS_TEST_PROFILE=full KITTYMACS_TEST_PACKAGES={{quote(packages)}} emacs -Q --batch -l tests/kittymacs-diff-review-adapter-tests.el -f ert-run-tests-batch-and-exit
     KITTYMACS_TEST_PROFILE=full KITTYMACS_TEST_PACKAGES={{quote(packages)}} emacs -Q --batch -l tests/verify-config.el
 
 # What runs against a package directory holding the minimal profile and nothing
