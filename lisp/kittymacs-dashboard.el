@@ -161,7 +161,6 @@ Exclude trailing padding and compensate for leading indentation."
   (dashboard-setup-startup-hook))
 
 (keymap-set kittymacs-help-map "h" (cons "home" #'dashboard-open))
-(keymap-set kittymacs-open-map "h" (cons "home" #'dashboard-open))
 ;; Keep r/p/b/? and dashboard item shortcuts alongside Meow j/k and SPC.
 (with-eval-after-load 'meow
   (add-to-list 'meow-mode-state-list '(dashboard-mode . motion)))

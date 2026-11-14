@@ -20,9 +20,7 @@
 (keymap-set kittymacs-buffer-map "K" (cons "kill some" #'kill-buffer))
 (keymap-set kittymacs-buffer-map "n" (cons "new" #'kittymacs-new-buffer))
 (keymap-set kittymacs-buffer-map "N" (cons "new in frame" #'kittymacs-new-buffer-frame))
-(keymap-set kittymacs-buffer-map "s" (cons "save" #'save-buffer))
 (keymap-set kittymacs-buffer-map "r" (cons "revert" #'revert-buffer-quick))
-(keymap-set kittymacs-buffer-map "R" (cons "rename file" #'rename-visited-file))
 (keymap-set kittymacs-buffer-map "a" (cons "ibuffer" #'ibuffer))
 (keymap-set kittymacs-buffer-map "x" (cons "scratch" #'scratch-buffer))
 (keymap-set kittymacs-buffer-map "[" (cons "previous" #'previous-buffer))
@@ -50,10 +48,23 @@
 (keymap-set kittymacs-window-map "U" (cons "redo layout" #'winner-redo))
 (keymap-set kittymacs-window-map "f" (cons "fullscreen" #'toggle-frame-fullscreen))
 (keymap-set kittymacs-window-map "M" (cons "maximize" #'toggle-frame-maximized))
+(declare-function eglot-managed-p "eglot" ())
+(declare-function eglot-format "eglot" (&optional beg end))
+
+(defun kittymacs-format-dwim ()
+  "Format the region, or the whole buffer when no region is active.
+Use the language server's formatter where Eglot manages this buffer,
+and `indent-region' everywhere else."
+  (interactive)
+  (let ((beg (if (use-region-p) (region-beginning) (point-min)))
+        (end (if (use-region-p) (region-end) (point-max))))
+    (if (and (fboundp 'eglot-managed-p) (eglot-managed-p))
+        (eglot-format beg end)
+      (indent-region beg end))))
+
 (keymap-set kittymacs-code-map "c" (cons "comment" #'comment-dwim))
-(keymap-set kittymacs-code-map "l" (cons "comment line" #'comment-line))
 (keymap-set kittymacs-code-map "d" (cons "duplicate" #'duplicate-dwim))
-(keymap-set kittymacs-code-map "f" (cons "indent region" #'indent-region))
+(keymap-set kittymacs-code-map "f" (cons "format" #'kittymacs-format-dwim))
 (keymap-set kittymacs-code-map "w" (cons "clean whitespace" #'whitespace-cleanup))
 
 (keymap-set kittymacs-eval-map "e" (cons "last sexp" #'eval-last-sexp))
@@ -96,7 +107,6 @@ in the server, which keeps running."
 (keymap-set kittymacs-quit-map "Q" (cons "quit without saving" #'kittymacs-quit-without-saving))
 (keymap-set kittymacs-quit-map "K" (cons "save and stop the daemon" #'save-buffers-kill-emacs))
 (keymap-set kittymacs-quit-map "r" (cons "restart" #'restart-emacs))
-(keymap-set kittymacs-quit-map "f" (cons "close frame" #'delete-frame))
 (keymap-set kittymacs-leader-map "SPC" (cons "M-x" #'execute-extended-command))
 (keymap-set kittymacs-leader-map "/" (cons "describe leader" #'kittymacs-describe-leader))
 (keymap-set kittymacs-leader-map "?" (cons "search commands" #'apropos-command))

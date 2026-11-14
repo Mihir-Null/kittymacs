@@ -94,7 +94,6 @@
 (keymap-set kittymacs-config-map "o" (cons "onboarding" #'kittymacs-onboard))
 (keymap-set kittymacs-config-map "u" (cons "custom.el" #'kittymacs-open-custom-file))
 (keymap-set kittymacs-config-map "a" (cons "architecture" #'kittymacs-open-architecture))
-(keymap-set kittymacs-config-map "r" (cons "restart Emacs" #'restart-emacs))
 
 (provide 'kittymacs-literate)
 ;;; kittymacs-literate.el ends here

@@ -166,10 +166,10 @@
 
 | Keys        | Does                                                                     |
 |-------------+--------------------------------------------------------------------------|
-| =f= =d=     | new file, new directory                                                  |
-| =r= =D=     | rename, delete                                                           |
-| =y= =m=     | copy, move                                                               |
-| =p= =P=     | copy the absolute or relative path                                       |
+| =n= =+=     | new file, new directory                                                  |
+| =c= =d=     | copy, delete                                                             |
+| =r= =R=     | rename, move                                                             |
+| =y= =Y=     | copy the absolute or relative path                                       |
 | =o= =x=     | open in a chosen window (a directory opens in Dired), open outside Emacs |
 | =g= =w= =h= | refresh, set width, show hidden files                                    |
 | =b= =!=     | bookmark, shell command here                                             |
@@ -177,6 +177,10 @@
 | =q=         | close the tree                                                           |
 | =?=         | Treemacs's own help: every key it has                                    |
 
+- The file keys are [[id:878a9e46-62be-4b9f-82f6-589560d2ebc1][Dired]]'s, so one set of letters works in both places:
+  + =n= new file, =+= new directory, =c= copy, =r= rename, =d= delete, as in Dired;
+  + =y= copies the path, as =SPC f y= copies the file name;
+  + Dired's =r= also moves, by asking for a new path; Treemacs splits that into =r= rename in place and =R= move elsewhere.
 - =SPC m ?= follows the convention =?= has in every other mode menu here.
 
 #+begin_src emacs-lisp
@@ -184,14 +188,14 @@
   (add-to-list 'meow-mode-state-list '(treemacs-mode . motion)))
 
 (kittymacs-define-localleader 'treemacs-mode
-  "f" (cons "new file" #'treemacs-create-file)
-  "d" (cons "new directory" #'treemacs-create-dir)
+  "n" (cons "new file" #'treemacs-create-file)
+  "+" (cons "new directory" #'treemacs-create-dir)
+  "c" (cons "copy" #'treemacs-copy-file)
   "r" (cons "rename" #'treemacs-rename-file)
-  "D" (cons "delete" #'treemacs-delete-file)
-  "y" (cons "copy" #'treemacs-copy-file)
-  "m" (cons "move" #'treemacs-move-file)
-  "p" (cons "copy path" #'treemacs-copy-absolute-path-at-point)
-  "P" (cons "copy relative path" #'treemacs-copy-relative-path-at-point)
+  "R" (cons "move" #'treemacs-move-file)
+  "d" (cons "delete" #'treemacs-delete-file)
+  "y" (cons "copy path" #'treemacs-copy-absolute-path-at-point)
+  "Y" (cons "copy relative path" #'treemacs-copy-relative-path-at-point)
   "o" (cons "open elsewhere" #'treemacs-visit-node-ace)
   "x" (cons "open outside Emacs" #'treemacs-visit-node-in-external-application)
   "g" (cons "refresh" #'treemacs-refresh)

@@ -400,8 +400,6 @@ until the language server for a mode is deliberately installed on each machine."
 (keymap-set kittymacs-lsp-map "=" (cons "reconnect" #'eglot-reconnect))
 (keymap-set kittymacs-lsp-map "a" (cons "code actions" #'eglot-code-actions))
 (keymap-set kittymacs-lsp-map "R" (cons "rename" #'eglot-rename))
-(keymap-set kittymacs-lsp-map "f" (cons "format buffer" #'eglot-format-buffer))
-(keymap-set kittymacs-lsp-map "F" (cons "format region" #'eglot-format))
 (keymap-set kittymacs-lsp-map "d" (cons "definition" #'xref-find-definitions))
 (keymap-set kittymacs-lsp-map "r" (cons "references" #'xref-find-references))
 (keymap-set kittymacs-lsp-map "D" (cons "declaration" #'eglot-find-declaration))
