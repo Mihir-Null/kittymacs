@@ -20,6 +20,11 @@
 (declare-function ghostel-readonly-enter "ghostel" ())
 (declare-function ghostel "ghostel" (&optional arg))
 (declare-function ghostel-project "ghostel" (&optional arg))
+(declare-function ghostel--download-module "ghostel-module-install"
+                  (dir &optional version latest-release))
+(declare-function ghostel-module-compile "ghostel-module-install" ())
+(declare-function package-desc-version "package" (desc))
+(declare-function package-version-join "package" (vlist))
 ;; Without these a `let' would bind them lexically, and neither program would see
 ;; the name, when the first terminal of a session is on another machine.
 (defvar ghostel-buffer-name)
@@ -46,6 +51,49 @@ is what the terminal needs."
        (file-exists-p
         (expand-file-name (concat "ghostel-module" module-file-suffix)
                           kittymacs-terminal-module-directory))))
+
+(defun kittymacs-terminal--package-version ()
+  "Return the installed ghostel package's version, or nil."
+  (when-let* ((desc (cadr (assq 'ghostel (bound-and-true-p package-alist)))))
+    (package-version-join (package-desc-version desc))))
+
+(defun kittymacs-terminal--module-version ()
+  "Return the version recorded beside the native module, or nil."
+  (let ((file (expand-file-name "ghostel-module.version"
+                                kittymacs-terminal-module-directory)))
+    (when (file-readable-p file)
+      (with-temp-buffer
+        (insert-file-contents file)
+        (string-trim (buffer-string))))))
+
+(defun kittymacs-terminal-module-current-p ()
+  "Return non-nil when the native module is from the installed ghostel release.
+Also non-nil when ghostel did not come from package.el, which has no
+version to compare."
+  (and (kittymacs-terminal-module-installed-p)
+       (let ((package (kittymacs-terminal--package-version)))
+         (or (null package)
+             (equal package (kittymacs-terminal--module-version))))))
+
+(defun kittymacs-terminal-install-module ()
+  "Install the native module of the installed ghostel release.
+Download that release's module; when it has none for this machine,
+compile it from the package's own source.  Return non-nil when the
+module is ready now, nil while it compiles."
+  (interactive)
+  (require 'ghostel-module-install)
+  (let ((version (kittymacs-terminal--package-version)))
+    (if (and version
+             (ghostel--download-module
+              (file-name-as-directory kittymacs-terminal-module-directory) version))
+        (progn
+          (message "ghostel: module %s installed%s" version
+                   (if (featurep 'ghostel-module) "; restart Emacs to load it" ""))
+          t)
+      (message "ghostel: no prebuilt module for %s; compiling it from source"
+               (or version "this package"))
+      (ghostel-module-compile)
+      nil)))
 (defcustom kittymacs-terminal-ghostel
   (kittymacs-feature-p 'terminal)
   "Whether ghostel provides the terminal.
@@ -163,7 +211,20 @@ The buffer becomes read-only, so Meow's grammar can select its output."
   (if (kittymacs-terminal-module-installed-p)
       (signal (car error) (cdr error))
     (user-error "The terminal needs its native module: %s"
-                (substitute-command-keys "\\[ghostel-download-module]"))))
+                (substitute-command-keys "\\[kittymacs-terminal-install-module]"))))
+
+(defun kittymacs-terminal--ensure-module ()
+  "Offer the module of the installed ghostel release when it is not there.
+Signal `user-error' when the terminal cannot open yet."
+  (when (and module-file-suffix
+             (not (featurep 'ghostel-module))
+             (not (kittymacs-terminal-module-current-p)))
+    (unless (and (y-or-n-p
+                  (format "The terminal needs ghostel %s's native module.  Install it? "
+                          (or (kittymacs-terminal--package-version) "")))
+                 (kittymacs-terminal-install-module))
+      (user-error "Open the terminal once its module is installed: %s"
+                  (substitute-command-keys "\\[kittymacs-terminal-install-module]")))))
 
 (defun kittymacs-terminal--remote-name (program)
   "Return the name of PROGRAM's buffer on this buffer's machine, or nil if local.
@@ -173,14 +234,16 @@ This never connects."
 
 (defun kittymacs-terminal-open (&optional arg)
   "Open a terminal on this buffer's machine.  With prefix ARG, open another one.
-Ghostel offers to fetch its native module the first time; declining that
-offer leaves the terminal unavailable, so say so in words.  Where ghostel
+The first time, and after ghostel is upgraded, it offers the native module
+of the installed release; declining leaves the terminal unavailable, so say
+so in words.  Where ghostel
 is not used at all, Eshell answers this key instead."
   (interactive "P")
   (if (not kittymacs-terminal-ghostel)
       (if-let* ((name (kittymacs-terminal--remote-name "eshell")))
           (let ((eshell-buffer-name name)) (eshell arg))
         (eshell arg))
+    (kittymacs-terminal--ensure-module)
     (condition-case error
         (if-let* ((name (kittymacs-terminal--remote-name "ghostel")))
             (let ((ghostel-buffer-name name)) (ghostel arg))
@@ -192,6 +255,7 @@ is not used at all, Eshell answers this key instead."
   (interactive "P")
   (if (not kittymacs-terminal-ghostel)
       (kittymacs-eshell-project)
+    (kittymacs-terminal--ensure-module)
     (condition-case error (ghostel-project arg)
       (void-function (kittymacs-terminal--without-module error)))))
 
@@ -258,7 +322,7 @@ is not used at all, Eshell answers this key instead."
     "b" (cons "another terminal" #'consult-ghostel)
     "q" (cons "send the next key literally" #'ghostel-send-next-key)
     "<escape>" (cons "where escape goes" #'kittymacs-terminal-toggle-escape)
-    "M" (cons "install the native module" #'ghostel-download-module)))
+    "M" (cons "install the native module" #'kittymacs-terminal-install-module)))
 
 (provide 'kittymacs-terminal)
 ;;; kittymacs-terminal.el ends here
