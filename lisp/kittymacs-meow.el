@@ -75,7 +75,6 @@
    '("z" . meow-pop-selection)
    '("q" . meow-quit)
    '("'" . repeat)
-   '("&" . meow-query-replace-regexp)
    '("%" . meow-query-replace)
    ;; Grab: keep a second selection in sync (see meow-tutor).
    '("=" . meow-grab)

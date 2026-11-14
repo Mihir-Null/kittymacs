@@ -257,7 +257,6 @@
   + a =kittymacs-= option :: at top level with =setopt=; it works before the option's chapter loads, because the chapter's =defcustom= keeps an existing value;
   + any other package's option :: inside the =after-init-hook= function at the end, which Emacs runs once =init.el= has finished; depth 90 puts it after the chapters' own functions.
 - A chapter that sets an option only as its package loads (in =:config= or =with-eval-after-load=) needs your =setopt= wrapped in =with-eval-after-load= inside the hook: forms waiting for a package run in registration order, and by then every chapter has registered its own.
-- Tabspaces is the exception: it turns on at depth 95, after your function, so it reads your settings.
 - Customize needs neither form: =init.el= loads =custom.el= after every chapter.
 - [[file:../ARCHITECTURE.md][ARCHITECTURE.md]] ("Customize and =private.el= get the last word") has the reasoning; the startup verifier replays a real startup and checks that both kinds of override survive.
 

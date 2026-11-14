@@ -121,7 +121,7 @@
   2. the repository of the current project;
   3. only then Magit's own prompt.
 - From the home page both checks start from the page's own =default-directory=; when neither finds a repository, Magit's prompt appears.
-- =SPC v= holds this command and Magit's everyday ones, with =SPC v q= for Emacs's own quick commit.
+- =SPC v= holds this command and Magit's everyday ones; Emacs's own =C-x v v= still commits a single file without Magit.
 - =SPC p G= is Magit's status for the project.
   + The command =C-x p G= runs, =project-or-external-find-regexp=, has no key under =SPC p=, so use =C-x p G= for it.
 
@@ -158,7 +158,6 @@ Falls back to `magit-status', which asks, when neither is a repository."
 (keymap-set kittymacs-vc-map "r" (cons "reflog" #'magit-reflog-current))
 (keymap-set kittymacs-vc-map "i" (cons "init" #'magit-init))
 (keymap-set kittymacs-vc-map "C" (cons "clone" #'magit-clone))
-(keymap-set kittymacs-vc-map "q" (cons "quick commit (vc)" #'vc-next-action))
 (keymap-set kittymacs-vc-map "?" (cons "all commands" #'magit-dispatch))
 
 (keymap-set kittymacs-project-map "G" (cons "Magit status" #'magit-project-status))
@@ -234,7 +233,7 @@ Falls back to `magit-status', which asks, when neither is a repository."
 
 #+end_src
 
-* Pull requests: Forge and pr-review
+* Pull requests: Forge
 :PROPERTIES:
 :ID: 0d6b1f3e-5a2c-4c8e-9f71-2b4e8a6d3c15
 :END:
@@ -244,32 +243,17 @@ Falls back to `magit-status', which asks, when neither is a repository."
   + =N / a= in the status buffer adds a repository to that database; after that, =f n= pulls what changed.
   + =SPC v g= opens Forge's menu: list, create, check out and merge pull requests, and the same for issues.
   + Forge's buffers are Magit buffers, so they start in Motion state and share =SPC m= with Magit.
-- Forge cannot comment on a line of a diff, which is most of a review, so pr-review does that part.
-  + One buffer holds one pull request: its description, commits, diff, review threads and checks.
-  + =SPC v R= runs =kittymacs-pr-review=, which reviews the pull request at point in a Forge list or buffer, or else the current branch's; anywhere else, it asks for a URL.
-  + It loads Forge if nothing has yet, so the first =SPC v R= of a session, from a file, still finds the branch's pull request.
-  + =SPC v N= lists GitHub's notifications, with the pull requests waiting on your review among them.
-- One token serves both: pr-review reads Forge's entry, rather than one of its own.
-  + The entry is a line in an =auth-sources= file such as =~/.authinfo.gpg=: =machine api.github.com login USERNAME^forge password TOKEN=.
-  + The token is a classic one with the =repo=, =user= and =read:org= scopes; =SPC v N= also needs =notifications=.
+- Reviewing is diff-review's job, on =SPC v u= ([[*Reviewing a branch: diff-review][below]]): it fetches the pull request into a branch and reviews it with the files open in their own modes.
+  + Forge supplies the number: =SPC v u= on a pull request in a Forge list or buffer reviews that one.
+  + There is no second review buffer that comments on GitHub itself: one way to review, with one set of keys, beats two that each do half.
+  + Comments that must reach GitHub go through Forge (=SPC v g=) or the browser.
+- Forge reads its token from an =auth-sources= file such as =~/.authinfo.gpg=: =machine api.github.com login USERNAME^forge password TOKEN=.
+  + The token is a classic one with the =repo=, =user= and =read:org= scopes.
   + Forge's manual has the full setup, with the =github.user= Git setting, in its Initial Setup node: =M-x info-display-manual RET forge=.
   + kittymacs stores no token.
 - orgit-forge adds an =orgit-topic:= Org link: =org-store-link= in a Forge topic stores one, and export turns it into the topic's URL.
 
 #+begin_src emacs-lisp
-(declare-function forge-current-pullreq "forge-pullreq" (&optional demand))
-(declare-function forge-get-url "forge-commands" (obj))
-
-(defun kittymacs-pr-review ()
-  "Review a pull request with pr-review.
-The one at point in Forge, or else the current branch's; otherwise ask."
-  (interactive)
-  (if-let* ((pullreq (and (require 'forge nil t)
-                          (magit-toplevel)
-                          (forge-current-pullreq))))
-      (pr-review (forge-get-url pullreq))
-    (call-interactively #'pr-review)))
-
 (when (kittymacs-feature-p 'pull-requests)
   (use-package forge
     :ensure t
@@ -277,64 +261,11 @@ The one at point in Forge, or else the current branch's; otherwise ask."
     :custom
     (forge-database-file (expand-file-name "forge-database.sqlite" kittymacs-cache-dir)))
 
-  (use-package pr-review
-    :ensure t
-    :defer t
-    :custom
-    (pr-review-ghub-auth-name 'forge))
-
   (use-package orgit-forge
     :ensure t
     :defer t)
 
-  (keymap-set kittymacs-vc-map "g" (cons "forge menu" #'forge-dispatch))
-  (keymap-set kittymacs-vc-map "R" (cons "review a pull request" #'kittymacs-pr-review))
-  (keymap-set kittymacs-vc-map "N" (cons "notifications" #'pr-review-notification)))
-
-#+end_src
-
-* Meow in pull request reviews :meow:
-:PROPERTIES:
-:ID: 5e2a9c74-1b3d-4f86-a0c9-7d8e1f4b2a63
-:END:
-
-- A review buffer is for reading and moving between threads, so it starts in Motion state, as do its lists of notifications and searches.
-- The buffer where you write a comment is for typing, so it starts in Insert state, as [[*The commit message buffer][a commit message]] does.
-- pr-review acts on the thing at point: the same key comments on a line, replies to a thread or edits your own comment.
-  + =SPC m= labels its everyday commands; =C-c C-c= and the rest of pr-review's own keys work too.
-
-| =SPC m= | Does                          | =SPC m= | Does            |
-|---------+-------------------------------+---------+-----------------|
-| =c=     | comment or reply here         | =v=     | view whole file |
-| =s=     | resolve thread, submit review | =f=     | go to a file    |
-| =e=     | edit here                     | =d=     | Ediff a file    |
-| =g=     | refresh                       | =o=     | open in browser |
-
-#+begin_src emacs-lisp
-(declare-function pr-review-context-comment "pr-review-action" ())
-(declare-function pr-review-context-action "pr-review-action" ())
-(declare-function pr-review-context-edit "pr-review-action" ())
-(declare-function pr-review-refresh "pr-review" (&optional clear-pending-reviews))
-(declare-function pr-review-view-file "pr-review-action" (head-or-base filepath &optional line))
-(declare-function pr-review-goto-file "pr-review-action" (filepath))
-(declare-function pr-review-ediff-file "pr-review-action" (filepath))
-(declare-function pr-review-open-in-external-browser "pr-review-action" ())
-
-(when (kittymacs-feature-p 'pull-requests)
-  (with-eval-after-load 'meow
-    (add-to-list 'meow-mode-state-list '(pr-review-mode . motion))
-    (add-to-list 'meow-mode-state-list '(pr-review-listview-mode . motion))
-    (add-to-list 'meow-mode-state-list '(pr-review-input-mode . insert)))
-
-  (kittymacs-define-localleader 'pr-review-mode
-    "c" (cons "comment or reply" #'pr-review-context-comment)
-    "s" (cons "resolve or submit" #'pr-review-context-action)
-    "e" (cons "edit" #'pr-review-context-edit)
-    "g" (cons "refresh" #'pr-review-refresh)
-    "v" (cons "view whole file" #'pr-review-view-file)
-    "f" (cons "go to file" #'pr-review-goto-file)
-    "d" (cons "Ediff file" #'pr-review-ediff-file)
-    "o" (cons "open in browser" #'pr-review-open-in-external-browser)))
+  (keymap-set kittymacs-vc-map "g" (cons "forge menu" #'forge-dispatch)))
 
 #+end_src
 
@@ -431,9 +362,9 @@ The one at point in Forge, or else the current branch's; otherwise ask."
   + Its file is =review/NAME.worktree.json= in the same place, NAME being the worktree's directory, so it never meets a branch's review: =git worktree add ../feature= names the new branch =feature= too.
   + =kittymacs-diff-review-worktree= passes diff-review the worktree as well as the file, because diff-review cannot find a worktree from a file inside =.git=, and its own =M-x diff-review-find-file= asks for a file name with no default.
 - =SPC v u= reviews a pull request from GitHub here: it fetches it into the branch =pr-N=, then reviews that branch like any other.
-  + N is the pull request at point in Forge, or the current branch's, as =SPC v R= finds it; otherwise it asks.
+  + N is the pull request at point in Forge, or the current branch's; otherwise it asks.
   + A fetch again updates =pr-N= to the pull request's new head.
-  + The review stays in this clone: whoever wrote the branch, a person or an agent on another machine, does not see its threads. =SPC v R= comments on GitHub instead.
+  + The review stays in this clone: whoever wrote the branch, a person or an agent on another machine, does not see its threads; a comment meant for GitHub goes through Forge or the browser.
 - The review is a JSON file, =review/BRANCH.json=, under the =.git= that every worktree shares.
   + A slash in BRANCH makes a folder: =feature/x= is =review/feature/x.json=.
   + Git never commits it, and every worktree of the repository opens the same review.
@@ -765,7 +696,7 @@ machine, or DIRECTORY exists here."
 - =*Warnings*= stays empty after the first =SPC v s= of a session.
 - =just test-packages=: the startup verifier replays a real startup and fails on any warning, such as the =defvaralias= one above.
 - With =pull-requests= on and a token stored: =N / a= in a GitHub repository's status buffer adds it; =SPC v g= then lists its pull requests.
-  + On a pull request, =SPC v R= opens the review; =SPC m c= on a diff line starts a comment in Insert state.
+  + On a pull request, =SPC v u= fetches it and opens diff-review's overview.
 - With =git-extras= on: the status buffer of a repository with a =TODO= has a TODOs section; a =.gitignore= opens in its own mode.
 - With =git-links= on: =SPC v o= in a tracked file copies a URL that opens that line on the forge.
   + =SPC m L= on a commit in a Magit log, then =C-c C-l= in an Org buffer, inserts an =orgit-rev:= link.

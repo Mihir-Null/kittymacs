@@ -122,13 +122,9 @@
      :group finding :packages (ace-window) :module kittymacs-basics :profile full
      :summary "Picks a window by letter when a frame holds several."
      :example "=SPC w w= labels each window, and a letter jumps there.")
-    (workspaces
-     :group finding :packages (tabspaces) :module kittymacs-navigation :profile full
-     :summary "One tab per project, each listing only its own buffers."
-     :example "=SPC p p= opens a project in a workspace of its own.")
     (file-tree
      :group finding :module kittymacs-treemacs :profile full :deps (icons version-control)
-     :packages (treemacs treemacs-nerd-icons treemacs-tab-bar treemacs-magit)
+     :packages (treemacs treemacs-nerd-icons treemacs-magit)
      :summary "A project tree in a sidebar that follows the file you are in."
      :example "=SPC t d= opens the tree, and =SPC f t= finds this file in it.")
     (dired-extras
@@ -183,10 +179,6 @@
      :group look :packages (popper) :module kittymacs-basics :profile full
      :summary "Keeps Help and compilation output in a window that one key dismisses."
      :example "=M-`= toggles the last popup.")
-    (buffer-tabs
-     :group look :packages () :module kittymacs-buffer-tabs :profile optional
-     :summary "Lists a window's buffers as tabs, grouped by kind, most recent first."
-     :example "=C-<tab>= moves along the tabs, and =SPC t b= turns them off and on.")
     (color-names
      :group look :packages (rainbow-mode) :module kittymacs-basics :profile full
      :summary "Paints colour names and codes in their own colour."
@@ -220,9 +212,9 @@
      :summary "Marks changed lines in the fringe each time you save."
      :example "=SPC t g= turns the marks on or off in this buffer.")
     (pull-requests
-     :group git :packages (forge pr-review orgit-forge) :module kittymacs-vc :profile full :deps (version-control)
-     :summary "Issues and pull requests in Magit, and line-by-line review; it needs a GitHub token."
-     :example "=SPC v g= opens Forge's menu, and =SPC v R= reviews a pull request.")
+     :group git :packages (forge orgit-forge) :module kittymacs-vc :profile full :deps (version-control)
+     :summary "Issues and pull requests in Magit; it needs a GitHub token."
+     :example "=SPC v g= opens Forge's menu and lists a repository's pull requests.")
     (git-extras
      :group git :packages (git-modes magit-todos) :module kittymacs-vc :profile full :deps (version-control)
      :summary "Modes for Git's own files, and the repository's TODOs in Magit's status."
@@ -333,10 +325,6 @@
      :deps (claude-code-ide) :one-of agent
      :summary "Makes Claude Code's own screen the agent on SPC a, with Emacs's code navigation as its tools."
      :example "=SPC a a= opens Claude Code beside this project's files.")
-    (agent-eca
-     :group assistants :packages (eca) :module kittymacs-agents :profile optional :one-of agent
-     :summary "Runs ECA, one coding agent for many model providers, in a chat buffer."
-     :example "=SPC a a= opens this project's ECA chat.")
     (agent-gptel
      :group assistants :packages (gptel gptel-agent) :module kittymacs-agents :profile optional
      :one-of agent

@@ -80,7 +80,6 @@ Falls back to `magit-status', which asks, when neither is a repository."
 (keymap-set kittymacs-vc-map "r" (cons "reflog" #'magit-reflog-current))
 (keymap-set kittymacs-vc-map "i" (cons "init" #'magit-init))
 (keymap-set kittymacs-vc-map "C" (cons "clone" #'magit-clone))
-(keymap-set kittymacs-vc-map "q" (cons "quick commit (vc)" #'vc-next-action))
 (keymap-set kittymacs-vc-map "?" (cons "all commands" #'magit-dispatch))
 
 (keymap-set kittymacs-project-map "G" (cons "Magit status" #'magit-project-status))
@@ -111,19 +110,6 @@ Falls back to `magit-status', which asks, when neither is a repository."
     (add-hook 'magit-post-refresh-hook #'diff-hl-magit-post-refresh)))
 
 (keymap-set kittymacs-toggle-map "g" (cons "git gutter" #'diff-hl-mode))
-(declare-function forge-current-pullreq "forge-pullreq" (&optional demand))
-(declare-function forge-get-url "forge-commands" (obj))
-
-(defun kittymacs-pr-review ()
-  "Review a pull request with pr-review.
-The one at point in Forge, or else the current branch's; otherwise ask."
-  (interactive)
-  (if-let* ((pullreq (and (require 'forge nil t)
-                          (magit-toplevel)
-                          (forge-current-pullreq))))
-      (pr-review (forge-get-url pullreq))
-    (call-interactively #'pr-review)))
-
 (when (kittymacs-feature-p 'pull-requests)
   (use-package forge
     :ensure t
@@ -131,43 +117,11 @@ The one at point in Forge, or else the current branch's; otherwise ask."
     :custom
     (forge-database-file (expand-file-name "forge-database.sqlite" kittymacs-cache-dir)))
 
-  (use-package pr-review
-    :ensure t
-    :defer t
-    :custom
-    (pr-review-ghub-auth-name 'forge))
-
   (use-package orgit-forge
     :ensure t
     :defer t)
 
-  (keymap-set kittymacs-vc-map "g" (cons "forge menu" #'forge-dispatch))
-  (keymap-set kittymacs-vc-map "R" (cons "review a pull request" #'kittymacs-pr-review))
-  (keymap-set kittymacs-vc-map "N" (cons "notifications" #'pr-review-notification)))
-(declare-function pr-review-context-comment "pr-review-action" ())
-(declare-function pr-review-context-action "pr-review-action" ())
-(declare-function pr-review-context-edit "pr-review-action" ())
-(declare-function pr-review-refresh "pr-review" (&optional clear-pending-reviews))
-(declare-function pr-review-view-file "pr-review-action" (head-or-base filepath &optional line))
-(declare-function pr-review-goto-file "pr-review-action" (filepath))
-(declare-function pr-review-ediff-file "pr-review-action" (filepath))
-(declare-function pr-review-open-in-external-browser "pr-review-action" ())
-
-(when (kittymacs-feature-p 'pull-requests)
-  (with-eval-after-load 'meow
-    (add-to-list 'meow-mode-state-list '(pr-review-mode . motion))
-    (add-to-list 'meow-mode-state-list '(pr-review-listview-mode . motion))
-    (add-to-list 'meow-mode-state-list '(pr-review-input-mode . insert)))
-
-  (kittymacs-define-localleader 'pr-review-mode
-    "c" (cons "comment or reply" #'pr-review-context-comment)
-    "s" (cons "resolve or submit" #'pr-review-context-action)
-    "e" (cons "edit" #'pr-review-context-edit)
-    "g" (cons "refresh" #'pr-review-refresh)
-    "v" (cons "view whole file" #'pr-review-view-file)
-    "f" (cons "go to file" #'pr-review-goto-file)
-    "d" (cons "Ediff file" #'pr-review-ediff-file)
-    "o" (cons "open in browser" #'pr-review-open-in-external-browser)))
+  (keymap-set kittymacs-vc-map "g" (cons "forge menu" #'forge-dispatch)))
 (when (kittymacs-feature-p 'git-extras)
   (use-package git-modes
     :ensure t

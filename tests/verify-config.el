@@ -88,10 +88,8 @@ Types the configuration deliberately silences are left out."
           "(setq kittymacs-verify-private-loads (1+ (if (boundp 'kittymacs-verify-private-loads) kittymacs-verify-private-loads 0)))\n"
           "(setopt kittymacs-project-directory (expand-file-name \"test-projects/\" user-emacs-directory))\n"
           ;; The completion chapter sets the scroll margin to 5 (Corfu's
-          ;; default is 2) and the navigation chapter turns filtered buffers
-          ;; on; the late override must win, including over an option that
-          ;; tabspaces-mode reads only as it turns on.
-          "(add-hook 'after-init-hook (lambda () (setopt corfu-scroll-margin 3 tabspaces-use-filtered-buffers-as-default nil org-ellipsis \"!\")) 90)\n"))
+          ;; default is 2); the late override must win.
+          "(add-hook 'after-init-hook (lambda () (setopt corfu-scroll-margin 3 org-ellipsis \"!\")) 90)\n"))
 (with-temp-buffer
   (insert "(setq kittymacs-org-roam-directory (expand-file-name \"test-roam/\" user-emacs-directory) kittymacs-org-roam-excluded-directories '(\"test-excluded\"))\n")
   (append-to-file (point-min) (point-max) (expand-file-name "lisp/private.el" user-emacs-directory)))
@@ -245,10 +243,6 @@ Types the configuration deliberately silences are left out."
                        "A chapter overwrote a value saved by Customize")
       (kittymacs-verify-check (eql corfu-scroll-margin 3)
                        "A chapter overwrote a private.el after-init-hook override")
-      (when (kittymacs-feature-p 'workspaces)
-        (kittymacs-verify-check (and tabspaces-mode
-                                     (null (command-remapping 'switch-to-buffer)))
-                                "tabspaces-mode turned on before the private.el override"))
       ;; Every generated module must have loaded, or be a chapter whose feature
       ;; is off: the list is the modules on disk.
       (dolist (file (directory-files (expand-file-name "lisp" kittymacs-verify-source)

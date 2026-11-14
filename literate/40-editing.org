@@ -51,8 +51,14 @@
 |--------+---------------------------------------------------------------------------------------------|
 | Move   | =h= =j= =k= =l=, =b= =e= (word), =g= =G= (buffer start, end)                                |
 | Select | =w= word, =x= line, =o= =O= block, =f= find, =t= till, =n= search, =v= visit, =,= =.= =[= =]= thing, =;= reverse, =:= go to line |
-| Act    | =a= =A= =i= =I= insert, =c= change, =d= =D= delete, =s= kill, =r= replace, =R= overwrite, =m= join, =p= yank, =y= copy, =u= =U= undo, =z= pop selection, =q= quit, ='= repeat, =&= =%= query-replace |
+| Act    | =a= =A= =i= =I= insert, =c= change, =d= =D= delete, =s= kill, =r= replace, =R= overwrite, =m= join, =p= yank, =y= copy, =u= =U= undo, =z= pop selection, =q= quit, ='= repeat, =%= query-replace |
 | Grab   | ~=~ grab, =X= swap, =Y= sync: keep a second selection in sync (see =meow-tutor=)            |
+
+- Replacing and wrapping each have one key per job, so no two keys do nearly the same thing:
+  + =%= replaces the selection's text everywhere after point, asking at each match;
+  + =SPC s r= replaces a regular expression, with a live preview, inside the region when there is one;
+  + =SPC c s= wraps the selection in a pair, or changes or deletes the pair around point, and knows Org's and Markdown's markup;
+  + in code, =C-(= and =C-)= pull the next expression into the pair around point, and =C-{= and =C-}= push one out.
 
 - To edit every occurrence of a symbol in part of a buffer, use Beacon state:
   + select the part to change, such as a block with =o= or lines with =x=, and press ~=~ to grab it;
@@ -142,7 +148,6 @@
    '("z" . meow-pop-selection)
    '("q" . meow-quit)
    '("'" . repeat)
-   '("&" . meow-query-replace-regexp)
    '("%" . meow-query-replace)
    ;; Grab: keep a second selection in sync (see meow-tutor).
    '("=" . meow-grab)

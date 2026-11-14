@@ -50,8 +50,8 @@ A new installation starts small: Meow, Vertico, Orderless, Marginalia, Consult, 
 - **Editing:** Meow's selection grammar with numbered hints, Tree-sitter "things" (functions, classes, arguments) to select by, and Avy jumps.
 - **Discoverability:** which-key on every prefix, an offline cheat sheet (`SPC h ?`), Meow's tutor (`SPC h t`), Helpful, and Casual menus for the built-in modes.
 - **Completion:** Vertico, Orderless, Marginalia, Consult and Embark in the minibuffer; Corfu and Cape in the buffer; Yasnippet templates.
-- **Files and projects:** Dired with directories first on every platform, a Treemacs sidebar, `project.el` projects in Tabspaces workspaces, ripgrep search.
-- **Version control:** Magit with Meow-friendly Motion state and a `SPC m` menu, VC, diff-hl in the gutter; Forge and pr-review for pull requests, magit-todos, git-link and orgit, difftastic's diffs by syntax, and diff-review for reviewing a branch, a worktree's uncommitted changes or a fetched pull request (`SPC v u`) locally, or a branch on another machine over TRAMP.
+- **Files and projects:** Dired with directories first on every platform, a Treemacs sidebar, `project.el` projects (a frame, or an EXWM workspace, per project), ripgrep search.
+- **Version control:** Magit with Meow-friendly Motion state and a `SPC m` menu, VC, diff-hl in the gutter; Forge for pull requests, magit-todos, git-link and orgit, difftastic's diffs by syntax, and diff-review for reviewing a branch, a worktree's uncommitted changes or a fetched pull request (`SPC v u`) locally, or a branch on another machine over TRAMP.
 - **A real terminal:** [ghostel](https://github.com/dakra/ghostel) (libghostty), with Meow inside it; Eshell alongside.
 - **Remote machines:** Tramp with named backends (`SPC o b`), and guards so that a dead connection cannot stall a start or an idle Emacs.
 - **Notes:** Org with an agenda, Org QL queries by tag and TODO state, and Org-roam graphs scoped per project.
@@ -274,7 +274,7 @@ Where a key needs a feature beyond `minimal`, the row names it.
 | `SPC` then a letter | open a group; wait for the popup, or press `C-h` |
 | `SPC h ?` / `SPC h t` / `SPC h k` | cheat sheet (`home-page`) / Meow tutorial / explain a key |
 | `SPC f f` / `SPC b b` | open a file / switch buffer |
-| `SPC p p` | open a project, in its own workspace with `workspaces` |
+| `SPC p p` | switch to another project |
 | `SPC s s` / `SPC s d` | search lines / search the project with ripgrep |
 | `SPC v s` | Magit |
 | `SPC o e` / `SPC t d` | terminal / project tree (`file-tree`) |

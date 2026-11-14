@@ -16,4 +16,8 @@
  (esh-help . "nothing")
  (pcmpl-args . "Eshell's own completion")
  (pcomplete-extension . "Eshell's own completion")
+ (eca . "agent-shell, claude-code-ide or gptel")
+ (tabspaces . "project.el and a frame, or an EXWM workspace, per project")
+ (treemacs-tab-bar . "nothing: tabs no longer hold workspaces")
+ (pr-review . "diff-review on SPC v u")
 )

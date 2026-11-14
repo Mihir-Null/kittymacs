@@ -136,7 +136,6 @@ The package cannot derive its faces without a display."
   "r" (cons "recompile" #'recompile)
   "e" (cons "errors" #'consult-flymake)
   "E" (cons "error list" #'flymake-show-buffer-diagnostics)
-  "s" (and (kittymacs-feature-p 'surround) (cons "surround" #'embrace-commander))
   "d" (cons "definition" #'xref-find-definitions)
   "D" (cons "references" #'xref-find-references))
 

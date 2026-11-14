@@ -144,16 +144,6 @@
     "summary": "Picks a window by letter when a frame holds several.",
     "example": "=SPC w w= labels each window, and a letter jumps there."
   },
-  "workspaces": {
-    "group": "finding",
-    "packages": [
-      "tabspaces"
-    ],
-    "module": "kittymacs-navigation",
-    "profile": "full",
-    "summary": "One tab per project, each listing only its own buffers.",
-    "example": "=SPC p p= opens a project in a workspace of its own."
-  },
   "file-tree": {
     "group": "finding",
     "module": "kittymacs-treemacs",
@@ -165,7 +155,6 @@
     "packages": [
       "treemacs",
       "treemacs-nerd-icons",
-      "treemacs-tab-bar",
       "treemacs-magit"
     ],
     "summary": "A project tree in a sidebar that follows the file you are in.",
@@ -308,14 +297,6 @@
     "summary": "Keeps Help and compilation output in a window that one key dismisses.",
     "example": "=M-`= toggles the last popup."
   },
-  "buffer-tabs": {
-    "group": "look",
-    "packages": [],
-    "module": "kittymacs-buffer-tabs",
-    "profile": "optional",
-    "summary": "Lists a window's buffers as tabs, grouped by kind, most recent first.",
-    "example": "=C-<tab>= moves along the tabs, and =SPC t b= turns them off and on."
-  },
   "color-names": {
     "group": "look",
     "packages": [
@@ -393,7 +374,6 @@
     "group": "git",
     "packages": [
       "forge",
-      "pr-review",
       "orgit-forge"
     ],
     "module": "kittymacs-vc",
@@ -401,8 +381,8 @@
     "deps": [
       "version-control"
     ],
-    "summary": "Issues and pull requests in Magit, and line-by-line review; it needs a GitHub token.",
-    "example": "=SPC v g= opens Forge's menu, and =SPC v R= reviews a pull request."
+    "summary": "Issues and pull requests in Magit; it needs a GitHub token.",
+    "example": "=SPC v g= opens Forge's menu and lists a repository's pull requests."
   },
   "git-extras": {
     "group": "git",
@@ -713,17 +693,6 @@
     "one-of": "agent",
     "summary": "Makes Claude Code's own screen the agent on SPC a, with Emacs's code navigation as its tools.",
     "example": "=SPC a a= opens Claude Code beside this project's files."
-  },
-  "agent-eca": {
-    "group": "assistants",
-    "packages": [
-      "eca"
-    ],
-    "module": "kittymacs-agents",
-    "profile": "optional",
-    "one-of": "agent",
-    "summary": "Runs ECA, one coding agent for many model providers, in a chat buffer.",
-    "example": "=SPC a a= opens this project's ECA chat."
   },
   "agent-gptel": {
     "group": "assistants",
