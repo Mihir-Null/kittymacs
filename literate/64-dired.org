@@ -79,12 +79,11 @@
 
 * Opening it
 
-- =SPC d= and =SPC f d= open the directory of the current file; =SPC o d= asks for a directory first.
+- =SPC d= and =SPC f d= open the directory of the current file; =C-x d= asks for a directory first.
 
 #+begin_src emacs-lisp
 (keymap-set kittymacs-leader-map "d" (cons "directory" #'dired-jump))
 (keymap-set kittymacs-file-map "d" (cons "directory" #'dired-jump))
-(keymap-set kittymacs-open-map "d" (cons "dired" #'dired))
 
 #+end_src
 

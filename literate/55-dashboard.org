@@ -10,7 +10,7 @@
 - A home page, =*home*=: the dashboard package presenting Emacs's own recent files, =project.el= projects and bookmarks.
 - kittymacs adds the banner and layout, buttons to the landing pages (the cheat sheet, the reading guide, the leader tree, Meow's tutor), a guide to the first keys, font-aware centring and the literate Config button.
 - No second project or workspace database: the lists come from what Emacs already keeps.
-- This chapter is the =home-page= feature: [[id:40302e33-d2b2-4c0b-9bc3-1f9e121307e1][=init.el=]] loads it only when that is on, and the keys it binds, =SPC h h=, =SPC o h= and =SPC h ?=, go with it.
+- This chapter is the =home-page= feature: [[id:40302e33-d2b2-4c0b-9bc3-1f9e121307e1][=init.el=]] loads it only when that is on, and the keys it binds, =SPC h h= and =SPC h ?=, go with it.
 - Leans on [[id:0286f652-e861-4e61-9ca6-91e225c8939d][the appearance chapter]] for fonts and icons and on [[id:53ad53ed-155f-47dc-973d-7be18de2893c][the keys chapter]] for the =SPC= keys it advertises.
 
 * The cheat sheet, offline
@@ -169,7 +169,7 @@ Exclude trailing padding and compensate for leading indentation."
 - Icons appear only when =kittymacs-icons-available-p= says the font has them.
 - The last item of =dashboard-startupify-list= is the centring pass, so it measures the finished page.
 - =?= opens the cheat sheet from the home page.
-- =SPC h h= and =SPC o h= return to the page.
+- =SPC h h= returns to the page.
 - The recentring hook runs at depth 100 on =window-setup-hook=, =after-setting-font-hook= and =enable-theme-functions=.
 - The page is skipped when Emacs was started with a file to open.
 
@@ -255,7 +255,6 @@ Exclude trailing padding and compensate for leading indentation."
   (dashboard-setup-startup-hook))
 
 (keymap-set kittymacs-help-map "h" (cons "home" #'dashboard-open))
-(keymap-set kittymacs-open-map "h" (cons "home" #'dashboard-open))
 #+end_src
 
 * Meow on the home page :meow:
@@ -285,5 +284,5 @@ Exclude trailing padding and compensate for leading indentation."
 - Start it with a file: the file opens and the home page does not.
 - =?= on the home page opens the cheat sheet; =j=/=k= move; =r=, =p=, =b= jump to a list.
 - Change the font size or theme: the page recentres.
-- =SPC o h= reopens the home page.
+- =SPC h h= reopens the home page.
 - =just tangle-check= confirms =lisp/kittymacs-dashboard.el= matches this page.

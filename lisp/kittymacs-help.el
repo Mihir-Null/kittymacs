@@ -33,8 +33,6 @@
   (keymap-set kittymacs-help-map "." (cons "at point" (if helpful #'helpful-at-point #'display-local-help))))
 
 (keymap-set kittymacs-help-map "m" (cons "mode" #'describe-mode))
-(keymap-set kittymacs-help-map "B" (cons "all bindings" #'describe-bindings))
-(keymap-set kittymacs-help-map "l" (cons "leader" #'kittymacs-describe-leader))
 (keymap-set kittymacs-help-map "F" (cons "face" #'describe-face))
 (keymap-set kittymacs-help-map "w" (cons "where is" #'where-is))
 (keymap-set kittymacs-help-map "e" (cons "messages" #'view-echo-area-messages))

@@ -206,10 +206,6 @@
 
 (keymap-set kittymacs-buffer-map "b" (cons "switch" #'consult-buffer))
 (keymap-set kittymacs-buffer-map "B" (cons "switch in other frame" #'consult-buffer-other-frame))
-(keymap-set kittymacs-buffer-map "p" (cons "project buffer" #'consult-project-buffer))
-(keymap-set kittymacs-buffer-map "i" (cons "imenu" #'consult-imenu))
-(keymap-set kittymacs-buffer-map "m" (cons "mark ring" #'consult-mark))
-(keymap-set kittymacs-buffer-map "M" (cons "global mark ring" #'consult-global-mark))
 
 (keymap-set kittymacs-file-map "r" (cons "recent" #'consult-recent-file))
 (keymap-set kittymacs-file-map "b" (cons "bookmarks" #'consult-bookmark))
@@ -220,12 +216,11 @@
 (keymap-set kittymacs-search-map "d" (cons "ripgrep" #'consult-ripgrep))
 (keymap-set kittymacs-search-map "i" (cons "imenu" #'consult-imenu))
 (keymap-set kittymacs-search-map "o" (cons "outline" #'consult-outline))
-(keymap-set kittymacs-search-map "k" (cons "kill ring" #'consult-yank-pop))
 (keymap-set kittymacs-search-map "m" (cons "mark ring" #'consult-mark))
+(keymap-set kittymacs-search-map "M" (cons "global mark ring" #'consult-global-mark))
 (keymap-set kittymacs-search-map "l" (cons "last completion" #'vertico-repeat))
 
 (keymap-set kittymacs-project-map "b" (cons "project buffer" #'consult-project-buffer))
-(keymap-set kittymacs-project-map "m" (cons "bookmark" #'consult-bookmark))
 
 (keymap-set kittymacs-insert-map "y" (cons "from kill ring" #'consult-yank-from-kill-ring))
 (keymap-set kittymacs-insert-map "r" (cons "register" #'consult-register))

@@ -494,7 +494,7 @@ A function on `flyspell-incorrect-hook': non-nil leaves the word unmarked."
 - =SPC t t= flips to the light theme and back; colours never mix.
 - =SPC t w= in an Org file hides everything but the text; =SPC t w= again brings it back.
 - =SPC t H= hides only the mode line.
-- With =ui-polish=: =SPC j l= to a line, then =SPC b m= to a mark: the line pulses each time; =SPC t j=, then the same: nothing pulses.
+- With =ui-polish=: =SPC j l= to a line, then =SPC s m= to a mark: the line pulses each time; =SPC t j=, then the same: nothing pulses.
 - =C-x C-+= grows the text one step; =C-x C-0= resets.
 - =SPC f f=: icons beside the candidates, or none at all on a machine without the icon font.
 - Set =kittymacs-icons= to =nil= in =private.el= to run without icon fonts.

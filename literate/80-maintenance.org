@@ -421,8 +421,8 @@
 | =SPC C k= | =kittymacs-literate-check=   | =just tangle-check=, in a clean Emacs                  |
 | =SPC C u= | =kittymacs-open-custom-file= | open the Customize file                                |
 | =SPC C a= | =kittymacs-open-architecture= | open =ARCHITECTURE.md=, the design record             |
-| =SPC C r= | =restart-emacs=              | restart Emacs                                          |
 
+- The loop's last step, restarting, is =SPC q r=, with the other ways of leaving Emacs.
 - Every path is relative to =user-emacs-directory=, so the commands work from any buffer.
 - This chapter binds =SPC C o= and says when to press it, because the onboarding module must not load at startup.
   + =autoload= gives the key a command to call, and loads the module on the first press.
@@ -537,7 +537,6 @@
 (keymap-set kittymacs-config-map "o" (cons "onboarding" #'kittymacs-onboard))
 (keymap-set kittymacs-config-map "u" (cons "custom.el" #'kittymacs-open-custom-file))
 (keymap-set kittymacs-config-map "a" (cons "architecture" #'kittymacs-open-architecture))
-(keymap-set kittymacs-config-map "r" (cons "restart Emacs" #'restart-emacs))
 
 (provide 'kittymacs-literate)
 ;;; kittymacs-literate.el ends here
