@@ -115,7 +115,7 @@ No feature has the label now, so a stand-in carries it."
       (should (equal (list feature t)
                      (list feature (and (memq feature (kittymacs-features--compute 'full nil nil))
                                         t)))))
-    (dolist (feature '(buffer-tabs which-key-frame))
+    (dolist (feature '(which-key-frame))
       (should-not (memq feature (kittymacs-features--compute 'full nil nil))))))
 
 (ert-deftest kittymacs-features-full-leaves-out-what-the-catalogue-calls-optional ()
@@ -249,7 +249,7 @@ No feature has the label now, so a stand-in carries it."
   (kittymacs-features-test-with ((kittymacs-profile 'full)) warnings
     (should (kittymacs-feature-p 'agents))
     (should-not warnings))
-  (dolist (agent '(agent-claude-code-ide agent-eca agent-gptel))
+  (dolist (agent '(agent-claude-code-ide agent-gptel))
     (kittymacs-features-test-with ((kittymacs-profile 'full)
                                    (kittymacs-features (list agent)))
         warnings

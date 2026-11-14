@@ -21,7 +21,7 @@
   '(kittymacs-treemacs kittymacs-msys2 kittymacs-remote-rpc kittymacs-dashboard
     kittymacs-org-extras kittymacs-org-roam kittymacs-reading kittymacs-notebooks
     kittymacs-agents kittymacs-suggestions kittymacs-smooth-scroll
-    kittymacs-hover-docs kittymacs-which-key-frame kittymacs-buffer-tabs
+    kittymacs-hover-docs kittymacs-which-key-frame
     kittymacs-meow-state-cursor)
   "The modules `init.el' loads only while a feature that owns them is on.
 The features that own one are those whose catalogue `:module' names it, so a

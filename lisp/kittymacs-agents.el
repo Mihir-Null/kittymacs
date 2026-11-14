@@ -181,40 +181,6 @@ w, d and j are left free for an integration's own commands.")
     (keymap-set kittymacs-agent-map "p" (cons "send a prompt" #'claude-code-ide-send-prompt))
     (keymap-set kittymacs-agent-map "i" (cons "interrupt" #'claude-code-ide-send-escape))
     (keymap-set kittymacs-agent-map "?" (cons "menu" #'claude-code-ide-menu))))
-(when (kittymacs-feature-p 'agent-eca)
-  (use-package eca
-    :ensure t
-    :commands (eca eca-chat-new eca-chat-toggle-window eca-chat-select eca-chat-resume
-               eca-chat-add-context-to-user-prompt eca-chat-add-filepath-to-user-prompt
-               eca-chat-go-to-next-attention eca-transient-menu)
-    :custom
-    (eca-server-install-path
-     (expand-file-name (if (eq system-type 'windows-nt) "eca/eca.exe" "eca/eca")
-                       kittymacs-cache-dir)))
-
-  (keymap-set kittymacs-agent-map "a" (cons "start or switch" #'eca))
-  (keymap-set kittymacs-agent-map "n" (cons "new chat" #'eca-chat-new))
-  (keymap-set kittymacs-agent-map "t" (cons "toggle" #'eca-chat-toggle-window))
-  (keymap-set kittymacs-agent-map "b" (cons "switch chat" #'eca-chat-select))
-  (keymap-set kittymacs-agent-map "r" (cons "resume chat" #'eca-chat-resume))
-  (keymap-set kittymacs-agent-map "s" (cons "send region or file" #'eca-chat-add-context-to-user-prompt))
-  (keymap-set kittymacs-agent-map "f" (cons "send a file path" #'eca-chat-add-filepath-to-user-prompt))
-  (keymap-set kittymacs-agent-map "j" (cons "jump to waiting chat" #'eca-chat-go-to-next-attention))
-  (keymap-set kittymacs-agent-map "?" (cons "menu" #'eca-transient-menu))
-
-  (with-eval-after-load 'meow
-    (dolist (entry '((eca-chat-mode . insert)
-                     (eca-chat-compose-mode . insert)))
-      (add-to-list 'meow-mode-state-list entry)))
-
-  (kittymacs-define-localleader 'eca-chat-mode
-    "i" (cons "stop" #'eca-chat-stop-prompt)
-    "m" (cons "next agent" #'eca-chat-cycle-agent)
-    "M" (cons "choose model" #'eca-chat-select-model)
-    "y" (cons "accept tool call" #'eca-chat-tool-call-accept-next)
-    "x" (cons "reject tool call" #'eca-chat-tool-call-reject-next)
-    "Y" (cons "accept every call" #'eca-chat-tool-call-accept-all)
-    "?" (cons "menu" #'eca-transient-menu)))
 (defun kittymacs-agent-gptel-start-or-switch ()
   "Switch to this project's gptel-agent buffer, or start one where there is none."
   (interactive)

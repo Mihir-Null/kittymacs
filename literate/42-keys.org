@@ -97,15 +97,14 @@
 
 #+end_src
 
-* Projects, version control, windows, workspaces
+* Projects, version control, windows
 
 | Prefix  | Group           | Doubled key             | Also                                                                          |
 |---------+-----------------+-------------------------+-------------------------------------------------------------------------------|
-| =SPC p= | project         | =p= open in a workspace | every =C-x p= key, =G= Magit status, =C= recompile, =E= direnv                |
+| =SPC p= | project         | =p= switch project      | every =C-x p= key, =G= Magit status, =C= recompile, =E= direnv                |
 | =SPC j= | jump            | =j= to character (Avy)  | =l= line, =w= word, =s= symbol                                                |
 | =SPC v= | version control | (=s= status)            | =d= diff, =l= log, =b= blame, =c= commit, =?= all commands                    |
 | =SPC w= | windows         | =w= jump to window      | =n= new frame, =k= close frame, =h= / =v= split, =u= / =U= undo / redo layout |
-| =SPC W= | workspaces      | (=TAB= switch)          | =s= switch or create, =o= open project, =d= close                             |
 
 - Windows are frames here: =SPC w n= makes a new OS window.
   + =SPC w h= and =SPC w v= are bound to Emacs's own split commands, which [[id:f1d045c2-e2dc-4514-ab17-dd982ed6be00][the frames chapter]] turns into frame creation while frames-only mode is on, so they make a new OS window too.
@@ -274,10 +273,8 @@ in the server, which keeps running."
 | =SPC x=       | scratch buffer                          |
 | =SPC k=       | kill ring                               |
 | =SPC [= / =]= | previous / next buffer                  |
-| =SPC {= / =}= | previous / next tab                     |
-| =SPC TAB=     | switch tab                              |
 
-- [[id:878a9e46-62be-4b9f-82f6-589560d2ebc1][Dired]], [[id:42b02bb4-ea68-4981-b427-35705bf162f4][completion]] and [[id:e4d65984-892d-4046-b718-d4265ab74215][navigation]] bind =SPC d=, =SPC k= and the tab keys.
+- [[id:878a9e46-62be-4b9f-82f6-589560d2ebc1][Dired]] and [[id:42b02bb4-ea68-4981-b427-35705bf162f4][completion]] bind =SPC d= and =SPC k=.
 - =C-c C-SPC= opens the same tree where =SPC= cannot: in Insert state and in buffers where Meow is off.
 
 #+begin_src emacs-lisp

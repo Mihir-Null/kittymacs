@@ -121,13 +121,11 @@
   + Note the =-1=: a minor mode called from Lisp with =nil= is turned /on/, not off.
 - =SPC m h= toggles dotfiles for the moment.
 
-* Icons, workspaces and Magit
+* Icons and Magit
 
-- Three small packages connect Treemacs to what this configuration already runs.
+- Two small packages connect Treemacs to what this configuration already runs.
 - /Nerd Font icons/ replace the default PNG icons, so the tree matches the completion, Corfu and Dired icons.
   + Same check as [[id:0286f652-e861-4e61-9ca6-91e225c8939d][the appearance chapter]], so a machine without the font gets the plain theme instead of boxes.
-- /Workspaces/: [[id:e4d65984-892d-4046-b718-d4265ab74215][the navigation chapter]] gives each tab its own buffers, and =treemacs-tab-bar= its own tree to match.
-  + Switching workspace switches the sidebar with it.
 - /Magit/ closes the one gap in filesystem watching.
   + Staging and committing change Git's index, not your files, so Treemacs would not otherwise notice the colours changed.
 
@@ -139,13 +137,6 @@
   :config
   (when (kittymacs-icons-available-p)
     (treemacs-load-theme "nerd-icons")))
-
-(use-package treemacs-tab-bar
-  :ensure t
-  :after treemacs
-  :demand t
-  :config
-  (treemacs-set-scope-type 'Tabs))
 
 (use-package treemacs-magit
   :ensure t

@@ -511,8 +511,11 @@ It uses the real direnv, not the one `kittymacs-remote-start--fake-programs' add
             (buffer-local-value 'default-directory remote))))
   (when kittymacs-terminal-ghostel
     (kittymacs-remote-start-value 'terminal-slots
+      ;; The module offer asks a question, which batch cannot answer; this
+      ;; checks only which buffer the key names, so the module is not its business.
       (cl-letf (((symbol-function 'ghostel)
-                 (lambda (&optional _) (bound-and-true-p ghostel-buffer-name))))
+                 (lambda (&optional _) (bound-and-true-p ghostel-buffer-name)))
+                ((symbol-function 'kittymacs-terminal--ensure-module) #'ignore))
         (list (let ((default-directory temporary-file-directory)
                     (ghostel-buffer-name "the-local-name"))
                 (kittymacs-terminal-open))

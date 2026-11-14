@@ -67,13 +67,6 @@
   (when (kittymacs-icons-available-p)
     (treemacs-load-theme "nerd-icons")))
 
-(use-package treemacs-tab-bar
-  :ensure t
-  :after treemacs
-  :demand t
-  :config
-  (treemacs-set-scope-type 'Tabs))
-
 (use-package treemacs-magit
   :ensure t
   :after (treemacs magit)

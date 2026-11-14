@@ -2,21 +2,20 @@
 :ID: e4d65984-892d-4046-b718-d4265ab74215
 :END:
 
-#+TITLE: Getting around: projects, recent files, search and workspaces
+#+TITLE: Getting around: projects, recent files and search
 #+FILETAGS: :apps:
 #+STARTUP: overview
 #+PROPERTY: header-args:emacs-lisp :tangle ../lisp/kittymacs-navigation.el :eval never :comments no :padline no :mkdirp yes
 
-- Getting around files, projects and workspaces:
+- Getting around files and projects:
   + Emacs remembers where you were in every file and which files you opened recently (=SPC f r=);
   + a /project/ is any Git repository or directory with a marker file; =SPC p= finds files, buffers and text inside one;
-  + a /workspace/ is a tab with its own set of buffers, usually one per project, under =SPC W=;
+  + a separate space per project is a frame (or an EXWM workspace), not a tab set;
   + searches use ripgrep when it is installed.
-- Most of it is built into Emacs (=project.el=, =recentf=, =saveplace=, bookmarks, the tab bar); packages add jumping (Avy), live replacement (=visual-regexp=) and workspaces (Tabspaces).
+- Most of it is built into Emacs (=project.el=, =recentf=, =saveplace=, bookmarks, the tab bar); packages add jumping (Avy) and live replacement (=visual-regexp=).
 - Leans on [[id:42b02bb4-ea68-4981-b427-35705bf162f4][the completion chapter]] for Consult, [[id:3fd783cd-deb8-48aa-bb44-0d9b16535365][the defaults chapter]] for the cache directory and [[id:afa6b7fd-742a-4c15-86a6-32e3e8027b0e][the platform chapter]], and on [[id:e5942eb0-4389-447d-9317-d9178adcaaae][the leader]] for the groups its keys go in.
 - Distilled from Lambda-Emacs by Colin McLear (=lem-setup-navigation=, =-projects=, =-search=, =-tabs=).
-- Those three are the =jump=, =visual-replace= and =workspaces= features, each behind a =when= with its keys.
-  + Without =workspaces=, =SPC p p= is Emacs's own =project-switch-project=, and =SPC W= still holds the plain tab commands.
+- Those two are the =jump= and =visual-replace= features, each behind a =when= with its keys.
 
 * Remembering places and files
 
@@ -27,7 +26,7 @@
 - =SPC b j= jumps to a heading or definition with completion: Org headings in Org, the outline elsewhere.
 
 #+begin_src emacs-lisp
-;;; kittymacs-navigation.el --- Projects, places, search and workspaces -*- lexical-binding: t; -*-
+;;; kittymacs-navigation.el --- Projects, places and search -*- lexical-binding: t; -*-
 ;; Generated from literate/68-navigation.org; edit the Org source, then tangle.
 
 ;; Distilled from Lambda-Emacs by Colin McLear (GPL-3.0-or-later).
@@ -156,28 +155,22 @@
 
 #+end_src
 
-* Workspaces: tabs with their own buffers :decision:
+* Workspaces are frames, not tab sets :decision:
 :PROPERTIES:
 :ID: 826962f8-d451-4444-8e0e-d0f0024da8b6
 :END:
 
-- The tab bar holds window configurations.
+- One project or task per frame does the job a "workspace" package used to do:
+  + under EXWM, each EXWM workspace is already a separate screen of windows;
+  + elsewhere, =C-x 5 2= or a frame from the window manager gives a project its own space, and frames-only mode makes every new window one;
+  + =SPC p p= is Emacs's own =project-switch-project=, inherited from =C-x p p=, and =SPC b b= lists every buffer;
+  + =SPC b a= (ibuffer) groups buffers when the list gets long.
+- That is why this configuration carries no workspace package and no buffer-tab bar:
+  + both filtered the buffer list per tab, so =SPC b b= showed different buffers depending on where you stood, and the two did not agree with each other;
+  + both added leader keys of their own, a whole group and three top-level keys, for what frames already do.
+- Emacs's own tab bar is still there on =C-x t= for anyone who wants a window layout to come back to.
   + Tabs show their numbers; a new tab opens rightmost on the scratch buffer.
   + No new-tab or close buttons; closing the last tab turns the tab bar off.
-- =SPC TAB= (=kittymacs-tab-dwim=) creates a tab when there is none, switches when there are two, and otherwise asks which.
-  + =SPC W TAB= is the same command, and =SPC {= and =SPC }= move between tabs.
-- Tabspaces turns each tab into a workspace whose buffer list shows only the buffers opened inside it; the first is called "Home".
-  + =SPC b b= in a project's tab lists that project's buffers first.
-  + The full list is a narrow key away; =w= narrows back to the workspace.
-  + Turning Tabspaces off restores Consult's ordinary buffer list.
-  + =SPC p p= opens a project in its own workspace; =C-x p p= still switches project in the current one.
-- Tabspaces is one of two global modes this configuration does not switch on in =:config= (envrc is the other); it turns on from =after-init-hook= at depth 95, through =kittymacs-after-init=, so a failure there is a warning rather than the end of startup.
-  + The mode reads some of its options only when it turns on:
-    - whether =switch-to-buffer= shows the workspace's buffers (=tabspaces-use-filtered-buffers-as-default=);
-    - whether sessions are saved and restored (=tabspaces-session=, =tabspaces-session-auto-restore=);
-    - whether the echo area names the workspace (=tabspaces-echo-area-enable=).
-  + Changing one of them later does nothing until the mode is turned off and on again.
-  + Depth 95 is after the Customize file and after the =private.el= function at depth 90 ("Machine-specific settings" in [[id:40302e33-d2b2-4c0b-9bc3-1f9e121307e1][the startup chapter]]), so a value set in either place is the one it reads.
 
 #+begin_src emacs-lisp
 (setopt tab-bar-tab-hints t
@@ -188,89 +181,14 @@
         tab-bar-close-button-show nil
         tab-bar-auto-width nil)
 
-(defun kittymacs-tab-dwim ()
-  "Create a tab if there is one, switch if there are two, else choose one."
-  (interactive)
-  (let ((tabs (mapcar (lambda (tab) (alist-get 'name tab)) (tab-bar--tabs-recent))))
-    (cond ((null tabs) (tab-new))
-          ((= (length tabs) 1) (tab-next))
-          (t (tab-bar-switch-to-tab (completing-read "Select tab: " tabs nil t))))))
-
-(keymap-set kittymacs-leader-map "{" (cons "previous tab" #'tab-bar-switch-to-prev-tab))
-(keymap-set kittymacs-leader-map "}" (cons "next tab" #'tab-bar-switch-to-next-tab))
-(keymap-set kittymacs-leader-map "TAB" (cons "switch tab" #'kittymacs-tab-dwim))
-
-(keymap-set kittymacs-workspace-map "TAB" (cons "switch" #'kittymacs-tab-dwim))
-(keymap-set kittymacs-workspace-map "n" (cons "new tab" #'tab-new))
-(keymap-set kittymacs-workspace-map "]" (cons "next tab" #'tab-next))
-(keymap-set kittymacs-workspace-map "[" (cons "previous tab" #'tab-previous))
-
-(defvar kittymacs-consult-source-workspace
-  (list :name "Workspace Buffers"
-        :narrow ?w
-        :history 'buffer-name-history
-        :category 'buffer
-        :state #'consult--buffer-state
-        :default t
-        :items (lambda () (consult--buffer-query
-                           :predicate #'tabspaces--local-buffer-p
-                           :sort 'visibility
-                           :as #'buffer-name)))
-  "Consult source listing only this workspace's buffers.")
-
-(defun kittymacs--consult-tabspaces ()
-  "Show workspace buffers first while tabspaces is on."
-  (if tabspaces-mode
-      (progn
-        (plist-put consult-source-buffer :hidden t)
-        (plist-put consult-source-buffer :default nil)
-        (add-to-list 'consult-buffer-sources 'kittymacs-consult-source-workspace))
-    (plist-put consult-source-buffer :hidden nil)
-    (plist-put consult-source-buffer :default t)
-    (setq consult-buffer-sources (remove 'kittymacs-consult-source-workspace consult-buffer-sources))))
-
-(when (kittymacs-feature-p 'workspaces)
-  (use-package tabspaces
-    :ensure t
-    :demand t
-    :custom
-    (tabspaces-use-filtered-buffers-as-default t)
-    (tabspaces-default-tab "Home")
-    :config
-    (kittymacs-after-init #'tabspaces-mode 95)
-    (with-eval-after-load 'consult
-      (add-hook 'tabspaces-mode-hook #'kittymacs--consult-tabspaces)
-      (kittymacs--consult-tabspaces))))
-
-;; Loaded by the `use-package' above; these quiet the byte compiler.
-(declare-function tabspaces-switch-to-buffer "tabspaces")
-(declare-function tabspaces-remove-current-buffer "tabspaces")
-(declare-function tabspaces-remove-selected-buffer "tabspaces")
-(declare-function tabspaces-clear-buffers "tabspaces")
-(declare-function tabspaces-close-workspace "tabspaces")
-(declare-function tabspaces-kill-buffers-close-workspace "tabspaces")
-
-(when (kittymacs-feature-p 'workspaces)
-  (keymap-set kittymacs-project-map "p" (cons "open in a workspace" #'tabspaces-open-or-create-project-and-workspace))
-
-  (keymap-set kittymacs-workspace-map "s" (cons "switch or create" #'tabspaces-switch-or-create-workspace))
-  (keymap-set kittymacs-workspace-map "o" (cons "open project" #'tabspaces-open-or-create-project-and-workspace))
-  (keymap-set kittymacs-workspace-map "b" (cons "workspace buffer" #'tabspaces-switch-to-buffer))
-  (keymap-set kittymacs-workspace-map "r" (cons "remove buffer" #'tabspaces-remove-current-buffer))
-  (keymap-set kittymacs-workspace-map "R" (cons "remove some buffer" #'tabspaces-remove-selected-buffer))
-  (keymap-set kittymacs-workspace-map "c" (cons "clear buffers" #'tabspaces-clear-buffers))
-  (keymap-set kittymacs-workspace-map "d" (cons "close workspace" #'tabspaces-close-workspace))
-  (keymap-set kittymacs-workspace-map "k" (cons "kill buffers and close" #'tabspaces-kill-buffers-close-workspace)))
-
 (provide 'kittymacs-navigation)
 ;;; kittymacs-navigation.el ends here
 #+end_src
 
 * Check
 
-- =SPC p p= opens a project in its own workspace; =SPC b b= now lists only its buffers.
+- =SPC p p= switches project in the current frame; =SPC b b= lists every buffer.
 - =SPC s d= then a word: ripgrep across the project, with live preview.
 - =SPC f r= for recent files; reopen one and you are where you left off.
 - =SPC j j= then a character: letters appear on every match in the frame.
-- =C-h v tabspaces-mode=: =t= once started, after the =private.el= function has run.
 - =just test-packages=: the startup verifier replays a real startup, after-init hooks included, and fails on any warning.

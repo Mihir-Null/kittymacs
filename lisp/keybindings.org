@@ -67,7 +67,6 @@ Press =SPC=, then:
 | =p=   | project                           |
 | =v=   | version control                   |
 | =w=   | windows and frames                |
-| =W=   | workspaces                        |
 | =c=   | code                              |
 | =e=   | eval Lisp                         |
 | =l=   | language server                   |
@@ -108,19 +107,16 @@ Press =SPC=, then:
 | SPC k   | Paste from the kill ring       | consult-yank-from-kill-ring    |
 | SPC ;   | Comment this line              | comment-line                   |
 
-* Projects and workspaces
+* Projects
 
-| Key       | Does                                | Command                                        |
-|-----------+-------------------------------------+------------------------------------------------|
-| SPC p p   | Open a project in its own workspace | tabspaces-open-or-create-project-and-workspace |
-| SPC p f   | Find a file in the project          | project-find-file                              |
-| SPC p b   | Switch to a project buffer          | consult-project-buffer                         |
-| SPC p G   | Magit status for the project        | magit-project-status                           |
-| SPC p E a | Allow this project's .envrc         | envrc-allow                                    |
-| SPC p E r | Reload the project's environment    | envrc-reload                                   |
-| SPC W s   | Switch or create a workspace        | tabspaces-switch-or-create-workspace           |
-| SPC W d   | Close this workspace                | tabspaces-close-workspace                      |
-| SPC TAB   | Switch tab                          | kittymacs-tab-dwim                             |
+| Key       | Does                             | Command                |
+|-----------+----------------------------------+------------------------|
+| SPC p p   | Switch to another project        | project-switch-project |
+| SPC p f   | Find a file in the project       | project-find-file      |
+| SPC p b   | Switch to a project buffer       | consult-project-buffer |
+| SPC p G   | Magit status for the project     | magit-project-status   |
+| SPC p E a | Allow this project's .envrc      | envrc-allow            |
+| SPC p E r | Reload the project's environment | envrc-reload           |
 
 * Version control
 
@@ -132,7 +128,6 @@ Press =SPC=, then:
 | SPC v b | Blame        | magit-blame  |
 | SPC v c | Commit       | magit-commit |
 | SPC v g | Forge menu: pull requests and issues | forge-dispatch |
-| SPC v R | Review a pull request | kittymacs-pr-review |
 | SPC v t | TODOs in this repository | magit-todos-list |
 | SPC v o | Copy a link to this line on the forge | git-link |
 | SPC v D | Diff this file by syntax | difftastic-magit-diff-buffer-file |
@@ -155,7 +150,7 @@ New editing surfaces are OS windows (frames); your window manager arranges them.
 |---------+-------------------------------------------+---------------------------|
 | SPC w n | New frame                                 | make-frame-command        |
 | SPC w k | Close this frame                          | delete-frame              |
-| SPC w w | Jump to a window                          | ace-window                |
+| SPC w w | Jump to a window (a frame in frames-only) | kittymacs-window-jump     |
 | SPC w h | Split below (a frame in frames-only mode) | split-window-below        |
 | SPC w v | Split right (a frame in frames-only mode) | split-window-right        |
 | SPC w u | Undo the last layout change               | winner-undo               |
