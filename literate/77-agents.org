@@ -105,11 +105,15 @@
 
 - agent-shell's defaults already fit, so they are not restated here:
   + =agent-shell-anthropic-authentication= is =(:login t)=: use the login =claude= stored, not an API key;
-  + =agent-shell-anthropic-claude-acp-command= is =("claude-agent-acp")=, found on =exec-path=.
+  + =agent-shell-anthropic-claude-acp-command= comes from =kittymacs-agent-claude-command=, whose default is agent-shell's own, =("claude-agent-acp")=, found on =exec-path=.
   + Log in once in a terminal (=claude=, then =/login=); on macOS the token lives in the Keychain.
 - Agent output is kept cheap, because a reply streams into one buffer on the main thread:
   + activity groups start collapsed, source blocks are not highlighted, and the header is text rather than an SVG;
   + the busy animation stays on: it is the only sign in the buffer that an agent is still working.
+- The adapter's command is a kittymacs option, =kittymacs-agent-claude-command=, so a host names its adapter instead of relying on =PATH=. Change it:
+  + to a path, where Emacs's =PATH= does not reach the adapter;
+  + to a wrapper, such as =("sudo" "-iu" "agent" "claude-agent-acp")=, which runs the adapter as another user.
+  + Set it before this module loads, in =private.el= or a host file, as =kittymacs-agent-mcp-servers=.
 - Two more settings differ from the defaults:
   + =agent-shell-preferred-agent-config= is =claude-code=, so =SPC a a= starts Claude without asking which agent;
   + the adapter inherits Emacs's environment.
@@ -127,6 +131,13 @@
   + It is on because without it agent-shell does not offer the form, so Claude cannot ask you anything mid-turn.
 
 #+begin_src emacs-lisp
+(defcustom kittymacs-agent-claude-command '("claude-agent-acp")
+  "The command agent-shell runs for Claude: a program, then its arguments.
+The program is looked up on `exec-path'.  Set this before this module
+loads, in `private.el' or a host file."
+  :type '(repeat string)
+  :group 'kittymacs)
+
 (when (kittymacs-feature-p 'agents)
   (condition-case err
       (progn
@@ -146,6 +157,7 @@
           (setq agent-shell-elicitation--experimental-feature-enabled t)
           :custom
           (agent-shell-preferred-agent-config 'claude-code)
+          (agent-shell-anthropic-claude-acp-command kittymacs-agent-claude-command)
           (agent-shell-activity-group-expand-by-default nil)
           (agent-shell-highlight-blocks nil)
           (agent-shell-header-style 'text)
@@ -180,7 +192,7 @@
   + So permissions, the output style, commit attribution and the skills live in =~/.claude=, written by you or by the machine's configuration, never here.
 - This chapter holds only what is about Emacs: the buffers, the keys and the notifications.
 - agent-shell and claude-code-ide both run the =claude= command line, so =~/.claude= governs both.
-  + agent-shell runs it through =claude-agent-acp=, and claude-code-ide runs =claude= itself; each must be on =PATH=.
+  + agent-shell runs it through =kittymacs-agent-claude-command=, =claude-agent-acp= by default, and claude-code-ide runs =claude= itself; each must be on =PATH=, unless the option names a path.
 - gptel-agent is an agent of its own, so =~/.claude= does not reach it.
   + gptel-agent asks before every tool that changes a file or runs a command, and its presets live in Emacs.
   + This chapter does not change its rules: choosing it means choosing its rules too.

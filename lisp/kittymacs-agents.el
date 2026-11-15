@@ -15,6 +15,13 @@
 (declare-function agent-shell-attention--mark-buffer "agent-shell-attention" (buffer label &rest args))
 (defvar agent-shell-elicitation--experimental-feature-enabled)
 (declare-function gptel-agent "gptel-agent" (&optional project-dir agent-preset))
+(defcustom kittymacs-agent-claude-command '("claude-agent-acp")
+  "The command agent-shell runs for Claude: a program, then its arguments.
+The program is looked up on `exec-path'.  Set this before this module
+loads, in `private.el' or a host file."
+  :type '(repeat string)
+  :group 'kittymacs)
+
 (when (kittymacs-feature-p 'agents)
   (condition-case err
       (progn
@@ -34,6 +41,7 @@
           (setq agent-shell-elicitation--experimental-feature-enabled t)
           :custom
           (agent-shell-preferred-agent-config 'claude-code)
+          (agent-shell-anthropic-claude-acp-command kittymacs-agent-claude-command)
           (agent-shell-activity-group-expand-by-default nil)
           (agent-shell-highlight-blocks nil)
           (agent-shell-header-style 'text)

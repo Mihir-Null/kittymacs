@@ -381,6 +381,25 @@ The two must agree on a winner that only dependencies reach."
   (kittymacs-features-test-with ((kittymacs-exwm t)) _warnings
     (should (kittymacs-feature-p 'window-manager))))
 
+(ert-deftest kittymacs-features-exwm-follows-the-home-manager-environment ()
+  "The environment `programs.kittymacs.exwmEnvironment' names selects EXWM on X."
+  (let ((module (with-temp-buffer
+                  (insert-file-contents
+                   (expand-file-name "nix/home-module.nix" kittymacs-features-test-root))
+                  (buffer-string)))
+        settings)
+    (should (string-match "exwmEnvironment = lib.mkOption {[^}]*default = {\\([^}]*\\)}" module))
+    (let ((body (match-string 1 module))
+          (start 0))
+      (while (string-match "\\([A-Z_]+\\) = \"\\([^\"]*\\)\";" body start)
+        (push (format "%s=%s" (match-string 1 body) (match-string 2 body)) settings)
+        (setq start (match-end 0))))
+    (should settings)
+    (let ((process-environment (append settings process-environment)))
+      (kittymacs-features-test-with ((window-system 'x)) _warnings
+        (should (kittymacs-exwm-session-p))
+        (should (kittymacs-feature-p 'window-manager))))))
+
 (ert-deftest kittymacs-features-the-terminal-option-works-both-ways ()
   (kittymacs-features-test-with ((kittymacs-profile 'full)
                                  (kittymacs-terminal-ghostel nil))
