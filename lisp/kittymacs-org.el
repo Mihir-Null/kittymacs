@@ -8,6 +8,8 @@
 (require 'kittymacs-platform)
 (require 'kittymacs-defaults)
 (require 'kittymacs-leader)
+(defvar org-default-notes-file)
+(defvar org-modules)
 (make-directory kittymacs-org-directory t)
 (setopt org-directory kittymacs-org-directory
         org-default-notes-file (expand-file-name "inbox.org" kittymacs-org-directory)
@@ -267,7 +269,6 @@ Point stays where it was, in or out of a table."
 (declare-function org-ql-view-refresh "org-ql-view")
 (defvar org-agenda-custom-commands)
 (defvar org-agenda-time-grid)
-(defvar org-default-notes-file)
 (defvar org-ql-view-buffers-files)
 
 (setopt org-todo-keywords '((sequence "TODO(t)" "NEXT(n)" "WAITING(w@/!)" "|" "DONE(d)" "CANCELED(c@)"))

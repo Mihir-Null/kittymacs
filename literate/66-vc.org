@@ -226,7 +226,6 @@ Falls back to `magit-status', which asks, when neither is a repository."
   :config
   (unless (display-graphic-p) (diff-hl-margin-mode 1))
   (with-eval-after-load 'magit
-    (add-hook 'magit-pre-refresh-hook #'diff-hl-magit-pre-refresh)
     (add-hook 'magit-post-refresh-hook #'diff-hl-magit-post-refresh)))
 
 (keymap-set kittymacs-toggle-map "g" (cons "git gutter" #'diff-hl-mode))

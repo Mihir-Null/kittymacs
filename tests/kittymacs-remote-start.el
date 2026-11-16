@@ -413,7 +413,9 @@ It uses the real direnv, not the one `kittymacs-remote-start--fake-programs' add
                                                    exec-path)))
                         (executable-find "direnv"))))
     (let* ((local (make-temp-file "kittymacs-direnv-" t))
-           (name (concat root (string-remove-prefix "/tmp/" local) "/"))
+           ;; The stand-in runs on this machine, so the local path is the remote
+           ;; one; `make-temp-file' follows TMPDIR, which need not be /tmp.
+           (name (concat (file-remote-p root) (file-name-as-directory local)))
            (report "echo [$KITTYMACS_ENVRC_PROBE]"))
       (with-temp-file (expand-file-name ".envrc" local)
         (insert "export KITTYMACS_ENVRC_PROBE=reached\n"))
