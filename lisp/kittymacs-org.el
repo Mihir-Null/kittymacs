@@ -8,6 +8,8 @@
 (require 'kittymacs-platform)
 (require 'kittymacs-defaults)
 (require 'kittymacs-leader)
+(defvar org-default-notes-file)
+(defvar org-modules)
 (make-directory kittymacs-org-directory t)
 (setopt org-directory kittymacs-org-directory
         org-default-notes-file (expand-file-name "inbox.org" kittymacs-org-directory)

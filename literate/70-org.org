@@ -54,6 +54,8 @@
 (require 'kittymacs-platform)
 (require 'kittymacs-defaults)
 (require 'kittymacs-leader)
+(defvar org-default-notes-file)
+(defvar org-modules)
 
 #+end_src
 
