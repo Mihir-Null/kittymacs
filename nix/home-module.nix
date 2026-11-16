@@ -156,6 +156,30 @@ in
         it is for an Emacs started by hand.
       '';
     };
+
+    cloneStep = lib.mkOption {
+      type = lib.types.str;
+      readOnly = true;
+      default = "cloneKittymacs";
+      description = ''
+        Name of the activation step that clones `source`, for a step that
+        must run before or after it.  The step exists only when `source` and
+        `revision` are both set.
+      '';
+    };
+
+    exwmEnvironment = lib.mkOption {
+      type = lib.types.attrsOf lib.types.str;
+      readOnly = true;
+      default = {
+        KITTYMACS_EXWM = "1";
+      };
+      description = ''
+        Environment variables that make an Emacs whose first frame is on X
+        the window manager, through EXWM.  A session script sets them on the
+        Emacs it starts, for example with `lib.toShellVars`.
+      '';
+    };
   };
 
   config = lib.mkIf (cfg.enable || cfg.backend.enable) {
@@ -197,7 +221,7 @@ in
     ) hostLayer;
 
     home.activation = {
-      cloneKittymacs = lib.mkIf (cfg.source != null && cfg.revision != null) (
+      ${cfg.cloneStep} = lib.mkIf (cfg.source != null && cfg.revision != null) (
         lib.hm.dag.entryAfter [ "writeBoundary" ] ''
           source=${lib.escapeShellArg cfg.source}
           repository=${lib.escapeShellArg cfg.repository}

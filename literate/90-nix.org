@@ -1320,6 +1320,47 @@ in
         it is for an Emacs started by hand.
       '';
     };
+#+end_src
+
+** Names another configuration builds on :decision:
+:PROPERTIES:
+:ID: 5661023e-dea2-4f9a-9b73-d0b349c74a67
+:END:
+
+- A host that builds around kittymacs reads these names from the module, not from this page, so kittymacs can rename what they name without breaking the host silently.
+- Both are read-only: the module decides them, and a host only reads them.
+- =cloneStep= :: the name of [[*Cloning the checkout on first activation][the activation step that clones =source=]], for a step that must run before or after it, such as one that writes a corporate CA bundle the clone needs.
+  + The step exists only when =source= and =revision= are both set; a host that orders against it checks that first.
+  + Home Manager drops an ordering against a name no step has, without a warning, so a host that reads the name follows a rename.
+- =exwmEnvironment= :: the environment that makes an Emacs started on X the window manager, for the session script that starts it ([[id:09277c62-e114-4ae6-a53b-f22650c0a4c0][Only when the session asks]]).
+  + A session script sets these variables on the Emacs it starts, so a rename of the variable reaches the script on the next switch.
+  + The variable stays the interface for an Emacs started without Nix.
+  + =tests/kittymacs-features-tests.el= checks that the Lisp reads the variable this option names.
+
+#+begin_src nix :padline yes
+    cloneStep = lib.mkOption {
+      type = lib.types.str;
+      readOnly = true;
+      default = "cloneKittymacs";
+      description = ''
+        Name of the activation step that clones `source`, for a step that
+        must run before or after it.  The step exists only when `source` and
+        `revision` are both set.
+      '';
+    };
+
+    exwmEnvironment = lib.mkOption {
+      type = lib.types.attrsOf lib.types.str;
+      readOnly = true;
+      default = {
+        KITTYMACS_EXWM = "1";
+      };
+      description = ''
+        Environment variables that make an Emacs whose first frame is on X
+        the window manager, through EXWM.  A session script sets them on the
+        Emacs it starts, for example with `lib.toShellVars`.
+      '';
+    };
   };
 #+end_src
 
@@ -1400,7 +1441,7 @@ in
 
 #+begin_src nix :padline yes
     home.activation = {
-      cloneKittymacs = lib.mkIf (cfg.source != null && cfg.revision != null) (
+      ${cfg.cloneStep} = lib.mkIf (cfg.source != null && cfg.revision != null) (
         lib.hm.dag.entryAfter [ "writeBoundary" ] ''
           source=${lib.escapeShellArg cfg.source}
           repository=${lib.escapeShellArg cfg.repository}

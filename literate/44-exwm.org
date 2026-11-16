@@ -21,6 +21,7 @@
 - EXWM is on only when the program that starts Emacs sets =KITTYMACS_EXWM=1= and the first frame is on X.
   + An Emacs started any other way (the daemon, a WSLg window, a Wayland session) loads none of this, and EXWM is never installed into it.
   + An environment variable, not a command-line switch: the session script sets it, and =init.el= can read it before any chapter loads.
+  + With Nix, a session script takes the variable from the Home Manager option =programs.kittymacs.exwmEnvironment= ([[id:5661023e-dea2-4f9a-9b73-d0b349c74a67][Names another configuration builds on]]), so a rename reaches the script.
 - Selecting the =window-manager= feature installs EXWM for such a session, and turns on nothing by itself.
   + =KITTYMACS_EXWM=1= on X selects the feature too, and =kittymacs-exwm-session-p= in [[id:5c1e7a94-8f30-4d26-b7a1-3e92d06f4c18][the features chapter]] is the one place that asks: the installer needs the answer before this chapter loads.
   + This chapter always loads, because =kittymacs-wm-keys= and the other options are public, and a host may set them on any machine.
