@@ -21,12 +21,9 @@ stable := "nixos-26.05"
 stable_flags := "--override-input nixpkgs github:NixOS/nixpkgs/" + stable + " --override-input home-manager github:nix-community/home-manager/release-26.05 --override-input nix-darwin github:nix-darwin/nix-darwin/nix-darwin-26.05 --override-input kittymacs/nixpkgs github:NixOS/nixpkgs/nixpkgs-unstable"
 
 # Each heavy Nix command (a flake check, an eval, a derivation walk, a build)
-# waits for this machine's evaluation lock, so only one runs at a time. Point
-# KITTYMACS_EVAL_LOCK at the file other projects' evaluations lock to share it.
-# Commands lock, not recipes, because the recipes call one another; so do not
-# wrap a recipe in the same lock yourself. Linux only: macOS has no flock(1).
-eval_lock := env_var_or_default("KITTYMACS_EVAL_LOCK", home_directory() / ".cache" / "nix-eval.lock")
-lock := if os() == "linux" { "flock " + quote(eval_lock) } else { "" }
+# waits for this machine's one evaluation lock, so only one runs at a time.
+# tools/eval-lock.sh says how; wrapping a recipe in the same lock also works.
+lock := "bash " + quote(justfile_directory() / "tools" / "eval-lock.sh")
 
 emacs := "emacs -Q --batch --eval '(setq user-emacs-directory (file-name-as-directory (expand-file-name \".\")))'"
 
