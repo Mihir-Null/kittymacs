@@ -20,6 +20,14 @@ stable := "nixos-26.05"
 # unstable, because that release has no Emacs 31. See "The evaluation matrix".
 stable_flags := "--override-input nixpkgs github:NixOS/nixpkgs/" + stable + " --override-input home-manager github:nix-community/home-manager/release-26.05 --override-input nix-darwin github:nix-darwin/nix-darwin/nix-darwin-26.05 --override-input kittymacs/nixpkgs github:NixOS/nixpkgs/nixpkgs-unstable"
 
+# Each heavy Nix command (a flake check, an eval, a derivation walk, a build)
+# waits for this machine's evaluation lock, so only one runs at a time. Point
+# KITTYMACS_EVAL_LOCK at the file other projects' evaluations lock to share it.
+# Commands lock, not recipes, because the recipes call one another; so do not
+# wrap a recipe in the same lock yourself. Linux only: macOS has no flock(1).
+eval_lock := env_var_or_default("KITTYMACS_EVAL_LOCK", home_directory() / ".cache" / "nix-eval.lock")
+lock := if os() == "linux" { "flock " + quote(eval_lock) } else { "" }
+
 emacs := "emacs -Q --batch --eval '(setq user-emacs-directory (file-name-as-directory (expand-file-name \".\")))'"
 
 # The tests that load the configuration need its installed packages: the
@@ -194,15 +202,15 @@ lint:
 # the stable release a host may make it follow, then the two example hosts
 # against this checkout. Nothing is built.
 eval:
-    nix flake check --no-build --all-systems
-    nix flake check --no-build --all-systems --no-write-lock-file \
+    {{lock}} nix flake check --no-build --all-systems
+    {{lock}} nix flake check --no-build --all-systems --no-write-lock-file \
       --override-input nixpkgs github:NixOS/nixpkgs/{{stable}}
     {{just_executable()}} sources
     {{just_executable()}} sources --override-input nixpkgs github:NixOS/nixpkgs/{{stable}}
-    nix eval --no-write-lock-file --override-input kittymacs "path:$PWD" \
+    {{lock}} nix eval --no-write-lock-file --override-input kittymacs "path:$PWD" \
       --json ./nix/example#darwinConfigurations.example.config.environment.systemPackages \
       --apply 'ps: map (p: p.name) ps'
-    nix eval --no-write-lock-file --override-input kittymacs "path:$PWD" \
+    {{lock}} nix eval --no-write-lock-file --override-input kittymacs "path:$PWD" \
       --json ./nix/example-nix-on-droid#nixOnDroidConfigurations.default.config.home-manager.config.home.packages \
       --apply 'ps: map (p: p.name) ps'
 
@@ -211,7 +219,7 @@ eval:
 # Why: "The Emacs packages" in literate/90-nix.org. Nothing is built; FLAGS
 # can point nixpkgs elsewhere.
 sources *FLAGS:
-    nix derivation show -r --no-write-lock-file {{FLAGS}} .#packages.x86_64-linux.with-packages > "${TMPDIR:-/tmp}/kittymacs-derivations.json"
+    {{lock}} nix derivation show -r --no-write-lock-file {{FLAGS}} .#packages.x86_64-linux.with-packages > "${TMPDIR:-/tmp}/kittymacs-derivations.json"
     ! grep -o 'savannah[.]gnu[.]org/git/elpa[^"]*' "${TMPDIR:-/tmp}/kittymacs-derivations.json"
 
 # Evaluate real Home Manager hosts against this checkout, then start Emacs once
@@ -220,19 +228,19 @@ sources *FLAGS:
 # coding agents at once must fail evaluation, naming the options. "The selection check" in
 # literate/90-nix.org explains it.
 nix-selection:
-    nix eval --no-write-lock-file --override-input kittymacs "path:$PWD" \
+    {{lock}} nix eval --no-write-lock-file --override-input kittymacs "path:$PWD" \
       --json ./nix/selection-check#hosts > "${TMPDIR:-/tmp}/kittymacs-selection.json"
     KITTYMACS_NIX_REPORT="${TMPDIR:-/tmp}/kittymacs-selection.json" emacs -Q --batch -l tests/kittymacs-nix-selection.el
-    ! nix eval --no-write-lock-file --override-input kittymacs "path:$PWD" \
+    ! {{lock}} nix eval --no-write-lock-file --override-input kittymacs "path:$PWD" \
       --json ./nix/selection-check#typo 2> "${TMPDIR:-/tmp}/kittymacs-typo.txt"
     grep -F 'programs.kittymacs.features.no-such-feature' "${TMPDIR:-/tmp}/kittymacs-typo.txt"
-    ! nix eval --no-write-lock-file --override-input kittymacs "path:$PWD" \
+    ! {{lock}} nix eval --no-write-lock-file --override-input kittymacs "path:$PWD" \
       --json ./nix/selection-check#twoAgents 2> "${TMPDIR:-/tmp}/kittymacs-two-agents.txt"
     grep -F 'only one of the agent set can be on' "${TMPDIR:-/tmp}/kittymacs-two-agents.txt"
-    ! nix eval --no-write-lock-file --override-input kittymacs "path:$PWD" \
+    ! {{lock}} nix eval --no-write-lock-file --override-input kittymacs "path:$PWD" \
       --json ./nix/selection-check#reserved 2> "${TMPDIR:-/tmp}/kittymacs-reserved.txt"
     grep -F 'programs.kittymacs.hostFiles."10-nix"' "${TMPDIR:-/tmp}/kittymacs-reserved.txt"
-    ! nix eval --no-write-lock-file --override-input kittymacs "path:$PWD" \
+    ! {{lock}} nix eval --no-write-lock-file --override-input kittymacs "path:$PWD" \
       --raw ./nix/selection-check#darwinReserved 2> "${TMPDIR:-/tmp}/kittymacs-reserved.txt"
     grep -F 'programs.kittymacs.hostFiles."10-nix"' "${TMPDIR:-/tmp}/kittymacs-reserved.txt"
 
@@ -249,7 +257,7 @@ nix-matrix-on name *FLAGS:
     set -euo pipefail
     cd {{quote(justfile_directory())}}
     evaluate() {
-      nix eval --no-write-lock-file --override-input kittymacs "path:$PWD" {{FLAGS}} "$@"
+      {{lock}} nix eval --no-write-lock-file --override-input kittymacs "path:$PWD" {{FLAGS}} "$@"
     }
     errors=$(mktemp)
     for case in $(evaluate --raw ./nix/eval-matrix#cases --apply 'c: toString (builtins.attrNames c)'); do
@@ -292,7 +300,7 @@ nix-templates-on name kittymacs *FLAGS:
       local directory
       directory=$(mktemp -d)
       (cd "$directory" && nix flake init --template {{quote(kittymacs)}}"#$1" > /dev/null)
-      nix eval --raw --no-write-lock-file --override-input kittymacs {{quote(kittymacs)}} {{FLAGS}} \
+      {{lock}} nix eval --raw --no-write-lock-file --override-input kittymacs {{quote(kittymacs)}} {{FLAGS}} \
         "$directory#$2" > /dev/null
       rm -rf "$directory"
       echo "ok {{name}} $1"
@@ -305,7 +313,7 @@ nix-templates-on name kittymacs *FLAGS:
 # Build the backend's tools, and fail if a font or a GUI toolkit is in the closure.
 # The matches print. It builds, so CI leaves it out.
 nix-backend-closure:
-    nix build --no-link .#backend
+    {{lock}} nix build --no-link .#backend
     ! nix path-info --recursive .#backend | grep -E -- '-(gtk|qt|libX11|fontconfig|emacs)[-+0-9]'
 
 # Everything that needs Nix.
