@@ -86,17 +86,6 @@ Code that is already lexical expands as before."
   (org-appear-autolinks t)
   (org-appear-autosubmarkers t)
   (org-appear-autoentities t))
-(use-package mixed-pitch
-  :ensure t
-  :hook (org-mode . mixed-pitch-mode)
-  :init
-  (keymap-set kittymacs-toggle-map "P" (cons "prose font" #'mixed-pitch-mode))
-  :custom
-  (mixed-pitch-variable-pitch-cursor nil)
-  :config
-  (dolist (face '(org-hide org-drawer org-special-keyword org-property-value
-                  org-date org-modern-symbol))
-    (add-to-list 'mixed-pitch-fixed-pitch-faces face)))
 (condition-case err
     (use-package org-modern-indent
       :vc (:url "https://github.com/jdtsmith/org-modern-indent"

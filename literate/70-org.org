@@ -505,6 +505,68 @@ Point stays where it was, in or out of a table."
 
 #+end_src
 
+* Prose in a proportional font
+:PROPERTIES:
+:ID: f6d962c5-5db6-42b7-a605-fd922ddca879
+:END:
+
+- Org buffers set prose in =variable-pitch=, the prose font from [[id:0286f652-e861-4e61-9ca6-91e225c8939d][the appearance chapter]], and keep code, tables, dates, drawers and keywords in =fixed-pitch=, the editing font.
+  + Columns in tables and source blocks still line up.
+  + =org-indent= and =org-hide= stay fixed too: the indentation and the hidden heading stars are counted in characters, and must be as wide as the stars they stand for.
+- Headings are semi-bold rather than the theme's bold: in a proportional font, bold headings over every short section are heavier than they read in a fixed one.
+- It is done with buffer-local face remapping rather than by changing the faces:
+  + only Org buffers change; the agenda is not an Org buffer, so its columns hold;
+  + a remap is laid over whatever the theme defines, so =SPC t t= keeps it;
+  + no remap gives a height, so =C-x C-+= grows prose and code together.
+    The =mixed-pitch= package fixes its faces at the editing font's size in points, so scaling would leave code behind, and it changes the cursor, which is Meow's to set.
+- =pdf-text-mode= is an Org mode, so a PDF read as text is set in the prose font as well.
+- =SPC t P= toggles it in the current buffer; set =kittymacs-org-prose= to nil in =private.el= to keep Org in the editing font.
+- A terminal frame has one font, so there the mode changes only the headings' weight.
+
+#+begin_src emacs-lisp
+(defcustom kittymacs-org-prose t
+  "Whether Org buffers set prose in `variable-pitch'.
+See `kittymacs-org-prose-mode'."
+  :type 'boolean
+  :group 'kittymacs)
+
+(defconst kittymacs-org-fixed-pitch-faces
+  '(org-block org-block-begin-line org-block-end-line org-code org-verbatim
+    org-table org-formula org-meta-line org-document-info-keyword
+    org-drawer org-special-keyword org-property-value org-date org-checkbox
+    org-latex-and-related org-indent org-hide org-modern-symbol)
+  "Org faces kept in `fixed-pitch' by `kittymacs-org-prose-mode'.")
+
+(defvar-local kittymacs--org-prose-cookies nil
+  "Face remappings made by `kittymacs-org-prose-mode' in this buffer.")
+
+(define-minor-mode kittymacs-org-prose-mode
+  "Set prose in `variable-pitch', keeping code, tables and metadata fixed.
+Headings are semi-bold.  The faces are remapped in this buffer only."
+  :lighter nil
+  (mapc #'face-remap-remove-relative kittymacs--org-prose-cookies)
+  (setq kittymacs--org-prose-cookies nil)
+  (variable-pitch-mode (if kittymacs-org-prose-mode 1 -1))
+  (when kittymacs-org-prose-mode
+    (dolist (face kittymacs-org-fixed-pitch-faces)
+      (push (face-remap-add-relative face :inherit 'fixed-pitch)
+            kittymacs--org-prose-cookies))
+    (dotimes (level 8)
+      (push (face-remap-add-relative (intern (format "org-level-%d" (1+ level)))
+                                     :weight 'semi-bold)
+            kittymacs--org-prose-cookies))))
+
+(defun kittymacs--org-prose-maybe ()
+  "Turn on `kittymacs-org-prose-mode' when `kittymacs-org-prose' is set."
+  (when kittymacs-org-prose
+    (kittymacs-org-prose-mode 1)))
+
+(add-hook 'org-mode-hook #'kittymacs--org-prose-maybe)
+
+(keymap-set kittymacs-toggle-map "P" (cons "prose font" #'kittymacs-org-prose-mode))
+
+#+end_src
+
 * Meow in Org and the agenda :meow:
 :PROPERTIES:
 :ID: 93863ba6-6e60-4c71-b6b5-22ef7ffb4d37
@@ -611,7 +673,10 @@ Point stays where it was, in or out of a table."
   + =just test= runs [[file:../tests/kittymacs-org-table-tests.el][the table tests]], which check the wrapping, its idempotence and the tables it must leave alone.
 - In =inbox.org=, =SPC m t= cycles its state; =SPC m s= schedules it.
 - =SPC m a= shows today, due-soon and next actions together.
+- An Org file with prose, a source block and a table shows the prose in Google Sans Flex (or the platform's sans), and the block and the table in the editing font.
+  + =C-x C-+= grows prose and code together; =SPC t P= switches the prose font off and on in that buffer.
 - =M-: (featurep 'org)= in a fresh Emacs: =nil=; after =SPC o a=: =t=.
 - =just test-packages= runs [[file:../tests/verify-config.el][the startup verifier]], which checks this chapter's promises in a real startup:
   + startup leaves Org unloaded, and drawing the home page does too;
-  + each option this chapter sets has a value its type accepts, once Org has loaded.
+  + each option this chapter sets has a value its type accepts, once Org has loaded;
+  + an Org buffer has =kittymacs-org-prose-mode= on.

@@ -546,13 +546,12 @@
       "org-contrib",
       "org-modern",
       "org-appear",
-      "org-modern-indent",
-      "mixed-pitch"
+      "org-modern-indent"
     ],
     "vc": [
       "org-modern-indent"
     ],
-    "summary": "A tidier Org display with proportional prose, grouped agendas and searches across your notes.",
+    "summary": "A tidier Org display, grouped agendas and searches across your notes.",
     "example": "=SPC s q= finds headings by tag or state in every Org file."
   },
   "linked-notes": {

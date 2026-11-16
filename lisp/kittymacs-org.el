@@ -340,6 +340,46 @@ Point stays where it was, in or out of a table."
                         ("\\.x?html?\\'" . default)
                         ("\\.pdf\\'" . emacs)
                         (auto-mode . emacs)))
+(defcustom kittymacs-org-prose t
+  "Whether Org buffers set prose in `variable-pitch'.
+See `kittymacs-org-prose-mode'."
+  :type 'boolean
+  :group 'kittymacs)
+
+(defconst kittymacs-org-fixed-pitch-faces
+  '(org-block org-block-begin-line org-block-end-line org-code org-verbatim
+    org-table org-formula org-meta-line org-document-info-keyword
+    org-drawer org-special-keyword org-property-value org-date org-checkbox
+    org-latex-and-related org-indent org-hide org-modern-symbol)
+  "Org faces kept in `fixed-pitch' by `kittymacs-org-prose-mode'.")
+
+(defvar-local kittymacs--org-prose-cookies nil
+  "Face remappings made by `kittymacs-org-prose-mode' in this buffer.")
+
+(define-minor-mode kittymacs-org-prose-mode
+  "Set prose in `variable-pitch', keeping code, tables and metadata fixed.
+Headings are semi-bold.  The faces are remapped in this buffer only."
+  :lighter nil
+  (mapc #'face-remap-remove-relative kittymacs--org-prose-cookies)
+  (setq kittymacs--org-prose-cookies nil)
+  (variable-pitch-mode (if kittymacs-org-prose-mode 1 -1))
+  (when kittymacs-org-prose-mode
+    (dolist (face kittymacs-org-fixed-pitch-faces)
+      (push (face-remap-add-relative face :inherit 'fixed-pitch)
+            kittymacs--org-prose-cookies))
+    (dotimes (level 8)
+      (push (face-remap-add-relative (intern (format "org-level-%d" (1+ level)))
+                                     :weight 'semi-bold)
+            kittymacs--org-prose-cookies))))
+
+(defun kittymacs--org-prose-maybe ()
+  "Turn on `kittymacs-org-prose-mode' when `kittymacs-org-prose' is set."
+  (when kittymacs-org-prose
+    (kittymacs-org-prose-mode 1)))
+
+(add-hook 'org-mode-hook #'kittymacs--org-prose-maybe)
+
+(keymap-set kittymacs-toggle-map "P" (cons "prose font" #'kittymacs-org-prose-mode))
 (declare-function org-agenda-deadline "org-agenda")
 (declare-function org-agenda-filter-by-tag "org-agenda")
 (declare-function org-agenda-quit "org-agenda")
