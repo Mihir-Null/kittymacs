@@ -268,9 +268,9 @@
     ;; Notes
     (org-extras
      :group notes :module kittymacs-org-extras :profile full
-     :packages (org-ql org-super-agenda org-contrib org-modern org-appear org-modern-indent)
+     :packages (org-ql org-super-agenda org-contrib org-modern org-appear org-modern-indent mixed-pitch)
      :vc (org-modern-indent)
-     :summary "A tidier Org display, grouped agendas and searches across your notes."
+     :summary "A tidier Org display with proportional prose, grouped agendas and searches across your notes."
      :example "=SPC s q= finds headings by tag or state in every Org file.")
     (linked-notes
      :group notes :packages (org-roam) :module kittymacs-org-roam :profile full

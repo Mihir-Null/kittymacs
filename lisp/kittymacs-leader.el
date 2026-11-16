@@ -18,6 +18,12 @@
   :type 'key
   :group 'kittymacs)
 
+(defcustom kittymacs-leader-alt-key "C-c C-SPC"
+  "Global key that opens `kittymacs-leader-map' where the leader key cannot.
+That is Insert state and buffers where Meow is off."
+  :type 'key
+  :group 'kittymacs)
+
 (defcustom kittymacs-localleader-key "m"
   "Key below the leader that opens the current major mode's localleader map."
   :type 'key

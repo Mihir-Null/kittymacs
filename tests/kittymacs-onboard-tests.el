@@ -1035,8 +1035,8 @@ quits as a minibuffer would."
       (with-temp-buffer
         (insert-file-contents file)
         (should (equal (list file nil)
-                       (list file (search-forward "(require 'kittymacs-onboard" nil t)))))))
-  (let ((forms (kittymacs-onboard-test--forms (kittymacs-onboard-test--path "lisp/kittymacs-literate.el"))))
+                       (list file (search-forward "(require 'kittymacs-onboard)" nil t)))))))
+  (let ((forms (kittymacs-onboard-test--forms (kittymacs-onboard-test--path "lisp/kittymacs-onboard-hint.el"))))
     (should (seq-some (lambda (form)
                         (and (eq (car-safe form) 'autoload)
                              (equal (nth 1 form) ''kittymacs-onboard)))

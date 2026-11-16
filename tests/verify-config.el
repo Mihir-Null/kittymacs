@@ -342,10 +342,11 @@ Types the configuration deliberately silences are left out."
         (error (kittymacs-verify-check nil (format "SPC s Q failed: %S" err)))))
       (with-temp-buffer
         (org-mode)
-        (kittymacs-verify-check (and kittymacs-org-prose-mode buffer-face-mode
-                                     (assq 'org-block face-remapping-alist))
-                                "Org buffers do not set prose in variable-pitch")
         (when (kittymacs-feature-p 'org-extras)
+          (kittymacs-verify-check (and (bound-and-true-p mixed-pitch-mode)
+                                       (assq 'org-block face-remapping-alist)
+                                       (assq 'org-hide face-remapping-alist))
+                                  "Org buffers do not set prose in variable-pitch")
           (kittymacs-verify-check (bound-and-true-p org-modern-indent-mode)
                                   "org-modern-indent is not on in Org buffers")))
       ;; Sonokai needs doom-themes; without that feature the built-in pair stands in.

@@ -8,18 +8,6 @@
 (require 'kittymacs-features)
 (require 'kittymacs-leader)
 
-(autoload 'kittymacs-onboard "kittymacs-onboard"
-  "Choose what kittymacs installs, and write it to `private.el'." t)
-
-(defun kittymacs-onboard-hint ()
-  "Say where this machine started and where to choose, if it has chosen nothing."
-  (unless (or noninteractive (daemonp)
-              kittymacs-profile kittymacs-features kittymacs-features-excluded)
-    (message "kittymacs: nothing chosen yet, so this is the %s profile.  SPC C o chooses, or `just onboard' in a terminal."
-             (kittymacs-features-profile))))
-
-(add-hook 'emacs-startup-hook #'kittymacs-onboard-hint 90)
-
 (defun kittymacs-literate-open (&rest _)
   "Open the literate configuration's reading guide."
   (interactive)
@@ -91,6 +79,7 @@
 (keymap-set kittymacs-config-map "t" (cons "tangle" #'kittymacs-literate-tangle))
 (keymap-set kittymacs-config-map "k" (cons "check tangle" #'kittymacs-literate-check))
 (keymap-set kittymacs-config-map "p" (cons "private.el" #'kittymacs-open-private-file))
+(declare-function kittymacs-onboard "kittymacs-onboard" ())
 (keymap-set kittymacs-config-map "o" (cons "onboarding" #'kittymacs-onboard))
 (keymap-set kittymacs-config-map "u" (cons "custom.el" #'kittymacs-open-custom-file))
 (keymap-set kittymacs-config-map "a" (cons "architecture" #'kittymacs-open-architecture))

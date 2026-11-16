@@ -9,7 +9,7 @@
 
 - Someone who has never read this configuration can choose what it installs, in a terminal, with nothing installed yet.
 - =just onboard= runs it under =emacs -nw -Q=, and =SPC C o= runs it in a started Emacs.
-  + [[id:9ea539a0-f1a3-4d05-aa10-6f2d2ff3e335][The maintenance chapter]] owns that key and the first-start hint, because this module never loads at startup.
+  + This module never loads at startup, so [[*Reaching it from a started Emacs][a small module of its own]] holds the autoload and the first-start hint, and [[id:9ea539a0-f1a3-4d05-aa10-6f2d2ff3e335][the maintenance chapter]] binds the key.
 - Leans on [[id:3f8a6c02-9d14-4b7e-a2c5-1e7d90b64f31][the catalogue]] for what exists and [[id:5c1e7a94-8f30-4d26-b7a1-3e92d06f4c18][the features chapter]] for what a selection means.
   + It repeats neither: every "is this on?" here calls =kittymacs-features--compute=.
 - Knows nothing of any other module, because under =-Q= none has loaded.
@@ -1856,6 +1856,44 @@ This Emacs keeps running as it is: a change takes effect at the next start."
 
 (provide 'kittymacs-onboard)
 ;;; kittymacs-onboard.el ends here
+#+end_src
+
+* Reaching it from a started Emacs
+:PROPERTIES:
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-onboard-hint.el :eval never :comments no :padline no :mkdirp yes
+:END:
+
+- A start loads =kittymacs-onboard-hint=, and never =kittymacs-onboard=.
+  + =autoload= gives =SPC C o= a command to call, and loads the module on the first press.
+- =kittymacs-onboard-hint= names the profile and points at the key, on a machine with no selection in a host file or =private.el=.
+  + A new machine gets the small default, so this is how a person learns there is more.
+  + It runs from =emacs-startup-hook=, after Emacs's own startup message, which would otherwise replace it.
+  + A =message= and not a warning: nothing has gone wrong, and the verifier fails on any warning.
+  + It only speaks: starting something a person did not ask for is how a first start stops being understandable.
+  + A daemon has no echo area, and neither does batch Emacs.
+
+#+begin_src emacs-lisp
+;;; kittymacs-onboard-hint.el --- Reach onboarding from a started Emacs -*- lexical-binding: t; -*-
+;; Generated from literate/22-onboarding.org; edit the Org source, then tangle.
+
+;;; Code:
+
+(require 'kittymacs-features)
+
+(autoload 'kittymacs-onboard "kittymacs-onboard"
+  "Choose what kittymacs installs, and write it to `private.el'." t)
+
+(defun kittymacs-onboard-hint ()
+  "Say where this machine started and where to choose, if it has chosen nothing."
+  (unless (or noninteractive (daemonp)
+              kittymacs-profile kittymacs-features kittymacs-features-excluded)
+    (message "kittymacs: nothing chosen yet, so this is the %s profile.  SPC C o chooses, or `just onboard' in a terminal."
+             (kittymacs-features-profile))))
+
+(add-hook 'emacs-startup-hook #'kittymacs-onboard-hint 90)
+
+(provide 'kittymacs-onboard-hint)
+;;; kittymacs-onboard-hint.el ends here
 #+end_src
 
 * Check

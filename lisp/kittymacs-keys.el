@@ -115,9 +115,9 @@ in the server, which keeps running."
 (keymap-set kittymacs-leader-map "[" (cons "previous buffer" #'previous-buffer))
 (keymap-set kittymacs-leader-map "]" (cons "next buffer" #'next-buffer))
 
-;; The same tree without Meow: C-c C-SPC works in Insert state and in
-;; buffers where Meow is off.
-(keymap-global-set "C-c C-SPC" kittymacs-leader-map)
+;; The same tree without Meow: `kittymacs-leader-alt-key' works in Insert
+;; state and in buffers where Meow is off.
+(keymap-global-set kittymacs-leader-alt-key kittymacs-leader-map)
 
 (provide 'kittymacs-keys)
 ;;; kittymacs-keys.el ends here

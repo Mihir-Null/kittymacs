@@ -27,8 +27,9 @@
   + Every help command, which-key and Marginalia see exactly the keys you press, with no adapter.
   + Meow's own helper for adding keys to a state accepts a keymap, so the whole leader is two lines.
 - The keypad stays available as the command =meow-keypad=, unbound unless =kittymacs-keypad-key= names a key for it.
-- The three options:
+- The four options:
   + =kittymacs-leader-key= :: the leader, =SPC=;
+  + =kittymacs-leader-alt-key= :: the same tree from Insert state and buffers without Meow, =C-c C-SPC=;
   + =kittymacs-localleader-key= :: the mode menu below it, =m=;
   + =kittymacs-keypad-key= :: a key below the leader for =meow-keypad=, or =nil=.
 
@@ -50,6 +51,12 @@
 
 (defcustom kittymacs-leader-key "SPC"
   "Key that opens `kittymacs-leader-map' in Meow's Normal and Motion states."
+  :type 'key
+  :group 'kittymacs)
+
+(defcustom kittymacs-leader-alt-key "C-c C-SPC"
+  "Global key that opens `kittymacs-leader-map' where the leader key cannot.
+That is Insert state and buffers where Meow is off."
   :type 'key
   :group 'kittymacs)
 
