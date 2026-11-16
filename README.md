@@ -309,6 +309,7 @@ In Normal state, Meow selects first and acts second: `w` selects a word, `x` a l
 | `kittymacs-frames-only` | whether new surfaces become OS windows |
 | `kittymacs-macos-modifiers`, `kittymacs-termux-root` | per-platform keys and paths |
 | `kittymacs-keypad-key` | a key under `SPC` for Meow's original keypad |
+| `kittymacs-leader-alt-key` | the key that opens the leader from Insert state and buffers without Meow (`C-c C-SPC`) |
 | `kittymacs-backends`, `kittymacs-backend-tools` | the machines you work on, and what `SPC o B` looks for there |
 | `kittymacs-remote-nix-path`, `kittymacs-remote-auto-capfs` | where Tramp searches after the login shell's `PATH`; which completion sources run unasked in a remote buffer |
 

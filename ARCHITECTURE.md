@@ -25,7 +25,7 @@ Startup is a flat list of `require`s in `init.el`, ordered by dependency; from t
 
 ## 3. The Meow layer
 
-**Leader.** `SPC` is bound to `kittymacs-leader-map`, an ordinary keymap, in Meow's Normal and Motion state maps through Meow's own `meow-normal-define-key` / `meow-motion-define-key`. Because it is a real keymap, `C-h k`, `C-h b`, `where-is`, which-key and Marginalia see the physical keys with no adapter. `C-c C-SPC` opens the same map from Insert state and non-Meow buffers. `meow-keypad` is not bound; `kittymacs-keypad-key` binds it under the leader when set. (`literate/41-leader.org`)
+**Leader.** `SPC` is bound to `kittymacs-leader-map`, an ordinary keymap, in Meow's Normal and Motion state maps through Meow's own `meow-normal-define-key` / `meow-motion-define-key`. Because it is a real keymap, `C-h k`, `C-h b`, `where-is`, which-key and Marginalia see the physical keys with no adapter. `C-c C-SPC`, the option `kittymacs-leader-alt-key`, opens the same map from Insert state and non-Meow buffers. `meow-keypad` is not bound; `kittymacs-keypad-key` binds it under the leader when set. (`literate/41-leader.org`)
 
 **Localleader.** Meow has no per-mode state maps, so `SPC m` uses one buffer-local entry in `emulation-mode-map-alists`, keyed on `meow-normal-mode` / `meow-motion-mode`, whose map is composed along `derived-mode-all-parents` (most specific first). A `prog-mode` menu is inherited by every language; `emacs-lisp-mode` overrides the keys it redefines. `kittymacs-define-localleader` is one form per mode. A minor mode that turns on over any file (a review, merge conflicts, a blame) gets one labelled group under one key of that menu through `kittymacs-define-minor-localleader`, composed ahead of the major mode's map while the mode is on and rebuilt from the mode's own hook. The owner chose one group per minor mode over merging its keys into the menu, so Python's, Nix's or Org's menu stays whole during a review: a group shadows only its own key, and each user picks a capital no `kittymacs-define-localleader` binds. The nil-definition rule holds for groups too. The leader map must leave `m` unbound. (`literate/41-leader.org`)
 
@@ -336,8 +336,6 @@ Not covered by CI, for the user to check on the real host:
 - ghostel's native module is downloaded on first use, so the first `SPC o e` on a new machine needs the network; `M-x ghostel-module-compile` builds it instead with Zig. Declining reports what is missing instead of a void function.
 - Without Nix, `kittymacs-notebooks-jupyter` relies on emacs-zmq's own module download or build; on a Mac that needs `brew install zeromq` first, and on Windows the download has not been tried.
 - `treemacs-git-mode` runs `deferred` where `python3` exists and `simple` otherwise.
-- `kittymacs-leader-alt-key` is fixed at `C-c C-SPC` in the keys chapter; make it an option if it ever needs to change.
-- `kittymacs--org-no-angle-pairs` is still defined inside the Org chapter's `:config`, so the byte compiler cannot see it.
 
 ## 7. Extending
 

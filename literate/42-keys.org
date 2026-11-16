@@ -276,6 +276,7 @@ in the server, which keeps running."
 
 - [[id:878a9e46-62be-4b9f-82f6-589560d2ebc1][Dired]] and [[id:42b02bb4-ea68-4981-b427-35705bf162f4][completion]] bind =SPC d= and =SPC k=.
 - =C-c C-SPC= opens the same tree where =SPC= cannot: in Insert state and in buffers where Meow is off.
+  + =kittymacs-leader-alt-key=, from [[id:e5942eb0-4389-447d-9317-d9178adcaaae][the leader chapter]], names that key; set it in =private.el=.
 
 #+begin_src emacs-lisp
 (keymap-set kittymacs-leader-map "SPC" (cons "M-x" #'execute-extended-command))
@@ -286,9 +287,9 @@ in the server, which keeps running."
 (keymap-set kittymacs-leader-map "[" (cons "previous buffer" #'previous-buffer))
 (keymap-set kittymacs-leader-map "]" (cons "next buffer" #'next-buffer))
 
-;; The same tree without Meow: C-c C-SPC works in Insert state and in
-;; buffers where Meow is off.
-(keymap-global-set "C-c C-SPC" kittymacs-leader-map)
+;; The same tree without Meow: `kittymacs-leader-alt-key' works in Insert
+;; state and in buffers where Meow is off.
+(keymap-global-set kittymacs-leader-alt-key kittymacs-leader-map)
 
 (provide 'kittymacs-keys)
 ;;; kittymacs-keys.el ends here

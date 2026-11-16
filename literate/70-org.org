@@ -123,13 +123,17 @@
 
 (with-eval-after-load 'org
   (add-to-list 'org-modules 'org-habit t)
-  (add-to-list 'org-modules 'org-tempo t)
-  (defun kittymacs--org-no-angle-pairs ()
-    "Do not auto-pair < in Org: it starts structure templates like <s."
-    (setq-local electric-pair-inhibit-predicate
-                (let ((inherited electric-pair-inhibit-predicate))
-                  (lambda (char) (or (char-equal char ?<) (funcall inherited char))))))
-  (add-hook 'org-mode-hook #'kittymacs--org-no-angle-pairs))
+  (add-to-list 'org-modules 'org-tempo t))
+
+(defvar electric-pair-inhibit-predicate)
+
+(defun kittymacs--org-no-angle-pairs ()
+  "Do not auto-pair < in Org: it starts structure templates like <s."
+  (setq-local electric-pair-inhibit-predicate
+              (let ((inherited electric-pair-inhibit-predicate))
+                (lambda (char) (or (char-equal char ?<) (funcall inherited char))))))
+
+(add-hook 'org-mode-hook #'kittymacs--org-no-angle-pairs)
 
 #+end_src
 
