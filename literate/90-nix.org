@@ -258,7 +258,6 @@ let
       (tool "org-press" "node" nodejs)
       (tool "org-web-capture" "pandoc" pandoc)
       (tool "org-web-capture" "wget" wget)
-      (tool "org-web-capture" "tar" gnutar)
       # notebooks chapter: prints the path of emacs-zmq's native module, built by nixpkgs
       (tool "jupyter" "kittymacs-zmq-module" (
         runCommand "kittymacs-zmq-module" { } ''
