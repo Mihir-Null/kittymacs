@@ -74,6 +74,7 @@ test:
     emacs -Q --batch -l tests/kittymacs-treesit-tests.el -f ert-run-tests-batch-and-exit
     emacs -Q --batch -l tests/kittymacs-which-key-frame-tests.el -f ert-run-tests-batch-and-exit
     emacs -Q --batch -l tests/kittymacs-org-table-tests.el -f ert-run-tests-batch-and-exit
+    emacs -Q --batch -l tests/kittymacs-v3-org-tests.el -f ert-run-tests-batch-and-exit
     emacs -Q --batch -l tests/kittymacs-bench-tests.el -f ert-run-tests-batch-and-exit
     emacs -Q --batch -l tests/kittymacs-catalogue-tests.el -f ert-run-tests-batch-and-exit
     emacs -Q --batch -l tests/kittymacs-features-tests.el -f ert-run-tests-batch-and-exit
@@ -90,7 +91,6 @@ install:
     {{emacs}} --eval '(setq native-comp-jit-compilation nil package-native-compile nil)' \
       -l tests/kittymacs-test-selection.el \
       -l early-init.el --eval '(package-refresh-contents)' -l init.el \
-      --eval '(when (kittymacs-feature-p (quote linked-notes)) (require (quote org-roam)))' \
       -f kittymacs-quickstart--settle \
       --eval '(princ (format "%d packages active\n" (length package-activated-list)))'
 
@@ -106,15 +106,16 @@ compile:
       -f batch-byte-compile lisp/*.el
 
 # The tests that load installed packages: the SPC and SPC m machinery, real
-# Org-roam graphs in SQLite, the look without doom, a file visited before the
+# Org Node project scopes, the look without doom, a file visited before the
 # remote chapter loads, a remote machine through a Tramp method that needs no
 # ssh, the six diff-review internals the TRAMP adapter advises, and the
 # startup verifier,
 # which replays a real startup and fails on any warning. All under the full
 # profile: `KITTYMACS_TEST_PROFILE=full just install` makes its directory.
 test-packages:
+    KITTYMACS_TEST_PROFILE=full KITTYMACS_TEST_PACKAGES={{quote(packages)}} emacs -Q --batch -l tests/kittymacs-org-tasks-tests.el -f ert-run-tests-batch-and-exit
     KITTYMACS_TEST_PROFILE=full KITTYMACS_TEST_PACKAGES={{quote(packages)}} emacs -Q --batch -l tests/kittymacs-leader-tests.el -f ert-run-tests-batch-and-exit
-    KITTYMACS_TEST_PROFILE=full KITTYMACS_TEST_PACKAGES={{quote(packages)}} emacs -Q --batch -l tests/kittymacs-org-roam-tests.el -f ert-run-tests-batch-and-exit
+    KITTYMACS_TEST_PROFILE=full KITTYMACS_TEST_PACKAGES={{quote(packages)}} emacs -Q --batch -l tests/kittymacs-org-node-tests.el -f ert-run-tests-batch-and-exit
     KITTYMACS_TEST_PROFILE=full KITTYMACS_TEST_PACKAGES={{quote(packages)}} emacs -Q --batch -l tests/kittymacs-theme-tests.el -f ert-run-tests-batch-and-exit
     KITTYMACS_TEST_PROFILE=full KITTYMACS_TEST_PACKAGES={{quote(packages)}} emacs -Q --batch -l tests/kittymacs-load-order-tests.el -f ert-run-tests-batch-and-exit
     KITTYMACS_TEST_PROFILE=full KITTYMACS_TEST_PACKAGES={{quote(packages)}} emacs -Q --batch -l tests/kittymacs-remote-tests.el -f ert-run-tests-batch-and-exit

@@ -1,0 +1,168 @@
+:PROPERTIES:
+:ID: 2a4efa58-f173-48d0-966c-a395f71ad368
+:END:
+
+#+TITLE: Executable Org documents
+#+FILETAGS: :code:
+#+STARTUP: overview
+
+- The =org-babel= feature supplies interactive execution and authoring commands.
+- Use =:eval never-export= on examples that should export their saved results without running.
+- The configuration builder has separate generation declarations.
+
+* Execution and authoring
+:PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-org-babel.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-org-babel.el :eval never :comments no :padline no :mkdirp yes
+:END:
+
+- Core blocks use Emacs Lisp, Bash, Python, and JavaScript. Guile uses =ob-scheme= when selected.
+- Optional adapters use the project runtime on the buffer's PATH. Templates are available through Org Tempo.
+- Mermaid needs =mmdc= and its browser runtime. Give rendered diagrams an explicit =:file= path.
+- Jupyter uses the existing kernel feature. Discover project kernels with =SPC m J=, then use a named session and an explicit =jupyter-python= block.
+- Shell sessions have native async execution. The =babel-async= feature handles standalone shell and JavaScript blocks explicitly marked =:async yes=.
+- For project code that you intend to detangle, use =:comments link= and review the source diff before saving.
+
+#+begin_src emacs-lisp
+;;; kittymacs-org-babel.el --- Executable Org documents -*- lexical-binding: t; -*-
+;; Generated from literate/82-org-babel.org; edit the Org source, then tangle.
+
+(require 'kittymacs-leader)
+
+(when (kittymacs-feature-p 'babel-mermaid)
+  (use-package ob-mermaid :ensure t :defer t)
+  (use-package mermaid-mode :ensure t :defer t))
+(when (kittymacs-feature-p 'babel-async)
+  (use-package ob-async :ensure t :defer t))
+(when (kittymacs-feature-p 'babel-racket)
+  ;; Evaluate the declaration at runtime so compiling the common profile
+  ;; does not clone and compile an optional package.
+  (condition-case err
+      (eval '(use-package ob-racket
+               :vc (:url "https://github.com/hasu/emacs-ob-racket"
+                    :rev "c7b7eee58fcde2ad515b72288742e555e7ec7915")
+               :defer t)
+            t)
+    (error (kittymacs-features-vc-warning
+            "ob-racket" "https://github.com/hasu/emacs-ob-racket" err))))
+(when (kittymacs-feature-p 'babel-nix)
+  (use-package ob-nix :ensure t :defer t))
+(when (kittymacs-feature-p 'babel-go)
+  (use-package ob-go :ensure t :defer t))
+(when (kittymacs-feature-p 'babel-rust)
+  (use-package ob-rust :ensure t :defer t))
+(when (kittymacs-feature-p 'babel-typescript)
+  (use-package ob-ts-node :ensure t :defer t))
+
+(defvar org-babel-load-languages)
+(defvar org-src-lang-modes)
+(defvar org-babel-tangle-lang-exts)
+(defvar org-structure-template-alist)
+(defvar ob-async-pre-execute-src-block-hook)
+(declare-function org-babel-tangle "ob-tangle" (&optional arg target-file lang-re))
+(declare-function org-babel-get-src-block-info "ob-core" (&optional no-eval datum))
+(declare-function org-babel-merge-params "ob-core" (&rest plists))
+(declare-function ob-async-org-babel-execute-src-block "ob-async"
+                  (&optional original arg info params))
+(declare-function org-babel-jupyter-aliases-from-kernelspecs "ob-jupyter"
+                  (&optional refresh specs))
+
+(defun kittymacs-babel--enable (language)
+  "Load the backend for LANGUAGE unless it was explicitly disabled."
+  (let ((setting (assq language org-babel-load-languages)))
+    (when (or (not setting) (cdr setting))
+      (condition-case err
+          (progn
+            (require (intern (format "ob-%s" language)))
+            (unless setting
+              (setq org-babel-load-languages
+                    (append org-babel-load-languages (list (cons language t)))))
+            t)
+        (error (display-warning 'kittymacs (error-message-string err)))))))
+
+(defun kittymacs-babel--setup ()
+  "Set up the interactive Babel backends and editing modes."
+  (require 'ob-tangle)
+  (dolist (entry '(("bash" sh "sh") ("javascript" js "js")
+                   ("python" python "py") ("nix" nix "nix")
+                   ("racket" racket "rkt") ("scheme" scheme "scm")
+                   ("mermaid" mermaid "mmd") ("cmake" cmake-ts "cmake")
+                   ("css" css "css") ("dockerfile" dockerfile-ts "Dockerfile")
+                   ("go" go-ts "go") ("gomod" go-mod-ts "mod")
+                   ("html" html "html") ("json" json-ts "json")
+                   ("markdown" markdown-ts "md") ("rust" rust-ts "rs")
+                   ("toml" toml-ts "toml") ("tsx" tsx-ts "tsx")
+                   ("typescript" typescript-ts "ts") ("ts-node" typescript-ts "ts")
+                   ("yaml" yaml-ts "yaml")))
+    (pcase-let ((`(,language ,mode ,extension) entry))
+      (when (and (fboundp (intern (format "%s-mode" mode)))
+                 (not (assoc language org-src-lang-modes)))
+        (push (cons language mode) org-src-lang-modes))
+      (unless (assoc language org-babel-tangle-lang-exts)
+        (push (cons language extension) org-babel-tangle-lang-exts))))
+  (mapc #'kittymacs-babel--enable '(emacs-lisp shell python js))
+  (dolist (entry '((lang-guile . scheme) (babel-nix . nix)
+                   (babel-racket . racket) (babel-go . go) (babel-rust . rust)
+                   (babel-typescript . ts-node) (babel-mermaid . mermaid)))
+    (when (kittymacs-feature-p (car entry))
+      (kittymacs-babel--enable (cdr entry)))))
+
+(defun kittymacs-babel--execute (original &optional arg info params executor-type)
+  "Route a standalone async block to ob-async, preserving native dispatch."
+  (let* ((probe (or info (org-babel-get-src-block-info 'light)))
+         (language (car probe))
+         (headers (and probe (org-babel-merge-params (nth 2 probe) params))))
+    (if (and (kittymacs-feature-p 'babel-async)
+             (memq executor-type '(nil src-block))
+             (member language '("bash" "sh" "shell" "js"))
+             (equal (alist-get :async headers) "yes")
+             (member (alist-get :session headers) '(nil "none"))
+             (not (file-remote-p default-directory))
+             (require 'ob-async nil t))
+        (let ((org-babel-load-languages
+               (list (cons (if (equal language "js") 'js 'shell) t))))
+          (ob-async-org-babel-execute-src-block original arg info params))
+      (if executor-type
+          (funcall original arg info params executor-type)
+        (funcall original arg info params)))))
+
+(with-eval-after-load 'ob-async
+  (advice-remove 'org-babel-execute-src-block #'ob-async-org-babel-execute-src-block))
+
+(defun kittymacs-babel-jupyter-refresh ()
+  "Discover Jupyter languages from the current project's kernels."
+  (interactive)
+  (when (kittymacs-babel--enable 'jupyter)
+    (org-babel-jupyter-aliases-from-kernelspecs t)))
+
+(with-eval-after-load 'org
+  (kittymacs-babel--setup)
+  (when (kittymacs-feature-p 'babel-async)
+    (advice-add 'org-babel-execute-src-block :around #'kittymacs-babel--execute))
+  (when (kittymacs-feature-p 'babel-jupyter)
+    (kittymacs-babel--enable 'jupyter)))
+(with-eval-after-load 'org-tempo
+  (dolist (entry (append '(("sh" . "src bash") ("py" . "src python")
+                           ("js" . "src js"))
+                         (when (kittymacs-feature-p 'babel-mermaid)
+                           '(("mm" . "src mermaid")))
+                         (when (kittymacs-feature-p 'babel-jupyter)
+                           '(("jp" . "src jupyter-python")))))
+    (unless (assoc (car entry) org-structure-template-alist)
+      (push entry org-structure-template-alist))))
+
+(let ((map (alist-get 'org-mode kittymacs-localleader-alist)))
+  (when map
+    (keymap-set map "B" (cons "tangle current document" #'org-babel-tangle))
+    (when (kittymacs-feature-p 'babel-jupyter)
+      (keymap-set map "J" (cons "discover Jupyter kernels" #'kittymacs-babel-jupyter-refresh)))
+    (kittymacs-refresh-localleaders)))
+
+(provide 'kittymacs-org-babel)
+;;; kittymacs-org-babel.el ends here
+#+end_src
+
+* Check
+
+- Run a Bash block with =C-c C-c=, then export a document that sets =:eval never-export= and inspect its saved result.
+- Use =M-x org-babel-detangle= from a generated file with Org link comments.

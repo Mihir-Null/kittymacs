@@ -20,7 +20,7 @@
   :custom
   (org-noter-default-notes-file-names nil)
   (org-noter-notes-search-path
-   (list (or (bound-and-true-p kittymacs-org-roam-directory) kittymacs-org-directory)))
+   (list (or (bound-and-true-p kittymacs-org-node-directory) kittymacs-org-directory)))
   (org-noter-always-create-frame 'reuse-if-free))
 (declare-function org-pdftools-open "org-pdftools" (link &optional arg))
 

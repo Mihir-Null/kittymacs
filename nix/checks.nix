@@ -72,6 +72,11 @@ let
     profile = "minimal";
     features.pdf-reading.enable = true;
   };
+  minimalOrg = nixos {
+    profile = "minimal";
+    features.org-press.enable = true;
+    features.org-web-capture.enable = true;
+  };
   backend = nixos { backend.enable = true; };
   backendMinimal = nixos {
     backend.enable = true;
@@ -128,12 +133,15 @@ in
   tools-follow-selection = check "tools-follow-selection" (
     toolsOf "pdf-reading" != [ ]
     && toolsOf "jupyter" != [ ]
-    && sameNames (installedTools plain) (lib.subtractLists (toolsOf "jupyter") allTools)
-    && sameNames (installedTools noPdf) (
-      lib.subtractLists (toolsOf "pdf-reading" ++ toolsOf "jupyter") allTools
-    )
+    && toolsOf "org-press" != [ ]
+    && toolsOf "org-web-capture" != [ ]
+    && sameNames (installedTools plain) fullTools
+    && sameNames (installedTools noPdf) (lib.subtractLists (toolsOf "pdf-reading") fullTools)
     && sameNames (installedTools chosen) minimalTools
     && sameNames (installedTools minimalPdf) (minimalTools ++ toolsOf "pdf-reading")
+    && sameNames (installedTools minimalOrg) (
+      minimalTools ++ toolsOf "org-press" ++ toolsOf "org-web-capture"
+    )
     && namesOf backend.environment.systemPackages == namesOf backendMinimal.environment.systemPackages
   );
 

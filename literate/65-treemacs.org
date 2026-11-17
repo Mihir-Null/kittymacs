@@ -5,7 +5,6 @@
 #+TITLE: Treemacs: the project tree
 #+FILETAGS: :apps:
 #+STARTUP: overview
-#+PROPERTY: header-args:emacs-lisp :tangle ../lisp/kittymacs-treemacs.el :eval never :comments no :padline no :mkdirp yes
 
 - =SPC t d= opens a sidebar down the left of the frame showing the current project's directory structure.
   + =j= and =k= move, =TAB= opens a directory, =RET= opens a file.
@@ -18,6 +17,10 @@
 - Leans on [[id:0286f652-e861-4e61-9ca6-91e225c8939d][the appearance chapter]] for icons, [[id:e4d65984-892d-4046-b718-d4265ab74215][navigation]] for workspaces and [[id:878a9e46-62be-4b9f-82f6-589560d2ebc1][Dired]] for operating on files.
 
 * The sidebar
+:PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-treemacs.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-treemacs.el :eval never :comments no :padline no :mkdirp yes
+:END:
 
 - Everything Treemacs writes goes under =var/=, like every other package here.
   + Otherwise it would create =.cache/= beside =init.el=, which Git does not ignore.
@@ -122,6 +125,10 @@
 - =SPC m h= toggles dotfiles for the moment.
 
 * Icons and Magit
+:PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-treemacs.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-treemacs.el :eval never :comments no :padline no :mkdirp yes
+:END:
 
 - Two small packages connect Treemacs to what this configuration already runs.
 - /Nerd Font icons/ replace the default PNG icons, so the tree matches the completion, Corfu and Dired icons.
@@ -147,6 +154,8 @@
 
 * Meow in the tree :meow:
 :PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-treemacs.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-treemacs.el :eval never :comments no :padline no :mkdirp yes
 :ID: 7826ac9a-cde0-41ee-837c-3f54fbeaa3b7
 :END:
 

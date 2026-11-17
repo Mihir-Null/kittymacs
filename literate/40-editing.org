@@ -5,7 +5,6 @@
 #+TITLE: Editing with Meow
 #+FILETAGS: :keys:
 #+STARTUP: overview
-#+PROPERTY: header-args:emacs-lisp :tangle ../lisp/kittymacs-meow.el :eval never :comments no :padline no :mkdirp yes
 
 - Selection-first modal editing: Meow's Normal-state grammar, its things, and the state each buffer starts in.
   + The key grammar is adapted from Colin McLear's Meow setup (GPL-3.0-or-later).
@@ -38,6 +37,10 @@
 - Run =M-x meow-tutor= (=SPC h t=) once: it teaches the grammar interactively in an hour.
 
 * The grammar
+:PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-meow.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-meow.el :eval never :comments no :padline no :mkdirp yes
+:END:
 
 - Meow ships no default Normal-state keys; every configuration defines its own.
   + This one keeps the layout Meow's own documentation and =meow-tutor= describe, so upstream help transfers.
@@ -158,6 +161,10 @@
 #+end_src
 
 * Things, starting states and hint colours
+:PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-meow.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-meow.el :eval never :comments no :padline no :mkdirp yes
+:END:
 
 - A *thing* is what =,= and =.= select: a word, a pair of brackets, a string.
   + Angle brackets are added to the built-in set on =<=.
@@ -188,6 +195,10 @@
 #+end_src
 
 * Things from the syntax tree
+:PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-meow.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-meow.el :eval never :comments no :padline no :mkdirp yes
+:END:
 
 - In a Tree-sitter mode (see [[id:560fcdca-6cb8-49d9-bf27-eb78f32b9285][the languages chapter]]) the buffer has a real parse tree; =meow-tree-sitter= turns its nodes into Meow things:
   + =, f= selects inside the current function, =. f= the whole function;
@@ -205,6 +216,10 @@
 #+end_src
 
 * Learning the grammar
+:PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-meow.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-meow.el :eval never :comments no :padline no :mkdirp yes
+:END:
 
 - =SPC h t= starts Meow's tutorial, and =SPC h C= shows its cheat sheet of the keys in this layout.
 

@@ -5,7 +5,6 @@
 #+TITLE: Completion: Vertico, Consult, Embark, Corfu
 #+FILETAGS: :interface:
 #+STARTUP: overview
-#+PROPERTY: header-args:emacs-lisp :tangle ../lisp/kittymacs-completion.el :eval never :comments no :padline no :mkdirp yes
 
 - Two kinds of completion: in the /minibuffer/, whenever Emacs asks for a file, buffer, command or anything else; and /in the buffer/, as you type. Plus templates.
 - The packages are the "minad stack" by Daniel Mendler and Omar Antolín: each does one thing and uses Emacs's own completion machinery rather than replacing it.
@@ -26,6 +25,10 @@
 | Yasnippet                              | expands text templates                           | =C-'=, =SPC i s=                |
 
 * The candidate list: Vertico
+:PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-completion.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-completion.el :eval never :comments no :padline no :mkdirp yes
+:END:
 
 - Vertico shows the candidates as a list:
   + candidates cycle at the end;
@@ -100,6 +103,10 @@
 #+end_src
 
 * Minibuffer settings
+:PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-completion.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-completion.el :eval never :comments no :padline no :mkdirp yes
+:END:
 
 - A few settings from the Vertico README:
   + keep the cursor out of the prompt text;
@@ -119,6 +126,10 @@
 #+end_src
 
 * Matching: Orderless
+:PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-completion.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-completion.el :eval never :comments no :padline no :mkdirp yes
+:END:
 
 - Type =buf sw= and =switch-to-buffer= matches: every space-separated word must appear somewhere, in any order.
 - File names also get =partial-completion=, so =/u/l/b= expands to =/usr/local/bin=.
@@ -134,6 +145,10 @@
 #+end_src
 
 * Context: Marginalia
+:PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-completion.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-completion.el :eval never :comments no :padline no :mkdirp yes
+:END:
 
 - Marginalia annotates each candidate:
   + a command's key binding and docstring;
@@ -156,6 +171,10 @@
 #+end_src
 
 * Searching and jumping: Consult
+:PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-completion.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-completion.el :eval never :comments no :padline no :mkdirp yes
+:END:
 
 - Consult supplies most of the commands in the leader's =SPC s= and =SPC b= groups, and the ones for recent files, bookmarks, registers and the kill ring, so this chapter binds those keys.
   + They preview the candidate as you move through the list, after a 0.2 s pause for searches, files, bookmarks and themes.
@@ -242,6 +261,10 @@
 #+end_src
 
 * Acting on things: Embark
+:PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-completion.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-completion.el :eval never :comments no :padline no :mkdirp yes
+:END:
 
 - Embark turns the thing at point, or the current minibuffer candidate, into a menu of actions:
   + =C-.= on a file name offers to open, delete, copy or rename it;
@@ -330,6 +353,8 @@
 
 * Completion in the buffer: Corfu
 :PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-completion.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-completion.el :eval never :comments no :padline no :mkdirp yes
 :ID: a210c7c3-84da-4560-9346-156f5d28e253
 :END:
 
@@ -405,6 +430,8 @@
 
 * Completion sources: Cape :decision:
 :PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-completion.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-completion.el :eval never :comments no :padline no :mkdirp yes
 :ID: c99f20a9-7f0a-476f-b1c2-90f57d8934de
 :END:
 
@@ -443,6 +470,10 @@
 #+end_src
 
 * Correcting spelling
+:PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-completion.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-completion.el :eval never :comments no :padline no :mkdirp yes
+:END:
 
 - [[id:afa6b7fd-742a-4c15-86a6-32e3e8027b0e][The platform chapter]] finds the spell checker and turns Flyspell on; these two put its suggestions through the completion stack.
 - =C-;= corrects the word at point.
@@ -464,6 +495,10 @@
 #+end_src
 
 * Templates: Yasnippet
+:PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-completion.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-completion.el :eval never :comments no :padline no :mkdirp yes
+:END:
 
 - Snippets are text templates with fields.
 - Type a key and press =C-'= to expand, or pick one with =SPC i s=; =SPC i S= starts a new one.

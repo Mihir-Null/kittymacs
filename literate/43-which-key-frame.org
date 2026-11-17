@@ -5,7 +5,6 @@
 #+TITLE: which-key in a child frame
 #+FILETAGS: :interface:
 #+STARTUP: overview
-#+PROPERTY: header-args:emacs-lisp :tangle ../lisp/kittymacs-which-key-frame.el :eval never :comments no :padline no :mkdirp yes
 
 - The key menu floating over the text instead of pushing it aside: the =which-key-frame= feature, =optional= and =:hidden= in [[id:3f8a6c02-9d14-4b7e-a2c5-1e7d90b64f31][the catalogue]], and off under every profile.
   + The owner tried it and chose not to offer it, and kept it because it works: so onboarding never lists it, and nothing else advertises it.
@@ -19,6 +18,8 @@
 
 * One menu, two places
 :PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-which-key-frame.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-which-key-frame.el :eval never :comments no :padline no :mkdirp yes
 :ID: 9e5c1b84-3f7d-4a26-b0e9-d48a6c2f7310
 :END:
 
@@ -98,6 +99,10 @@
 #+end_src
 
 * The key
+:PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-which-key-frame.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-which-key-frame.el :eval never :comments no :padline no :mkdirp yes
+:END:
 
 - =SPC t W= is =kittymacs-which-key-frame-mode=.
   + The key stays, because it advertises nothing: this chapter binds it, and with the feature off the chapter does not load, so the =SPC t= menu does not list it.

@@ -5,7 +5,6 @@
 #+TITLE: Remote: Tramp, backends, and guards for a dead connection
 #+FILETAGS: :core:
 #+STARTUP: overview
-#+PROPERTY: header-args:emacs-lisp :tangle ../lisp/kittymacs-remote.el :eval never :comments no :padline no :mkdirp yes
 
 - Working on another machine must not stall Emacs, and that machine must be a named thing you connect to.
   + Emacs does Lisp and redisplay on one thread; a Tramp call that waits on a dead connection stops everything, and a call with no timeout stops it until =C-g=.
@@ -19,6 +18,10 @@
 - The design is in [[file:../ARCHITECTURE.md][ARCHITECTURE.md]]; [[file:../tests/kittymacs-remote-tests.el][the remote tests]] run every guard through a Tramp method defined in the test.
 
 * Remote files: Tramp
+:PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-remote.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-remote.el :eval never :comments no :padline no :mkdirp yes
+:END:
 
 - =C-x C-f /ssh:host:/path= edits a remote file.
 - SSH is the default method; connection state goes under the cache.
@@ -67,6 +70,10 @@
 #+end_src
 
 * Where a remote program is found
+:PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-remote.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-remote.el :eval never :comments no :padline no :mkdirp yes
+:END:
 
 - A program on the remote is looked up on its login shell's =PATH=.
   + By default Tramp searches =getconf PATH= and a fixed list of system directories, which misses a Nix profile, =~/.local/bin= and anything else a login adds.
@@ -137,6 +144,8 @@ Tramp's existence check quotes the name, so it never sees either."
 
 * Backends: a machine you connect to by name :decision:
 :PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-remote.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-remote.el :eval never :comments no :padline no :mkdirp yes
 :ID: 2f9c41d7-8a36-4e0b-b5d2-7c1e6a93f048
 :END:
 
@@ -405,6 +414,8 @@ It never connects."
 
 * A WSL distribution from native Windows Emacs :windows:wsl:decision:
 :PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-remote.el ../lisp/kittymacs-wsl.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-remote.el :eval never :comments no :padline no :mkdirp yes
 :ID: 3c9e7a52-1d84-4f6b-a0c3-8e5d27b1f96a
 :END:
 
@@ -543,6 +554,7 @@ Anywhere else it calls ORIGINAL unchanged, after one test that never connects."
 
 ** Opening from a WSL shell
 :PROPERTIES:
+:KITTYMACS_GENERATE: ../nix/kittymacs-open.sh
 :ID: 9e4c2a61-7b05-4d13-8f6e-1a0d3c95b7e2
 :END:
 
@@ -711,6 +723,8 @@ A file with line endings keeps them.  This never connects."
 
 * tramp-rpc through wsl.exe :windows:wsl:decision:
 :PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-remote-rpc.el ../lisp/kittymacs-remote.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-remote.el :eval never :comments no :padline no :mkdirp yes
 :ID: 4e8b1d76-3a95-4c20-b7f1-92c6d0e5a813
 :END:
 
@@ -1078,6 +1092,10 @@ Not a symbolic link or a file with other names, which replacing would cut off."
 - [[file:../tests/wsl-backend/rpc.el][A hosted job]] runs the real package on real WSL2 against =wslm=, when this chapter changes.
 
 * Connection-local defaults
+:PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-remote.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-remote.el :eval never :comments no :padline no :mkdirp yes
+:END:
 
 - Connection-local variables hold a value for one kind of connection, so a remote buffer can differ from a local one.
 - =explicit-shell-file-name= is the guard for =M-x shell=.
@@ -1139,6 +1157,8 @@ Not a symbolic link or a file with other names, which replacing would cut off."
 
 * A backend's environment
 :PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-remote.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-remote.el :eval never :comments no :padline no :mkdirp yes
 :ID: 7c2e9b14-5a38-4f06-b1d7-e60a2c8f43d5
 :END:
 
@@ -1261,6 +1281,8 @@ from a new buffer."
 
 * The guards :decision:
 :PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-remote.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-remote.el :eval never :comments no :padline no :mkdirp yes
 :ID: 8d3b7e15-6f42-4c09-a1e8-5b2d90c7f364
 :END:
 

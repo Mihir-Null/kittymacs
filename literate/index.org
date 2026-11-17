@@ -58,12 +58,15 @@
 | [[id:e4d65984-892d-4046-b718-d4265ab74215][Navigation]]      | apps      | recent files, places, projects, search tools                                       |
 | [[id:8ff7e58e-c155-4513-99ae-3b2c3a6ab729][Org]]             | notes     | notes, tasks, the agenda, searches by tag                                          |
 | [[id:c41f7a2e-6d38-4f15-9b07-2e8d3a6c1f94][Org extras]]      | notes     | queries across files, grouped lists, Org drawn like a document                     |
-| [[id:f48e8f01-88da-4e33-8398-c00ab346b8bb][Org-roam]]        | notes     | linked notes: personal and project graphs, capture, backlinks, tags                |
+| [[id:f48e8f01-88da-4e33-8398-c00ab346b8bb][Org Node]]        | notes     | linked notes: personal and project graphs, capture, backlinks, tags                |
 | [[id:97c04bd3-1404-4b0a-8018-20d77bc671bc][Programming]]     | code      | delimiters, structural editing, linting, compiling, Emacs Lisp                     |
 | [[id:560fcdca-6cb8-49d9-bf27-eb78f32b9285][Languages]]       | code      | Tree-sitter grammars and opt-in language servers                                   |
 | [[id:78b15713-364e-4d1d-99c9-0e67e1729164][Hover documentation]] | code | Eglot's documentation in a child frame, in =full= |
 | [[id:78b654e1-a93e-4e31-b0d8-f266215b5b12][Reading]]         | notes     | PDFs in Emacs, and org-noter's notes beside them                                    |
 | [[id:0bb7490f-71af-4c3d-9e64-741df8ae25c6][Notebooks]]       | code      | Jupytext scripts: cells, a Jupyter kernel, LaTeX drawn in Markdown cells            |
+| [[id:2a4efa58-f173-48d0-966c-a395f71ad368][Org Babel]] | code | language execution, kernels and diagrams |
+| [[id:134a6236-9049-4607-b6a7-bd795e150402][Project tasks]] | notes | task dependencies and project work views |
+| [[id:b1603aff-ef0d-4e19-b373-0beaa6a95840][Research and publishing]] | notes | reference material and Org Press |
 | [[id:94d55283-5011-4f98-a7f0-8c6bcb51aab9][Agents]]          | apps      | Claude Code in a buffer, through agent-shell, and its MCP servers                  |
 | [[id:0b43a1e9-2e16-4d5b-985d-342c4897634f][Suggestions]]     | code      | Copilot's ghost text and next-edit suggestions, off until you turn them on        |
 | [[id:9ea539a0-f1a3-4d05-aa10-6f2d2ff3e335][Maintenance]]     | core      | the loop, the builder, CI, updating, =private.el=                                    |
@@ -107,5 +110,5 @@
 - localleader :: =SPC m=: the current major mode's own menu.
 - frame :: an Emacs OS window; kittymacs opens one where Emacs would split a window.
 - which-key :: the popup listing the keys that can follow the prefix you typed.
-- graph :: an Org-roam set of linked notes with its own index: your personal notes, or a project such as this checkout.
+- graph :: registered notes that share the Org ID index and can be viewed by project.
 - private.el :: your settings for this machine, read early and never committed.

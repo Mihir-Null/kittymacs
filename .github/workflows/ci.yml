@@ -155,7 +155,7 @@ jobs:
       - name: Byte-compile the modules
         if: matrix.profile == 'full'
         run: just compile
-      - name: Leader and Org-roam tests, and the startup verifier
+      - name: Leader, Org Node and task tests, and the startup verifier
         if: matrix.profile == 'full'
         run: just test-packages
       - name: Leader and theme tests, and the verifier on exactly these packages

@@ -5,7 +5,6 @@
 #+TITLE: The MSYS2 fallback, for work on Windows-side files
 #+FILETAGS: :apps:windows:
 #+STARTUP: overview
-#+PROPERTY: header-args:emacs-lisp :tangle ../lisp/kittymacs-msys2.el :eval never :comments no :padline no :mkdirp yes
 
 - A WSL2 backend is how native Windows Emacs reaches Unix programs ([[id:3c9e7a52-1d84-4f6b-a0c3-8e5d27b1f96a][a WSL distribution]]), and this chapter is the one exception.
   + A program in WSL that reads files on the Windows side crosses a slow boundary on every read, so a large tree there can ruin performance.
@@ -23,6 +22,10 @@
 #+end_src
 
 * The warning, and what the feature does
+:PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-msys2.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-msys2.el :eval never :comments no :padline no :mkdirp yes
+:END:
 
 - Each start warns once, because a fallback should not come to look like the normal way.
   + It says why a backend is preferred, and when this makes sense.

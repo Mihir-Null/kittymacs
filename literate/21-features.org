@@ -5,7 +5,6 @@
 #+TITLE: Features: what this machine selected
 #+FILETAGS: :core:
 #+STARTUP: overview
-#+PROPERTY: header-args:emacs-lisp :tangle ../lisp/kittymacs-features.el :eval never :comments no :padline no :mkdirp yes
 
 - Turns [[id:3f8a6c02-9d14-4b7e-a2c5-1e7d90b64f31][the catalogue]] and three options into one answer: which features are on here.
   + Every gate in every chapter asks =kittymacs-feature-p=, so one function decides, and no chapter knows why.
@@ -14,6 +13,8 @@
 
 * The three options :decision:
 :PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-features.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-features.el :eval never :comments no :padline no :mkdirp yes
 :ID: 7d20c8f1-46ab-4e93-a15c-9b3f7e60d214
 :END:
 
@@ -77,6 +78,8 @@ Set it where `kittymacs-profile' is set, for the same reason."
 
 * A machine with no choice keeps what it has :decision:
 :PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-features.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-features.el :eval never :comments no :padline no :mkdirp yes
 :ID: 2ea4f7b0-6c19-4d85-93f2-c07a1be58d36
 :END:
 
@@ -170,6 +173,8 @@ Press SPC C o to choose, or set `kittymacs-profile' to `full' or `minimal' in pr
 
 * What older options still decide
 :PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-features.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-features.el :eval never :comments no :padline no :mkdirp yes
 :ID: e81b3c56-0d47-4fa2-8c69-74a2d95f1b07
 :END:
 
@@ -210,6 +215,8 @@ Press SPC C o to choose, or set `kittymacs-profile' to `full' or `minimal' in pr
 
 * From the options to the answer :decision:
 :PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-features.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-features.el :eval never :comments no :padline no :mkdirp yes
 :ID: 0fb86d27-93c1-4ea5-b2d8-6a1e47c3f9d0
 :END:
 
@@ -385,6 +392,8 @@ names what was asked for and cannot be had."
 
 * The installer :decision:
 :PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-features.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-features.el :eval never :comments no :padline no :mkdirp yes
 :ID: a9d3e1c7-52f8-4b06-8e14-6c07f2b1d945
 :END:
 
@@ -480,6 +489,8 @@ A package that cannot be installed warns, and the rest carry on."
 
 * A Git install that stopped partway is refused, not overwritten :decision:
 :PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-features.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-features.el :eval never :comments no :padline no :mkdirp yes
 :ID: 5905ac12-61c1-4c8e-97fa-3eff8f2bee50
 :END:
 
@@ -579,12 +590,18 @@ NAME afresh."
 #+end_src
 
 * A directory can name an option of a chapter that is off
+:PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-features.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-features.el :eval never :comments no :padline no :mkdirp yes
+:END:
 
-- A project's =.dir-locals.el= can set two Org-roam options, and this repository's own does.
-- Those two are declared safe here rather than in [[id:f48e8f01-88da-4e33-8398-c00ab346b8bb][the Org-roam chapter]], which may not load.
+- A project's =.dir-locals.el= can set linked-notes options, and this repository's own does.
+- The common ones are declared safe here rather than in [[id:f48e8f01-88da-4e33-8398-c00ab346b8bb][the Org Node chapter]], which may not load.
   + Otherwise a machine without linked notes would be asked about them on every file in such a project.
 
 #+begin_src emacs-lisp
+(put 'kittymacs-org-node-project 'safe-local-variable #'booleanp)
+(put 'kittymacs-org-node-excluded-directories 'safe-local-variable #'list-of-strings-p)
 (put 'kittymacs-org-roam-project 'safe-local-variable #'booleanp)
 (put 'kittymacs-org-roam-excluded-directories 'safe-local-variable #'list-of-strings-p)
 

@@ -5,7 +5,6 @@
 #+TITLE: Appearance
 #+FILETAGS: :interface:
 #+STARTUP: overview
-#+PROPERTY: header-args:emacs-lisp :tangle ../lisp/kittymacs-ui.el :eval never :comments no :padline no :mkdirp yes
 
 - Fonts, theme, mode line, icons and highlights:
   + Google Sans Code with Nerd Font icons when it is installed, the platform font otherwise;
@@ -18,6 +17,10 @@
 - The font and theme choices are the user's; the highlighting defaults are distilled from Lambda-Emacs by Colin McLear (=lem-setup-theme=, =-fonts=, =-faces=).
 
 * What you can change
+:PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-ui.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-ui.el :eval never :comments no :padline no :mkdirp yes
+:END:
 
 - Set these with =setopt= in =private.el=; the chapter reads them while it loads.
   + =kittymacs-font-family= :: the editing font, =GoogleSansCode Nerd Font=; the platform default if it is absent.
@@ -84,6 +87,10 @@ A `doom-' theme needs the `doom-look' feature; without it, `modus-operandi'."
 #+end_src
 
 * Fonts
+:PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-ui.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-ui.el :eval never :comments no :padline no :mkdirp yes
+:END:
 
 - The editing font is resolved by family, including the shorter name Windows registers for the same font (=GoogleSansCode NF=), then the plain font, =Google Sans Code=.
   + Older nixpkgs ships only the plain font; nothing is lost, since icons come from the icon font below, not the editing font.
@@ -161,6 +168,10 @@ A `doom-' theme needs the `doom-look' feature; without it, `modus-operandi'."
 #+end_src
 
 * Theme
+:PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-ui.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-ui.el :eval never :comments no :padline no :mkdirp yes
+:END:
 
 - With =doom-look= off, as it is by default, the built-in Modus themes show: =modus-vivendi= and, on =SPC t t=, =modus-operandi=.
 - With =doom-look= on, Sonokai shows, from a tracked port in =lisp/themes/=, so it does not depend on a package update.
@@ -228,6 +239,10 @@ A `doom-' theme needs the `doom-look' feature; without it, `modus-operandi'."
 #+end_src
 
 * Mode line and tabs
+:PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-ui.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-ui.el :eval never :comments no :padline no :mkdirp yes
+:END:
 
 - By default the frame has Emacs's own mode line.
 - With =doom-look= off, the routine minor modes collapse into one =…=.
@@ -292,6 +307,10 @@ A `doom-' theme needs the `doom-look' feature; without it, `modus-operandi'."
 #+end_src
 
 * Icons in completion, Corfu and Dired
+:PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-ui.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-ui.el :eval never :comments no :padline no :mkdirp yes
+:END:
 
 - Each is enabled only when the icon font is usable (=kittymacs-icons-available-p=).
   + That function also asks for the =icons= feature, so the font code, and any chapter that shows icons, needs no gate of its own: without the feature it takes the path a machine with no icon font takes.
@@ -327,6 +346,10 @@ A `doom-' theme needs the `doom-look' feature; without it, `modus-operandi'."
 #+end_src
 
 * Spacing and highlights
+:PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-ui.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-ui.el :eval never :comments no :padline no :mkdirp yes
+:END:
 
 | Package or setting       | Effect                                                     |
 |--------------------------+------------------------------------------------------------|
@@ -421,6 +444,10 @@ A `doom-' theme needs the `doom-look' feature; without it, `modus-operandi'."
 #+end_src
 
 * Distraction-free writing
+:PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-ui.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-ui.el :eval never :comments no :padline no :mkdirp yes
+:END:
 
 - =SPC t w= toggles =writeroom-mode=:
   + the frame goes full screen;
@@ -439,6 +466,10 @@ A `doom-' theme needs the `doom-look' feature; without it, `modus-operandi'."
 #+end_src
 
 * The first words in the scratch buffer
+:PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-ui.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-ui.el :eval never :comments no :padline no :mkdirp yes
+:END:
 
 - With =home-page= off, nothing else greets a new reader: the first frame is an empty =*scratch*=.
 - A comment there says to press =SPC= for the menu and =SPC C o= to choose features.
@@ -473,6 +504,10 @@ A function on `flyspell-incorrect-hook': non-nil leaves the word unmarked."
 #+end_src
 
 * Programming buffers
+:PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-ui.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-ui.el :eval never :comments no :padline no :mkdirp yes
+:END:
 
 - Line numbers and a highlighted current line in code; neither in prose.
 

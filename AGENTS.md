@@ -14,7 +14,7 @@ With an installed package directory (`just install` makes one in `var/elpa`, or 
 
 ```sh
 just compile        # byte-compile every module
-just test-packages  # leader and Org-roam tests, and the startup verifier
+just test-packages  # leader and Org Node tests, and the startup verifier
 ```
 
 With Nix (`nix develop` provides Emacs, just and the linters):
@@ -27,4 +27,4 @@ just nix-check      # deadnix, statix, nixfmt; flake check; both example hosts e
 
 ## Commits and pull requests
 
-Commits made with an AI agent end with the trailer `Assisted-by: AI tooling (Claude)`, and the pull request body ends with "Prepared with AI assistance (Claude).". Add no `Co-Authored-By` trailer and no links to agent sessions, in commits or pull requests. Commit messages explain why, in wrapped prose.
+Use the name of the AI tool that assisted with the change. End the commit message with `Assisted-by: AI tooling (<tool>)` and the pull request body with `Prepared with AI assistance (<tool>).` For example, use `ChatGPT` when ChatGPT assisted. Add no `Co-Authored-By` trailer and no links to agent sessions, in commits or pull requests. Commit messages explain why, in wrapped prose.

@@ -228,10 +228,16 @@ answers from `full', so only then may it install one this start does not need."
 
 (defun kittymacs-nix--check-report (report)
   "Return what is wrong with REPORT itself, before any start."
+  (let ((load-path (cons (expand-file-name "lisp" kittymacs-nix-source) load-path)))
+    (require 'kittymacs-features))
   (append
    (seq-mapcat
     (lambda (name)
-      (let ((host (alist-get name report)))
+      (let* ((host (alist-get name report))
+             (system (alist-get 'system host))
+             (features (when system
+                         (let ((system-type (intern system)))
+                           (kittymacs-features--compute 'full nil nil)))))
         (append
          (and (alist-get 'files host)
               (list (format "%s writes files: %S" name (alist-get 'files host))))
@@ -241,9 +247,13 @@ answers from `full', so only then may it install one this start does not need."
               (list (format "the report has no %s host" name)))
          ;; A host that chose nothing gets what `full' selects.
          (seq-keep (lambda (tool)
-                     (unless (or (eq (alist-get 'installed tool) t)
-                                 (equal (alist-get 'feature tool) "jupyter"))
-                       (format "%s does not install %s" name (alist-get 'name tool))))
+                     (let* ((feature (alist-get 'feature tool))
+                            (installed (eq (alist-get 'installed tool) t))
+                            (expected (or (not feature) (memq (intern feature) features))))
+                       (unless (eq installed (and expected t))
+                         (format "%s %s %s"
+                                 name (if installed "unexpectedly installs" "does not install")
+                                 (alist-get 'name tool)))))
                    (alist-get 'tools host)))))
     '(plain nixosPlain darwinPlain))
    (and (not (equal (alist-get 'built (alist-get 'extraOnly report)) '("vundo")))

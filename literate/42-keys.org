@@ -5,7 +5,6 @@
 #+TITLE: The SPC tree
 #+FILETAGS: :keys:
 #+STARTUP: overview
-#+PROPERTY: header-args:emacs-lisp :tangle ../lisp/kittymacs-keys.el :eval never :comments no :padline no :mkdirp yes
 
 - Every group directly under =SPC=, in one place, so you can see the tree without reading each chapter.
 - The tables list keys from every chapter; the code here binds only what no feature owns.
@@ -18,6 +17,10 @@
   + [[id:a1607a41-b741-428a-9de3-c16e7c8d3ecc][The editing chapter]] explains when =SPC= is live; [[file:../lisp/keybindings.org][the cheat sheet]] prints the tree on one page.
 
 * How to read and change the tree
+:PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-keys.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-keys.el :eval never :comments no :padline no :mkdirp yes
+:END:
 
 - Each group is a keymap that [[id:e5942eb0-4389-447d-9317-d9178adcaaae][the leader]] defines, empty.
 - A definition of the form =(cons "label" #'command)= is an ordinary Emacs menu item: the label is what which-key prints.
@@ -40,6 +43,10 @@
 #+end_src
 
 * Seeing the next keys
+:PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-keys.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-keys.el :eval never :comments no :padline no :mkdirp yes
+:END:
 
 - which-key is built into Emacs.
 - It pops up the next keys at the top of the frame after a short pause (0.45 s); =C-h= inside any prefix shows them at once.
@@ -59,6 +66,10 @@
 #+end_src
 
 * Buffers, files, search
+:PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-keys.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-keys.el :eval never :comments no :padline no :mkdirp yes
+:END:
 
 | Prefix  | Group   | Doubled key        | Also                                                                    |
 |---------+---------+--------------------+-------------------------------------------------------------------------|
@@ -98,6 +109,10 @@
 #+end_src
 
 * Projects, version control, windows
+:PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-keys.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-keys.el :eval never :comments no :padline no :mkdirp yes
+:END:
 
 | Prefix  | Group           | Doubled key             | Also                                                                          |
 |---------+-----------------+-------------------------+-------------------------------------------------------------------------------|
@@ -130,6 +145,10 @@
 #+end_src
 
 * Code, evaluation, diagnostics, insertion
+:PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-keys.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-keys.el :eval never :comments no :padline no :mkdirp yes
+:END:
 
 | Prefix  | Group           | Doubled key          | Also                                                          |
 |---------+-----------------+----------------------+---------------------------------------------------------------|
@@ -186,6 +205,10 @@ and `indent-region' everywhere else."
 #+end_src
 
 * Open, toggle, configure, quit
+:PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-keys.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-keys.el :eval never :comments no :padline no :mkdirp yes
+:END:
 
 | Prefix  | Group  | Doubled key          | Also                                                           |
 |---------+--------+----------------------+----------------------------------------------------------------|
@@ -199,7 +222,7 @@ and `indent-region' everywhere else."
 
 - These groups' keys and commands belong to the chapters they serve:
   + the Org inbox to [[id:8ff7e58e-c155-4513-99ae-3b2c3a6ab729][the Org chapter]];
-  + the linked-notes commands to [[id:f48e8f01-88da-4e33-8398-c00ab346b8bb][Org-roam]];
+  + the linked-notes commands to [[id:f48e8f01-88da-4e33-8398-c00ab346b8bb][Org Node]];
   + the agent commands to [[id:94d55283-5011-4f98-a7f0-8c6bcb51aab9][the agents chapter]];
   + the suggestion commands, =SPC a c= and =SPC t a=, to [[id:0b43a1e9-2e16-4d5b-985d-342c4897634f][the suggestions chapter]];
   + the =SPC C= commands that open and rebuild this configuration to [[id:9ea539a0-f1a3-4d05-aa10-6f2d2ff3e335][the maintenance chapter]].
@@ -260,6 +283,10 @@ in the server, which keeps running."
 - [[id:8545f3ea-11d0-420b-a823-22a344e56f1e][The help chapter]] binds most of this group.
 
 * The top level, and the tree without Meow
+:PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-keys.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-keys.el :eval never :comments no :padline no :mkdirp yes
+:END:
 
 - A few single keys sit directly under =SPC=, beside the groups:
 

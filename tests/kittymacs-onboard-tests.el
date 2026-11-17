@@ -881,9 +881,9 @@ quits as a minibuffer would."
   (kittymacs-onboard-test-with-machine
     (let ((state (kittymacs-onboard--initial-state)))
       (setf (kittymacs-onboard--profile state) 'minimal)
-      (should-not (assq 'kittymacs-org-roam-directory (kittymacs-onboard--options-here state)))
+      (should-not (assq 'kittymacs-org-node-directory (kittymacs-onboard--options-here state)))
       (setf (kittymacs-onboard--profile state) 'full)
-      (should (assq 'kittymacs-org-roam-directory (kittymacs-onboard--options-here state))))))
+      (should (assq 'kittymacs-org-node-directory (kittymacs-onboard--options-here state))))))
 
 ;;; Structural editing
 

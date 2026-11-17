@@ -5,7 +5,6 @@
 #+TITLE: Help, Info and menus
 #+FILETAGS: :interface:
 #+STARTUP: overview
-#+PROPERTY: header-args:emacs-lisp :tangle ../lisp/kittymacs-help.el :eval never :comments no :padline no :mkdirp yes
 
 - Emacs is self-documenting; this chapter makes that documentation nicer to read and easier to reach.
   + =C-h k= then a key says what it does; =C-h f= and =C-h v= describe a function or variable.
@@ -15,6 +14,10 @@
 - =help-extras=, =command-menus= and =key-display= each sit behind a =when=; without any of them, Emacs's own help remains under the same keys.
 
 * Help windows and help at point
+:PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-help.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-help.el :eval never :comments no :padline no :mkdirp yes
+:END:
 
 - A help window takes focus when it opens.
 - Help at point appears in the echo area after 0.1 s of idle, for Flymake diagnostics.
@@ -39,6 +42,10 @@
 #+end_src
 
 * Richer help pages: Helpful
+:PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-help.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-help.el :eval never :comments no :padline no :mkdirp yes
+:END:
 
 - Helpful takes over the standard describe commands through =remap=, so the usual =C-h= keys keep working and show more: the source, examples and references.
 - =elisp-demos= injects worked examples into those pages.
@@ -93,6 +100,10 @@
 #+end_src
 
 * Transient menus
+:PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-help.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-help.el :eval never :comments no :padline no :mkdirp yes
+:END:
 
 - Magit, Casual and a few other packages draw their menus with Transient.
 - Its levels, values and history files go under the cache.
@@ -118,6 +129,10 @@
 #+end_src
 
 * See what you press: keycast
+:PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-help.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-help.el :eval never :comments no :padline no :mkdirp yes
+:END:
 
 - While the grammar is new, =SPC t k= shows each key you press and the command it ran in the header line.
 - =SPC t K= keeps a log buffer instead.
@@ -140,6 +155,10 @@
 #+end_src
 
 * Menus for the built-ins: Casual
+:PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-help.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-help.el :eval never :comments no :padline no :mkdirp yes
+:END:
 
 - Casual gives Emacs's own tools a Transient menu of everything they can do.
 - Each menu is on =?= in that mode's =SPC m= menu, on =C-o= in the mode's own map (Casual's convention), or on both:
@@ -180,6 +199,8 @@
 
 * Meow in help buffers :meow:
 :PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-help.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-help.el :eval never :comments no :padline no :mkdirp yes
 :ID: e455cddf-3cd2-47b3-8e0a-68f5f34d67cd
 :END:
 

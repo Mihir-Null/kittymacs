@@ -5,7 +5,6 @@
 #+TITLE: Basics: small packages for undo, whitespace and windows
 #+FILETAGS: :core:
 #+STARTUP: overview
-#+PROPERTY: header-args:emacs-lisp :tangle ../lisp/kittymacs-basics.el :eval never :comments no :padline no :mkdirp yes
 
 - Five small packages that extend [[id:3fd783cd-deb8-48aa-bb44-0d9b16535365][the defaults]].
 - They live apart because the defaults load before =private.el= and host files, too early for anything to choose a package or leave it out.
@@ -13,6 +12,12 @@
 - The undo tree and whitespace cleanup are in the =minimal= profile; =window-picker=, =popups= and =color-names= each sit behind a =when=, with their keys.
 - Distilled from Lambda-Emacs by Colin McLear: its =lem-setup-windows= and =-colors= modules.
 - [[id:f1d045c2-e2dc-4514-ab17-dd982ed6be00][The frames chapter]] decides where popups appear.
+
+* Module preamble
+:PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-basics.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-basics.el :eval never :comments no :padline no :mkdirp yes
+:END:
 
 #+begin_src emacs-lisp
 ;;; kittymacs-basics.el --- Small packages for undo, whitespace and windows -*- lexical-binding: t; -*-
@@ -25,6 +30,10 @@
 #+end_src
 
 * Whitespace
+:PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-basics.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-basics.el :eval never :comments no :padline no :mkdirp yes
+:END:
 
 - =ws-butler= keeps whitespace tidy: it removes trailing whitespace only on lines you changed, so a commit never touches lines you did not edit.
 
@@ -37,6 +46,8 @@
 
 * The undo tree :meow:
 :PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-basics.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-basics.el :eval never :comments no :padline no :mkdirp yes
 :ID: 808d7464-14c2-42c5-865e-c08e17141ae2
 :END:
 
@@ -65,6 +76,10 @@
 #+end_src
 
 * Windows and popups
+:PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-basics.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-basics.el :eval never :comments no :padline no :mkdirp yes
+:END:
 
 - =ace-window= jumps to a window by letter on =SPC w w=, and swaps two windows on =SPC w s=.
 - Popper collects transient buffers under one toggle key:
@@ -161,6 +176,10 @@
 #+end_src
 
 * Colour names
+:PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-basics.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-basics.el :eval never :comments no :padline no :mkdirp yes
+:END:
 
 - =rainbow-mode= colours colour names in place; =SPC t r= turns it on in a buffer.
 

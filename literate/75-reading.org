@@ -5,7 +5,6 @@
 #+TITLE: Reading: PDFs and the notes beside them
 #+FILETAGS: :notes:
 #+STARTUP: overview
-#+PROPERTY: header-args:emacs-lisp :tangle ../lisp/kittymacs-reading.el :eval never :comments no :padline no :mkdirp yes
 
 - Read a paper inside Emacs and keep its notes in an Org file beside it, both on screen at once.
 - This chapter is the =pdf-reading= feature: [[id:40302e33-d2b2-4c0b-9bc3-1f9e121307e1][=init.el=]] loads it only when that is on.
@@ -20,8 +19,14 @@
 | pdf-text           | the PDF as reflowed Org text, beside the page and in step with it                         |
 
 - Leans on [[id:e5942eb0-4389-447d-9317-d9178adcaaae][the leader]] for =SPC m=, [[id:afa6b7fd-742a-4c15-86a6-32e3e8027b0e][the platform chapter]] for the notes folder, and [[id:d25a5063-1439-4ae0-8fbe-b0162d05a0e0][the Nix chapter]] for the PDF server and MuPDF's =mutool=.
-- [[id:f48e8f01-88da-4e33-8398-c00ab346b8bb][Org-roam]] and [[id:8ff7e58e-c155-4513-99ae-3b2c3a6ab729][the Org chapter]] add to a reading session when they are there, and reading works without them.
+- [[id:f48e8f01-88da-4e33-8398-c00ab346b8bb][Org Node]] and [[id:8ff7e58e-c155-4513-99ae-3b2c3a6ab729][the Org chapter]] add to a reading session when they are there, and reading works without them.
 - Read [[*How a reading session works]] first.
+
+* Module preamble
+:PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-reading.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-reading.el :eval never :comments no :padline no :mkdirp yes
+:END:
 
 #+begin_src emacs-lisp
 ;;; kittymacs-reading.el --- PDFs and the notes beside them -*- lexical-binding: t; -*-
@@ -51,6 +56,8 @@
 
 * pdf-tools: Emacs draws the PDF
 :PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-reading.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-reading.el :eval never :comments no :padline no :mkdirp yes
 :ID: 97b0c04d-5959-4156-9db3-8136c2662a8a
 :END:
 
@@ -93,6 +100,8 @@
 
 * org-noter: the notes beside the page
 :PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-reading.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-reading.el :eval never :comments no :padline no :mkdirp yes
 :ID: 6700f72d-a8e2-467d-9f26-83c349e2b19c
 :END:
 
@@ -101,7 +110,7 @@
 - Where notes live:
   + =org-noter-default-notes-file-names= is empty, so a paper's notes are =<paper>.org=, never a shared =Notes.org=;
   + org-noter looks for that name in the PDF's folder and every folder above it, then in =org-noter-notes-search-path=;
-  + the search path is your notes folder, for papers kept outside any project: [[id:f48e8f01-88da-4e33-8398-c00ab346b8bb][Org-roam]]'s when that chapter has loaded, which is earlier in =init.el=, or the Org directory otherwise.
+  + the search path is your notes folder, for papers kept outside any project: [[id:f48e8f01-88da-4e33-8398-c00ab346b8bb][Org Node]]'s when that chapter has loaded, which is earlier in =init.el=, or the Org directory otherwise.
 - So a paper in =papers/= of a project gets =papers/<paper>.org=, in the same folder, inside the project's graph.
 
 #+begin_src emacs-lisp
@@ -112,7 +121,7 @@
   :custom
   (org-noter-default-notes-file-names nil)
   (org-noter-notes-search-path
-   (list (or (bound-and-true-p kittymacs-org-roam-directory) kittymacs-org-directory)))
+   (list (or (bound-and-true-p kittymacs-org-node-directory) kittymacs-org-directory)))
   (org-noter-always-create-frame 'reuse-if-free))
 
 #+end_src
@@ -133,6 +142,8 @@
 
 * org-pdftools: links to a page
 :PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-reading.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-reading.el :eval never :comments no :padline no :mkdirp yes
 :ID: 1ba2ea67-a4f3-4864-ac7c-04e6b7d0ebc7
 :END:
 
@@ -166,6 +177,8 @@
 
 * PDF and Org bridging
 :PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-reading.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-reading.el :eval never :comments no :padline no :mkdirp yes
 :ID: b87db108-3eea-4375-89c8-54b9d212dd09
 :END:
 
@@ -231,6 +244,8 @@
 
 * Meow in PDFs and notes :meow:
 :PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-reading.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-reading.el :eval never :comments no :padline no :mkdirp yes
 :ID: c5b90c34-6023-4954-b26b-6dbabf29de84
 :END:
 
@@ -304,4 +319,4 @@
 - =M-: (executable-find "mutool")=: a path; =SPC m r= in a PDF opens its text at the page on screen, paging either buffer moves the other, and =RET= in the text shows its page in the PDF.
 - =C-x C-w= in the text, then reopen the file: an Org file of the paper, its headings folding.
 - =just test-packages=: the verifier fails on any warning at startup, and checks that every =SPC= key runs a command.
-- =just doc-test=: the lint tests check that this module requires neither Org-roam nor Org extras, and uses their names only behind a guard.
+- =just doc-test=: the lint tests check that this module requires neither Org Node nor Org extras, and uses their names only behind a guard.

@@ -5,14 +5,13 @@
 #+TITLE: Org: notes, tasks and the agenda
 #+FILETAGS: :notes:
 #+STARTUP: overview
-#+PROPERTY: header-args:emacs-lisp :tangle ../lisp/kittymacs-org.el :eval never :comments no :padline no :mkdirp yes
 
 - One inbox under a portable Org directory, two capture templates, an agenda, and searches by tag; Org looks clean and behaves predictably.
 - =SPC m= in an Org buffer lists the structure commands; =SPC o a= opens the agenda from anywhere.
 - Leans on [[id:afa6b7fd-742a-4c15-86a6-32e3e8027b0e][the platform chapter]] for the Org directory and [[id:e5942eb0-4389-447d-9317-d9178adcaaae][the leader]] for =SPC m=.
 - Declares no package and needs none of the optional chapters:
   + queries, grouped lists and the document look are [[id:c41f7a2e-6d38-4f15-9b07-2e8d3a6c1f94][Org extras]];
-  + linked notes are [[id:f48e8f01-88da-4e33-8398-c00ab346b8bb][the Org-roam chapter]]'s;
+  + linked notes are [[id:f48e8f01-88da-4e33-8398-c00ab346b8bb][the Org Node chapter]]'s;
   + PDFs and their notes are [[id:78b654e1-a93e-4e31-b0d8-f266215b5b12][the reading chapter]]'s.
 - The directory and capture templates are a minimal personal policy; the defaults are distilled from Lambda-Emacs by Colin McLear (=lem-setup-org-base=, =lem-setup-org-settings=), without his personal files and export workflows.
 
@@ -36,6 +35,10 @@
   + =setopt= loads a library when Customize's own index lists it for that name, so =org-agenda-time-grid= and =org-agenda-custom-commands= use =setq=.
 
 * Where notes live
+:PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-org.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-org.el :eval never :comments no :padline no :mkdirp yes
+:END:
 
 - =kittymacs-org-directory= comes from [[id:afa6b7fd-742a-4c15-86a6-32e3e8027b0e][the platform chapter]], so a machine can override it in =private.el=.
 - Captures land in =inbox.org=; =SPC o c= starts one, and =SPC o i= opens the file.
@@ -84,6 +87,10 @@
 #+end_src
 
 * How Org looks and behaves
+:PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-org.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-org.el :eval never :comments no :padline no :mkdirp yes
+:END:
 
 - Markup is hidden and headings are indented, so a document reads like a document.
   + Indenting also hides every star of a heading but the last.
@@ -141,6 +148,8 @@
 
 * Table cells that wrap
 :PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-org.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-org.el :eval never :comments no :padline no :mkdirp yes
 :ID: 0c6f3e0e-5b1a-4d8e-9f39-6a2c1e7d4b52
 :END:
 
@@ -362,6 +371,10 @@ Point stays where it was, in or out of a table."
 #+end_src
 
 * Tasks and the agenda
+:PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-org.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-org.el :eval never :comments no :padline no :mkdirp yes
+:END:
 
 - A task is =TODO=, then maybe =NEXT= or =WAITING=, then =DONE= or =CANCELED=.
   + =WAITING= and =CANCELED= ask for a note.
@@ -450,6 +463,10 @@ Point stays where it was, in or out of a table."
 #+end_src
 
 * Finding headings by tag
+:PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-org.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-org.el :eval never :comments no :padline no :mkdirp yes
+:END:
 
 - Org has three ways in, and [[id:c41f7a2e-6d38-4f15-9b07-2e8d3a6c1f94][Org extras]] adds queries across files:
 
@@ -486,6 +503,10 @@ Point stays where it was, in or out of a table."
 - =C-c C-c= clears the highlighting a match leaves.
 
 * Export and files
+:PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-org.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-org.el :eval never :comments no :padline no :mkdirp yes
+:END:
 
 - Exports get smart quotes, tolerate broken links and omit the HTML postamble.
 - ODT export produces =.docx=; a table exports as CSV by default.
@@ -508,6 +529,8 @@ Point stays where it was, in or out of a table."
 
 * Prose in a proportional font
 :PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-org.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-org.el :eval never :comments no :padline no :mkdirp yes
 :ID: f6d962c5-5db6-42b7-a605-fd922ddca879
 :END:
 
@@ -570,6 +593,8 @@ Headings are semi-bold.  The faces are remapped in this buffer only."
 
 * Meow in Org and the agenda :meow:
 :PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-org.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-org.el :eval never :comments no :padline no :mkdirp yes
 :ID: 93863ba6-6e60-4c71-b6b5-22ef7ffb4d37
 :END:
 

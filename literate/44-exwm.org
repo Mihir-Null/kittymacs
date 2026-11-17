@@ -5,7 +5,6 @@
 #+TITLE: EXWM: Emacs as the X window manager
 #+FILETAGS: :interface:linux:
 #+STARTUP: overview
-#+PROPERTY: header-args:emacs-lisp :tangle ../lisp/kittymacs-exwm.el :eval never :comments no :padline no :mkdirp yes
 
 - In an X session that has no other window manager (a remote desktop, say), Emacs arranges every window itself: Chrome and other X programs become buffers, shown in Emacs windows, switched like any buffer.
 - The keys are LeopardWM's, the tiler on Windows: one modifier (Hyper here), the same letters, the nearest EXWM action.
@@ -15,6 +14,8 @@
 
 * Only when the session asks :decision:
 :PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-exwm.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-exwm.el :eval never :comments no :padline no :mkdirp yes
 :ID: 09277c62-e114-4ae6-a53b-f22650c0a4c0
 :END:
 
@@ -67,6 +68,8 @@ frame is on X.  Frames-only mode is off by default while it is on."
 
 * The key grammar, from LeopardWM :decision:
 :PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-exwm.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-exwm.el :eval never :comments no :padline no :mkdirp yes
 :ID: 44577bed-4dfb-4432-b608-98e3e79e791b
 :END:
 
@@ -123,6 +126,10 @@ Press \\`H-R' after changing it."
 #+end_src
 
 * What each action does
+:PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-exwm.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-exwm.el :eval never :comments no :padline no :mkdirp yes
+:END:
 
 - An action is a command, or a function of the entry's =ARGS=; the table's names map to EXWM, Emacs and the helpers below.
 
@@ -392,6 +399,10 @@ are offered for saving first."
 | =Ctrl+HJKL=, =Ctrl+Shift+HJKL=: monitors              | a remote session has one screen; =exwm-randr-mode= when not    |
 
 * Binding the table
+:PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-exwm.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-exwm.el :eval never :comments no :padline no :mkdirp yes
+:END:
 
 - =exwm-input-global-keys= holds keys that work everywhere: in Emacs buffers, and in X windows, which would otherwise receive every key.
 - Set with =setopt=, not =setq=: the option's setter binds the keys, and tells a running EXWM about them.
@@ -420,6 +431,10 @@ are offered for saving first."
 #+end_src
 
 * EXWM itself
+:PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-exwm.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-exwm.el :eval never :comments no :padline no :mkdirp yes
+:END:
 
 - Four workspaces to begin with; =H-5= to =H-9= make the rest when first used.
 - An X window's buffer is named after its program and title, =Google-chrome: Inbox=, so =C-x b= and Consult find it by either.
@@ -497,6 +512,8 @@ If EXWM does not start, install xauth where this Emacs's PATH finds it, then sta
 
 * X windows in Meow :meow:
 :PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-exwm.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-exwm.el :eval never :comments no :padline no :mkdirp yes
 :ID: d76ef53a-2792-4a3c-b4a9-83d2ad9cbcf4
 :END:
 

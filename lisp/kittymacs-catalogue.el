@@ -211,8 +211,8 @@
      :summary "A tidier Org display, grouped agendas and searches across your notes."
      :example "=SPC s q= finds headings by tag or state in every Org file.")
     (linked-notes
-     :group notes :packages (org-roam) :module kittymacs-org-roam :profile full
-     :summary "Linked notes with backlinks, for personal and project graphs."
+     :group notes :packages (org-node org-mem) :module kittymacs-org-node :profile full
+     :summary "Shared Org IDs with project-scoped linked notes and backlinks."
      :example "=SPC n f= finds or creates a note.")
     (pdf-reading
      :group notes :module kittymacs-reading :profile full
@@ -220,6 +220,31 @@
      :vc (pdf-text)
      :summary "Reads PDFs in Emacs and keeps notes beside each page."
      :example "Opening a PDF renders it in a buffer, where you can search and annotate.")
+
+    (task-dependencies
+     :group notes :packages (org-edna) :module kittymacs-org-tasks :profile full :deps (org-extras)
+     :summary "Edit task prerequisites and inspect blocked project work."
+     :example "See the corresponding Org chapter in the reading guide.")
+    (org-kanban
+     :group notes :packages (org-kanban) :module kittymacs-org-tasks :profile optional :deps (task-dependencies)
+     :summary "Arrange Org tasks on a file-backed board."
+     :example "See the corresponding Org chapter in the reading guide.")
+    (org-citations
+     :group notes :packages (citar) :module kittymacs-org-workflows :profile optional :deps (completion)
+     :summary "Find and insert references from a bibliography."
+     :example "See the corresponding Org chapter in the reading guide.")
+    (org-transclusion
+     :group notes :packages (org-transclusion) :module kittymacs-org-workflows :profile optional
+     :summary "Include linked excerpts in an Org document."
+     :example "See the corresponding Org chapter in the reading guide.")
+    (org-annotations
+     :group notes :packages (org-remark) :module kittymacs-org-workflows :profile optional
+     :summary "Annotate passages with Org notes."
+     :example "See the corresponding Org chapter in the reading guide.")
+    (org-web-capture
+     :group notes :packages (org-web-tools) :module kittymacs-org-workflows :profile optional
+     :summary "Capture readable web articles and attach snapshots."
+     :example "See the corresponding Org chapter in the reading guide.")
 
     ;; Programming
     (more-checkers
@@ -246,6 +271,47 @@
      :group programming :packages (geiser geiser-guile) :module kittymacs-languages :profile optional
      :summary "Editing and a REPL for Guile Scheme."
      :example "Opening a =.scm= file offers a Guile REPL beside it.")
+
+    (org-babel
+     :group programming :packages () :module kittymacs-org-babel :profile full
+     :summary "Run and edit the core set of Org Babel languages."
+     :example "See the corresponding Org chapter in the reading guide.")
+    (babel-mermaid
+     :group programming :packages (ob-mermaid mermaid-mode) :module kittymacs-org-babel :profile optional :deps (org-babel)
+     :summary "Render Mermaid blocks with mmdc."
+     :example "See the corresponding Org chapter in the reading guide.")
+    (babel-jupyter
+     :group programming :packages () :module kittymacs-org-babel :profile optional :deps (org-babel jupyter)
+     :summary "Use Jupyter kernels from Org source blocks."
+     :example "See the corresponding Org chapter in the reading guide.")
+    (babel-async
+     :group programming :packages (ob-async) :module kittymacs-org-babel :profile optional :deps (org-babel)
+     :summary "Run standalone shell and JavaScript blocks asynchronously."
+     :example "See the corresponding Org chapter in the reading guide.")
+    (babel-racket
+     :group programming :packages (ob-racket) :module kittymacs-org-babel :profile optional :deps (org-babel lang-racket) :vc (ob-racket)
+     :summary "Evaluate Racket blocks through the Racket executable."
+     :example "See the corresponding Org chapter in the reading guide.")
+    (babel-nix
+     :group programming :packages (ob-nix) :module kittymacs-org-babel :profile optional :deps (org-babel lang-nix)
+     :summary "Evaluate Nix expressions in Org."
+     :example "See the corresponding Org chapter in the reading guide.")
+    (babel-go
+     :group programming :packages (ob-go) :module kittymacs-org-babel :profile optional :deps (org-babel)
+     :summary "Evaluate self-contained Go blocks."
+     :example "See the corresponding Org chapter in the reading guide.")
+    (babel-rust
+     :group programming :packages (ob-rust) :module kittymacs-org-babel :profile optional :deps (org-babel)
+     :summary "Evaluate self-contained Rust blocks."
+     :example "See the corresponding Org chapter in the reading guide.")
+    (babel-typescript
+     :group programming :packages (ob-ts-node) :module kittymacs-org-babel :profile optional :deps (org-babel)
+     :summary "Evaluate TypeScript blocks with ts-node."
+     :example "See the corresponding Org chapter in the reading guide.")
+    (org-press
+     :group programming :packages () :module kittymacs-org-workflows :profile optional
+     :summary "Preview, build and run files with project-local Org Press."
+     :example "See the corresponding Org chapter in the reading guide.")
 
     ;; Assistants
     (agents

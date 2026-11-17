@@ -5,7 +5,6 @@
 #+TITLE: Onboarding: choose what kittymacs installs
 #+FILETAGS: :core:
 #+STARTUP: overview
-#+PROPERTY: header-args:emacs-lisp :tangle ../lisp/kittymacs-onboard.el :eval never :comments no :padline no :mkdirp yes
 
 - Someone who has never read this configuration can choose what it installs, in a terminal, with nothing installed yet.
 - =just onboard= runs it under =emacs -nw -Q=, and =SPC C o= runs it in a started Emacs.
@@ -17,6 +16,10 @@
 - =kittymacs-onboard-var-directory= names the directory the rule for a machine with no choice reads, for the same reason.
 
 * Finding its neighbours
+:PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-onboard.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-onboard.el :eval never :comments no :padline no :mkdirp yes
+:END:
 
 - Under =-Q= nothing has set =kittymacs-lisp-dir=, so the module finds =lisp/= through =load-file-name=.
   + A started Emacs loads it from the same directory, so both ways write the same =private.el=.
@@ -71,6 +74,8 @@
 
 * What to ask :decision:
 :PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-onboard.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-onboard.el :eval never :comments no :padline no :mkdirp yes
 :ID: 6e41d9b3-07fa-4c28-95d1-b2c86a3f7e10
 :END:
 
@@ -106,7 +111,7 @@
      :type directory :label "Where your projects live")
     (kittymacs-org-directory
      :type directory :label "Where your Org files live")
-    (kittymacs-org-roam-directory
+    (kittymacs-org-node-directory
      :type directory :feature linked-notes :label "Where your linked notes live")
     (kittymacs-font-family
      :type string :label "The font for code")
@@ -148,6 +153,8 @@
 
 * Refusing, and exit statuses :decision:
 :PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-onboard.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-onboard.el :eval never :comments no :padline no :mkdirp yes
 :ID: a13c7e52-98d4-4f06-b1e7-3c5d20f8a964
 :END:
 
@@ -174,6 +181,8 @@
 
 * Reading without running :decision:
 :PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-onboard.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-onboard.el :eval never :comments no :padline no :mkdirp yes
 :ID: 4bd07f18-c26a-4e93-8d10-e5a9361c72f4
 :END:
 
@@ -256,6 +265,8 @@
 
 * The marked block :decision:
 :PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-onboard.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-onboard.el :eval never :comments no :padline no :mkdirp yes
 :ID: 1f9b2d76-e34c-4a58-bc07-92d1e6840a3f
 :END:
 
@@ -381,6 +392,10 @@ Refuse unless they read as what is outside the block and FORMS, in that place."
 #+end_src
 
 * What this machine has chosen
+:PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-onboard.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-onboard.el :eval never :comments no :padline no :mkdirp yes
+:END:
 
 - The first screen starts from what the machine already says, in the order =init.el= loads it: the host layer, then =private.el=.
   + So a Nix host starts from what =10-nix.el= chose, and a second run starts from what the first wrote.
@@ -505,6 +520,10 @@ A name the catalogue lacks goes in NOTES."
 #+end_src
 
 * The choices
+:PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-onboard.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-onboard.el :eval never :comments no :padline no :mkdirp yes
+:END:
 
 - =kittymacs-onboard--state= holds the answers so far, and nothing else decides anything.
 - =kittymacs-onboard--toggle= changes one feature and reports what else moved, by comparing the answer before and after.
@@ -614,6 +633,8 @@ A name the catalogue lacks goes in NOTES."
 
 * Structural editing is the person's answer :decision:
 :PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-onboard.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-onboard.el :eval never :comments no :padline no :mkdirp yes
 :ID: 7a60c3e9-1d84-4b27-a6f5-08e3b9d2c175
 :END:
 
@@ -673,6 +694,10 @@ A name the catalogue lacks goes in NOTES."
 #+end_src
 
 * What gets written
+:PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-onboard.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-onboard.el :eval never :comments no :padline no :mkdirp yes
+:END:
 
 - The block always names all three selection options, even when one is empty.
   + An empty one still has to replace what a host file set: =setopt= replaces a value, it does not add to it.
@@ -725,6 +750,8 @@ A name the catalogue lacks goes in NOTES."
 
 * The Nix options that match :decision:
 :PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-onboard.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-onboard.el :eval never :comments no :padline no :mkdirp yes
 :ID: e2d85f40-6c1b-47a9-93e8-1b7f04c6d8a2
 :END:
 
@@ -771,6 +798,10 @@ A name the catalogue lacks goes in NOTES."
 #+end_src
 
 * The screens
+:PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-onboard.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-onboard.el :eval never :comments no :padline no :mkdirp yes
+:END:
 
 - One buffer shows one screen at a time, and =read-key= takes each answer, so nothing here needs a package or a keymap of its own.
 - Every read goes through =kittymacs-onboard--read-event= and =kittymacs-onboard--read-text=.
@@ -1109,6 +1140,8 @@ A name the catalogue lacks goes in NOTES."
 
 * A backend, if you work on another machine :decision:
 :PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-onboard.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-onboard.el :eval never :comments no :padline no :mkdirp yes
 :ID: b61f2e84-5d07-4c3a-9e16-7a2c40d8f193
 :END:
 
@@ -1462,6 +1495,8 @@ AGAIN says what pressing the same key again does."
 
 * The preview :decision:
 :PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-onboard.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-onboard.el :eval never :comments no :padline no :mkdirp yes
 :ID: 90c5b7d1-f26e-4a83-b4d9-5e18a07c3f62
 :END:
 
@@ -1613,6 +1648,8 @@ The backends compete only while the block holds them."
 
 * Writing :decision:
 :PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-onboard.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-onboard.el :eval never :comments no :padline no :mkdirp yes
 :ID: 3d7e19a4-b05c-4f62-8e31-c9a640d7f2e8
 :END:
 
@@ -1664,6 +1701,10 @@ Return nil when the file already said this.  Refuse rather than guess."
 #+end_src
 
 * Running it
+:PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-onboard.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-onboard.el :eval never :comments no :padline no :mkdirp yes
+:END:
 
 - =kittymacs-onboard--can-ask-p= stops it where nothing could draw the screens, with a message saying what to set by hand.
   + That means batch Emacs alone: =emacs -nw= itself refuses a dumb terminal before any Lisp runs.

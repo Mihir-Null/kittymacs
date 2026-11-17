@@ -5,7 +5,6 @@
 #+TITLE: Defaults: files, text, interface and windows
 #+FILETAGS: :core:
 #+STARTUP: overview
-#+PROPERTY: header-args:emacs-lisp :tangle ../lisp/kittymacs-defaults.el :eval never :comments no :padline no :mkdirp yes
 
 - Emacs's out-of-the-box defaults date from another era: backups litter your directories, prompts want the whole word "yes", tabs are eight columns wide and the bell rings.
   + This chapter sets the defaults most people set, and adds a few small helpers the leader menus use.
@@ -28,6 +27,10 @@
 | Server    | =emacsclient= opens files in this Emacs                              |
 
 * The kittymacs options
+:PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-defaults.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-defaults.el :eval never :comments no :padline no :mkdirp yes
+:END:
 
 - Every option this configuration defines is in the =kittymacs= group or a subgroup of it.
   + =M-x customize-group RET kittymacs= lists them all in one place.
@@ -48,6 +51,10 @@
 #+end_src
 
 * Where Emacs keeps its state
+:PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-defaults.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-defaults.el :eval never :comments no :padline no :mkdirp yes
+:END:
 
 - Everything Emacs writes on its own (backups, history, caches, saved customizations) lives under =var/=, which Git ignores.
   + [[id:40302e33-d2b2-4c0b-9bc3-1f9e121307e1][The startup chapter]] defines the directories; the copies here apply only when this module is loaded on its own.
@@ -73,6 +80,10 @@
 #+end_src
 
 * Responsiveness
+:PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-defaults.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-defaults.el :eval never :comments no :padline no :mkdirp yes
+:END:
 
 - Emacs runs Lisp and redraws on one thread, so anything slow here freezes typing.
 - Redisplay favours input:
@@ -98,6 +109,10 @@
 #+end_src
 
 * Files, saving and backups
+:PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-defaults.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-defaults.el :eval never :comments no :padline no :mkdirp yes
+:END:
 
 - Backups and auto-save files go under the cache, not beside your files.
   + Backups are numbered copies, the newest ten kept, files under version control included.
@@ -144,6 +159,10 @@
 #+end_src
 
 * Text and indentation
+:PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-defaults.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-defaults.el :eval never :comments no :padline no :mkdirp yes
+:END:
 
 - Spaces, not tabs, four columns wide; lines wrapped at eighty.
   + All three are /buffer-local/ options: each buffer can have its own value, and =setopt= sets the default new buffers start with.
@@ -170,6 +189,10 @@
 #+end_src
 
 * The interface
+:PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-defaults.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-defaults.el :eval never :comments no :padline no :mkdirp yes
+:END:
 
 - Prompts take =y= or =n=, always in the minibuffer: even a command started from the mouse never opens an operating-system dialog box.
 - No bell, no blinking cursor.
@@ -234,6 +257,10 @@
 #+end_src
 
 * Undo
+:PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-defaults.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-defaults.el :eval never :comments no :padline no :mkdirp yes
+:END:
 
 - Undo keeps about 16 MB per buffer, because every buffer's history is scanned on each garbage collection, and no longer groups several edits into one step, which made undoing feel unpredictable.
 - Meow's =u= undoes; =U= undoes only inside the selection.
@@ -247,6 +274,10 @@
 #+end_src
 
 * Windows inside a frame
+:PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-defaults.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-defaults.el :eval never :comments no :padline no :mkdirp yes
+:END:
 
 - [[id:f1d045c2-e2dc-4514-ab17-dd982ed6be00][The frames chapter]] makes new editing surfaces separate OS windows; inside one frame you still sometimes split.
 - =winner-mode= undoes window arrangements.
@@ -262,6 +293,10 @@
 #+end_src
 
 * Repeating a command with one key
+:PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-defaults.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-defaults.el :eval never :comments no :padline no :mkdirp yes
+:END:
 
 - =repeat-mode= lets a run of related commands take one key each after the first: =C-x o o o= walks the windows, and =C-x u u= undoes twice.
   + A command repeats this way when Emacs or its package gives it a /repeat map/: window and buffer commands, smerge's conflict commands and diff-review's review commands all have one.
@@ -279,6 +314,10 @@
 #+end_src
 
 * A scratch buffer that survives restarts
+:PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-defaults.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-defaults.el :eval never :comments no :padline no :mkdirp yes
+:END:
 
 - The =*scratch*= buffer is a notepad: killing it only buries it.
 - Its text is saved to the cache on exit and whenever Emacs has been idle for five minutes, then restored at the next start.
@@ -319,6 +358,10 @@
 #+end_src
 
 * The Emacs server
+:PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-defaults.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-defaults.el :eval never :comments no :padline no :mkdirp yes
+:END:
 
 - The server lets =emacsclient= open files in this instance from a shell or a file manager, which matters when frames are your windows.
 - It starts whenever Emacs has a display or runs as a daemon, unless a server is already running.
@@ -375,6 +418,10 @@ puts the socket without `XDG_RUNTIME_DIR'."
 #+end_src
 
 * Cycling through your own buffers
+:PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-defaults.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-defaults.el :eval never :comments no :padline no :mkdirp yes
+:END:
 
 - =SPC [= and =SPC ]= are Emacs's =previous-buffer= and =next-buffer=: they step through the buffers this window has shown.
 - Buffers whose names start with =*= or a space are Emacs's own (=*Messages*=, =*Help*=, the home page), not ones you opened.
@@ -389,6 +436,8 @@ puts the socket without `XDG_RUNTIME_DIR'."
 
 * Whether a buffer is remote
 :PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-defaults.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-defaults.el :eval never :comments no :padline no :mkdirp yes
 :ID: 8a8dfffa-09f1-454a-8888-cd2f08ccdf9b
 :END:
 
@@ -411,6 +460,10 @@ function as advice."
 #+end_src
 
 * Small helpers
+:PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-defaults.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-defaults.el :eval never :comments no :padline no :mkdirp yes
+:END:
 
 - Commands the leader menus use:
   + =kittymacs-new-buffer= :: an empty =untitled= buffer in the default major mode; with a prefix argument, in a new frame;

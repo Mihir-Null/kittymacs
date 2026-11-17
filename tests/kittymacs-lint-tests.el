@@ -461,7 +461,7 @@ has defined `kittymacs-after-init', so a call at its top level would fail.")
 (defconst kittymacs-lint-separable-modules
   '((kittymacs-org)
     (kittymacs-org-extras kittymacs-org)
-    (kittymacs-org-roam)
+    (kittymacs-org-node)
     (kittymacs-reading))
   "Each module and the others of this list it may lean on.
 `init.el' decides per feature whether each of them loads, so one must not

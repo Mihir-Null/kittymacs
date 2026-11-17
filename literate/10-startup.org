@@ -79,6 +79,7 @@
 
 * early-init.el: before the first frame
 :PROPERTIES:
+:KITTYMACS_GENERATE: ../early-init.el
 :header-args:emacs-lisp: :tangle ../early-init.el :eval never :comments no :padline no :mkdirp yes
 :END:
 
@@ -350,6 +351,7 @@ This also undoes `kittymacs-quickstart-remove'; see the startup chapter."
 
 * init.el: the load order
 :PROPERTIES:
+:KITTYMACS_GENERATE: ../init.el
 :header-args:emacs-lisp: :tangle ../init.el :eval never :comments no :padline no :mkdirp yes
 :END:
 
@@ -366,7 +368,7 @@ This also undoes `kittymacs-quickstart-remove'; see the startup chapter."
 - =kittymacs-features-resolve= runs straight after them, so everything later asks a settled question, and =kittymacs-features-install= right after that ([[id:5c1e7a94-8f30-4d26-b7a1-3e92d06f4c18][the features chapter]]).
 - =kittymacs-activate-packages= comes first, before anything can need a package ([[*The quickstart file]]).
 - The archive index is fetched only when a package has to be installed, by =kittymacs-ensure-package= ([[*A stale archive index]]); a start that installs nothing touches no network.
-- A chapter that is one feature and nothing else loads only when that feature is on: Treemacs, the dashboard, Org extras, Org-roam, reading, notebooks, agents and suggestions.
+- A chapter that is one feature and nothing else loads only when that feature is on: Treemacs, the dashboard, Org extras, Org Node, reading, notebooks, agents and suggestions.
   + Mixed chapters always load, and put a =when= around each optional package and its keys.
   + [[id:5c1e7a94-8f30-4d26-b7a1-3e92d06f4c18][The features chapter]] answers both.
 - A group under =SPC= that nothing bound a key in leaves the tree at the end of startup ([[id:e5942eb0-4389-447d-9317-d9178adcaaae][the leader]]).
@@ -552,11 +554,25 @@ Set before init.el loads to change them, because they are read during init.")
 (when (kittymacs-feature-p 'org-extras)
   (kittymacs-require-module 'kittymacs-org-extras))
 (when (kittymacs-feature-p 'linked-notes)
-  (kittymacs-require-module 'kittymacs-org-roam))
+  (kittymacs-require-module 'kittymacs-org-node))
 (when (kittymacs-feature-p 'pdf-reading)
   (kittymacs-require-module 'kittymacs-reading))
 (when (kittymacs-feature-p 'notebooks)
   (kittymacs-require-module 'kittymacs-notebooks))
+(when (kittymacs-feature-p 'org-babel)
+  (kittymacs-require-module 'kittymacs-org-babel))
+(when (kittymacs-feature-p 'task-dependencies)
+  (kittymacs-require-module 'kittymacs-org-tasks))
+(when (kittymacs-feature-p 'org-press)
+  (kittymacs-require-module 'kittymacs-org-workflows))
+(when (kittymacs-feature-p 'org-citations)
+  (kittymacs-require-module 'kittymacs-org-workflows))
+(when (kittymacs-feature-p 'org-transclusion)
+  (kittymacs-require-module 'kittymacs-org-workflows))
+(when (kittymacs-feature-p 'org-annotations)
+  (kittymacs-require-module 'kittymacs-org-workflows))
+(when (kittymacs-feature-p 'org-web-capture)
+  (kittymacs-require-module 'kittymacs-org-workflows))
 ;; One chapter holds every agent: at most one owns SPC a, and claude-code-ide
 ;; may run beside it.
 (when (kittymacs-feature-p 'agents)

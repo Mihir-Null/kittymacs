@@ -19,14 +19,13 @@
    + =literate/NN-name.org= is a chapter; the builder finds chapters by that pattern, so there is no list to register one in.
    + The number follows =init.el='s =require= order, so reading in number order meets each module before the modules that lean on it.
    + Pages without a number (=index.org=, this page) are prose only and tangle nothing.
-3. *One module per chapter.*
-   + A chapter writes one =lisp/kittymacs-NAME.el=, named after its subject.
-   + Two exceptions, each one subject: [[id:40302e33-d2b2-4c0b-9bc3-1f9e121307e1][startup]] writes =early-init.el= and =init.el=; [[id:d25a5063-1439-4ae0-8fbe-b0162d05a0e0][the Nix chapter]] writes =flake.nix= and =nix/=; each heading names its file.
+3. *One subject per chapter.*
+   + A chapter usually writes one =lisp/kittymacs-NAME.el=, named after its subject. A chapter that writes several files declares the relevant targets in its generation headings.
 4. *Membership is tags, not location.*
    + A page's kind is its =#+FILETAGS:=; a heading that belongs somewhere extra carries its own tags.
-   + Org-roam groups and filters by these tags alone; [[*Tags]] is the whole list.
+   + Linked notes group and filter by these tags; [[*Tags]] is the whole list.
 5. *Link every relation, with =id:= links.*
-   + Any heading another page points at gets an =:ID:=; so does every heading with its own tag, since Org-roam lists, and finds by tag, only headings with an ID.
+   + Any heading another page points at gets an =:ID:=. Give every tagged heading an ID so it appears in linked-note queries.
    + =id:= links survive renames and show as backlinks.
 6. *One home per fact.*
    + If two pages would say the same thing, one says it and the other links there.
@@ -52,7 +51,7 @@
 | =keys=      | kind    | Meow, the leader and the =SPC= tree                                     |
 | =interface= | kind    | frames, appearance, the dashboard, completion, help                     |
 | =apps=      | kind    | the terminal, shells, Dired, Treemacs, version control, navigation      |
-| =notes=     | kind    | Org and Org-roam                                                        |
+| =notes=     | kind    | Org and linked notes                                                   |
 | =code=      | kind    | programming and languages                                               |
 | =nix=       | kind    | the flake and its modules                                               |
 | =macos=     | system  | macOS                                                                   |
@@ -73,7 +72,7 @@
 :END:
 
 - Every chapter has the same shape, so you can skim by heading:
-  1. the header: =:ID:=, =#+TITLE:=, =#+FILETAGS:=, =#+STARTUP: overview=, and the =#+PROPERTY: header-args= line naming the file it writes;
+  1. the header: =:ID:=, =#+TITLE:=, =#+FILETAGS:= and =#+STARTUP: overview=;
   2. a few bullets: what the chapter gives you, what it leans on (linked), what it must not know;
   3. one heading per concern: the claim, its reasons as sub-bullets, then the code block that implements it;
   4. a =:meow:= heading for a package with its own buffers: the state they start in, and the =SPC m= menu;
@@ -96,10 +95,10 @@
 * Code
 
 - How blocks become files: [[id:9ea539a0-f1a3-4d05-aa10-6f2d2ff3e335][the maintenance chapter]].
-- The file-level =#+PROPERTY: header-args:emacs-lisp= line carries =:tangle=, =:eval never=, =:comments no=, =:padline no= and =:mkdirp yes=; a chapter writing several files moves =:tangle= into each heading's property drawer.
+- A generation subtree declares its allowed targets as space-separated paths in =:KITTYMACS_GENERATE:=. Its =:header-args:emacs-lisp:= (or language equivalent) sets =:tangle=, =:eval never=, =:comments no=, =:padline no= and =:mkdirp yes=.
 - =:padline no= everywhere: blocks join with no blank line between them, so a blank line belongs inside the block that wants it.
   + Babel drops a block's trailing blank line, so a block that should follow a blank line says =:padline yes= instead.
-- A block meant only to be read, such as an example of a call, says =:tangle no=; so does every block under *Check*.
+- Put examples and *Check* outside generation subtrees. Within a generation subtree, use =:tangle no= for an example. Use =:eval never-export= for examples run interactively whose saved results may be exported.
 - Each generated file has exactly one chapter writing it; the builder refuses a second.
 - The first block of a module carries its Elisp header (=;;; kittymacs-NAME.el --- …=, =Generated from literate/NN-name.org=); the last ends with =(provide 'kittymacs-NAME)=.
 
@@ -126,7 +125,7 @@
   + code outside the MSYS2 module, the catalogue and =init.el='s one gate neither names that feature or module nor looks for an MSYS2 directory, so the module stays separable: prose and a string in a message may mention it;
   + =kittymacs-agent-mcp-servers= defaults to nil, because a host chooses the servers;
   + every option =lisp/private.example.el= offers is a real =defcustom=;
-  + the Org, Org extras, Org-roam and reading modules do not use each other's names, packages or modules without asking first, so each one can be off while the others are on;
+  + the Org, Org extras, Org Node and reading modules do not use each other's names, packages or modules without asking first, so each one can be off while the others are on;
   + no module loads Org as it loads, through =require=, a =use-package= that does not wait, or a =setopt= on a name Customize's index ties to an Org library;
   + only the declarations of doom-themes and doom-modeline, and code behind =featurep= or =kittymacs-feature-p=, name anything of theirs;
   + every generated file's header names the chapter that tangles it;
@@ -139,11 +138,6 @@
 :ID: 216f169e-cc55-4ba9-af9b-169ad3b5cd6b
 :END:
 
-- The checkout is an Org-roam graph of its own: =.dir-locals.el= at the root sets =kittymacs-org-roam-project=.
-  + Its index is a SQLite database in the cache, outside the checkout; =var/=, =tests/=, =tools/=, =lisp/= and =.github/= are left out.
-  + Run =SPC n s= once, and again after pulling new or moved pages.
-- With the graph synced:
-  + =SPC n f= finds a page or heading; typing =#meow= or =#decision= narrows to that tag;
-  + =SPC n b= lists what links to this page;
-  + =SPC n i= inserts an =id:= link by title.
-- [[id:f48e8f01-88da-4e33-8398-c00ab346b8bb][The Org-roam chapter]] explains how a buffer's graph is chosen.
+- The checkout registers its notes with Org Node through =kittymacs-org-node-project= in =.dir-locals.el=.
+- Run =SPC n s= after pulling new or moved pages. =SPC n f= finds a page, =SPC n t= finds by tag, and =SPC n b= lists backlinks.
+- [[id:f48e8f01-88da-4e33-8398-c00ab346b8bb][The Org Node chapter]] explains how scopes are selected.

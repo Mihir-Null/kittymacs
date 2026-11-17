@@ -91,7 +91,7 @@ Types the configuration deliberately silences are left out."
           ;; default is 2); the late override must win.
           "(add-hook 'after-init-hook (lambda () (setopt corfu-scroll-margin 3 org-ellipsis \"!\")) 90)\n"))
 (with-temp-buffer
-  (insert "(setq kittymacs-org-roam-directory (expand-file-name \"test-roam/\" user-emacs-directory) kittymacs-org-roam-excluded-directories '(\"test-excluded\"))\n")
+  (insert "(setq kittymacs-org-node-directory (expand-file-name \"test-notes/\" user-emacs-directory) kittymacs-org-node-excluded-directories '(\"test-excluded\"))\n")
   (append-to-file (point-min) (point-max) (expand-file-name "lisp/private.el" user-emacs-directory)))
 ;; Host files read in name order, before private.el, which must win over them.
 (defvar kittymacs-host-directories
@@ -273,26 +273,15 @@ Types the configuration deliberately silences are left out."
                                "Loading ghostel and Consult did not turn on consult-ghostel-mode"))
           (error (kittymacs-verify-check nil (format "Loading ghostel failed: %S" err)))))
       (when (kittymacs-feature-p 'linked-notes)
-        (kittymacs-verify-check (equal kittymacs-org-roam-directory
-                                       (expand-file-name "test-roam/" user-emacs-directory))
+        (kittymacs-verify-check (equal kittymacs-org-node-directory
+                                       (expand-file-name "test-notes/" user-emacs-directory))
                                 "Personal graph private override was overwritten")
-        (kittymacs-verify-check (equal kittymacs-org-roam-excluded-directories '("test-excluded"))
+        (kittymacs-verify-check (equal kittymacs-org-node-excluded-directories '("test-excluded"))
                                 "Graph exclusion private override was overwritten")
-        (kittymacs-verify-check (equal org-roam-directory
-                                       (file-name-as-directory (file-truename kittymacs-org-roam-directory)))
-                                "Upstream root does not reflect personal graph override")
-        (kittymacs-verify-check (not (file-exists-p kittymacs-org-roam-directory))
-                                "Startup created the graph root")
-        ;; A SPC n command loads Org-roam itself, and Org with it.  This one stops
-        ;; at the root, which does not exist.
-        (condition-case nil (kittymacs--org-roam-scope) (user-error nil))
-        (kittymacs-verify-check (and (featurep 'org) (featurep 'org-roam)
-                                     (memq 'kittymacs--org-roam-restore hack-local-variables-hook))
-                                "A SPC n command did not load Org-roam")
-        (kittymacs-verify-check (not org-roam-db-autosync-mode) "Org-roam must not rebuild at startup")
-        (kittymacs-verify-check (= (hash-table-count org-roam-db--connection) 0) "Startup opened a graph database")
-        (kittymacs-verify-check (string-match-p "\\${tags" org-roam-node-display-template)
-                                "SPC n f does not show the notes' tags"))
+        (kittymacs-verify-check (not (file-exists-p kittymacs-org-node-directory))
+                                "Startup created the notes root")
+        (kittymacs-verify-check (not (featurep 'org-node))
+                                "Startup loaded the linked-notes backend"))
       (require 'org)
       (kittymacs-verify-check (and (eql org-tags-column 7) (equal org-ellipsis "!"))
                               "Org's loading overwrote a value from Customize or private.el")
