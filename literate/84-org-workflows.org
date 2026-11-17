@@ -29,6 +29,8 @@
 (require 'kittymacs-leader)
 (require 'compile)
 
+(declare-function org-attach "org-attach" ())
+
 (defvar org-cite-insert-processor)
 (defvar org-cite-follow-processor)
 (defvar org-cite-activate-processor)
@@ -72,7 +74,7 @@
   "Run project-local Org Press ACTION, optionally on TARGET."
   (let* ((root (or (kittymacs-org-press--root)
                    (user-error "Open a local project with an Org Press config")))
-         (default-directory root)
+         (default-directory (expand-file-name root))
          (cli (expand-file-name "node_modules/org-press/dist/bin/orgp.js"))
          (node (or (executable-find "node")
                    (user-error "Install Node.js in the project environment")))

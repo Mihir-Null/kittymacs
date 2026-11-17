@@ -59,6 +59,7 @@
 (defvar org-babel-tangle-lang-exts)
 (defvar org-structure-template-alist)
 (defvar ob-async-pre-execute-src-block-hook)
+(declare-function org-babel-tangle "ob-tangle" (&optional arg target-file lang-re))
 (declare-function org-babel-get-src-block-info "ob-core" (&optional no-eval datum))
 (declare-function org-babel-merge-params "ob-core" (&rest plists))
 (declare-function ob-async-org-babel-execute-src-block "ob-async"
