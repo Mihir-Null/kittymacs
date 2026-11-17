@@ -207,7 +207,7 @@ loads, in `private.el' or a host file."
         (use-package agent-shell
           :vc (:url "https://github.com/xenodium/agent-shell"
                :rev "14e8e2a2f2b495f83c9d7b18be7838e45d75bf56")
-          :commands (agent-shell agent-shell-toggle agent-shell-new-shell agent-shell-switch-buffer
+          :commands (agent-shell agent-shell-interrupt agent-shell-toggle agent-shell-new-shell agent-shell-switch-buffer
                      agent-shell-resume-session agent-shell-send-dwim agent-shell-send-file
                      agent-shell-help-menu)
           :init

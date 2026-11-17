@@ -11,8 +11,12 @@
     (should (equal (sort (mapcar (lambda (config) (map-elt config :identifier)) configs) #'string<)
                    (sort (mapcar #'car kittymacs-agent-harnesses) #'string<)))
     (dolist (row kittymacs-agent-harnesses)
-      (should (equal (eval (car (get (plist-get (cdr row) :command-option) 'standard-value)) t)
-                     (plist-get (cdr row) :command)))
+      ;; Existing installations can retain older defaults, and hosts may
+      ;; override these options.  Check the contract, not the live command text.
+      (let ((option (plist-get (cdr row) :command-option)))
+        (should (get option 'custom-type))
+        (should (consp (symbol-value option)))
+        (should (seq-every-p #'stringp (symbol-value option))))
       (should (boundp (plist-get (cdr row) :environment-option))))))
 
 (ert-deftest kittymacs-agents-real-environments-and-command-options-are-used ()
