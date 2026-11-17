@@ -269,13 +269,15 @@ In that list, =g= runs the query again and =v= changes it or its grouping.
 
 | Key | Action | Command |
 |-----+--------+---------|
-| SPC n f | Find node; type #tag to keep only that tag | kittymacs-org-roam-find |
-| SPC n t | Find node by tag, from the graph's tags | kittymacs-org-roam-find-by-tag |
-| SPC n T | Every tag with its notes | kittymacs-org-roam-tag-index |
-| SPC n i | Insert ID link | kittymacs-org-roam-insert |
-| SPC n c | Capture with destination | kittymacs-org-roam-capture |
-| SPC n b | Backlinks side panel | kittymacs-org-roam-backlinks |
-| SPC n s | Sync graph | kittymacs-org-roam-sync |
+| SPC n f | Find a note in scope | kittymacs-org-node-find |
+| SPC n t | Find node by tag, from the graph's tags | kittymacs-org-node-find-by-tag |
+| SPC n T | Every tag with its notes | kittymacs-org-node-tag-index |
+| SPC n i | Insert ID link | kittymacs-org-node-insert |
+| SPC n c | Capture with destination | kittymacs-org-node-capture |
+| SPC n F | Find across registered roots | kittymacs-org-node-find-all |
+| SPC n a | Audit graph | kittymacs-org-node-audit |
+| SPC n b | Backlinks side panel | kittymacs-org-node-backlinks |
+| SPC n s | Sync graph | kittymacs-org-node-sync |
 
 * Agents (Claude Code)
 

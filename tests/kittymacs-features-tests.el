@@ -594,7 +594,7 @@ A request installs the package it names."
     (let ((packages (kittymacs-features-packages)))
       (should (memq 'meow packages))
       (should (memq 'magit packages))
-      (dolist (package '(avy org-roam doom-themes nerd-icons exwm))
+      (dolist (package '(avy org-node doom-themes nerd-icons exwm))
         (should-not (memq package packages))))))
 
 (ert-deftest kittymacs-features-installer-leaves-git-packages-to-their-declarations ()

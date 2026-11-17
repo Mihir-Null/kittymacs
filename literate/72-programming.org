@@ -5,7 +5,6 @@
 #+TITLE: Programming
 #+FILETAGS: :code:
 #+STARTUP: overview
-#+PROPERTY: header-args:emacs-lisp :tangle ../lisp/kittymacs-programming.el :eval never :comments no :padline no :mkdirp yes
 
 - What every programming buffer gets, whatever the language: rainbow delimiters, self-closing pairs, structural editing that never unbalances a paren, Flymake in the fringe, compiling, and one =SPC m= menu.
 - Language parsers and language servers are in [[id:560fcdca-6cb8-49d9-bf27-eb78f32b9285][the languages chapter]]; the menu is a localleader from [[id:e5942eb0-4389-447d-9317-d9178adcaaae][the leader chapter]].
@@ -17,6 +16,10 @@
 - Read [[id:a1607a41-b741-428a-9de3-c16e7c8d3ecc][the editing chapter]] first: programming buffers use its selection grammar.
 
 * Delimiters and structure
+:PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-programming.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-programming.el :eval never :comments no :padline no :mkdirp yes
+:END:
 
 - =rainbow-delimiters= colours each nesting level.
 - =electric-pair-mode= inserts the closing bracket.
@@ -100,6 +103,8 @@ this chapter loads."
 
 * Indentation: guides everywhere, re-indenting only in Lisp :decision:
 :PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-programming.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-programming.el :eval never :comments no :padline no :mkdirp yes
 :ID: 2bbfeaaa-f982-4661-8e26-2c0aa1e92800
 :END:
 
@@ -140,6 +145,10 @@ The package cannot derive its faces without a display."
 #+end_src
 
 * Linting with Flymake
+:PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-programming.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-programming.el :eval never :comments no :padline no :mkdirp yes
+:END:
 
 - Flymake is built in and runs a checker for the current language when one is available:
   + Eglot provides one for any language server;
@@ -183,6 +192,10 @@ The package cannot derive its faces without a display."
 #+end_src
 
 * Compiling
+:PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-programming.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-programming.el :eval never :comments no :padline no :mkdirp yes
+:END:
 
 - =compile= runs a command and links errors to source lines.
 - A new compilation kills the old one, buffers save without asking, and the output scrolls to the first error.
@@ -201,6 +214,10 @@ The package cannot derive its faces without a display."
 #+end_src
 
 * Emacs Lisp
+:PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-programming.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-programming.el :eval never :comments no :padline no :mkdirp yes
+:END:
 
 - Documentation shows in the echo area at once (=eldoc-idle-delay= is 0).
 - Lisp buffers (Emacs Lisp, IELM, =*scratch*=) get:
@@ -224,6 +241,8 @@ The package cannot derive its faces without a display."
 
 * Meow in programming buffers :meow:
 :PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-programming.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-programming.el :eval never :comments no :padline no :mkdirp yes
 :ID: 2642875a-5c0b-4b38-bab8-b4d15b2713a1
 :END:
 

@@ -385,6 +385,8 @@ NAME afresh."
         (let ((directory (directory-file-name directory)))
           (rename-file directory (format "%s.broken-%s" directory stamp))))
       (message "Moved %d aside; restart Emacs to install them afresh" (length leftovers))))))
+(put 'kittymacs-org-node-project 'safe-local-variable #'booleanp)
+(put 'kittymacs-org-node-excluded-directories 'safe-local-variable #'list-of-strings-p)
 (put 'kittymacs-org-roam-project 'safe-local-variable #'booleanp)
 (put 'kittymacs-org-roam-excluded-directories 'safe-local-variable #'list-of-strings-p)
 

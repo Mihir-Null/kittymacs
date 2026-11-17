@@ -33,6 +33,10 @@ let
       (tool "project-environment" "direnv" direnv) # shells chapter: envrc, each project's own environment
       (tool "notebooks" "jupytext" (python3Packages.toPythonApplication python3Packages.jupytext)) # notebooks chapter: .ipynb files
       (tool "notebooks" "math-preview" math-preview) # notebooks chapter: LaTeX drawn with MathJax
+      (tool "org-press" "node" nodejs)
+      (tool "org-web-capture" "pandoc" pandoc)
+      (tool "org-web-capture" "wget" wget)
+      (tool "org-web-capture" "tar" gnutar)
       # notebooks chapter: prints the path of emacs-zmq's native module, built by nixpkgs
       (tool "jupyter" "kittymacs-zmq-module" (
         runCommand "kittymacs-zmq-module" { } ''

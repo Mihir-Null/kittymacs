@@ -4,8 +4,8 @@
 ;; (`just tangle' and `just tangle-check' do exactly this.)
 ;;
 ;; The chapters are the files in literate/ whose names start with two digits
-;; and a dash (10-startup.org); the outputs are whatever their :tangle headers
-;; name.  There is no list to keep in step: adding a chapter file is enough.
+;; and a dash (10-startup.org).  A subtree declares its outputs explicitly,
+;; and :tangle headers select among those targets.
 ;; Two kinds of output exist: Emacs Lisp (the startup files and lisp/) and
 ;; Nix (flake.nix and nix/).  See literate/80-maintenance.org.
 (require 'cl-lib)
@@ -45,16 +45,30 @@ the flake packages, directly to nix/."
              ((string-match-p "\\`nix/[[:alnum:]_.-]+\\.sh\\'" output)
               "sh"))))
 
+(defun kittymacs-tangle--declared-targets ()
+  "Return the nearest generation subtree's targets, or nil."
+  (save-excursion
+    (when (ignore-errors (org-back-to-heading t) t)
+      (let ((targets (org-entry-get nil "KITTYMACS_GENERATE")))
+        (while (and (not targets) (org-up-heading-safe))
+          (setq targets (org-entry-get nil "KITTYMACS_GENERATE")))
+        (and targets (split-string targets))))))
+
+(defun kittymacs-tangle--reject-evaluation (&rest _)
+  "Stop Babel before it can evaluate a block during generation."
+  (error "Babel evaluation is disabled in the Kittymacs build"))
+
 (defun kittymacs-tangle--outputs (file)
   "Return the outputs chapter FILE tangles to, relative to the root.
 Every tangled block must name a target with `../' in front of an allowed
 output, since chapters live one level down in literate/, and be written in
-that output's language."
+that output's language.  A generation subtree must declare the target."
   (let (outputs)
     (with-current-buffer (find-file-noselect file)
       (org-babel-map-src-blocks nil
         (let* ((info (org-babel-get-src-block-info 'light))
-               (target (cdr (assq :tangle (nth 2 info))))
+               (params (nth 2 info))
+               (target (cdr (assq :tangle params)))
                (output (and (stringp target)
                             (string-prefix-p "../" target)
                             (substring target 3))))
@@ -63,6 +77,14 @@ that output's language."
                          (equal (car info) (kittymacs-tangle--output-language output)))
               (error "Tangle target outside the generated configuration in %s: %S"
                      (file-name-nondirectory file) target))
+            (unless (member target (kittymacs-tangle--declared-targets))
+              (error "Tangle target has no KITTYMACS_GENERATE declaration in %s:%d: %s"
+                     (file-name-nondirectory file) (line-number-at-pos) target))
+            (when (or (assq :var params)
+                      (and (org-babel-noweb-p params :tangle)
+                           (string-match-p "<<[^>\n]+([^>\n]*)>>" (cadr info))))
+              (error "Evaluation-bearing tangle header or reference in %s:%d"
+                     (file-name-nondirectory file) (line-number-at-pos)))
             (cl-pushnew output outputs :test #'equal)))))
     outputs))
 
@@ -138,7 +160,9 @@ No personal startup, package installation, or source-block evaluation is run."
          (enable-local-variables nil)
          (enable-local-eval nil)
          (org-babel-pre-tangle-hook nil)
+         (org-babel-tangle-body-hook nil)
          (org-babel-post-tangle-hook nil)
+         (org-babel-tangle-finished-hook nil)
          outputs changed)
     (unwind-protect
         (progn
@@ -155,8 +179,20 @@ No personal startup, package installation, or source-block evaluation is run."
           (when-let* ((orphans (kittymacs-tangle--orphans root outputs)))
             (error "No chapter generates %s; delete it or restore its chapter"
                    (mapconcat #'identity orphans ", ")))
-          (dolist (source sources)
-            (org-babel-tangle-file (expand-file-name (concat "literate/" source) stage)))
+          (let ((read-header (symbol-function 'org-babel-read)))
+            (cl-letf (((symbol-function 'org-babel-execute-src-block)
+                       #'kittymacs-tangle--reject-evaluation)
+                      ;; Org can evaluate Lisp in a header while reading it,
+                      ;; before a call to org-babel-execute-src-block.
+                      ((symbol-function 'org-babel-read)
+                       (lambda (value &optional no-eval)
+                         (when (and (not no-eval) (stringp value)
+                                    (or (memq (string-to-char value) '(?\( ?' ?\` ?\[))
+                                        (equal value "*this*")))
+                           (kittymacs-tangle--reject-evaluation))
+                         (funcall read-header value no-eval))))
+              (dolist (source sources)
+                (org-babel-tangle-file (expand-file-name (concat "literate/" source) stage)))))
           (when-let* ((features (kittymacs-tangle--write-features stage)))
             (setq outputs (sort (cons features outputs) #'string<)))
           ;; Validate every result before touching any deployed file.

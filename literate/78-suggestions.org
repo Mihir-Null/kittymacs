@@ -5,7 +5,6 @@
 #+TITLE: Suggestions: Copilot's ghost text and next edits
 #+FILETAGS: :code:
 #+STARTUP: overview
-#+PROPERTY: header-args:emacs-lisp :tangle ../lisp/kittymacs-suggestions.el :eval never :comments no :padline no :mkdirp yes
 
 - A model that suggests code as you type, in grey after the cursor, and the next edit you will probably make, anywhere in the file; =TAB= takes either.
 - Off until you turn it on: =SPC t a= in one buffer, or =kittymacs-suggestions= for every programming buffer ([[*Off until you turn it on]]).
@@ -14,6 +13,12 @@
 - The conversation with an agent is [[id:94d55283-5011-4f98-a7f0-8c6bcb51aab9][the agents chapter]]; this one never opens a chat.
 - This chapter is the =suggestions= feature: [[id:40302e33-d2b2-4c0b-9bc3-1f9e121307e1][=init.el=]] loads it only when that is on.
 - Read [[*Three kinds of help]] first.
+
+* Module preamble
+:PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-suggestions.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-suggestions.el :eval never :comments no :padline no :mkdirp yes
+:END:
 
 #+begin_src emacs-lisp
 ;;; kittymacs-suggestions.el --- Copilot's ghost text and next edits -*- lexical-binding: t; -*-
@@ -55,6 +60,8 @@
 
 * Off until you turn it on :decision:
 :PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-suggestions.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-suggestions.el :eval never :comments no :padline no :mkdirp yes
 :ID: 99006880-bab0-4757-bc07-1ceff2abd921
 :END:
 
@@ -87,6 +94,8 @@ A buffer whose file name matches one is never sent to GitHub."
 
 * copilot.el and its server :decision:
 :PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-suggestions.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-suggestions.el :eval never :comments no :padline no :mkdirp yes
 :ID: 4fce3be1-6aba-43c7-ac39-431526c56ce6
 :END:
 
@@ -124,6 +133,8 @@ A buffer whose file name matches one is never sent to GitHub."
 
 * Turning suggestions on
 :PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-suggestions.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-suggestions.el :eval never :comments no :padline no :mkdirp yes
 :ID: 87843d58-c4bb-4931-9db3-d1a04d500c7a
 :END:
 
@@ -192,6 +203,8 @@ excluded file is never sent."
 
 * Meow decides when you are typing :meow:
 :PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-suggestions.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-suggestions.el :eval never :comments no :padline no :mkdirp yes
 :ID: 7a95b623-226a-4f31-a97b-2fd2cb8d183c
 :END:
 
@@ -223,6 +236,8 @@ A member of `copilot-enable-predicates'."
 
 * Corfu's popup goes first :decision:
 :PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-suggestions.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-suggestions.el :eval never :comments no :padline no :mkdirp yes
 :ID: 3d1c8a7e-5b0f-4a2e-9c61-8f2b7e4d9a15
 :END:
 

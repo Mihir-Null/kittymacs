@@ -5,7 +5,6 @@
 #+TITLE: Platform: paths, shells, spelling, macOS and Android
 #+FILETAGS: :core:
 #+STARTUP: overview
-#+PROPERTY: header-args:emacs-lisp :tangle ../lisp/kittymacs-platform.el :eval never :comments no :padline no :mkdirp yes
 
 - Answers one question for every later chapter: /where does this machine keep things, and what is it allowed to assume?/
   + Emacs core supplies process creation and shell variables; this module discovers paths, picks the system shell, finds the spell checker and applies the macOS and Android policy.
@@ -16,6 +15,10 @@
 - PowerShell stays the ordinary Windows shell, and Linux programs come from a backend ([[id:3c9e7a52-1d84-4f6b-a0c3-8e5d27b1f96a][a WSL distribution]]), so Windows needs no Unix layer of its own.
 
 * Where your files live
+:PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-platform.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-platform.el :eval never :comments no :padline no :mkdirp yes
+:END:
 
 - The options below are in the =kittymacs-platform= group, so =M-x customize-group= finds them; =private.el= can override any of them.
 - Native Windows Emacs may define =HOME= as =AppData/Roaming=; =USERPROFILE= is a better default for your projects and documents.
@@ -70,6 +73,8 @@ USERPROFILE for user-owned projects and documents."
 
 * Termux on Android :android:
 :PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-platform.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-platform.el :eval never :comments no :padline no :mkdirp yes
 :ID: ca1bff94-4ca3-40b4-8cda-6a290e7889a5
 :END:
 
@@ -111,6 +116,10 @@ denies access and every lookup below quietly returns nil."
 #+end_src
 
 * Finding programs
+:PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-platform.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-platform.el :eval never :comments no :padline no :mkdirp yes
+:END:
 
 - =kittymacs--first-executable= tries candidates in order on =exec-path=, so the same configuration uses whichever suitable program a machine has installed.
 
@@ -122,6 +131,8 @@ denies access and every lookup below quietly returns nil."
 
 * The policy applied after private.el :decision:
 :PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-platform.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-platform.el :eval never :comments no :padline no :mkdirp yes
 :ID: af9044c2-44a8-4795-9f1b-2c0d83d66d76
 :END:
 
@@ -202,6 +213,8 @@ Git for Windows ships `diff', `diff3' and `patch' beside its own `git'."
 
 * macOS :macos:
 :PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-platform.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-platform.el :eval never :comments no :padline no :mkdirp yes
 :ID: 1b791960-ef80-43bb-bbf0-876018f0a2f5
 :END:
 
@@ -335,6 +348,8 @@ itself, `trash-command' for the `trash' tool, or `directory' for ~/.Trash."
 
 * Android :android:
 :PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-platform.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-platform.el :eval never :comments no :padline no :mkdirp yes
 :ID: 6c4986fa-e9ba-4857-bc91-8f59a906d57e
 :END:
 
@@ -438,6 +453,10 @@ to nil to leave the input method alone."
 #+end_src
 
 * Revealing a file in the file manager
+:PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-platform.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-platform.el :eval never :comments no :padline no :mkdirp yes
+:END:
 
 - One command for every platform, =kittymacs-reveal-in-file-manager=:
 
@@ -483,6 +502,10 @@ current directory."
 #+end_src
 
 * Spell checking
+:PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-platform.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-platform.el :eval never :comments no :padline no :mkdirp yes
+:END:
 
 - Which spell checker exists is a property of the machine, so the search happens here: =hunspell= or =aspell= on =exec-path=, on every system.
   + Nothing is enabled when none is installed.

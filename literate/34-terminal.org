@@ -5,7 +5,6 @@
 #+TITLE: The terminal: ghostel
 #+FILETAGS: :apps:
 #+STARTUP: overview
-#+PROPERTY: header-args:emacs-lisp :tangle ../lisp/kittymacs-terminal.el :eval never :comments no :padline no :mkdirp yes
 
 - =SPC o e= opens a real terminal inside Emacs: programs cannot tell it from a terminal window, so =htop=, =vim=, =less=, =lazygit=, a TUI coding agent, or a test runner that draws progress bars and asks =y/n= all behave.
   + It knows where it is: =cd= moves Emacs's directory with it.
@@ -18,6 +17,8 @@
 
 * Where the native module lives :decision:
 :PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-terminal.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-terminal.el :eval never :comments no :padline no :mkdirp yes
 :ID: 7fb4e31f-ca2c-4bc1-94f0-c0e3e94ac76e
 :END:
 
@@ -140,6 +141,8 @@ module is ready now, nil while it compiles."
 
 * No terminal on Android :android:decision:
 :PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-terminal.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-terminal.el :eval never :comments no :padline no :mkdirp yes
 :ID: 00029072-b3ab-471e-990e-f7a7735dc960
 :END:
 
@@ -163,6 +166,10 @@ commonly built without the dynamic module support ghostel needs.
 #+end_src
 
 * How the terminal behaves
+:PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-terminal.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-terminal.el :eval never :comments no :padline no :mkdirp yes
+:END:
 
 - When the shell exits, its buffer closes; killing a terminal asks first if a command is still running.
 - Five megabytes of scrollback, searchable with =consult-line= and =isearch= like any buffer.
@@ -240,6 +247,8 @@ commonly built without the dynamic module support ghostel needs.
 
 * Meow in the terminal :meow:
 :PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-terminal.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-terminal.el :eval never :comments no :padline no :mkdirp yes
 :ID: d3a778cf-de0a-479b-99a8-09eb5a156ca2
 :END:
 
@@ -275,6 +284,8 @@ The buffer becomes read-only, so Meow's grammar can select its output."
 
 * Where the escape key goes :decision:
 :PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-terminal.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-terminal.el :eval never :comments no :padline no :mkdirp yes
 :ID: e504b158-aa89-494a-9f26-6f1235531f25
 :END:
 
@@ -345,6 +356,10 @@ The buffer becomes read-only, so Meow's grammar can select its output."
 #+end_src
 
 * Opening a terminal
+:PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-terminal.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-terminal.el :eval never :comments no :padline no :mkdirp yes
+:END:
 
 - =SPC o e= and =SPC o p= are thin wrappers over =ghostel= and =ghostel-project=, for two reasons:
   1. The native module is downloaded on first use; a user who declines would otherwise meet =Symbol's function definition is void: ghostel--new= instead of a sentence saying what is missing and which command installs it.
@@ -414,6 +429,10 @@ is not used at all, Eshell answers this key instead."
 #+end_src
 
 * Projects and Consult
+:PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-terminal.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-terminal.el :eval never :comments no :padline no :mkdirp yes
+:END:
 
 - =ghostel-project= opens a terminal at the project root, named after the project, so =SPC o p= in any file lands where builds are run.
   + It joins the switch-project menu (=C-x p p=) on =t=.
@@ -445,6 +464,10 @@ is not used at all, Eshell answers this key instead."
 #+end_src
 
 * Eshell and M-x shell
+:PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-terminal.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-terminal.el :eval never :comments no :padline no :mkdirp yes
+:END:
 
 - [[id:d2e0bc37-0bd4-4b28-a8ee-04f94ac451f8][Eshell]] is a Lisp shell and cannot draw a full-screen program, so it hands those to a real terminal:
   + the commands in =eshell-visual-commands= (=htop=, =less=, =vim=, =git log=) open in a ghostel buffer;
@@ -472,6 +495,10 @@ is not used at all, Eshell answers this key instead."
 #+end_src
 
 * Compiling in a terminal
+:PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-terminal.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-terminal.el :eval never :comments no :padline no :mkdirp yes
+:END:
 
 - =ghostel-compile= runs a build in a real terminal, then presents it as a =compilation-mode= report.
   + While it runs: coloured output and progress bars, and =C-c C-j= when the command wants an answer.
@@ -507,6 +534,10 @@ is not used at all, Eshell answers this key instead."
 - A terminal is a buffer you work in, so [[id:f1d045c2-e2dc-4514-ab17-dd982ed6be00][frames-only mode]] gives it its own OS window: =SPC o e= from a second project puts its terminal beside that project's code, not on top of it.
 
 * The terminal's mode menu
+:PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-terminal.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-terminal.el :eval never :comments no :padline no :mkdirp yes
+:END:
 
 - Every entry but =c=, =b=, =ESC= and =M= is also on a =C-c= key that works while you type, the keys ghostel's manual documents; these are the labelled versions.
 - The keys it shares with [[id:d2e0bc37-0bd4-4b28-a8ee-04f94ac451f8][Eshell]]'s menu mean the same in both: =c= clears, =h= searches history, =p= and =n= move to the previous and next prompt.

@@ -19,7 +19,7 @@
 
 (defconst kittymacs-check-chapter-modules
   '(kittymacs-treemacs kittymacs-msys2 kittymacs-remote-rpc kittymacs-dashboard
-    kittymacs-org-extras kittymacs-org-roam kittymacs-reading kittymacs-notebooks
+    kittymacs-org-extras kittymacs-org-node kittymacs-reading kittymacs-notebooks
     kittymacs-agents kittymacs-suggestions kittymacs-smooth-scroll
     kittymacs-hover-docs kittymacs-which-key-frame
     kittymacs-meow-state-cursor)

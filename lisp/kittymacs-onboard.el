@@ -58,7 +58,7 @@
      :type directory :label "Where your projects live")
     (kittymacs-org-directory
      :type directory :label "Where your Org files live")
-    (kittymacs-org-roam-directory
+    (kittymacs-org-node-directory
      :type directory :feature linked-notes :label "Where your linked notes live")
     (kittymacs-font-family
      :type string :label "The font for code")

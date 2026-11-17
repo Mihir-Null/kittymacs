@@ -5,7 +5,6 @@
 #+TITLE: Getting around: projects, recent files and search
 #+FILETAGS: :apps:
 #+STARTUP: overview
-#+PROPERTY: header-args:emacs-lisp :tangle ../lisp/kittymacs-navigation.el :eval never :comments no :padline no :mkdirp yes
 
 - Getting around files and projects:
   + Emacs remembers where you were in every file and which files you opened recently (=SPC f r=);
@@ -18,6 +17,10 @@
 - Those two are the =jump= and =visual-replace= features, each behind a =when= with its keys.
 
 * Remembering places and files
+:PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-navigation.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-navigation.el :eval never :comments no :padline no :mkdirp yes
+:END:
 
 - =save-place-mode= reopens every file where you left it, and keeps the place of a file it cannot read right now.
 - =recentf= keeps the last 500 files, for =SPC f r= and the home page.
@@ -67,6 +70,10 @@
 #+end_src
 
 * Jump to anything on screen
+:PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-navigation.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-navigation.el :eval never :comments no :padline no :mkdirp yes
+:END:
 
 - Avy overlays a letter on every match of what you type; press the letter and point is there.
 - It works across every window of the frame; a pause of 0.4 s ends the input.
@@ -101,6 +108,10 @@
 #+end_src
 
 * Projects
+:PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-navigation.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-navigation.el :eval never :comments no :padline no :mkdirp yes
+:END:
 
 - =project.el= is Emacs's project layer; the project list is saved under the cache.
 - Switching to a project asks what to do there: find a file, a regexp or a directory, VC-Dir, or Magit on =G=.
@@ -141,6 +152,10 @@
 #+end_src
 
 * Searching files
+:PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-navigation.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-navigation.el :eval never :comments no :padline no :mkdirp yes
+:END:
 
 - Consult's ripgrep (=SPC s d=) is the everyday search; =embark-export= turns its results into a buffer you can keep and revisit.
 - =visual-regexp= (=SPC s r=) shows replacements live before you commit to them.
@@ -157,6 +172,8 @@
 
 * Workspaces are frames, not tab sets :decision:
 :PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-navigation.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-navigation.el :eval never :comments no :padline no :mkdirp yes
 :ID: 826962f8-d451-4444-8e0e-d0f0024da8b6
 :END:
 

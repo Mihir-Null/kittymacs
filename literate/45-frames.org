@@ -5,7 +5,6 @@
 #+TITLE: Frames
 #+FILETAGS: :interface:
 #+STARTUP: overview
-#+PROPERTY: header-args:emacs-lisp :tangle ../lisp/kittymacs-frames.el :eval never :comments no :padline no :mkdirp yes
 
 - Let the desktop window manager arrange Emacs: every auxiliary buffer becomes its own OS window.
   + An Emacs /frame/ is an OS window; an Emacs /window/ is a pane inside that frame.
@@ -14,6 +13,8 @@
 
 * Keep ordinary editor frames native :decision:
 :PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-frames.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-frames.el :eval never :comments no :padline no :mkdirp yes
 :ID: bc01b915-d2bc-4f78-a215-ecadad49e480
 :END:
 
@@ -33,6 +34,8 @@
 
 * Android has no window manager to delegate to :android:
 :PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-frames.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-frames.el :eval never :comments no :padline no :mkdirp yes
 :ID: 6a2f5543-eb1c-4a68-bae9-d46b85a37bde
 :END:
 
@@ -73,6 +76,10 @@ before this module is loaded, to override."
   + They can delete terminal frames and unbind Magit variables when the mode is disabled after Magit loaded lazily.
 
 * Auxiliary buffers get frames; completion panels stay
+:PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-frames.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-frames.el :eval never :comments no :padline no :mkdirp yes
+:END:
 
 - The package uses =pop-up-frames= only on graphical displays.
 - Its defaults put Org agenda and source editing in frames and clean up temporary frames when quitting their buffers.
@@ -128,6 +135,8 @@ before this module is loaded, to override."
 
 * Diagnostics are not editing surfaces :decision:
 :PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-frames.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-frames.el :eval never :comments no :padline no :mkdirp yes
 :ID: c8c9c239-55c8-456d-8761-0e8cd9e6c1cd
 :END:
 

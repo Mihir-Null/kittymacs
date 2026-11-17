@@ -5,7 +5,6 @@
 #+TITLE: Agents: a coding agent in a buffer
 #+FILETAGS: :apps:
 #+STARTUP: overview
-#+PROPERTY: header-args:emacs-lisp :tangle ../lisp/kittymacs-agents.el :eval never :comments no :padline no :mkdirp yes
 
 - A coding agent you talk to in Emacs: =SPC a a= opens one in the current project, and a change it wants to make waits for your answer.
 - Three packages can be that agent, and one is on at a time, so =SPC a= always means the one you chose.
@@ -19,6 +18,12 @@
 - [[id:40302e33-d2b2-4c0b-9bc3-1f9e121307e1][=init.el=]] loads this chapter when any of the three, or =claude-code-ide=, is on, and each section below runs only for its own.
 - Code outside kittymacs builds on a few names here: [[*What an integration may rely on]].
 - Read [[*How agent-shell talks to Claude]] first.
+
+* Module preamble
+:PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-agents.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-agents.el :eval never :comments no :padline no :mkdirp yes
+:END:
 
 #+begin_src emacs-lisp
 ;;; kittymacs-agents.el --- A coding agent in a buffer -*- lexical-binding: t; -*-
@@ -100,6 +105,8 @@
 
 * Claude Code, through your subscription :decision:
 :PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-agents.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-agents.el :eval never :comments no :padline no :mkdirp yes
 :ID: e021fb07-ea2e-4dcd-b312-cabe45da9869
 :END:
 
@@ -199,6 +206,8 @@ loads, in `private.el' or a host file."
 
 * MCP servers: none until you declare them
 :PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-agents.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-agents.el :eval never :comments no :padline no :mkdirp yes
 :ID: b9a2367d-e31a-4a30-a5e8-3ad200e4e40b
 :END:
 
@@ -242,6 +251,8 @@ before this module loads, in `private.el' or a host file."
 
 * Knowing when a shell waits for you
 :PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-agents.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-agents.el :eval never :comments no :padline no :mkdirp yes
 :ID: 56789f7f-90bb-4c3b-947c-16ecb6d72365
 :END:
 
@@ -323,6 +334,8 @@ The value of `agent-shell-attention-notify-function'."
 
 * Meow in the agent's buffers :meow:
 :PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-agents.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-agents.el :eval never :comments no :padline no :mkdirp yes
 :ID: 51ae9070-0971-48c1-9625-283891d48d73
 :END:
 
@@ -365,6 +378,8 @@ The value of `agent-shell-attention-notify-function'."
 
 * claude-code-ide: Claude Code's own screen
 :PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-agents.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-agents.el :eval never :comments no :padline no :mkdirp yes
 :ID: 9fccd657-dc0b-4ad1-99a2-d7615024f438
 :END:
 
@@ -445,6 +460,8 @@ w, d and j are left free for an integration's own commands.")
 
 * gptel-agent: an agent written in Emacs Lisp
 :PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-agents.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-agents.el :eval never :comments no :padline no :mkdirp yes
 :ID: 99f6054d-a275-4def-bb12-98d09ce66070
 :END:
 

@@ -5,7 +5,6 @@
 #+TITLE: Hover documentation
 #+FILETAGS: :code:
 #+STARTUP: overview
-#+PROPERTY: header-args:emacs-lisp :tangle ../lisp/kittymacs-hover-docs.el :eval never :comments no :padline no :mkdirp yes
 
 - A language server's documentation over the text: the =hover-docs= feature, which [[id:3f8a6c02-9d14-4b7e-a2c5-1e7d90b64f31][the catalogue]] puts in the =full= profile, and =minimal= leaves out.
   + The owner chose it for =full= after trying it on its own.
@@ -19,6 +18,8 @@
 
 * Where the frame appears
 :PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-hover-docs.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-hover-docs.el :eval never :comments no :padline no :mkdirp yes
 :ID: c2f8a6d4-71e3-49b0-a5d6-0e94b3c17f28
 :END:
 
@@ -82,6 +83,10 @@
 - The request for that text is Eglot's, and it is the same with this feature off: =jsonrpc= sends it asynchronously, and a dead connection means no answer, so no frame.
 
 * The key
+:PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-hover-docs.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-hover-docs.el :eval never :comments no :padline no :mkdirp yes
+:END:
 
 - =SPC t e= is =kittymacs-hover-docs-mode=, which holds the hook and goes through the buffers Eglot manages already.
   + It starts on, because selecting the feature asked for it.

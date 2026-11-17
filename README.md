@@ -54,8 +54,10 @@ A new installation starts small: Meow, Vertico, Orderless, Marginalia, Consult, 
 - **Version control:** Magit with Meow-friendly Motion state and a `SPC m` menu, VC, diff-hl in the gutter; Forge for pull requests, magit-todos, git-link and orgit, difftastic's diffs by syntax, and diff-review for reviewing a branch, a worktree's uncommitted changes or a fetched pull request (`SPC v u`) locally, or a branch on another machine over TRAMP.
 - **A real terminal:** [ghostel](https://github.com/dakra/ghostel) (libghostty), with Meow inside it; Eshell alongside.
 - **Remote machines:** Tramp with named backends (`SPC o b`), and guards so that a dead connection cannot stall a start or an idle Emacs.
-- **Notes:** Org with an agenda, Org QL queries by tag and TODO state, and Org-roam graphs scoped per project.
+- **Notes:** Org with an agenda, Org QL queries by tag and TODO state, and Org Node views scoped per project.
 - **Reading papers:** pdf-tools renders PDFs inside Emacs; org-noter keeps a notes file beside each one, in step with the page; `pdf:` links point at a page or a highlight.
+- **Project tasks:** Edna prerequisites, project and agenda task views, and an optional single-file Kanban board. See [project tasks](literate/83-org-tasks.org).
+- **Executable documents:** Org Babel languages, optional kernels and diagrams, plus project-local Org Press publishing. See [Babel](literate/82-org-babel.org) and [research and publishing](literate/84-org-workflows.org).
 - **Notebooks:** Jupyter notebooks edited as [Jupytext](https://jupytext.readthedocs.io) scripts: `# %%` cells you run with `C-c C-c`, an optional Jupyter kernel, LaTeX in Markdown cells drawn in place, and each project's own environment through direnv.
 - **A coding agent:** Claude Code in an Emacs buffer through [agent-shell](https://github.com/xenodium/agent-shell), under `SPC a`; every edit it proposes waits for your answer. Optionally, Claude Code's own screen through claude-code-ide beside it, its sessions under `SPC a w`.
 - **Suggestions as you type:** GitHub Copilot's grey ghost text and next-edit suggestions through [copilot.el](https://github.com/copilot-emacs/copilot.el), off until you turn them on (`SPC t a`, or `kittymacs-suggestions`).
@@ -83,7 +85,6 @@ A new installation starts small: Meow, Vertico, Orderless, Marginalia, Consult, 
 | [Symbols Nerd Font Mono](https://www.nerdfonts.com/) | icons | icons are hidden |
 | Google Sans Code | the preferred editing font | the platform's default font |
 | Google Sans Flex | prose in Org | the platform's sans |
-| SQLite support in Emacs (built in on most builds) | Org-roam's index | Org-roam stays off |
 | A C compiler | Tree-sitter grammars | classic major modes are used |
 | Language servers (pyright, nil, clangd, …) | Eglot | no language server features |
 
@@ -258,7 +259,7 @@ To start straight away instead:
 4. Optional, when you want them:
    - With the `terminal` feature, `SPC o e` opens a terminal; the first time, it offers to download ghostel's small native module.
    - Opening a file whose Tree-sitter grammar is missing asks to build it; `M-x kittymacs-treesit-install-grammars` builds the usual ones in one go (both need Git and a C compiler).
-   - With the `linked-notes` feature, `SPC n s` indexes your Org-roam notes, once per graph.
+   - With the `linked-notes` feature, `SPC n s` refreshes the shared Org Node index. Use `SPC n a` to audit roots and links.
 
 **A machine from before `minimal` became the default keeps what it has.** It stays on `full`, and each start warns and names `SPC C o`, until it chooses a profile. Setting `kittymacs-profile` to either value ends the warning.
 
@@ -302,7 +303,7 @@ In Normal state, Meow selects first and acts second: `w` selects a word, `x` a l
 | `kittymacs-theme`, `kittymacs-light-theme` | the dark theme, and the one `SPC t t` toggles to; a `doom-` theme needs the `doom-look` feature, and Modus stands in without it |
 | `kittymacs-font-family`, `kittymacs-font-size`, `kittymacs-prose-font-family`, `kittymacs-nerd-font`, `kittymacs-icons` | fonts and icons |
 | `kittymacs-org-prose` | whether Org sets prose in the proportional font (`SPC t P` per buffer) |
-| `kittymacs-org-directory`, `kittymacs-org-roam-directory`, `kittymacs-project-directory` | where notes and projects live |
+| `kittymacs-org-directory`, `kittymacs-org-node-directory`, `kittymacs-project-directory` | where notes and projects live |
 | `kittymacs-profile`, `kittymacs-features`, `kittymacs-features-excluded` | where this machine starts (`minimal`, the default on a new machine, or `full`), and which features of [the catalogue](literate/20-catalogue.org) to add or leave out; the next start installs what they need |
 | `kittymacs-structural-editing-modes` | the modes where Puni keeps brackets balanced |
 | `kittymacs-eglot-auto-start-modes`, `kittymacs-language-packages` | language servers started automatically; extra language packages (`nix`, `racket`, `guile`) |
@@ -361,7 +362,7 @@ Then, inside Emacs, `M-x package-upgrade-all` upgrades the installed packages; r
 - *Emacs offers to build `epdfinfo` although Nix installed it:* Emacs cannot see the Nix profile. `M-: (executable-find "epdfinfo")` should name a path in `/nix/store`; if it is nil, decline the build and check `M-: exec-path` for `~/.nix-profile/bin` (or `/etc/profiles/per-user/<you>/bin` on NixOS). On macOS the shells chapter puts the profiles back after importing the login shell's `PATH`, so restart Emacs after updating.
 - *`SPC a a` fails to start:* `claude-agent-acp` must be on the path Emacs sees (`M-: (executable-find "claude-agent-acp")`), and `claude` must be logged in once in a terminal (`/login`).
 - *`SPC t a` says suggestions need the server:* `copilot-language-server` must be on the path Emacs sees (`M-: (executable-find "copilot-language-server")`), or installed by `M-x copilot-install-server`. Then `M-x copilot-login` once; `M-x copilot-diagnose` reports the server and the account.
-- *Org-roam does nothing:* your Emacs needs SQLite (`M-: (sqlite-available-p)`), and each graph needs one `SPC n s`.
+- *Linked notes missing:* visit an opted-in project or register it in `kittymacs-org-node-projects`, then use `SPC n s` to refresh.
 
 **Platform problems.**
 
@@ -403,7 +404,7 @@ The loop:
 | Recipe | Needs | Checks |
 |---|---|---|
 | `just check` | Emacs | chapters match generated files; pages follow the conventions; builder, platform and Tree-sitter tests |
-| `KITTYMACS_TEST_PROFILE=full just install`, `just compile`, `just test-packages`, `just test-quickstart` | network, then installed packages | a fresh install byte-compiles, and the leader, Org-roam, theme, load-order, remote and startup-verifier tests pass, under `full`, the last also from a quickstart file |
+| `KITTYMACS_TEST_PROFILE=full just install`, `just compile`, `just test-packages`, `just test-quickstart` | network, then installed packages | a fresh install byte-compiles, and the leader, Org Node, theme, load-order, remote and startup-verifier tests pass, under `full`, the last also from a quickstart file |
 | `just frames-test` | a display | the frame policy |
 | `just nix-check` | Nix | the generated Nix lints, the flake and both example hosts evaluate, and the selection options reach a real start |
 

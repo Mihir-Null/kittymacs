@@ -5,7 +5,6 @@
 #+TITLE: Notebooks: Jupytext scripts, cells, kernels and math
 #+FILETAGS: :code:
 #+STARTUP: overview
-#+PROPERTY: header-args:emacs-lisp :tangle ../lisp/kittymacs-notebooks.el :eval never :comments no :padline no :mkdirp yes
 
 - A Jupyter notebook edited as what it really is underneath, a Python script: cells you move between and run, a real kernel, and the LaTeX of the Markdown cells drawn as equations.
 - This chapter is the =notebooks= feature: [[id:40302e33-d2b2-4c0b-9bc3-1f9e121307e1][=init.el=]] loads it only when that is on.
@@ -20,6 +19,12 @@
 
 - Leans on [[id:a121fda8-198e-498c-8867-eb1ecba8236d][envrc in the shells chapter]] for each project's environment, [[id:e5942eb0-4389-447d-9317-d9178adcaaae][the leader]] for =SPC m=, [[id:560fcdca-6cb8-49d9-bf27-eb78f32b9285][the languages chapter]] for the Python mode itself, and [[id:d25a5063-1439-4ae0-8fbe-b0162d05a0e0][the Nix chapter]] for the programs.
 - Read [[*One notebook, two files]] first.
+
+* Module preamble
+:PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-notebooks.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-notebooks.el :eval never :comments no :padline no :mkdirp yes
+:END:
 
 #+begin_src emacs-lisp
 ;;; kittymacs-notebooks.el --- Jupytext scripts, cells, kernels and math -*- lexical-binding: t; -*-
@@ -68,6 +73,8 @@ t = np.linspace(0, 10, 500)
 
 * Cells: code-cells
 :PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-notebooks.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-notebooks.el :eval never :comments no :padline no :mkdirp yes
 :ID: 9265fad6-29c1-44e4-92ac-565f26540f6f
 :END:
 
@@ -114,6 +121,8 @@ t = np.linspace(0, 10, 500)
 
 * A kernel: emacs-jupyter
 :PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-notebooks.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-notebooks.el :eval never :comments no :padline no :mkdirp yes
 :ID: 20c273cd-8932-4cc2-83c1-1cc4fcfb0fb3
 :END:
 
@@ -249,6 +258,8 @@ two Nix shells apart."
 
 * Math: math-preview
 :PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-notebooks.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-notebooks.el :eval never :comments no :padline no :mkdirp yes
 :ID: 95bea937-aa58-4554-ac81-e83374a5fbbc
 :END:
 
@@ -311,6 +322,8 @@ Code cells are left alone, so a `$' in a string of code stays text."
 
 * Meow and the notebook menu :meow:
 :PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-notebooks.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-notebooks.el :eval never :comments no :padline no :mkdirp yes
 :ID: d8ff2079-fe3f-4a43-a8c5-b9d288df39dc
 :END:
 

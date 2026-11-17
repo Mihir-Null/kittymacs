@@ -5,7 +5,6 @@
 #+TITLE: Org extras: queries, grouped lists and a document's look
 #+FILETAGS: :notes:
 #+STARTUP: overview
-#+PROPERTY: header-args:emacs-lisp :tangle ../lisp/kittymacs-org-extras.el :eval never :comments no :padline no :mkdirp yes
 
 - What packages add to [[id:8ff7e58e-c155-4513-99ae-3b2c3a6ab729][the Org chapter]], which works without any of this:
   + Org QL queries across your notes, on =SPC s q= and =SPC s Q=;
@@ -14,7 +13,13 @@
   + Org drawn like a document.
 - This chapter is the =org-extras= feature of [[id:8b1f4d67-2a93-4c08-b6e1-5d70c2a9e384][the catalogue]], in one module of its own, so [[id:40302e33-d2b2-4c0b-9bc3-1f9e121307e1][=init.el=]] can leave it out whole.
 - Leans on the Org chapter for =org-directory= and on [[id:e5942eb0-4389-447d-9317-d9178adcaaae][the leader]] for =SPC s=.
-- It knows nothing of [[id:f48e8f01-88da-4e33-8398-c00ab346b8bb][Org-roam]] or [[id:78b654e1-a93e-4e31-b0d8-f266215b5b12][reading]], and neither of them knows it; the lint tests check that.
+- It knows nothing of [[id:f48e8f01-88da-4e33-8398-c00ab346b8bb][Org Node]] or [[id:78b654e1-a93e-4e31-b0d8-f266215b5b12][reading]], and neither of them knows it; the lint tests check that.
+
+* Module preamble
+:PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-org-extras.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-org-extras.el :eval never :comments no :padline no :mkdirp yes
+:END:
 
 #+begin_src emacs-lisp
 ;;; kittymacs-org-extras.el --- Org queries, grouped lists and a document's look -*- lexical-binding: t; -*-
@@ -28,6 +33,10 @@
 #+end_src
 
 * Org QL
+:PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-org-extras.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-org-extras.el :eval never :comments no :padline no :mkdirp yes
+:END:
 
 - [[https://github.com/alphapapa/org-ql][Org QL]] is a query language for Org files, and adds two ways to search to [[id:8ff7e58e-c155-4513-99ae-3b2c3a6ab729][the Org chapter]]'s:
 
@@ -94,6 +103,8 @@ the query, the files, the order or the grouping."
 
 * Grouped lists whose headers keep Meow's keys :decision:
 :PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-org-extras.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-org-extras.el :eval never :comments no :padline no :mkdirp yes
 :ID: bc958392-d92e-41ad-9f75-976c3de3629e
 :END:
 
@@ -119,6 +130,10 @@ the query, the files, the order or the grouping."
 #+end_src
 
 * Plain queries on Emacs 31
+:PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-org-extras.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-org-extras.el :eval never :comments no :padline no :mkdirp yes
+:END:
 
 - Org QL parses a plain query by evaluating a =with-peg-rules= form with dynamic binding ([[https://github.com/alphapapa/org-ql/issues/498][Org QL issue 498]]).
 - Emacs 31's =peg= makes every rule an OClosure, which needs lexical binding, so every plain query failed with =(cl-assertion-failed lexical-binding)=.
@@ -139,6 +154,10 @@ Code that is already lexical expands as before."
 #+end_src
 
 * Headings that export without their title
+:PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-org-extras.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-org-extras.el :eval never :comments no :padline no :mkdirp yes
+:END:
 
 - Headings tagged =:ignore:= export their contents but not their title (=ox-extra= from =org-contrib=).
 
@@ -155,6 +174,10 @@ Code that is already lexical expands as before."
 #+end_src
 
 * Drawn like a document
+:PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-org-extras.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-org-extras.el :eval never :comments no :padline no :mkdirp yes
+:END:
 
 - =org-modern= draws headings, lists, checkboxes, tags, dates and tables the way a document viewer would, in the buffer and in the agenda.
   + Heading stars become one bullet per level, =◉ ○ ◈ ◇ ✳=, rather than fold arrows.
@@ -214,4 +237,4 @@ Code that is already lexical expands as before."
   + =SPC= on a group header is still the leader;
   + =SPC m g= runs the Org QL query again and picks up a new heading;
   + an Org buffer has =org-modern-indent-mode= on.
-- =just doc-test=: the lint tests check that this module, the Org chapter's, Org-roam's and reading's use nothing of each other's without a guard.
+- =just doc-test=: the lint tests check that this module, the Org chapter's, Org Node's and reading's use nothing of each other's without a guard.

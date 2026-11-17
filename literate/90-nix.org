@@ -42,6 +42,7 @@
 
 * The flake
 :PROPERTIES:
+:KITTYMACS_GENERATE: ../flake.nix
 :header-args:nix: :tangle ../flake.nix :eval never :comments no :padline no :mkdirp yes
 :END:
 
@@ -166,6 +167,7 @@
 
 * The tools
 :PROPERTIES:
+:KITTYMACS_GENERATE: ../nix/tools.nix
 :header-args:nix: :tangle ../nix/tools.nix :eval never :comments no :padline no :mkdirp yes
 :END:
 
@@ -253,6 +255,10 @@ let
       (tool "project-environment" "direnv" direnv) # shells chapter: envrc, each project's own environment
       (tool "notebooks" "jupytext" (python3Packages.toPythonApplication python3Packages.jupytext)) # notebooks chapter: .ipynb files
       (tool "notebooks" "math-preview" math-preview) # notebooks chapter: LaTeX drawn with MathJax
+      (tool "org-press" "node" nodejs)
+      (tool "org-web-capture" "pandoc" pandoc)
+      (tool "org-web-capture" "wget" wget)
+      (tool "org-web-capture" "tar" gnutar)
       # notebooks chapter: prints the path of emacs-zmq's native module, built by nixpkgs
       (tool "jupyter" "kittymacs-zmq-module" (
         runCommand "kittymacs-zmq-module" { } ''
@@ -341,6 +347,7 @@ in
 
 * The Emacs packages :decision:
 :PROPERTIES:
+:KITTYMACS_GENERATE: ../nix/packages.nix
 :ID: 3c7f2a90-8e15-4b6d-a2c4-5d9e0f1b7a68
 :header-args:nix: :tangle ../nix/packages.nix :eval never :comments no :padline no :mkdirp yes
 :END:
@@ -421,6 +428,7 @@ emacs.pkgs.withPackages (
 
 * Choosing features :decision:
 :PROPERTIES:
+:KITTYMACS_GENERATE: ../nix/selection.nix
 :ID: b7e4d1a6-20c9-4f3e-8a57-c61f09d3e248
 :header-args:nix: :tangle ../nix/selection.nix :eval never :comments no :padline no :mkdirp yes
 :END:
@@ -831,6 +839,7 @@ rec {
 
 * The packages
 :PROPERTIES:
+:KITTYMACS_GENERATE: ../nix/profiles.nix
 :header-args:nix: :tangle ../nix/profiles.nix :eval never :comments no :padline no :mkdirp yes
 :END:
 
@@ -884,6 +893,9 @@ in
 #+end_src
 
 ** The server behind wsl-rpc
+:PROPERTIES:
+:KITTYMACS_GENERATE: ../nix/tramp-rpc-server.nix
+:END:
 
 - =packages.<system>.rpc-server= is =tramp-rpc-server=, for [[id:4e8b1d76-3a95-4c20-b7f1-92c6d0e5a813][the wsl-rpc transport]], built from source at the revision its Lisp pins, because the two must match exactly, with no negotiation.
 - It follows upstream's own =default.nix=, with =fetchFromGitHub= in place of its checkout, and =cargoHash= in place of =importCargoLock=, so evaluating it builds nothing.
@@ -928,6 +940,7 @@ rustPlatform.buildRustPackage {
 
 * The system modules
 :PROPERTIES:
+:KITTYMACS_GENERATE: ../nix/system-module.nix
 :header-args:nix: :tangle ../nix/system-module.nix :eval never :comments no :padline no :mkdirp yes
 :END:
 
@@ -1084,6 +1097,7 @@ git clone https://github.com/Mihir-Null/kittymacs.git ~/.config/emacs
 
 * Home Manager
 :PROPERTIES:
+:KITTYMACS_GENERATE: ../nix/home-module.nix
 :ID: 6979a2d3-2ce7-435f-b2cd-78386340f019
 :header-args:nix: :tangle ../nix/home-module.nix :eval never :comments no :padline no :mkdirp yes
 :END:
@@ -1549,6 +1563,7 @@ in
 
 * The example nix-darwin host :macos:
 :PROPERTIES:
+:KITTYMACS_GENERATE: ../nix/example/flake.nix
 :ID: 6792811b-df4f-4c63-87de-6b55a2958d54
 :header-args:nix: :tangle ../nix/example/flake.nix :eval never :comments no :padline no :mkdirp yes
 :END:
@@ -1627,6 +1642,7 @@ in
 
 * nix-on-droid :android:
 :PROPERTIES:
+:KITTYMACS_GENERATE: ../nix/example-nix-on-droid/flake.nix
 :ID: a79575e0-a404-48ee-83b0-1edfbc4b6522
 :header-args:nix: :tangle ../nix/example-nix-on-droid/flake.nix :eval never :comments no :padline no :mkdirp yes
 :END:
@@ -1738,6 +1754,7 @@ in
 
 * The apps :decision:
 :PROPERTIES:
+:KITTYMACS_GENERATE: ../nix/apps.nix
 :ID: 7fb2c6d1-48e3-4a07-9d15-3e6c80f7a2b4
 :header-args:nix: :tangle ../nix/apps.nix :eval never :comments no :padline no :mkdirp yes
 :END:
@@ -1948,6 +1965,7 @@ in
 
 * The flake's checks
 :PROPERTIES:
+:KITTYMACS_GENERATE: ../nix/checks.nix
 :header-args:nix: :tangle ../nix/checks.nix :eval never :comments no :padline no :mkdirp yes
 :END:
 
@@ -2142,6 +2160,7 @@ in
 
 ** home-manager
 :PROPERTIES:
+:KITTYMACS_GENERATE: ../nix/template-home-manager/flake.nix
 :header-args:nix: :tangle ../nix/template-home-manager/flake.nix :eval never :comments no :padline no :mkdirp yes
 :END:
 
@@ -2201,6 +2220,7 @@ in
 
 ** nix-darwin
 :PROPERTIES:
+:KITTYMACS_GENERATE: ../nix/template-nix-darwin/flake.nix
 :header-args:nix: :tangle ../nix/template-nix-darwin/flake.nix :eval never :comments no :padline no :mkdirp yes
 :END:
 
@@ -2252,6 +2272,7 @@ in
 
 ** nixos
 :PROPERTIES:
+:KITTYMACS_GENERATE: ../nix/template-nixos/flake.nix
 :header-args:nix: :tangle ../nix/template-nixos/flake.nix :eval never :comments no :padline no :mkdirp yes
 :END:
 
@@ -2309,6 +2330,7 @@ in
 
 ** wsl-backend
 :PROPERTIES:
+:KITTYMACS_GENERATE: ../nix/template-wsl-backend/flake.nix
 :header-args:nix: :tangle ../nix/template-wsl-backend/flake.nix :eval never :comments no :padline no :mkdirp yes
 :END:
 
@@ -2375,6 +2397,7 @@ in
 
 * The selection check
 :PROPERTIES:
+:KITTYMACS_GENERATE: ../nix/selection-check/flake.nix
 :ID: 1c9a5e37-d482-4b06-97f1-e3a80c6b42d5
 :header-args:nix: :tangle ../nix/selection-check/flake.nix :eval never :comments no :padline no :mkdirp yes
 :END:
@@ -2612,6 +2635,7 @@ in
 
 * The evaluation matrix
 :PROPERTIES:
+:KITTYMACS_GENERATE: ../nix/eval-matrix/flake.nix
 :ID: 3bd7a0e4-96c1-4f28-8d53-c2e1f47ab906
 :header-args:nix: :tangle ../nix/eval-matrix/flake.nix :eval never :comments no :padline no :mkdirp yes
 :END:

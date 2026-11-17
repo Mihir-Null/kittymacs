@@ -15,6 +15,7 @@
 
 * Tree-sitter grammars
 :PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-treesit.el
 :header-args:emacs-lisp: :tangle ../lisp/kittymacs-treesit.el :eval never :comments no :padline no :mkdirp yes
 :END:
 
@@ -328,6 +329,7 @@ choose the languages and rebuild them.  Return the languages built."
 
 * Language servers and language packages
 :PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-languages.el
 :header-args:emacs-lisp: :tangle ../lisp/kittymacs-languages.el :eval never :comments no :padline no :mkdirp yes
 :END:
 

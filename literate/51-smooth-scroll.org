@@ -5,7 +5,6 @@
 #+TITLE: Smooth scrolling
 #+FILETAGS: :interface:
 #+STARTUP: overview
-#+PROPERTY: header-args:emacs-lisp :tangle ../lisp/kittymacs-smooth-scroll.el :eval never :comments no :padline no :mkdirp yes
 
 - Scrolling by pixels: the =smooth-scroll= feature, which [[id:3f8a6c02-9d14-4b7e-a2c5-1e7d90b64f31][the catalogue]] puts in the =full= profile, and =minimal= leaves out.
   + The owner chose it for =full= after trying it on its own.
@@ -20,6 +19,10 @@
 - The idea, and the half-page keys, come from the owner's own earlier branch, and this chapter's code is new.
 
 * What animates, and what stays plain
+:PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-smooth-scroll.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-smooth-scroll.el :eval never :comments no :padline no :mkdirp yes
+:END:
 
 - Animation redraws many times a second.
   + That is fine on a graphical frame showing a local file, and nothing else can draw it at all.
@@ -59,6 +62,10 @@ WINDOW may be a frame, as a wheel event's can, and nil means the selected one."
 #+end_src
 
 * The wheel and the touchpad
+:PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-smooth-scroll.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-smooth-scroll.el :eval never :comments no :padline no :mkdirp yes
+:END:
 
 - =ultra-scroll= scrolls by the pixel deltas the system reports, and handles lines taller than the window, which =pixel-scroll-precision-mode= alone jumps past.
   + It is on MELPA under the GPL, version 3 or later, and turning it on turns =pixel-scroll-precision-mode= on as well, so this chapter asks only for the one.
@@ -115,6 +122,10 @@ WINDOW may be a frame, as a wheel event's can, and nil means the selected one."
 #+end_src
 
 * The keys
+:PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-smooth-scroll.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-smooth-scroll.el :eval never :comments no :padline no :mkdirp yes
+:END:
 
 - Meow's grammar here binds nothing that scrolls, so the scrolling keys are Emacs's own: =C-v= and =<next>= forward, =M-v= and =<prior>= back.
 - This chapter animates them where they are, by remapping their commands.

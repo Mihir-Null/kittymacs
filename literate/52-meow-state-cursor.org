@@ -5,7 +5,6 @@
 #+TITLE: Meow's state in colour
 #+FILETAGS: :interface:
 #+STARTUP: overview
-#+PROPERTY: header-args:emacs-lisp :tangle ../lisp/kittymacs-meow-state-cursor.el :eval never :comments no :padline no :mkdirp yes
 
 - Colour that says which Meow state a buffer is in: the =meow-state-cursor= feature, which [[id:3f8a6c02-9d14-4b7e-a2c5-1e7d90b64f31][the catalogue]] puts in the =full= profile, and =minimal= leaves out.
   + The owner chose it for =full= after trying it on its own.
@@ -54,6 +53,10 @@
 - =doom-modeline= takes its own faces instead, when it has loaded.
 
 * On a terminal
+:PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-meow-state-cursor.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-meow-state-cursor.el :eval never :comments no :padline no :mkdirp yes
+:END:
 
 - A terminal draws its own cursor, and Emacs has no general way to set its colour, so a terminal's cursor stays as it is, whatever this sets.
 - The mode line's colours do reach a terminal, as near as its palette allows.

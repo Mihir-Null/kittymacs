@@ -139,7 +139,7 @@
     (dolist (module '(kittymacs-features kittymacs-leader kittymacs-ui kittymacs-org))
       (should (memq module modules)))
     (dolist (module '(kittymacs-onboard kittymacs-treemacs kittymacs-agents
-                                        kittymacs-org-roam kittymacs-dashboard))
+                                        kittymacs-org-node kittymacs-dashboard))
       (should-not (memq module modules)))))
 
 (ert-deftest kittymacs-bench-default-loaded-is-less-than-everything ()

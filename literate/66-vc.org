@@ -5,7 +5,6 @@
 #+TITLE: Version control: Magit and VC
 #+FILETAGS: :apps:
 #+STARTUP: overview
-#+PROPERTY: header-args:emacs-lisp :tangle ../lisp/kittymacs-vc.el :eval never :comments no :padline no :mkdirp yes
 
 - Magit is the Git interface: =SPC v s= opens the status buffer for the repository you are in, and everything happens from there.
   + Stage with =s=, commit with =c c=, push with =P p=; every prefix opens a menu that lists its options.
@@ -20,6 +19,10 @@
 - Distilled from Lambda-Emacs by Colin McLear (=lem-setup-vc=).
 
 * VC, diffs and merge conflicts
+:PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-vc.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-vc.el :eval never :comments no :padline no :mkdirp yes
+:END:
 
 - Emacs's VC layer handles Git only, and follows symlinks into version-controlled files without asking.
 - Logs:
@@ -73,6 +76,10 @@
 #+end_src
 
 * Magit
+:PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-vc.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-vc.el :eval never :comments no :padline no :mkdirp yes
+:END:
 
 - Magit buffers are full buffers, so they open in their own frame when [[id:f1d045c2-e2dc-4514-ab17-dd982ed6be00][frames-only mode]] is on in a graphical session, and in the other window otherwise.
 - =display-buffer= is given three ways to place the buffer (reuse a window, pop up a frame, use some window), and the last always succeeds.
@@ -108,6 +115,8 @@
 
 * Opening the status buffer from anywhere :decision:
 :PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-vc.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-vc.el :eval never :comments no :padline no :mkdirp yes
 :ID: ac8ccc5b-3c55-4a5c-9bfe-558d0899c24b
 :END:
 
@@ -166,6 +175,8 @@ Falls back to `magit-status', which asks, when neither is a repository."
 
 * The commit message buffer :concept:
 :PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-vc.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-vc.el :eval never :comments no :padline no :mkdirp yes
 :ID: 3704479c-008d-4fed-aafd-3350568459d3
 :END:
 
@@ -209,6 +220,10 @@ Falls back to `magit-status', which asks, when neither is a repository."
 #+end_src
 
 * Changes in the gutter
+:PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-vc.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-vc.el :eval never :comments no :padline no :mkdirp yes
+:END:
 
 - =diff-hl= marks added, changed and deleted lines in the left fringe each time a file is saved, in programming and text buffers.
   + =auto-save-visited-mode= saves after 15 idle seconds, so the gutter can lag the buffer by that long; =diff-hl-flydiff-mode= would close the gap by running a diff process while you type.
@@ -234,6 +249,8 @@ Falls back to `magit-status', which asks, when neither is a repository."
 
 * Pull requests: Forge
 :PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-vc.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-vc.el :eval never :comments no :padline no :mkdirp yes
 :ID: 0d6b1f3e-5a2c-4c8e-9f71-2b4e8a6d3c15
 :END:
 
@@ -269,6 +286,10 @@ Falls back to `magit-status', which asks, when neither is a repository."
 #+end_src
 
 * Git's own files and the repository's TODOs
+:PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-vc.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-vc.el :eval never :comments no :padline no :mkdirp yes
+:END:
 
 - git-modes gives =.gitignore=, =.gitattributes= and =.git/config= files major modes of their own: comments, highlighting and indentation that know the format.
 - magit-todos adds a section to the status buffer that lists every =TODO=, =FIXME= and the like in the repository.
@@ -294,6 +315,10 @@ Falls back to `magit-status', which asks, when neither is a repository."
 #+end_src
 
 * Links to lines and commits
+:PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-vc.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-vc.el :eval never :comments no :padline no :mkdirp yes
+:END:
 
 - =SPC v o= runs =git-link=: it copies the forge's URL for this line, or for the selected lines, at the commit you are on.
   + The URL names the commit rather than the branch, so a link pasted into a note still shows the same lines after the branch moves.
@@ -319,6 +344,10 @@ Falls back to `magit-status', which asks, when neither is a repository."
 #+end_src
 
 * Diffs by syntax
+:PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-vc.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-vc.el :eval never :comments no :padline no :mkdirp yes
+:END:
 
 - A line diff marks a moved function, or a rewrapped argument list, as lines deleted and lines added; =difft= compares syntax trees, so it shows what changed.
 - difftastic shows its output in a buffer of its own, beside Magit's diff rather than instead of it.
@@ -346,6 +375,8 @@ Falls back to `magit-status', which asks, when neither is a repository."
 
 * Reviewing a branch: diff-review
 :PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-vc.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-vc.el :eval never :comments no :padline no :mkdirp yes
 :ID: 3f0450b0-881e-4487-b90f-49a4d03f17a7
 :END:
 
@@ -458,6 +489,8 @@ branch's review/BRANCH.json."
 
 * diff-review on another machine, over TRAMP
 :PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-vc.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-vc.el :eval never :comments no :padline no :mkdirp yes
 :ID: 7c2e9a41-5d08-4b36-a1f7-3e8b6d0c9f52
 :END:
 
@@ -576,6 +609,8 @@ machine, or DIRECTORY exists here."
 
 * Meow in branch reviews :meow:
 :PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-vc.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-vc.el :eval never :comments no :padline no :mkdirp yes
 :ID: 80f63f69-9645-451e-9e8b-1fe1ade12a68
 :END:
 
@@ -618,6 +653,8 @@ machine, or DIRECTORY exists here."
 
 * Meow in Magit :meow:
 :PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-vc.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-vc.el :eval never :comments no :padline no :mkdirp yes
 :ID: 8c1af730-24e5-4926-88dd-d2f54a63c584
 :END:
 

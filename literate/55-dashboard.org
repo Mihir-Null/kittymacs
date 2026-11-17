@@ -5,7 +5,6 @@
 #+TITLE: Dashboard: home and discovery
 #+FILETAGS: :interface:
 #+STARTUP: overview
-#+PROPERTY: header-args:emacs-lisp :tangle ../lisp/kittymacs-dashboard.el :eval never :comments no :padline no :mkdirp yes
 
 - A home page, =*home*=: the dashboard package presenting Emacs's own recent files, =project.el= projects and bookmarks.
 - kittymacs adds the banner and layout, buttons to the landing pages (the cheat sheet, the reading guide, the leader tree, Meow's tutor), a guide to the first keys, font-aware centring and the literate Config button.
@@ -14,6 +13,10 @@
 - Leans on [[id:0286f652-e861-4e61-9ca6-91e225c8939d][the appearance chapter]] for fonts and icons and on [[id:53ad53ed-155f-47dc-973d-7be18de2893c][the keys chapter]] for the =SPC= keys it advertises.
 
 * The cheat sheet, offline
+:PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-dashboard.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-dashboard.el :eval never :comments no :padline no :mkdirp yes
+:END:
 
 - The module requires =kittymacs-ui= first: the page measures its text to centre it, so the fonts must already be chosen.
 - The cheat sheet is an Org file in =lisp/= (=keybindings.org=), so it opens without a network.
@@ -46,6 +49,10 @@
 #+end_src
 
 * Buttons that run commands
+:PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-dashboard.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-dashboard.el :eval never :comments no :padline no :mkdirp yes
+:END:
 
 - Each button runs a command: open a file, switch project, open a recent file, the agenda, the scratch buffer, the reading guide, the cheat sheet, Meow's tutorial, and [[id:53ad53ed-155f-47dc-973d-7be18de2893c][the keys chapter]], which lists the whole =SPC= tree.
 - Dashboard calls a button's action with the button itself as its argument.
@@ -66,6 +73,8 @@
 
 * Centring what is rendered, not characters :concept:
 :PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-dashboard.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-dashboard.el :eval never :comments no :padline no :mkdirp yes
 :ID: d9285bd0-2543-40af-ac5f-f09086967bf8
 :END:
 
@@ -129,6 +138,10 @@ Exclude trailing padding and compensate for leading indentation."
 #+end_src
 
 * A guide to the first keys
+:PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-dashboard.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-dashboard.el :eval never :comments no :padline no :mkdirp yes
+:END:
 
 - The page ends with the six keys the README and the cheat sheet teach first, in two columns, so a fresh install says where to go before anything is opened.
 
@@ -161,6 +174,10 @@ Exclude trailing padding and compensate for leading indentation."
 #+end_src
 
 * The home page
+:PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-dashboard.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-dashboard.el :eval never :comments no :padline no :mkdirp yes
+:END:
 
 - Everything the page shows is a dashboard option, set with =:custom= like any other package's:
   + the kittymacs banner and the three button rows;
@@ -259,6 +276,8 @@ Exclude trailing padding and compensate for leading indentation."
 
 * Meow on the home page :meow:
 :PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-dashboard.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-dashboard.el :eval never :comments no :padline no :mkdirp yes
 :ID: 545c730c-f8a5-4b01-bb3a-c39a4f04ce0c
 :END:
 

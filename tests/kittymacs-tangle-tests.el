@@ -10,6 +10,11 @@
     (make-directory (file-name-directory file) t)
     (with-temp-file file (insert text))))
 
+(defun kittymacs-tangle-test-generation (targets text)
+  "Return TEXT inside a generation subtree for TARGETS."
+  (concat "* Generation\n:PROPERTIES:\n:KITTYMACS_GENERATE: " targets
+          "\n:END:\n" text))
+
 (defmacro kittymacs-tangle-test-fixture (&rest body)
   "Run BODY with ROOT bound to a repository holding one chapter."
   (declare (indent 0))
@@ -17,7 +22,8 @@
      (unwind-protect
          (progn
            (kittymacs-tangle-test-write root "literate/10-test.org"
-             "#+begin_src emacs-lisp :tangle ../init.el :mkdirp yes\n(setq fixture-value 42)\n#+end_src\n")
+             (kittymacs-tangle-test-generation "../init.el"
+              "#+begin_src emacs-lisp :tangle ../init.el :mkdirp yes\n(setq fixture-value 42)\n#+end_src\n"))
            ,@body)
        (when (file-in-directory-p root temporary-file-directory)
          (delete-directory root t)))))
@@ -43,7 +49,8 @@
   (kittymacs-tangle-test-fixture
     (kittymacs-tangle-build root t)
     (kittymacs-tangle-test-write root "literate/10-test.org"
-      "#+begin_src emacs-lisp :tangle ../init.el\n(setq fixture-value 43)\n#+end_src\n")
+      (kittymacs-tangle-test-generation "../init.el"
+              "#+begin_src emacs-lisp :tangle ../init.el\n(setq fixture-value 43)\n#+end_src\n"))
     (should-error (kittymacs-tangle-build root))
     (should (string-match-p "42" (kittymacs-tangle--read (expand-file-name "init.el" root))))
     (should (equal (kittymacs-tangle-build root t) '("init.el")))
@@ -57,7 +64,8 @@
                      "emacs-lisp :tangle /tmp/absolute.el"
                      "sh :tangle ../init.el"))
       (kittymacs-tangle-test-write root "literate/10-test.org"
-        (format "#+begin_src %s\n(setq fixture-value 42)\n#+end_src\n" block))
+        (kittymacs-tangle-test-generation "../init.el"
+              (format "#+begin_src %s\n(setq fixture-value 42)\n#+end_src\n" block)))
       (should-error (kittymacs-tangle-build root t)))
     (should-not (file-exists-p (expand-file-name "init.el" root)))
     (should-not (file-exists-p (expand-file-name "lisp/private.el" root)))))
@@ -74,8 +82,9 @@
   (kittymacs-tangle-test-fixture
     (kittymacs-tangle-test-write root "init.el" "(setq fixture-value 'original)\n")
     (kittymacs-tangle-test-write root "literate/10-test.org"
-      (concat "#+begin_src emacs-lisp :tangle ../init.el\n(setq fixture-value 'new)\n#+end_src\n"
-              "#+begin_src emacs-lisp :tangle ../early-init.el\n(setq broken\n#+end_src\n"))
+      (kittymacs-tangle-test-generation "../init.el ../early-init.el"
+              (concat "#+begin_src emacs-lisp :tangle ../init.el\n(setq fixture-value 'new)\n#+end_src\n"
+              "#+begin_src emacs-lisp :tangle ../early-init.el\n(setq broken\n#+end_src\n")))
     (should-error (kittymacs-tangle-build root t))
     (should (equal (kittymacs-tangle--read (expand-file-name "init.el" root))
                    "(setq fixture-value 'original)\n"))
@@ -85,7 +94,8 @@
   (kittymacs-tangle-test-fixture
     (let ((kittymacs-tangle-evaluated nil))
       (kittymacs-tangle-test-write root "literate/10-test.org"
-        (concat "#+PROPERTY: header-args:emacs-lisp :tangle ../init.el :padline no :eval never\n"
+        (concat "* Generate\n:PROPERTIES:\n:KITTYMACS_GENERATE: ../init.el\n"
+                ":header-args:emacs-lisp: :tangle ../init.el :padline no :eval never\n:END:\n"
                 "#+begin_src emacs-lisp\n(setq kittymacs-tangle-evaluated\n#+end_src\n"
                 "#+begin_src emacs-lisp\n  \"first\n    second\")\n#+end_src\n"))
       (kittymacs-tangle-build root t)
@@ -97,7 +107,8 @@
   (kittymacs-tangle-test-fixture
     (kittymacs-tangle-test-write root "init.el" "(setq fixture-value 'original)\n")
     (kittymacs-tangle-test-write root "literate/20-other.org"
-      "#+begin_src emacs-lisp :tangle ../init.el\n(setq other-value 1)\n#+end_src\n")
+      (kittymacs-tangle-test-generation "../init.el"
+              "#+begin_src emacs-lisp :tangle ../init.el\n(setq other-value 1)\n#+end_src\n"))
     (should-error (kittymacs-tangle-build root t))
     (should (equal (kittymacs-tangle--read (expand-file-name "init.el" root))
                    "(setq fixture-value 'original)\n"))))
@@ -116,9 +127,10 @@
 (ert-deftest kittymacs-tangle-writes-nix-to-the-flake-and-nix-directory ()
   (kittymacs-tangle-test-fixture
     (kittymacs-tangle-test-write root "literate/90-nix.org"
-      (concat "#+begin_src nix :tangle ../flake.nix\n{ }\n#+end_src\n"
+      (kittymacs-tangle-test-generation "../flake.nix ../nix/tools.nix ../nix/example/flake.nix"
+              (concat "#+begin_src nix :tangle ../flake.nix\n{ }\n#+end_src\n"
               "#+begin_src nix :tangle ../nix/tools.nix :mkdirp yes\n{ pkgs }: { }\n#+end_src\n"
-              "#+begin_src nix :tangle ../nix/example/flake.nix :mkdirp yes\n{ }\n#+end_src\n"))
+              "#+begin_src nix :tangle ../nix/example/flake.nix :mkdirp yes\n{ }\n#+end_src\n")))
     (should (equal (kittymacs-tangle-build root t)
                    '("flake.nix" "init.el" "nix/example/flake.nix" "nix/tools.nix")))
     (should-not (kittymacs-tangle-build root))))
@@ -131,7 +143,8 @@
                      "nix :tangle ../nix/a/b/deep.nix"
                      "nix :tangle ../default.nix"))
       (kittymacs-tangle-test-write root "literate/90-nix.org"
-        (format "#+begin_src %s :mkdirp yes\n{ }\n#+end_src\n" block))
+        (kittymacs-tangle-test-generation "../flake.nix"
+              (format "#+begin_src %s :mkdirp yes\n{ }\n#+end_src\n" block)))
       (should-error (kittymacs-tangle-build root t)))
     (should-not (file-exists-p (expand-file-name "flake.nix" root)))))
 
@@ -143,7 +156,11 @@
     (should-not (file-exists-p (expand-file-name "init.el" root)))))
 
 (defconst kittymacs-tangle-test-catalogue
-  "#+begin_src emacs-lisp :tangle ../lisp/kittymacs-catalogue.el :mkdirp yes
+  "* Catalogue
+:PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-catalogue.el
+:END:
+#+begin_src emacs-lisp :tangle ../lisp/kittymacs-catalogue.el :mkdirp yes
 (defconst kittymacs-catalogue
   '((alpha :group one :packages (a b) :deps (beta) :summary \"Says \\\"hi\\\".\")
     (beta :group two :packages (c) :summary \"Never runs (error).\")))
@@ -188,3 +205,66 @@
             (insert "(setq kittymacs-catalogue nil)\n"))
           (should-error (kittymacs-tangle--catalogue-json file)))
       (delete-file file))))
+
+(ert-deftest kittymacs-tangle-requires-a-generation-subtree ()
+  (kittymacs-tangle-test-fixture
+    (dolist (chapter
+             (list
+              "#+PROPERTY: header-args:emacs-lisp :tangle ../init.el\n* Example\n#+begin_src emacs-lisp\n(message \"example\")\n#+end_src\n"
+              (kittymacs-tangle-test-generation "../early-init.el"
+                "#+begin_src emacs-lisp :tangle ../init.el\n(message \"wrong target\")\n#+end_src\n")))
+      (kittymacs-tangle-test-write root "literate/10-test.org" chapter)
+      (let ((failure (should-error (kittymacs-tangle-build root t))))
+        (should (string-match-p "no KITTYMACS_GENERATE" (error-message-string failure)))))
+    (should-not (file-exists-p (expand-file-name "init.el" root)))))
+
+(ert-deftest kittymacs-tangle-examples-export-saved-results-without-running ()
+  (require 'ox-html)
+  (kittymacs-tangle-test-fixture
+    (let* ((chapter (concat
+                     (kittymacs-tangle-test-generation "../init.el"
+                       "#+begin_src emacs-lisp :tangle ../init.el :eval never\n(setq fixture-value 42)\n#+end_src\n")
+                     "\n* Executable example\n"
+                     "#+begin_src emacs-lisp :eval never-export :exports results\n"
+                     "(error \"Example must not run during export or tangling\")\n"
+                     "#+end_src\n\n#+RESULTS:\n: saved example result\n"))
+           (html (org-export-string-as chapter 'html t)))
+      (should (string-match-p "saved example result" html))
+      (kittymacs-tangle-test-write root "literate/10-test.org" chapter)
+      (should (equal (kittymacs-tangle-build root t) '("init.el")))
+      (should (equal (kittymacs-tangle--read (expand-file-name "init.el" root))
+                     "(setq fixture-value 42)\n")))))
+
+(ert-deftest kittymacs-tangle-rejects-evaluation-bearing-references ()
+  (kittymacs-tangle-test-fixture
+    (dolist (args-and-body '((":noweb tangle" . "<<example()>>")
+                             (":var result=example()" . "(message result)")))
+      (kittymacs-tangle-test-write root "literate/10-test.org"
+        (concat "* Example\n#+name: example\n#+begin_src emacs-lisp\n(error \"Never run\")\n#+end_src\n\n"
+                (kittymacs-tangle-test-generation "../init.el"
+                  (format "#+begin_src emacs-lisp :tangle ../init.el %s\n%s\n#+end_src\n"
+                          (car args-and-body) (cdr args-and-body)))))
+      (let ((failure (should-error (kittymacs-tangle-build root t))))
+        (should (string-match-p "Evaluation-bearing" (error-message-string failure)))))
+    (should-not (file-exists-p (expand-file-name "init.el" root)))))
+
+(ert-deftest kittymacs-tangle-expands-source-only-noweb ()
+  (kittymacs-tangle-test-fixture
+    (kittymacs-tangle-test-write root "literate/10-test.org"
+      (concat "* Example source\n#+name: example\n#+begin_src emacs-lisp\n(message \"example\")\n#+end_src\n\n"
+              (kittymacs-tangle-test-generation "../init.el"
+                "#+begin_src emacs-lisp :tangle ../init.el :noweb tangle\n<<example>>\n#+end_src\n")))
+    (should (equal (kittymacs-tangle-build root t) '("init.el")))
+    (should (equal (kittymacs-tangle--read (expand-file-name "init.el" root))
+                   "(message \"example\")\n"))))
+
+(ert-deftest kittymacs-tangle-rejects-lisp-in-a-header ()
+  (kittymacs-tangle-test-fixture
+    (kittymacs-tangle-test-write root "literate/10-test.org"
+      (kittymacs-tangle-test-generation "../init.el"
+        (concat "#+begin_src emacs-lisp :tangle ../init.el "
+                ":padline (error \"Header Lisp must never run\")\n"
+                "(message \"test\")\n#+end_src\n")))
+    (let ((failure (should-error (kittymacs-tangle-build root t))))
+      (should (string-match-p "Babel evaluation is disabled" (error-message-string failure))))
+    (should-not (file-exists-p (expand-file-name "init.el" root)))))

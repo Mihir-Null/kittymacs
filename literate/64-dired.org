@@ -5,7 +5,6 @@
 #+TITLE: Dired: the file manager
 #+FILETAGS: :apps:
 #+STARTUP: overview
-#+PROPERTY: header-args:emacs-lisp :tangle ../lisp/kittymacs-dired.el :eval never :comments no :padline no :mkdirp yes
 
 - =SPC d= opens the directory of the current file:
   + =j= and =k= move, =l= or =RET= enters a directory, =h= goes up;
@@ -18,6 +17,10 @@
 - Leans on [[id:e5942eb0-4389-447d-9317-d9178adcaaae][the leader]] for its menu; [[id:55f0b75c-d867-4474-a26e-019215b8e492][Treemacs]] is the tree beside it ([[*Dired or the tree]]).
 
 * Copying, deleting and one buffer at a time
+:PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-dired.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-dired.el :eval never :comments no :padline no :mkdirp yes
+:END:
 
 - Entering a directory, or going up with =h=, reuses the buffer instead of leaving a trail of Dired buffers.
   + =dired-kill-when-opening-new-dired-buffer= applies to Dired's own =dired-up-directory= as well as to =RET=.
@@ -78,6 +81,10 @@
 #+end_src
 
 * Opening it
+:PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-dired.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-dired.el :eval never :comments no :padline no :mkdirp yes
+:END:
 
 - =SPC d= and =SPC f d= open the directory of the current file; =C-x d= asks for a directory first.
 
@@ -106,6 +113,10 @@
 - The =if= in [[*Copying, deleting and one buffer at a time]] makes this choice.
 
 * Colour, narrowing and a file clipboard
+:PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-dired.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-dired.el :eval never :comments no :padline no :mkdirp yes
+:END:
 
 - =diredfl= colours the listing by file type.
 - =dired-narrow= filters the listing as you type, on =/=.
@@ -146,6 +157,8 @@
 
 * Meow in Dired :meow:
 :PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-dired.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-dired.el :eval never :comments no :padline no :mkdirp yes
 :ID: 1e1a12c8-d5c3-41fd-b8b1-cfe85fa6182d
 :END:
 

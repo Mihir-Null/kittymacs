@@ -5,7 +5,6 @@
 #+TITLE: The leader: real keys under SPC
 #+FILETAGS: :keys:
 #+STARTUP: overview
-#+PROPERTY: header-args:emacs-lisp :tangle ../lisp/kittymacs-leader.el :eval never :comments no :padline no :mkdirp yes
 
 - The smallest and most important module: =SPC= becomes an ordinary prefix keymap in Meow's Normal and Motion states, and every major mode gets its own menu under =SPC m=.
 - Names the groups under =SPC= and binds no command, so it knows nothing about other packages or this machine.
@@ -15,6 +14,8 @@
 
 * Why a real keymap instead of Meow's keypad :decision:
 :PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-leader.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-leader.el :eval never :comments no :padline no :mkdirp yes
 :ID: fc8a853a-879a-4bc7-81dc-9d2f4ccc5fe2
 :END:
 
@@ -74,6 +75,10 @@ Nil leaves `meow-keypad' unbound; it stays available as a command."
 #+end_src
 
 * The leader map
+:PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-leader.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-leader.el :eval never :comments no :padline no :mkdirp yes
+:END:
 
 - =kittymacs-leader-map= is a plain keymap:
   + =keymap-set= adds a command;
@@ -94,6 +99,10 @@ Add a command with `keymap-set'.  Add a labelled group with
 #+end_src
 
 * The groups
+:PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-leader.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-leader.el :eval never :comments no :padline no :mkdirp yes
+:END:
 
 - A group is an empty keymap here, and the chapters fill it.
   + A chapter binds the keys of its own feature, so a feature that is off has no keys.
@@ -153,6 +162,8 @@ Add a command with `keymap-set'.  Add a labelled group with
 
 * Localleaders: one menu per major mode :concept:
 :PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-leader.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-leader.el :eval never :comments no :padline no :mkdirp yes
 :ID: 6279ff91-6766-4e41-a4a0-de6e2f9b10ce
 :END:
 
@@ -243,6 +254,8 @@ Calling this again for MODE replaces its map."
 
 * Minor modes add a group to SPC m :decision:
 :PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-leader.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-leader.el :eval never :comments no :padline no :mkdirp yes
 :ID: f468e425-28ac-46ac-b6d1-92b644d07e61
 :END:
 
@@ -299,6 +312,10 @@ mode's menu while MODE is on.  Calling this again for MODE replaces its group."
 #+end_src
 
 * Turning it on, and seeing what you have
+:PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-leader.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-leader.el :eval never :comments no :padline no :mkdirp yes
+:END:
 
 - =kittymacs-leader-enable= binds the leader in both states, registers the localleader entry once and refreshes every buffer.
   + Safe to call again; [[id:a1607a41-b741-428a-9de3-c16e7c8d3ecc][the editing chapter]] calls it once Meow is on.
@@ -367,5 +384,5 @@ Safe to call more than once."
   + a nil definition leaves a key out, and an empty group leaves the tree.
 
 #+begin_src sh :tangle no
-just test-packages      # the leader tests, with the Org-roam tests and the verifier
+just test-packages      # the leader tests, with the Org Node tests and the verifier
 #+end_src
