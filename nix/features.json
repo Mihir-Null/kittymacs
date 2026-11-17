@@ -856,7 +856,6 @@
       "acp",
       "agent-shell-attention"
     ],
-    "one-of": "agent",
     "option": "kittymacs-agent-mcp-servers",
     "summary": "Runs any supported ACP harness through agent-shell, with a shared session picker.",
     "example": "=SPC a a= starts an agent in this project."
@@ -885,8 +884,8 @@
     "deps": [
       "claude-code-ide"
     ],
-    "one-of": "agent",
-    "summary": "Makes Claude Code's own screen the agent on SPC a, with Emacs's code navigation as its tools.",
+    "hidden": "t",
+    "summary": "Compatibility alias selecting Claude Code IDE as the primary interface when no explicit preference is set.",
     "example": "=SPC a a= opens Claude Code beside this project's files."
   },
   "agent-gptel": {
@@ -897,7 +896,6 @@
     ],
     "module": "kittymacs-agents",
     "profile": "optional",
-    "one-of": "agent",
     "summary": "Runs gptel's agent, written in Emacs Lisp, with a model you choose, local ones included.",
     "example": "=SPC a a= opens this project's agent buffer."
   },

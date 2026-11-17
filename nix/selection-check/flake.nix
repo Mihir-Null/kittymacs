@@ -174,11 +174,17 @@
           full = fullOptions;
           minimal = minimalOptions;
           noProfile.features.jump.enable = false;
-          # An alternative agent replaces the one full brings, on both sides.
-          agentAlternative = {
+          # Coding interfaces coexist with the one full brings.
+          agentAdditional = {
             profile = "full";
             features.agent-gptel.enable = true;
             packagesFromNix = true;
+          };
+          coexistingAgents = {
+            profile = "full";
+            features.agent-gptel.enable = true;
+            features.claude-code-ide.enable = true;
+            settings.kittymacs-agent-primary-interface.elisp = "'gptel-agent";
           };
           extraOnly = {
             extraPackages = epkgs: [ epkgs.vundo ];
@@ -197,12 +203,8 @@
           darwinMinimal = darwinReport minimalOptions;
         };
 
-      # These four must fail evaluation.
+      # These three must fail evaluation.
       typo = report { features.no-such-feature.enable = true; };
-      twoAgents = report {
-        features.agent-claude-code-ide.enable = true;
-        features.agent-gptel.enable = true;
-      };
       reserved = report { hostFiles."10-nix" = ""; };
       darwinReserved = (darwinHost { hostFiles."10-nix" = ""; }).system.drvPath;
     };

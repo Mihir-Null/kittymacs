@@ -316,7 +316,7 @@
     ;; Assistants
     (agents
      :group assistants :packages (agent-shell acp agent-shell-attention) :module kittymacs-agents :profile full
-     :vc (agent-shell acp agent-shell-attention) :one-of agent :option kittymacs-agent-mcp-servers
+     :vc (agent-shell acp agent-shell-attention) :option kittymacs-agent-mcp-servers
      :summary "Runs any supported ACP harness through agent-shell, with a shared session picker."
      :example "=SPC a a= starts an agent in this project.")
     (claude-code-ide
@@ -326,12 +326,11 @@
      :example "=SPC a w b= picks one of Claude Code's sessions.")
     (agent-claude-code-ide
      :group assistants :packages () :module kittymacs-agents :profile optional
-     :deps (claude-code-ide) :one-of agent
-     :summary "Makes Claude Code's own screen the agent on SPC a, with Emacs's code navigation as its tools."
+     :deps (claude-code-ide) :hidden t
+     :summary "Compatibility alias selecting Claude Code IDE as the primary interface when no explicit preference is set."
      :example "=SPC a a= opens Claude Code beside this project's files.")
     (agent-gptel
      :group assistants :packages (gptel gptel-agent) :module kittymacs-agents :profile optional
-     :one-of agent
      :summary "Runs gptel's agent, written in Emacs Lisp, with a model you choose, local ones included."
      :example "=SPC a a= opens this project's agent buffer.")
     (suggestions
@@ -347,6 +346,13 @@
      :example "A session that sets =KITTYMACS_EXWM=1= shows Chrome as a buffer."))
   "Every optional feature: its name, then a property list.
 The chapter that writes this file explains the properties.")
+
+(defconst kittymacs-agent-interfaces
+  '((agent-shell :label "Agent shell (ACP)" :feature agents :library "agent-shell" :prefix "e")
+    (gptel-agent :label "gptel-agent" :feature agent-gptel :library "gptel-agent" :prefix "g")
+    (claude-code-ide :label "Claude Code IDE" :feature claude-code-ide
+                     :library "claude-code-ide" :prefix "w"))
+  "Independent coding interfaces, their feature gates and dedicated prefixes.")
 
 (defconst kittymacs-agent-harnesses
   '((antigravity :label "Antigravity"

@@ -279,22 +279,24 @@ In that list, =g= runs the query again and =v= changes it or its grouping.
 | SPC n b | Backlinks side panel | kittymacs-org-node-backlinks |
 | SPC n s | Sync graph | kittymacs-org-node-sync |
 
-* Agents (Claude Code)
+* Coding interfaces
 
 | Key | Action | Command |
 |-----+--------+---------|
-| SPC a a | Start Claude in this project, or switch to its shell | agent-shell |
-| SPC a n | Another shell | agent-shell-new-shell |
-| SPC a t | Show or hide the shell | agent-shell-toggle |
-| SPC a b | Switch between shells | agent-shell-switch-buffer |
-| SPC a r | Resume an earlier session | agent-shell-resume-session |
-| SPC a s | Send the region, or this file | agent-shell-send-dwim |
+| SPC a a | Start or switch to the primary coding interface | kittymacs-agent-start |
+| SPC a n | Another shell | kittymacs-agent-new |
+| SPC a t | Show or hide the shell | kittymacs-agent-toggle |
+| SPC a b | Switch between shells | kittymacs-agent-switch |
+| SPC a r | Resume an earlier session | kittymacs-agent-resume |
+| SPC a s | Send the region, or this file | kittymacs-agent-send |
 | SPC a j | Jump to the shell waiting for you | agent-shell-attention-jump |
 | SPC a d | Every shell and its state | agent-shell-attention-dashboard |
 
-Every edit the agent proposes waits for =y= (once), =!= (always) or a rejection. =AS:n= in the mode line counts the shells waiting for you.
+The table shows the full profile with agent-shell as primary. Permissions depend on the selected harness and its mode. =AS:n= counts shells waiting for you.
 
-With the =claude-code-ide= feature on beside it, =SPC a w= holds Claude Code's own sessions: =n= a new instance, =b= pick one, =p= send it a prompt, =i= interrupt it, =r= resume one.
+Enable interfaces independently. =SPC a P= chooses the primary, =SPC a e= holds ACP commands and =SPC a g= holds gptel-agent commands. =SPC a h= chooses another ACP harness.
+
+With the =claude-code-ide= feature on, =SPC a w= holds Claude Code's own sessions: =n= a new instance, =b= pick one, =p= send it a prompt, =i= interrupt it, =r= resume one.
 
 * Suggestions (Copilot)
 

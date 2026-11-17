@@ -60,8 +60,13 @@
      :type directory :label "Where your Org files live")
     (kittymacs-org-node-directory
      :type directory :feature linked-notes :label "Where your linked notes live")
+    (kittymacs-agent-primary-interface
+     :type symbol :features (agents agent-gptel claude-code-ide)
+     :choices kittymacs-agent-interfaces :enabled-only t :empty-label "automatic"
+     :label "Primary coding interface for the shared SPC a keys")
     (kittymacs-agent-harness
      :type symbol :feature agents :choices kittymacs-agent-harnesses
+     :installed-first t :empty-label "prompt"
      :label "Default ACP harness (prompt keeps the picker)")
     (kittymacs-font-family
      :type string :label "The font for code")
@@ -832,7 +837,10 @@ A name the catalogue lacks goes in NOTES."
   "Return the rows of `kittymacs-onboard-options' that apply in STATE."
   (seq-filter (lambda (row)
                 (let ((feature (plist-get (cdr row) :feature)))
-                  (or (null feature) (memq feature (kittymacs-onboard--on state)))))
+                  (and (or (null feature) (memq feature (kittymacs-onboard--on state)))
+                       (or (not (plist-get (cdr row) :features))
+                           (seq-intersection (plist-get (cdr row) :features)
+                                             (kittymacs-onboard--on state))))))
               kittymacs-onboard-options))
 
 (defun kittymacs-onboard--option-source (state option)
@@ -867,36 +875,79 @@ A name the catalogue lacks goes in NOTES."
                           (car row)
                           (concat (kittymacs-onboard--option-shown state (car row))
                                   (when (plist-get (cdr row) :choices)
-                                    (concat "\n      Choices: prompt, "
-                                            (mapconcat (lambda (entry)
-                                                         (format "%s (%s)" (car entry)
-                                                                 (plist-get (cdr entry) :label)))
-                                                       (symbol-value (plist-get (cdr row) :choices)) ", "))))))
+                                    "\n      SPC opens the choices; existing settings are kept until changed."))))
                 (kittymacs-onboard--options-here state) ""))))
+
+(defun kittymacs-onboard--choice-rows (state row)
+  "Return the symbol choices in ROW that apply to STATE."
+  (let ((choices (symbol-value (plist-get (cdr row) :choices))))
+    (if (plist-get (cdr row) :enabled-only)
+        (seq-filter (lambda (entry)
+                      (memq (plist-get (cdr entry) :feature) (kittymacs-onboard--on state)))
+                    choices)
+      choices)))
+
+(defun kittymacs-onboard--harness-installed-p (entry)
+  "Whether ENTRY's default ACP executable is on the current machine's PATH.
+Host wrappers and remote commands are not executed or probed."
+  (executable-find (car (plist-get (cdr entry) :command))))
+
+(defun kittymacs-onboard--choose-symbol (state row)
+  "Ask for ROW's symbol choice in STATE; return (t . VALUE), or nil to keep."
+  (let* ((choices (kittymacs-onboard--choice-rows state row))
+         (installed-first (plist-get (cdr row) :installed-first))
+         (installed (and installed-first
+                         (seq-filter #'kittymacs-onboard--harness-installed-p choices)))
+         (show-all (not installed))
+         (empty-label (plist-get (cdr row) :empty-label))
+         answer done)
+    (while (not done)
+      (kittymacs-onboard--show
+       (concat (plist-get (cdr row) :label) "\n\n"
+               (format "Current: %s\n\n" (kittymacs-onboard--option-shown state (car row)))
+               (format "%s: %s\n" empty-label
+                       (if installed-first "ask when starting an ACP session" "choose an available interface automatically"))
+               (mapconcat
+                (lambda (entry)
+                  (format "%s: %s%s\n" (car entry) (plist-get (cdr entry) :label)
+                          (if installed-first
+                              (format " — %s [%s]"
+                                      (string-join (plist-get (cdr entry) :command) " ")
+                                      (if (member entry installed) "executable found" "executable not found"))
+                            "")))
+                (if (and installed-first (not show-all)) installed choices) "")
+               (when installed-first
+                 "\nEnter all for the full alphabetical catalogue, or installed for detected executables.\nInstall/authenticate the CLI and ACP adapter using its upstream instructions.\nSee literate/77-agents.org and the agent-shell installation reference.\nDetection checks default command names only; host wrappers and remote commands may still work.\n")
+               "\nEnter an identifier to select, or leave blank to keep the current value. C-g quits.\n"))
+      (let ((input (string-trim (kittymacs-onboard--read-text "Choice: " nil))))
+        (cond
+         ((and installed-first (equal input "all")) (setq show-all t))
+         ((and installed-first (equal input "installed")) (setq show-all nil))
+         ((string-empty-p input) (setq done t))
+         ((equal input empty-label) (setq answer (cons t nil) done t))
+         ((assq (intern-soft input) choices)
+          (setq answer (cons t (intern input)) done t))
+         (t (message "Unknown or disabled choice %s; current setting kept" input)
+            (setq done t)))))
+    answer))
 
 (defun kittymacs-onboard--change-option (state row)
   "Ask for a new value of the option in ROW, and record it in STATE."
   (let* ((option (car row))
          (type (plist-get (cdr row) :type))
-         (current (cdr (assq option (kittymacs-onboard--options state))))
-         (choices (plist-get (cdr row) :choices))
-         (value (if (eq type 'boolean)
-                    (not current)
-                  (string-trim
-                   (kittymacs-onboard--read-text
-                    (format "%s: " (plist-get (cdr row) :label))
-                    (and (stringp current) current))))))
-    (cond
-     ((equal value "") nil)
-     (choices
-      (cond
-       ((equal value "prompt")
-        (setf (alist-get option (kittymacs-onboard--options state)) nil))
-       ((assq (intern-soft value) (symbol-value choices))
-        (setf (alist-get option (kittymacs-onboard--options state)) (intern value)))
-       (t (message "Unknown harness %s; use an identifier from Choices" value))))
-     (t (setf (alist-get option (kittymacs-onboard--options state))
-              (if (eq type 'directory) (file-name-as-directory value) value))))))
+         (current (cdr (assq option (kittymacs-onboard--options state)))))
+    (if (plist-get (cdr row) :choices)
+        (when-let* ((answer (kittymacs-onboard--choose-symbol state row)))
+          (setf (alist-get option (kittymacs-onboard--options state)) (cdr answer)))
+      (let ((value (if (eq type 'boolean)
+                       (not current)
+                     (string-trim
+                      (kittymacs-onboard--read-text
+                       (format "%s: " (plist-get (cdr row) :label))
+                       (and (stringp current) current))))))
+        (unless (equal value "")
+          (setf (alist-get option (kittymacs-onboard--options state))
+                (if (eq type 'directory) (file-name-as-directory value) value)))))))
 
 (defun kittymacs-onboard--options-screen (state place)
   "Ask about the options in STATE; return `next' or `back'."

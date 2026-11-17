@@ -11,7 +11,7 @@
     (should (equal (sort (mapcar (lambda (config) (map-elt config :identifier)) configs) #'string<)
                    (sort (mapcar #'car kittymacs-agent-harnesses) #'string<)))
     (dolist (row kittymacs-agent-harnesses)
-      (should (equal (symbol-value (plist-get (cdr row) :command-option))
+      (should (equal (eval (car (get (plist-get (cdr row) :command-option) 'standard-value)) t)
                      (plist-get (cdr row) :command)))
       (should (boundp (plist-get (cdr row) :environment-option))))))
 

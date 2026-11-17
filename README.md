@@ -59,7 +59,7 @@ A new installation starts small: Meow, Vertico, Orderless, Marginalia, Consult, 
 - **Project tasks:** Edna prerequisites, project and agenda task views, and an optional single-file Kanban board. See [project tasks](literate/83-org-tasks.org).
 - **Executable documents:** Org Babel languages, optional kernels and diagrams, plus project-local Org Press publishing. See [Babel](literate/82-org-babel.org) and [research and publishing](literate/84-org-workflows.org).
 - **Notebooks:** Jupyter notebooks edited as [Jupytext](https://jupytext.readthedocs.io) scripts: `# %%` cells you run with `C-c C-c`, an optional Jupyter kernel, LaTeX in Markdown cells drawn in place, and each project's own environment through direnv.
-- **A coding agent:** Any supported ACP harness in an Emacs buffer through [agent-shell](https://github.com/xenodium/agent-shell), under `SPC a`. Choose a default in onboarding or pick a harness per session. Install and authenticate its CLI/adapter separately. Optionally, Claude Code's own screen through claude-code-ide beside it, its sessions under `SPC a w`.
+- **A coding agent:** Any supported ACP harness in an Emacs buffer through [agent-shell](https://github.com/xenodium/agent-shell), under `SPC a`. Enable agent-shell, gptel-agent and Claude Code IDE independently in onboarding, then choose a primary interface for the shared keys. Each keeps dedicated commands under `SPC a e`, `SPC a g` or `SPC a w`. Choose a default ACP harness or pick one per session. Install and authenticate its CLI/adapter separately. Optionally, Claude Code's own screen through claude-code-ide beside it, its sessions under `SPC a w`.
 - **Suggestions as you type:** GitHub Copilot's grey ghost text and next-edit suggestions through [copilot.el](https://github.com/copilot-emacs/copilot.el), off until you turn them on (`SPC t a`, or `kittymacs-suggestions`).
 - **Programming:** Eglot language servers (opt-in per mode), Flymake, structural editing, pinned Tree-sitter grammars that load only when they work.
 - **Every platform:** Linux, macOS, Windows (PowerShell, with Linux on a WSL2 backend) and the Android port, each with its own tested policy.
@@ -281,7 +281,7 @@ Where a key needs a feature beyond `minimal`, the row names it.
 | `SPC o e` / `SPC t d` | terminal / project tree (`file-tree`) |
 | `SPC m` | the current mode's menu |
 | `SPC n` | linked notes (`linked-notes`): find, insert, capture, backlinks |
-| `SPC a a` | ACP harness in this project (`agents`) |
+| `SPC a a` | Start or switch to the primary coding interface |
 | `SPC C c` | the reading guide to the configuration |
 | `SPC C o` | choose features again; a change takes effect at the next start |
 
@@ -360,7 +360,7 @@ Then, inside Emacs, `M-x package-upgrade-all` upgrades the installed packages; r
 - *No language server:* `SPC l e` starts Eglot in the current buffer; add the mode to `kittymacs-eglot-auto-start-modes` to start it automatically. The server itself is yours to install.
 - *A PDF opens as a picture, not in pdf-tools:* `epdfinfo` is missing. The Nix module installs it; otherwise `M-x pdf-tools-install` builds it (it needs poppler and a C compiler).
 - *Emacs offers to build `epdfinfo` although Nix installed it:* Emacs cannot see the Nix profile. `M-: (executable-find "epdfinfo")` should name a path in `/nix/store`; if it is nil, decline the build and check `M-: exec-path` for `~/.nix-profile/bin` (or `/etc/profiles/per-user/<you>/bin` on NixOS). On macOS the shells chapter puts the profiles back after importing the login shell's `PATH`, so restart Emacs after updating.
-- *`SPC a a` fails to start:* `claude-agent-acp` must be on the path Emacs sees (`M-: (executable-find "claude-agent-acp")`), and `claude` must be logged in once in a terminal (`/login`).
+- *`SPC a a` fails to start:* check the selected primary interface. For agent-shell, install and authenticate its selected harness and ACP adapter, and check that Emacs can find the executable. `SPC a h` chooses another harness; `SPC a P` changes the primary interface.
 - *`SPC t a` says suggestions need the server:* `copilot-language-server` must be on the path Emacs sees (`M-: (executable-find "copilot-language-server")`), or installed by `M-x copilot-install-server`. Then `M-x copilot-login` once; `M-x copilot-diagnose` reports the server and the account.
 - *Linked notes missing:* visit an opted-in project or register it in `kittymacs-org-node-projects`, then use `SPC n s` to refresh.
 

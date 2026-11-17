@@ -89,18 +89,7 @@ loads, in `private.el' or a host file."
           :config
           (kittymacs-agent-configure-harnesses)))
     (error
-     (kittymacs-features-vc-warning "agent-shell" "https://github.com/xenodium/agent-shell" err)))
-
-  (when (locate-library "agent-shell")
-    (keymap-set kittymacs-agent-map "a" (cons "start or switch" #'agent-shell))
-    (keymap-set kittymacs-agent-map "h" (cons "choose ACP harness" #'kittymacs-agent-choose-harness))
-    (keymap-set kittymacs-agent-map "n" (cons "new shell" #'agent-shell-new-shell))
-    (keymap-set kittymacs-agent-map "t" (cons "toggle" #'agent-shell-toggle))
-    (keymap-set kittymacs-agent-map "b" (cons "switch shell" #'agent-shell-switch-buffer))
-    (keymap-set kittymacs-agent-map "r" (cons "resume session" #'agent-shell-resume-session))
-    (keymap-set kittymacs-agent-map "s" (cons "send region or file" #'agent-shell-send-dwim))
-    (keymap-set kittymacs-agent-map "f" (cons "send a file" #'agent-shell-send-file))
-    (keymap-set kittymacs-agent-map "?" (cons "menu" #'agent-shell-help-menu))))
+     (kittymacs-features-vc-warning "agent-shell" "https://github.com/xenodium/agent-shell" err))))
 (defcustom kittymacs-agent-mcp-servers nil
   "MCP servers every agent-shell session starts with.
 Each element has the shape `agent-shell-mcp-servers' documents.  Set this
@@ -217,19 +206,6 @@ w, d and j are left free for an integration's own commands.")
     (keymap-set kittymacs-claude-code-ide-map "p" (cons "send a prompt" #'claude-code-ide-send-prompt))
     (keymap-set kittymacs-claude-code-ide-map "i" (cons "interrupt" #'claude-code-ide-send-escape))
     (keymap-set kittymacs-claude-code-ide-map "r" (cons "resume a session" #'claude-code-ide-resume))))
-
-(when (kittymacs-feature-p 'agent-claude-code-ide)
-  (when (locate-library "claude-code-ide")
-    (keymap-set kittymacs-agent-map "a"
-                (cons "start or switch" #'kittymacs-agent-claude-code-ide-start-or-switch))
-    (keymap-set kittymacs-agent-map "n" (cons "new instance" #'claude-code-ide))
-    (keymap-set kittymacs-agent-map "t" (cons "toggle" #'claude-code-ide-toggle))
-    (keymap-set kittymacs-agent-map "b" (cons "switch instance" #'claude-code-ide-list-sessions))
-    (keymap-set kittymacs-agent-map "r" (cons "resume session" #'claude-code-ide-resume))
-    (keymap-set kittymacs-agent-map "s" (cons "send region" #'claude-code-ide-insert-at-mentioned))
-    (keymap-set kittymacs-agent-map "p" (cons "send a prompt" #'claude-code-ide-send-prompt))
-    (keymap-set kittymacs-agent-map "i" (cons "interrupt" #'claude-code-ide-send-escape))
-    (keymap-set kittymacs-agent-map "?" (cons "menu" #'claude-code-ide-menu))))
 (defun kittymacs-agent-gptel-start-or-switch ()
   "Switch to this project's gptel-agent buffer, or start one where there is none."
   (interactive)
@@ -252,15 +228,183 @@ w, d and j are left free for an integration's own commands.")
 
   (use-package gptel-agent
     :ensure t
-    :commands (gptel-agent))
+    :commands (gptel-agent)))
+(defconst kittymacs-agent-interface-commands
+  '((agent-shell
+     ("a" "start or switch" agent-shell)
+     ("n" "new shell" agent-shell-new-shell)
+     ("t" "toggle" agent-shell-toggle)
+     ("b" "switch shell" agent-shell-switch-buffer)
+     ("r" "resume session" agent-shell-resume-session)
+     ("s" "send region or file" agent-shell-send-dwim)
+     ("f" "send file" agent-shell-send-file)
+     ("i" "interrupt" agent-shell-interrupt)
+     ("?" "menu" agent-shell-help-menu))
+    (gptel-agent
+     ("a" "start or switch" kittymacs-agent-gptel-start-or-switch)
+     ("n" "new agent" gptel-agent)
+     ("s" "add region or buffer" gptel-add)
+     ("f" "add file" gptel-add-file)
+     ("p" "send" gptel-send)
+     ("i" "interrupt" gptel-abort)
+     ("?" "menu" gptel-menu))
+    (claude-code-ide
+     ("a" "start or switch" kittymacs-agent-claude-code-ide-start-or-switch)
+     ("n" "new instance" claude-code-ide)
+     ("t" "toggle" claude-code-ide-toggle)
+     ("b" "switch instance" claude-code-ide-list-sessions)
+     ("r" "resume session" claude-code-ide-resume)
+     ("s" "send region" claude-code-ide-insert-at-mentioned)
+     ("p" "send prompt" claude-code-ide-send-prompt)
+     ("i" "interrupt" claude-code-ide-send-escape)
+     ("?" "menu" claude-code-ide-menu)))
+  "Commands by interface: key, label and interactive command.")
 
-  (keymap-set kittymacs-agent-map "a" (cons "start or switch" #'kittymacs-agent-gptel-start-or-switch))
-  (keymap-set kittymacs-agent-map "n" (cons "new agent" #'gptel-agent))
-  (keymap-set kittymacs-agent-map "s" (cons "add region or buffer" #'gptel-add))
-  (keymap-set kittymacs-agent-map "f" (cons "add a file" #'gptel-add-file))
-  (keymap-set kittymacs-agent-map "p" (cons "send" #'gptel-send))
-  (keymap-set kittymacs-agent-map "i" (cons "interrupt" #'gptel-abort))
-  (keymap-set kittymacs-agent-map "?" (cons "menu" #'gptel-menu)))
+(defvar-keymap kittymacs-agent-shell-map :doc "ACP sessions on SPC a e.")
+(defvar-keymap kittymacs-gptel-agent-map :doc "gptel-agent on SPC a g.")
+
+(defun kittymacs-agent--available-interfaces ()
+  "Return enabled interfaces whose packages can load."
+  (seq-filter (lambda (row)
+                (and (kittymacs-feature-p (plist-get (cdr row) :feature))
+                     (locate-library (plist-get (cdr row) :library))))
+              kittymacs-agent-interfaces))
+
+(defun kittymacs-agent--primary ()
+  "Return the available primary interface, including legacy preferences."
+  (let* ((available (mapcar #'car (kittymacs-agent--available-interfaces)))
+         (legacy (cond ((kittymacs-feature-p 'agent-claude-code-ide) 'claude-code-ide)
+                       ((and (memq 'agent-gptel kittymacs-features)
+                             (not (memq 'agents kittymacs-features))) 'gptel-agent)))
+         (preferred (or kittymacs-agent-primary-interface legacy)))
+    (if (memq preferred available) preferred (car available))))
+
+(defun kittymacs-agent--dispatch (key)
+  "Run the primary interface's command for KEY."
+  (let* ((interface (kittymacs-agent--primary))
+         (command (nth 2 (assoc key (alist-get interface kittymacs-agent-interface-commands)))))
+    (unless command (user-error "Primary interface %s has no command for %s" interface key))
+    (call-interactively command)))
+
+(defun kittymacs-agent-start ()
+  "Run the primary interface's start command."
+  (interactive)
+  (kittymacs-agent--dispatch "a"))
+
+(defun kittymacs-agent-new ()
+  "Run the primary interface's new command."
+  (interactive)
+  (kittymacs-agent--dispatch "n"))
+
+(defun kittymacs-agent-toggle ()
+  "Run the primary interface's toggle command."
+  (interactive)
+  (kittymacs-agent--dispatch "t"))
+
+(defun kittymacs-agent-switch ()
+  "Run the primary interface's switch command."
+  (interactive)
+  (kittymacs-agent--dispatch "b"))
+
+(defun kittymacs-agent-resume ()
+  "Run the primary interface's resume command."
+  (interactive)
+  (kittymacs-agent--dispatch "r"))
+
+(defun kittymacs-agent-send ()
+  "Run the primary interface's send command."
+  (interactive)
+  (kittymacs-agent--dispatch "s"))
+
+(defun kittymacs-agent-file ()
+  "Run the primary interface's file command."
+  (interactive)
+  (kittymacs-agent--dispatch "f"))
+
+(defun kittymacs-agent-prompt ()
+  "Run the primary interface's prompt command."
+  (interactive)
+  (kittymacs-agent--dispatch "p"))
+
+(defun kittymacs-agent-interrupt ()
+  "Run the primary interface's interrupt command."
+  (interactive)
+  (kittymacs-agent--dispatch "i"))
+
+(defun kittymacs-agent-menu ()
+  "Run the primary interface's menu command."
+  (interactive)
+  (kittymacs-agent--dispatch "?"))
+
+(defconst kittymacs-agent--dispatchers
+  '(("a" . kittymacs-agent-start) ("n" . kittymacs-agent-new)
+    ("t" . kittymacs-agent-toggle) ("b" . kittymacs-agent-switch)
+    ("r" . kittymacs-agent-resume) ("s" . kittymacs-agent-send)
+    ("f" . kittymacs-agent-file) ("p" . kittymacs-agent-prompt)
+    ("i" . kittymacs-agent-interrupt) ("?" . kittymacs-agent-menu))
+  "Shared key dispatchers, independent of package command names.")
+
+(defun kittymacs-agent--bind-primary ()
+  "Bind shared keys for the primary interface, preserving extension keys."
+  (dolist (entry kittymacs-agent--dispatchers)
+    (keymap-unset kittymacs-agent-map (car entry) t))
+  (let ((commands (alist-get (kittymacs-agent--primary) kittymacs-agent-interface-commands)))
+    (when (assoc "a" commands)
+      (keymap-set kittymacs-agent-map "a" (cons "start or switch" #'kittymacs-agent-start)))
+    (when (assoc "n" commands)
+      (keymap-set kittymacs-agent-map "n" (cons "new session" #'kittymacs-agent-new)))
+    (when (assoc "t" commands)
+      (keymap-set kittymacs-agent-map "t" (cons "toggle" #'kittymacs-agent-toggle)))
+    (when (assoc "b" commands)
+      (keymap-set kittymacs-agent-map "b" (cons "switch session" #'kittymacs-agent-switch)))
+    (when (assoc "r" commands)
+      (keymap-set kittymacs-agent-map "r" (cons "resume" #'kittymacs-agent-resume)))
+    (when (assoc "s" commands)
+      (keymap-set kittymacs-agent-map "s" (cons "send context" #'kittymacs-agent-send)))
+    (when (assoc "f" commands)
+      (keymap-set kittymacs-agent-map "f" (cons "send file" #'kittymacs-agent-file)))
+    (when (assoc "p" commands)
+      (keymap-set kittymacs-agent-map "p" (cons "send prompt" #'kittymacs-agent-prompt)))
+    (when (assoc "i" commands)
+      (keymap-set kittymacs-agent-map "i" (cons "interrupt" #'kittymacs-agent-interrupt)))
+    (when (assoc "?" commands)
+      (keymap-set kittymacs-agent-map "?" (cons "menu" #'kittymacs-agent-menu)))))
+
+(defun kittymacs-agent-set-primary (interface)
+  "Choose INTERFACE for the shared agent keys for this Emacs session."
+  (interactive
+   (list (intern (completing-read
+                  "Primary interface: "
+                  (mapcar (lambda (row) (symbol-name (car row)))
+                          (kittymacs-agent--available-interfaces)) nil t))))
+  (unless (assq interface (kittymacs-agent--available-interfaces))
+    (user-error "Interface %s is disabled or its package is missing" interface))
+  (setq kittymacs-agent-primary-interface interface)
+  (kittymacs-agent--bind-primary))
+
+(dolist (row (kittymacs-agent--available-interfaces))
+  (let* ((interface (car row))
+         (map (pcase interface
+                ('agent-shell kittymacs-agent-shell-map)
+                ('gptel-agent kittymacs-gptel-agent-map)
+                ('claude-code-ide kittymacs-claude-code-ide-map))))
+    (dolist (entry (alist-get interface kittymacs-agent-interface-commands))
+      (keymap-set map (car entry) (cons (nth 1 entry) (nth 2 entry))))))
+
+(when (assq 'agent-shell (kittymacs-agent--available-interfaces))
+  (keymap-set kittymacs-agent-map "e" (cons "ACP sessions" kittymacs-agent-shell-map)))
+(when (assq 'gptel-agent (kittymacs-agent--available-interfaces))
+  (keymap-set kittymacs-agent-map "g" (cons "gptel-agent" kittymacs-gptel-agent-map)))
+
+(when (and (kittymacs-feature-p 'agents) (locate-library "agent-shell"))
+  (keymap-set kittymacs-agent-map "h" (cons "choose ACP harness" #'kittymacs-agent-choose-harness))
+  (keymap-set kittymacs-agent-shell-map "h" (cons "choose ACP harness" #'kittymacs-agent-choose-harness))
+  (when (locate-library "agent-shell-attention")
+    (keymap-set kittymacs-agent-shell-map "j" (cons "waiting shell" #'agent-shell-attention-jump))
+    (keymap-set kittymacs-agent-shell-map "d" (cons "all shells" #'agent-shell-attention-dashboard))))
+(when (kittymacs-agent--available-interfaces)
+  (keymap-set kittymacs-agent-map "P" (cons "choose primary interface" #'kittymacs-agent-set-primary)))
+(kittymacs-agent--bind-primary)
 
 (provide 'kittymacs-agents)
 ;;; kittymacs-agents.el ends here

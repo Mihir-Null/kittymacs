@@ -38,13 +38,8 @@
 - =minimal= is the default on a new machine, and =full= is what a machine had before that default ([[id:2ea4f7b0-6c19-4d85-93f2-c07a1be58d36][A machine with no choice keeps what it has]]).
 - =:not-on= lists exceptions rather than systems, because nearly every feature runs everywhere.
 - =:vc= is a subset of =:packages=, so a list of everything stays one property.
-- =:one-of= serves features that each want the same keys, such as two coding agents that both take =SPC a=.
-  + Every member names the set, so a new member changes only its own entry.
-  + [[id:0fb86d27-93c1-4ea5-b2d8-6a1e47c3f9d0][From the options to the answer]] lets a feature you select win over one your profile brings, so selecting a member needs no exclusion of the others.
-  + A set has at least two members, and at most one of them is outside =optional=, so a profile alone never brings two.
-  + No member depends on another member of its set, because the two could never both be on.
-  + The coding agents are its one set: =agents= and the three alternatives that [[id:94d55283-5011-4f98-a7f0-8c6bcb51aab9][Agents]] offers.
-  + =claude-code-ide= is outside the set: it takes =SPC a w=, not =SPC a=, so it runs beside whichever agent is on. =agent-claude-code-ide= depends on it, which the rule allows because it is no member.
+- =:one-of= is available for features that truly cannot coexist. No current feature uses it. Coding interfaces can coexist; =kittymacs-agent-primary-interface= selects the shared keys without excluding packages.
+- =agent-claude-code-ide= is a hidden compatibility alias. It enables =claude-code-ide= and preserves the old primary selection unless the new option chooses otherwise.
 - =:experimental= marks a feature that works and has not earned the same trust, so a person choosing it can see why.
   + [[id:c8e2f1a7-4b60-49d3-8a15-7d3e96b0c421][Onboarding]] shows it on the feature's row, =SPC o B= names it for a backend whose transport has the feature's name, and the Nix chapter adds it to the feature's option.
   + No start warns about it, because you opted in by name, and =SPC o B= shows it when you look.
@@ -379,7 +374,7 @@
     ;; Assistants
     (agents
      :group assistants :packages (agent-shell acp agent-shell-attention) :module kittymacs-agents :profile full
-     :vc (agent-shell acp agent-shell-attention) :one-of agent :option kittymacs-agent-mcp-servers
+     :vc (agent-shell acp agent-shell-attention) :option kittymacs-agent-mcp-servers
      :summary "Runs any supported ACP harness through agent-shell, with a shared session picker."
      :example "=SPC a a= starts an agent in this project.")
     (claude-code-ide
@@ -389,12 +384,11 @@
      :example "=SPC a w b= picks one of Claude Code's sessions.")
     (agent-claude-code-ide
      :group assistants :packages () :module kittymacs-agents :profile optional
-     :deps (claude-code-ide) :one-of agent
-     :summary "Makes Claude Code's own screen the agent on SPC a, with Emacs's code navigation as its tools."
+     :deps (claude-code-ide) :hidden t
+     :summary "Compatibility alias selecting Claude Code IDE as the primary interface when no explicit preference is set."
      :example "=SPC a a= opens Claude Code beside this project's files.")
     (agent-gptel
      :group assistants :packages (gptel gptel-agent) :module kittymacs-agents :profile optional
-     :one-of agent
      :summary "Runs gptel's agent, written in Emacs Lisp, with a model you choose, local ones included."
      :example "=SPC a a= opens this project's agent buffer.")
     (suggestions
@@ -410,6 +404,13 @@
      :example "A session that sets =KITTYMACS_EXWM=1= shows Chrome as a buffer."))
   "Every optional feature: its name, then a property list.
 The chapter that writes this file explains the properties.")
+
+(defconst kittymacs-agent-interfaces
+  '((agent-shell :label "Agent shell (ACP)" :feature agents :library "agent-shell" :prefix "e")
+    (gptel-agent :label "gptel-agent" :feature agent-gptel :library "gptel-agent" :prefix "g")
+    (claude-code-ide :label "Claude Code IDE" :feature claude-code-ide
+                     :library "claude-code-ide" :prefix "w"))
+  "Independent coding interfaces, their feature gates and dedicated prefixes.")
 
 (defconst kittymacs-agent-harnesses
   '((antigravity :label "Antigravity"

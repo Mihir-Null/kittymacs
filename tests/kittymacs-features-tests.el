@@ -244,8 +244,8 @@ No feature has the label now, so a stand-in carries it."
       (should (= (length warnings) 1))
       (should (string-match-p "needs-second is selected" (car warnings))))))
 
-(ert-deftest kittymacs-features-an-alternative-agent-replaces-agent-shell ()
-  "The catalogue's own set: `full' brings `agents', and a selection replaces it."
+(ert-deftest kittymacs-features-coding-interfaces-coexist ()
+  "Enabling another coding interface preserves agent-shell and its packages."
   (kittymacs-features-test-with ((kittymacs-profile 'full)) warnings
     (should (kittymacs-feature-p 'agents))
     (should-not warnings))
@@ -253,7 +253,7 @@ No feature has the label now, so a stand-in carries it."
     (kittymacs-features-test-with ((kittymacs-profile 'full)
                                    (kittymacs-features (list agent)))
         warnings
-      (should (equal (list agent t nil)
+      (should (equal (list agent t t)
                      (list agent (kittymacs-feature-p agent) (kittymacs-feature-p 'agents))))
       (should-not warnings)))
   ;; claude-code-ide's screen runs in the terminal, so it brings one.
@@ -274,7 +274,8 @@ No feature has the label now, so a stand-in carries it."
           (kittymacs-features-resolve)
           (should-not warnings))
         (kittymacs-features-test-with ((kittymacs-profile 'full)
-                                       (kittymacs-features '(agent-claude-code-ide)))
+                                       (kittymacs-features '(agent-claude-code-ide))
+                                       (kittymacs-features-excluded '(agents)))
             warnings
           (kittymacs-features-resolve)
           (should (= (length warnings) 1))

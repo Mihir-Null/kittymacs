@@ -2417,9 +2417,8 @@ in
   + =minimal= also builds its packages, with one extra.
   + Each report also says which tools the host installs, and the test holds them against the features that start answers, as =tools-follow-selection= does for NixOS alone.
   + =noProfile= sets features alone, and =extraOnly= builds in one package with =packagesFromNix= off.
-  + =agentAlternative= selects =agent-gptel= under =full=, so both sides must drop =agents= from the =agent= set, and it builds gptel's packages.
+  + =agentAdditional= selects =agent-gptel= under =full=, so both sides retain =agents= and build gptel's packages. =coexistingAgents= enables all three interfaces and writes the primary preference through settings.
   + =typo= and =reserved= must fail evaluation, each with a message naming the option.
-  + =twoAgents= must fail too, because it sets two members of the =agent= set to =true=.
   + =nixosPlain=, =nixosFull= and =nixosMinimal=, and =darwinPlain=, =darwinFull= and =darwinMinimal=, are =plain=, =full= and =minimal= again, through [[*The system modules][the system module]].
   + =darwinReserved= must fail too, through its own module.
 - The check's starts have no packages in CI, because Elisp settles the selection before any package loads.
@@ -2605,11 +2604,17 @@ in
           full = fullOptions;
           minimal = minimalOptions;
           noProfile.features.jump.enable = false;
-          # An alternative agent replaces the one full brings, on both sides.
-          agentAlternative = {
+          # Coding interfaces coexist with the one full brings.
+          agentAdditional = {
             profile = "full";
             features.agent-gptel.enable = true;
             packagesFromNix = true;
+          };
+          coexistingAgents = {
+            profile = "full";
+            features.agent-gptel.enable = true;
+            features.claude-code-ide.enable = true;
+            settings.kittymacs-agent-primary-interface.elisp = "'gptel-agent";
           };
           extraOnly = {
             extraPackages = epkgs: [ epkgs.vundo ];
@@ -2628,12 +2633,8 @@ in
           darwinMinimal = darwinReport minimalOptions;
         };
 
-      # These four must fail evaluation.
+      # These three must fail evaluation.
       typo = report { features.no-such-feature.enable = true; };
-      twoAgents = report {
-        features.agent-claude-code-ide.enable = true;
-        features.agent-gptel.enable = true;
-      };
       reserved = report { hostFiles."10-nix" = ""; };
       darwinReserved = (darwinHost { hostFiles."10-nix" = ""; }).system.drvPath;
     };
