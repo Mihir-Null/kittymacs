@@ -67,6 +67,15 @@ is set, for the same reason."
   :type '(repeat symbol)
   :group 'kittymacs)
 
+(defcustom kittymacs-agent-primary-interface nil
+  "Preferred coding interface for the shared SPC a commands.
+Use `agent-shell', `gptel-agent' or `claude-code-ide'.  Nil selects an
+available interface automatically, preserving legacy primary selections.
+This option does not enable or exclude features.  If the preferred interface
+is disabled or unavailable, use the first available interface instead."
+  :type 'symbol
+  :group 'kittymacs)
+
 (defcustom kittymacs-features-excluded nil
   "Features to turn off, by their catalogue names.
 What depends on them goes too.  The `minimal' profile's features stay on.

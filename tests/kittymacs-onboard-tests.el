@@ -1665,3 +1665,90 @@ Return its exit status, what it drew, and the directory it ran in, as a list."
       (delete-directory root t))))
 
 ;;; kittymacs-onboard-tests.el ends here
+
+(ert-deftest kittymacs-onboard-acp-choice-round-trips-every-harness-and-prompt ()
+  (kittymacs-onboard-test-with-machine
+    (let* ((state (kittymacs-onboard--make-state :profile 'full))
+           (row (assq 'kittymacs-agent-harness kittymacs-onboard-options)))
+      (should (memq row (kittymacs-onboard--options-here state)))
+      (dolist (choice (cons '(nil :label "Prompt") kittymacs-agent-harnesses))
+        (let ((input (if (car choice) (symbol-name (car choice)) "prompt")))
+          (cl-letf (((symbol-function 'kittymacs-onboard--read-text)
+                     (lambda (&rest _) input)))
+            (kittymacs-onboard--change-option state row))
+          (should (assq 'kittymacs-agent-harness (kittymacs-onboard--options state)))
+          (should (eq (alist-get 'kittymacs-agent-harness (kittymacs-onboard--options state))
+                      (car choice)))
+          (let* ((forms (kittymacs-onboard--block-forms state))
+                 (text (kittymacs-onboard--block-text forms)))
+            (kittymacs-onboard-test--write-bytes private text)
+            (should (equal (kittymacs-onboard-test--value private 'kittymacs-agent-harness)
+                           (list (if (car choice) (list 'quote (car choice)) nil))))))))))
+
+(ert-deftest kittymacs-onboard-acp-choices-follow-the-feature-gate ()
+  (let ((state (kittymacs-onboard--make-state :profile 'minimal)))
+    (should-not (assq 'kittymacs-agent-harness (kittymacs-onboard--options-here state)))))
+
+(ert-deftest kittymacs-onboard-acp-invalid-input-preserves-the-current-answer ()
+  (let ((state (kittymacs-onboard--make-state
+                :profile 'full :options '((kittymacs-agent-harness . codex)))))
+    (cl-letf (((symbol-function 'kittymacs-onboard--read-text)
+               (lambda (&rest _) "not-an-acp-harness")))
+      (kittymacs-onboard--change-option state
+                                      (assq 'kittymacs-agent-harness kittymacs-onboard-options)))
+    (should (eq (alist-get 'kittymacs-agent-harness (kittymacs-onboard--options state)) 'codex))))
+
+(ert-deftest kittymacs-onboard-enables-all-coding-interfaces-together ()
+  (let ((state (kittymacs-onboard--make-state :profile 'minimal)))
+    (dolist (feature '(agents agent-gptel claude-code-ide))
+      (kittymacs-onboard--toggle state feature))
+    (dolist (feature '(agents agent-gptel claude-code-ide terminal))
+      (should (memq feature (kittymacs-onboard--on state))))))
+
+(ert-deftest kittymacs-onboard-primary-choices-follow-enabled-interfaces-and-round-trip ()
+  (kittymacs-onboard-test-with-machine
+    (let* ((state (kittymacs-onboard--make-state
+                   :profile 'minimal :selected '(agent-gptel claude-code-ide)))
+           (row (assq 'kittymacs-agent-primary-interface kittymacs-onboard-options)))
+      (should (assq (car row) (kittymacs-onboard--options-here state)))
+      (should (equal (mapcar #'car (kittymacs-onboard--choice-rows state row))
+                     '(gptel-agent claude-code-ide)))
+      (cl-letf (((symbol-function 'kittymacs-onboard--read-text)
+                 (lambda (&rest _) "gptel-agent")))
+        (kittymacs-onboard--change-option state row))
+      (should (string-search "kittymacs-agent-primary-interface" (kittymacs-onboard--nix-text state)))
+      (kittymacs-onboard-test--write-bytes
+       private (kittymacs-onboard--block-text (kittymacs-onboard--block-forms state)))
+      (should (equal (kittymacs-onboard-test--value private 'kittymacs-agent-primary-interface)
+                     '('gptel-agent)))
+      (cl-letf (((symbol-function 'kittymacs-onboard--read-text)
+                 (lambda (&rest _) "automatic")))
+        (kittymacs-onboard--change-option state row))
+      (should (equal (assq 'kittymacs-agent-primary-interface (kittymacs-onboard--options state))
+                     '(kittymacs-agent-primary-interface))))))
+
+(ert-deftest kittymacs-onboard-harness-picker-shows-installed-first-and-can-select-missing ()
+  (let ((state (kittymacs-onboard--make-state :profile 'full))
+        (row (assq 'kittymacs-agent-harness kittymacs-onboard-options))
+        (answers '("all" "codex")) screens)
+    (cl-letf (((symbol-function 'executable-find)
+               (lambda (program &rest _) (and (equal program "opencode") "/bin/opencode")))
+              ((symbol-function 'kittymacs-onboard--show)
+               (lambda (text) (push text screens)))
+              ((symbol-function 'kittymacs-onboard--read-text)
+               (lambda (&rest _) (pop answers))))
+      (kittymacs-onboard--change-option state row))
+    (should (eq (alist-get 'kittymacs-agent-harness (kittymacs-onboard--options state)) 'codex))
+    (should (string-search "opencode: OpenCode" (cadr screens)))
+    (should-not (string-search "codex: Codex" (cadr screens)))
+    (should (string-search "codex: Codex" (car screens)))
+    (should (string-search "executable not found" (car screens)))))
+
+(ert-deftest kittymacs-onboard-keeps-an-unavailable-or-custom-harness-unless-changed ()
+  (let ((state (kittymacs-onboard--make-state
+                :profile 'full :options '((kittymacs-agent-harness . custom-acp)))))
+    (cl-letf (((symbol-function 'executable-find) (lambda (&rest _) nil))
+              ((symbol-function 'kittymacs-onboard--read-text) (lambda (&rest _) "")))
+      (kittymacs-onboard--change-option
+       state (assq 'kittymacs-agent-harness kittymacs-onboard-options)))
+    (should (eq (alist-get 'kittymacs-agent-harness (kittymacs-onboard--options state)) 'custom-acp))))

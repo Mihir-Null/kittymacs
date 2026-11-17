@@ -299,7 +299,7 @@ No feature has it now, so this holds for the next one."
   "Onboarding reads this under `emacs -Q', before any package exists."
   (let ((forms (kittymacs-bench--forms
                 (expand-file-name "lisp/kittymacs-catalogue.el" kittymacs-catalogue-test-root))))
-    (should (equal (mapcar #'car forms) '(defconst provide)))))
+    (should (equal (mapcar #'car forms) '(defconst defconst defconst provide)))))
 
 (ert-deftest kittymacs-catalogue-json-holds-the-same-features ()
   (let* ((file (expand-file-name "nix/features.json" kittymacs-catalogue-test-root))

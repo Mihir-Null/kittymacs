@@ -147,12 +147,15 @@ answers from `full', so only then may it install one this start does not need."
 
 (defun kittymacs-nix--check-settings (name)
   "Return what is wrong with the settings the host NAME asked for."
-  (when (memq name '(full nixosFull darwinFull))
-    (seq-keep (pcase-lambda (`(,variable . ,expected))
-                (unless (equal (and (boundp variable) (symbol-value variable)) expected)
+  (let ((expected (pcase name
+                    ((or 'full 'nixosFull 'darwinFull) kittymacs-nix-full-settings)
+                    ('coexistingAgents
+                     '((kittymacs-agent-primary-interface . gptel-agent))))))
+    (seq-keep (pcase-lambda (`(,variable . ,value))
+                (unless (equal (and (boundp variable) (symbol-value variable)) value)
                   (format "%s is %S, not %S" variable
-                          (and (boundp variable) (symbol-value variable)) expected)))
-              kittymacs-nix-full-settings)))
+                          (and (boundp variable) (symbol-value variable)) value)))
+              expected)))
 
 (defun kittymacs-nix-start (name)
   "Start the configuration as the host NAME says; print the verdict and exit."

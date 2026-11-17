@@ -36,6 +36,12 @@
 ;;            (kittymacs-org-node-excluded-directories . ("secrets")))))
 
 ;; Agents
+;; Enable interfaces independently; choose which owns the shared SPC a keys.
+;; (setopt kittymacs-features '(agents agent-gptel claude-code-ide))
+;; (setopt kittymacs-agent-primary-interface 'agent-shell)
+;; nil offers the ACP picker; use a built-in identifier or custom registry entry.
+;; (setopt kittymacs-agent-harness 'opencode)
+;; (setopt kittymacs-agent-commands '((codex . ("/opt/bin/codex-acp"))))
 ;; The MCP servers each agent-shell session starts with; see
 ;; literate/77-agents.org.
 ;; (setopt kittymacs-agent-mcp-servers
