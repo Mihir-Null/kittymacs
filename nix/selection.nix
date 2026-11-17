@@ -168,7 +168,10 @@ rec {
         lib.filter (name: setOf name == null || winner name == name) features;
       removed = lib.subtractLists floor excluded;
       wanted = lib.unique (
-        floor ++ lib.optionals (cfg.profile != "minimal") (inProfile "full") ++ withDeps selected
+        floor
+        ++ lib.filter (name: (catalogue.${name}.default or "nil") == "t") names
+        ++ lib.optionals (cfg.profile != "minimal") (inProfile "full")
+        ++ withDeps selected
       );
       applies = name: !(lib.elem systemType (catalogue.${name}.not-on or [ ]));
     in

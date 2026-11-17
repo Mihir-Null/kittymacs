@@ -961,7 +961,7 @@ quits as a minibuffer would."
     (should-not (seq-difference default known))
     (mapc #'require '(python sh-script js c-ts-mode typescript-ts-mode cc-mode scheme tex-mode
                              org lisp-mode))
-    (dolist (mode (seq-difference known '(markdown-mode markdown-ts-mode)))
+    (dolist (mode (seq-difference known '(markdown-mode markdown-ts-mode typst-ts-mode)))
       (should (equal (list mode t)
                      (list mode (and (or (fboundp mode)
                                          (boundp (intern (format "%s-hook" mode))))
@@ -1752,3 +1752,12 @@ Return its exit status, what it drew, and the directory it ran in, as a list."
       (kittymacs-onboard--change-option
        state (assq 'kittymacs-agent-harness kittymacs-onboard-options)))
     (should (eq (alist-get 'kittymacs-agent-harness (kittymacs-onboard--options state)) 'custom-acp))))
+
+(ert-deftest kittymacs-onboard-typst-default-can-be-toggled-off ()
+  (let ((state (kittymacs-onboard--make-state :profile 'minimal)))
+    (should (memq 'lang-typst (kittymacs-onboard--on state)))
+    (kittymacs-onboard--toggle state 'lang-typst)
+    (should-not (memq 'lang-typst (kittymacs-onboard--on state)))
+    (should (memq 'lang-typst (kittymacs-onboard--excluded state)))
+    (kittymacs-onboard--toggle state 'lang-typst)
+    (should (memq 'lang-typst (kittymacs-onboard--on state)))))

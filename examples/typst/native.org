@@ -1,0 +1,6 @@
+#+title: Native Typst math
+
+* Example
+$frac(a,b)$ is interpreted as Typst by the Typst exporter.
+
+Use SPC m Y to export a PDF.

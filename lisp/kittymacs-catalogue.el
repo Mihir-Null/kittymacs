@@ -259,6 +259,14 @@
      :group programming :packages (jupyter) :module kittymacs-notebooks :profile optional :deps (notebooks)
      :summary "Runs notebook cells in a live Jupyter kernel; it needs a native module."
      :example "Set =kittymacs-notebooks-jupyter= to run a cell and see its output inline.")
+    (lang-typst
+     :group programming :packages (typst-ts-mode ox-typst) :module kittymacs-languages :profile full :default t
+     :summary "Typst documents and Typst-first Org math, with per-document TeX compatibility."
+     :example "Open a .typ file, or export an Org document to Typst/PDF.")
+    (typst-preview
+     :group programming :packages (typst-preview) :module kittymacs-languages :profile optional :deps (lang-typst)
+     :summary "Live browser preview with source navigation through Tinymist."
+     :example "Run M-x typst-preview-mode in a Typst file.")
     (lang-nix
      :group programming :packages (nix-mode nix-ts-mode) :module kittymacs-languages :profile optional
      :summary "Editing modes for the Nix language."

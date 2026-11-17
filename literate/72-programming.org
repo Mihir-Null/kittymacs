@@ -59,7 +59,7 @@
 
 
 (defcustom kittymacs-structural-editing-modes
-  '(prog-mode tex-mode org-mode markdown-mode markdown-ts-mode
+  '(prog-mode tex-mode typst-ts-mode org-mode markdown-mode markdown-ts-mode
     eval-expression-minibuffer-setup)
   "Where Puni keeps brackets balanced.
 Each name is a mode, or anything else with a hook called NAME-hook, and a

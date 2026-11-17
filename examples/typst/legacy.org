@@ -1,0 +1,8 @@
+#+title: Legacy TeX math
+
+* Example
+$\frac{a}{b}$ is converted by Pandoc for the Typst exporter.
+
+# Local Variables:
+# kittymacs-typst-math-syntax: latex
+# End:

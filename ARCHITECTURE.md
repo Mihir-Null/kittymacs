@@ -347,3 +347,18 @@ Not covered by CI, for the user to check on the real host:
 - **A mode menu:** `(kittymacs-define-localleader 'python-mode "r" (cons "run" #'python-shell-send-buffer))` next to the package.
 - **A package:** a chapter named `literate/NN-name.org` with a `use-package … :ensure t` block, a Meow section and a `require` in the startup chapter. The builder finds the chapter by its name; there is nothing else to register.
 - **Something personal:** the `kittymacs-personal` overlay, or `private.el` for a single machine, never a branch of this repository.
+
+## Typst-first authoring
+
+`lang-typst` is a full-profile feature also selected by `:default t` for
+minimal. Unlike the protected minimal editing floor, it can be excluded through
+onboarding. It owns the Tree-sitter editing mode, pinned grammar, on-demand
+Tinymist registration and Org Typst exporter. Live browser preview is a separate
+optional feature. No server, watch process or browser starts merely on opening
+a document. A missing parser leaves editable text.
+
+Org math sent to the Typst exporter uses Typst syntax by default. The safe,
+buffer-local `kittymacs-typst-math-syntax` option selects `latex` compatibility
+through Pandoc per document or project; detection only suggests the switch.
+It never changes source text, TeX mode associations, native Org LaTeX export or
+notebook math. Inline Typst rendering is deferred.

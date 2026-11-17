@@ -199,7 +199,8 @@ SELECTED decides between members, as `kittymacs-features--one-of-winner' says."
 They come in the catalogue's order."
   (let* ((floor (kittymacs-features--in-profile 'minimal))
          (removed (seq-difference excluded floor))
-         (wanted (append (kittymacs-features--in-profile profile)
+         (wanted (append (mapcar #'car (seq-filter (lambda (entry) (plist-get (cdr entry) :default)) kittymacs-catalogue))
+                         (kittymacs-features--in-profile profile)
                          (kittymacs-features--with-deps selected)))
          (on (kittymacs-features--drop-unmet
               (kittymacs-features--keep-one-of-each
