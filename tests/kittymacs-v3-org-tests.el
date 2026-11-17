@@ -20,6 +20,11 @@
     (org-mode)
     (should (string-match-p "Saved result" (org-export-as 'html nil nil t)))))
 
+(ert-deftest kittymacs-babel-preserves-native-executor-context ()
+  (let ((info '("python" "print(42)" ((:async . "yes")))))
+    (should (equal (kittymacs-babel--execute #'list nil info nil 'inline-src-block)
+                   (list nil info nil 'inline-src-block)))))
+
 (ert-deftest kittymacs-org-press-runs-the-project-cli ()
   (let* ((root (file-name-as-directory (make-temp-file "Org Press test " t)))
          (default-directory (expand-file-name "content/" root))

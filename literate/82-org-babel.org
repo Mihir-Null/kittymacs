@@ -107,12 +107,13 @@
     (when (kittymacs-feature-p (car entry))
       (kittymacs-babel--enable (cdr entry)))))
 
-(defun kittymacs-babel--execute (original &optional arg info params)
+(defun kittymacs-babel--execute (original &optional arg info params executor-type)
   "Route a standalone async block to ob-async, preserving native dispatch."
   (let* ((probe (or info (org-babel-get-src-block-info 'light)))
          (language (car probe))
          (headers (and probe (org-babel-merge-params (nth 2 probe) params))))
     (if (and (kittymacs-feature-p 'babel-async)
+             (memq executor-type '(nil src-block))
              (member language '("bash" "sh" "shell" "js"))
              (equal (alist-get :async headers) "yes")
              (member (alist-get :session headers) '(nil "none"))
@@ -121,7 +122,9 @@
         (let ((org-babel-load-languages
                (list (cons (if (equal language "js") 'js 'shell) t))))
           (ob-async-org-babel-execute-src-block original arg info params))
-      (funcall original arg info params))))
+      (if executor-type
+          (funcall original arg info params executor-type)
+        (funcall original arg info params)))))
 
 (with-eval-after-load 'ob-async
   (advice-remove 'org-babel-execute-src-block #'ob-async-org-babel-execute-src-block))
