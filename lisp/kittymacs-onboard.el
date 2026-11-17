@@ -60,6 +60,9 @@
      :type directory :label "Where your Org files live")
     (kittymacs-org-node-directory
      :type directory :feature linked-notes :label "Where your linked notes live")
+    (kittymacs-agent-harness
+     :type symbol :feature agents :choices kittymacs-agent-harnesses
+     :label "Default ACP harness (prompt keeps the picker)")
     (kittymacs-font-family
      :type string :label "The font for code")
     (kittymacs-suggestions
@@ -862,7 +865,13 @@ A name the catalogue lacks goes in NOTES."
                           (if (= index cursor) "> " "  ")
                           (plist-get (cdr row) :label)
                           (car row)
-                          (kittymacs-onboard--option-shown state (car row))))
+                          (concat (kittymacs-onboard--option-shown state (car row))
+                                  (when (plist-get (cdr row) :choices)
+                                    (concat "\n      Choices: prompt, "
+                                            (mapconcat (lambda (entry)
+                                                         (format "%s (%s)" (car entry)
+                                                                 (plist-get (cdr entry) :label)))
+                                                       (symbol-value (plist-get (cdr row) :choices)) ", "))))))
                 (kittymacs-onboard--options-here state) ""))))
 
 (defun kittymacs-onboard--change-option (state row)
@@ -870,6 +879,7 @@ A name the catalogue lacks goes in NOTES."
   (let* ((option (car row))
          (type (plist-get (cdr row) :type))
          (current (cdr (assq option (kittymacs-onboard--options state))))
+         (choices (plist-get (cdr row) :choices))
          (value (if (eq type 'boolean)
                     (not current)
                   (string-trim
@@ -878,6 +888,13 @@ A name the catalogue lacks goes in NOTES."
                     (and (stringp current) current))))))
     (cond
      ((equal value "") nil)
+     (choices
+      (cond
+       ((equal value "prompt")
+        (setf (alist-get option (kittymacs-onboard--options state)) nil))
+       ((assq (intern-soft value) (symbol-value choices))
+        (setf (alist-get option (kittymacs-onboard--options state)) (intern value)))
+       (t (message "Unknown harness %s; use an identifier from Choices" value))))
      (t (setf (alist-get option (kittymacs-onboard--options state))
               (if (eq type 'directory) (file-name-as-directory value) value))))))
 

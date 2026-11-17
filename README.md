@@ -59,7 +59,7 @@ A new installation starts small: Meow, Vertico, Orderless, Marginalia, Consult, 
 - **Project tasks:** Edna prerequisites, project and agenda task views, and an optional single-file Kanban board. See [project tasks](literate/83-org-tasks.org).
 - **Executable documents:** Org Babel languages, optional kernels and diagrams, plus project-local Org Press publishing. See [Babel](literate/82-org-babel.org) and [research and publishing](literate/84-org-workflows.org).
 - **Notebooks:** Jupyter notebooks edited as [Jupytext](https://jupytext.readthedocs.io) scripts: `# %%` cells you run with `C-c C-c`, an optional Jupyter kernel, LaTeX in Markdown cells drawn in place, and each project's own environment through direnv.
-- **A coding agent:** Claude Code in an Emacs buffer through [agent-shell](https://github.com/xenodium/agent-shell), under `SPC a`; every edit it proposes waits for your answer. Optionally, Claude Code's own screen through claude-code-ide beside it, its sessions under `SPC a w`.
+- **A coding agent:** Any supported ACP harness in an Emacs buffer through [agent-shell](https://github.com/xenodium/agent-shell), under `SPC a`. Choose a default in onboarding or pick a harness per session. Install and authenticate its CLI/adapter separately. Optionally, Claude Code's own screen through claude-code-ide beside it, its sessions under `SPC a w`.
 - **Suggestions as you type:** GitHub Copilot's grey ghost text and next-edit suggestions through [copilot.el](https://github.com/copilot-emacs/copilot.el), off until you turn them on (`SPC t a`, or `kittymacs-suggestions`).
 - **Programming:** Eglot language servers (opt-in per mode), Flymake, structural editing, pinned Tree-sitter grammars that load only when they work.
 - **Every platform:** Linux, macOS, Windows (PowerShell, with Linux on a WSL2 backend) and the Android port, each with its own tested policy.
@@ -281,7 +281,7 @@ Where a key needs a feature beyond `minimal`, the row names it.
 | `SPC o e` / `SPC t d` | terminal / project tree (`file-tree`) |
 | `SPC m` | the current mode's menu |
 | `SPC n` | linked notes (`linked-notes`): find, insert, capture, backlinks |
-| `SPC a a` | Claude Code in this project (`agents`) |
+| `SPC a a` | ACP harness in this project (`agents`) |
 | `SPC C c` | the reading guide to the configuration |
 | `SPC C o` | choose features again; a change takes effect at the next start |
 

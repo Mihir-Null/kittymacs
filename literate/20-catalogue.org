@@ -380,7 +380,7 @@
     (agents
      :group assistants :packages (agent-shell acp agent-shell-attention) :module kittymacs-agents :profile full
      :vc (agent-shell acp agent-shell-attention) :one-of agent :option kittymacs-agent-mcp-servers
-     :summary "Runs Claude Code through agent-shell, in an Emacs buffer of its own."
+     :summary "Runs any supported ACP harness through agent-shell, with a shared session picker."
      :example "=SPC a a= starts an agent in this project.")
     (claude-code-ide
      :group assistants :packages (claude-code-ide) :module kittymacs-agents :profile optional
@@ -410,6 +410,83 @@
      :example "A session that sets =KITTYMACS_EXWM=1= shows Chrome as a buffer."))
   "Every optional feature: its name, then a property list.
 The chapter that writes this file explains the properties.")
+
+(defconst kittymacs-agent-harnesses
+  '((antigravity :label "Antigravity"
+     :command-option agent-shell-antigravity-acp-command :command ("agy" "acp")
+     :environment-option agent-shell-antigravity-environment)
+    (auggie :label "Auggie"
+     :command-option agent-shell-auggie-acp-command :command ("auggie" "--acp")
+     :environment-option agent-shell-auggie-environment)
+    (claude-code :label "Claude Code"
+     :command-option agent-shell-anthropic-claude-acp-command :command ("claude-agent-acp")
+     :environment-option agent-shell-anthropic-claude-environment)
+    (cline :label "Cline"
+     :command-option agent-shell-cline-acp-command :command ("cline" "--acp")
+     :environment-option agent-shell-cline-environment)
+    (codebuddy :label "CodeBuddy"
+     :command-option agent-shell-codebuddy-acp-command :command ("codebuddy" "--acp")
+     :environment-option agent-shell-codebuddy-environment)
+    (codex :label "Codex"
+     :command-option agent-shell-openai-codex-acp-command :command ("codex-acp")
+     :environment-option agent-shell-openai-codex-environment)
+    (copilot :label "Copilot"
+     :command-option agent-shell-github-acp-command :command ("copilot" "--acp")
+     :environment-option agent-shell-github-environment)
+    (cursor :label "Cursor"
+     :command-option agent-shell-cursor-acp-command :command ("agent" "acp")
+     :environment-option agent-shell-cursor-environment)
+    (deepseek :label "DeepSeek"
+     :command-option agent-shell-deepseek-acp-command :command ("dsh" "--profile" "acp")
+     :environment-option agent-shell-deepseek-environment)
+    (droid :label "Droid"
+     :command-option agent-shell-droid-acp-command :command ("droid" "exec" "--output-format" "acp")
+     :environment-option agent-shell-droid-environment)
+    (gemini-cli :label "Gemini CLI"
+     :command-option agent-shell-google-gemini-acp-command :command ("gemini" "--experimental-acp")
+     :environment-option agent-shell-google-gemini-environment)
+    (goose :label "Goose"
+     :command-option agent-shell-goose-acp-command :command ("goose" "acp")
+     :environment-option agent-shell-goose-environment)
+    (grok-build :label "Grok Build"
+     :command-option agent-shell-xai-acp-command :command ("grok" "agent" "stdio")
+     :environment-option agent-shell-xai-environment)
+    (hermes :label "Hermes"
+     :command-option agent-shell-hermes-acp-command :command ("hermes" "acp")
+     :environment-option agent-shell-hermes-environment)
+    (junie :label "Junie"
+     :command-option agent-shell-junie-acp-command :command ("junie" "--acp" "true")
+     :environment-option agent-shell-junie-environment)
+    (kimi :label "Kimi"
+     :command-option agent-shell-kimi-acp-command :command ("kimi" "acp")
+     :environment-option agent-shell-kimi-environment)
+    (kiro :label "Kiro"
+     :command-option agent-shell-kiro-acp-command :command ("kiro-cli" "acp")
+     :environment-option agent-shell-kiro-environment)
+    (mistral-vibe :label "Mistral Vibe"
+     :command-option agent-shell-mistral-acp-command :command ("vibe-acp")
+     :environment-option agent-shell-mistral-environment)
+    (omp :label "OMP"
+     :command-option agent-shell-omp-acp-command :command ("omp" "acp")
+     :environment-option agent-shell-omp-environment)
+    (openclaw :label "OpenClaw"
+     :command-option agent-shell-openclaw-acp-command :command ("openclaw" "acp")
+     :environment-option agent-shell-openclaw-environment)
+    (opencode :label "OpenCode"
+     :command-option agent-shell-opencode-acp-command :command ("opencode" "acp")
+     :environment-option agent-shell-opencode-environment)
+    (pi :label "Pi"
+     :command-option agent-shell-pi-acp-command :command ("pi-acp")
+     :environment-option agent-shell-pi-environment)
+    (qoder :label "Qoder"
+     :command-option agent-shell-qoder-acp-command :command ("qoder" "--acp")
+     :environment-option agent-shell-qoder-environment)
+    (qwen-code :label "Qwen Code"
+     :command-option agent-shell-qwen-acp-command :command ("qwen" "--experimental-acp")
+     :environment-option agent-shell-qwen-environment))
+  "Supported harnesses in the pinned agent-shell, sorted by display name.
+Each row gives its identifier, label, command and environment options.
+This metadata needs no agent packages, so onboarding works offline.")
 
 (provide 'kittymacs-catalogue)
 ;;; kittymacs-catalogue.el ends here

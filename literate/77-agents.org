@@ -6,18 +6,18 @@
 #+FILETAGS: :apps:
 #+STARTUP: overview
 
-- A coding agent you talk to in Emacs: =SPC a a= opens one in the current project, and a change it wants to make waits for your answer.
+- A coding agent you talk to in Emacs: =SPC a a= opens one in the current project. Its harness controls permissions and tool execution.
 - Three packages can be that agent, and one is on at a time, so =SPC a= always means the one you chose.
   + [[*Three agents, one at a time]] has the rule and the keys.
-  + =agents= is [[https://github.com/xenodium/agent-shell][agent-shell]], with [[https://github.com/ultronozm/agent-shell-attention.el][agent-shell-attention]] as its doorbell: Claude Code in a buffer of its own.
+  + =agents= is [[https://github.com/xenodium/agent-shell][agent-shell]], with [[https://github.com/ultronozm/agent-shell-attention.el][agent-shell-attention]] as its doorbell: any supported ACP harness in a buffer of its own.
   + =agent-claude-code-ide= and =agent-gptel= are the alternatives.
 - =claude-code-ide= runs beside whichever agent is on: Claude Code's own screen, its sessions under =SPC a w= ([[*claude-code-ide: Claude Code's own screen]]).
-  + With =agents=, you can talk to Claude in agent-shell and keep other sessions in Claude Code's own screen.
-- What Claude itself may do lives outside Emacs, in =~/.claude/settings.json=, so the command line and this buffer share it ([[*What lives in Emacs, and what does not]]).
+  + With =agents=, you can talk to any supported harness in agent-shell and keep other sessions in Claude Code's own screen.
+- Authentication, models and permissions belong to the selected harness and its provider configuration ([[*What lives in Emacs, and what does not]]).
 - Leans on [[id:e5942eb0-4389-447d-9317-d9178adcaaae][the leader]] for =SPC m= and the =SPC a= group, on [[id:d2e0bc37-0bd4-4b28-a8ee-04f94ac451f8][the shells chapter]] for the login environment, and on [[id:5c1e7a94-8f30-4d26-b7a1-3e92d06f4c18][the features chapter]] for the gates.
 - [[id:40302e33-d2b2-4c0b-9bc3-1f9e121307e1][=init.el=]] loads this chapter when any of the three, or =claude-code-ide=, is on, and each section below runs only for its own.
 - Code outside kittymacs builds on a few names here: [[*What an integration may rely on]].
-- Read [[*How agent-shell talks to Claude]] first.
+- Read [[*How agent-shell talks to harnesses]] first.
 
 * Module preamble
 :PROPERTIES:
@@ -32,16 +32,21 @@
 ;;; Code:
 
 (require 'map)
+(require 'seq)
+(require 'kittymacs-catalogue)
 (require 'kittymacs-defaults)
 (require 'kittymacs-leader)
 
 (declare-function notifications-notify "notifications" (&rest params))
 (declare-function claude-code-ide "claude-code-ide" ())
 (declare-function claude-code-ide-switch-to-buffer "claude-code-ide" ())
+(declare-function agent-shell-make-environment-variables "agent-shell" (&rest vars))
 (declare-function agent-shell-subscribe-to "agent-shell" (&rest args))
 (declare-function agent-shell-attention-acknowledge "agent-shell-attention" (buffer))
 (declare-function agent-shell-attention--mark-buffer "agent-shell-attention" (buffer label &rest args))
 (defvar agent-shell-elicitation--experimental-feature-enabled)
+(defvar agent-shell-preferred-agent-config)
+(declare-function agent-shell-new-shell "agent-shell" ())
 (declare-function gptel-agent "gptel-agent" (&optional project-dir agent-preset))
 
 #+end_src
@@ -59,7 +64,7 @@
 
 | Feature                 | Package                            | The agent                                       | It signs in with                  |
 |-------------------------+------------------------------------+-------------------------------------------------+-----------------------------------|
-| =agents=                | agent-shell, from Git, pinned      | Claude Code, through ACP, in an Emacs buffer    | your Claude login                 |
+| =agents=                | agent-shell, from Git, pinned      | Any supported ACP harness, in an Emacs buffer    | the harness's authentication       |
 | =agent-claude-code-ide= | claude-code-ide, from Git, via =claude-code-ide= | Claude Code's own screen, in a terminal buffer  | your Claude login                 |
 | =agent-gptel=           | gptel and gptel-agent, from MELPA  | Emacs Lisp, with the model you set              | an API key, or a local model      |
 
@@ -68,6 +73,7 @@
 | =SPC a= | Does                     | agents | claude-code-ide | gptel |
 |---------+--------------------------+--------+-----------------+-------|
 | =a=     | start, or switch to it   | yes    | yes             | yes   |
+| =h=     | choose an ACP harness   | yes    |                 |       |
 | =n=     | a new session            | yes    | yes             | yes   |
 | =t=     | show or hide it          | yes    | yes             |       |
 | =b=     | pick a session           | yes    | yes             |       |
@@ -84,7 +90,7 @@
 - =SPC a c= is not here: [[id:0b43a1e9-2e16-4d5b-985d-342c4897634f][the suggestions chapter]] owns it, for Copilot at point, whichever agent is on.
 - agent-shell interrupts from =SPC m=, inside its buffer. claude-code-ide's is a terminal and gptel's is a plain Org or Markdown buffer, and neither has a mode of its own for =SPC m=, so =SPC a i= does it.
 
-* How agent-shell talks to Claude :concept:
+* How agent-shell talks to harnesses :concept:
 :PROPERTIES:
 :ID: 3645870f-b154-4dfd-9085-de3570e0c61e
 :END:
@@ -92,52 +98,102 @@
 - The /Agent Client Protocol/ (ACP) is JSON over a pipe between an editor and a coding agent, the way LSP is between an editor and a language server.
   + The editor sends prompts and answers permission requests; the agent streams text, tool calls and proposed edits.
   + One editor package then speaks to any agent with an adapter: Claude Code, Gemini CLI, Codex and others.
-- Three processes, three jobs:
+- agent-shell is the Emacs ACP client. A harness may implement ACP itself or need a separate adapter.
+- Install the selected harness and adapter outside Emacs, then follow its authentication instructions. Subscription access, API keys and local models depend on the harness and provider; Kittymacs does not translate one into another.
+- The pinned agent-shell already supplies all the configurations below. Kittymacs keeps that registry intact, including user additions to =agent-shell-agent-configs=.
 
-| Piece              | Is                                                         | Comes from                    |
-|--------------------+------------------------------------------------------------+-------------------------------|
-| agent-shell        | the Emacs buffer and the ACP client                        | MELPA, here                   |
-| =claude-agent-acp= | the adapter: ACP on one side, the Claude Agent SDK on the other | your package manager |
-| =claude=           | Claude Code itself, which the SDK runs                     | your package manager          |
-
-- agent-shell starts =claude-agent-acp= as a subprocess, one per shell buffer, in the project's root.
-- The adapter loads what the =claude= command line loads: =~/.claude/settings.json=, =CLAUDE.md= files, skills and hooks, user-wide and per project.
-
-* Claude Code, through your subscription :decision:
+* Choosing an ACP harness :decision:
 :PROPERTIES:
 :KITTYMACS_GENERATE: ../lisp/kittymacs-agents.el
 :header-args:emacs-lisp: :tangle ../lisp/kittymacs-agents.el :eval never :comments no :padline no :mkdirp yes
 :ID: e021fb07-ea2e-4dcd-b312-cabe45da9869
 :END:
 
-- agent-shell's defaults already fit, so they are not restated here:
-  + =agent-shell-anthropic-authentication= is =(:login t)=: use the login =claude= stored, not an API key;
-  + =agent-shell-anthropic-claude-acp-command= comes from =kittymacs-agent-claude-command=, whose default is agent-shell's own, =("claude-agent-acp")=, found on =exec-path=.
-  + Log in once in a terminal (=claude=, then =/login=); on macOS the token lives in the Keychain.
-- Agent output is kept cheap, because a reply streams into one buffer on the main thread:
-  + activity groups start collapsed, source blocks are not highlighted, and the header is text rather than an SVG;
-  + the busy animation stays on: it is the only sign in the buffer that an agent is still working.
-- The adapter's command is a kittymacs option, =kittymacs-agent-claude-command=, so a host names its adapter instead of relying on =PATH=. Change it:
-  + to a path, where Emacs's =PATH= does not reach the adapter;
-  + to a wrapper, such as =("sudo" "-iu" "agent" "claude-agent-acp")=, which runs the adapter as another user.
-  + Set it before this module loads, in =private.el= or a host file, as =kittymacs-agent-mcp-servers=.
-- Two more settings differ from the defaults:
-  + =agent-shell-preferred-agent-config= is =claude-code=, so =SPC a a= starts Claude without asking which agent;
-  + the adapter inherits Emacs's environment.
-- Why inherit: agent-shell otherwise starts the adapter with an almost empty environment.
-  + A Dock-launched Emacs on macOS has only the =PATH= [[id:d2e0bc37-0bd4-4b28-a8ee-04f94ac451f8][the shells chapter]] imported, and the adapter, its MCP servers and every command Claude runs need that same =PATH=.
-  + Behind a corporate proxy it also carries the proxy and certificate variables, without which nothing reaches the network.
-  + The environment is copied once, when agent-shell first loads (the first =SPC a=), after the shells chapter's import; a change to it needs a restart of Emacs.
-- Per-project state goes in =.agent-shell/= at the project root: transcripts (with the session ID, model and folder in their header) and screenshots; agent-shell adds it to =.gitignore= itself.
-- agent-shell and acp.el, its protocol library, install from Git, each pinned to a commit tested with Claude's adapter, rather than from MELPA, which follows each one's latest commit.
-  + agent-shell at =14e8e2a= (its source says 0.94.1), acp.el at =2959da5= (0.18.2).
-  + A pin holds on a fresh install. A copy MELPA installed earlier stays until it is deleted (=M-x package-delete=, then a restart), because =use-package= installs only what is missing.
-  + With Nix, both leave the package list, as every =:vc= package does, and install from Git on the first start.
-- Claude's questions to you, its =AskUserQuestion= tool, arrive as a form in the shell only with =agent-shell-elicitation--experimental-feature-enabled= set.
-  + The name says it: the switch is private and experimental, and a later agent-shell may rename or drop it.
-  + It is on because without it agent-shell does not offer the form, so Claude cannot ask you anything mid-turn.
+- Existing installs that relied on the former implicit Claude default now see the picker. Set =kittymacs-agent-harness= to =claude-code= to retain that behavior. Existing command overrides and =SPC a w= integrations keep working.
+- =kittymacs-agent-harness= defaults to nil: =SPC a a= offers agent-shell's picker. Onboarding lists every built-in harness alphabetically and can save a default identifier, or =prompt= to keep the picker.
+- =SPC a h= starts another harness through the full upstream picker even when a default is saved. Existing sessions remain available under =SPC a b=.
+- A harness is a program that runs the agent loop. A provider supplies its models. Multi-provider harnesses such as OpenCode, Goose and Pi configure their provider and model in their own settings. In a session, =SPC m M= chooses among models the harness advertises.
+- These are all 24 built-in harnesses in agent-shell =14e8e2a= (0.94.1). The identifiers come from the configuration makers, including =mistral-vibe=, which differs from the label in upstream's Customize choices.
+
+| Harness | Identifier | Default ACP command | Upstream command option |
+|---------+------------+---------------------+-------------------------|
+| Antigravity | =antigravity= | =agy acp= | =agent-shell-antigravity-acp-command= |
+| Auggie | =auggie= | =auggie --acp= | =agent-shell-auggie-acp-command= |
+| Claude Code | =claude-code= | =claude-agent-acp= | =agent-shell-anthropic-claude-acp-command= |
+| Cline | =cline= | =cline --acp= | =agent-shell-cline-acp-command= |
+| CodeBuddy | =codebuddy= | =codebuddy --acp= | =agent-shell-codebuddy-acp-command= |
+| Codex | =codex= | =codex-acp= | =agent-shell-openai-codex-acp-command= |
+| Copilot | =copilot= | =copilot --acp= | =agent-shell-github-acp-command= |
+| Cursor | =cursor= | =agent acp= | =agent-shell-cursor-acp-command= |
+| DeepSeek | =deepseek= | =dsh --profile acp= | =agent-shell-deepseek-acp-command= |
+| Droid | =droid= | =droid exec --output-format acp= | =agent-shell-droid-acp-command= |
+| Gemini CLI | =gemini-cli= | =gemini --experimental-acp= | =agent-shell-google-gemini-acp-command= |
+| Goose | =goose= | =goose acp= | =agent-shell-goose-acp-command= |
+| Grok Build | =grok-build= | =grok agent stdio= | =agent-shell-xai-acp-command= |
+| Hermes | =hermes= | =hermes acp= | =agent-shell-hermes-acp-command= |
+| Junie | =junie= | =junie --acp true= | =agent-shell-junie-acp-command= |
+| Kimi | =kimi= | =kimi acp= | =agent-shell-kimi-acp-command= |
+| Kiro | =kiro= | =kiro-cli acp= | =agent-shell-kiro-acp-command= |
+| Mistral Vibe | =mistral-vibe= | =vibe-acp= | =agent-shell-mistral-acp-command= |
+| OMP | =omp= | =omp acp= | =agent-shell-omp-acp-command= |
+| OpenClaw | =openclaw= | =openclaw acp= | =agent-shell-openclaw-acp-command= |
+| OpenCode | =opencode= | =opencode acp= | =agent-shell-opencode-acp-command= |
+| Pi | =pi= | =pi-acp= | =agent-shell-pi-acp-command= |
+| Qoder | =qoder= | =qoder --acp= | =agent-shell-qoder-acp-command= |
+| Qwen Code | =qwen-code= | =qwen --experimental-acp= | =agent-shell-qwen-acp-command= |
+
+- =kittymacs-agent-commands= overrides any listed command with a program and arguments, for a path or wrapper. =kittymacs-agent-claude-command= remains compatible with existing host configurations; an explicit =claude-code= entry in the new alist wins.
+- Example host configuration, loaded before this module:
+
+#+begin_src emacs-lisp :tangle no
+(setopt kittymacs-agent-harness 'opencode
+        kittymacs-agent-commands '((codex . ("/opt/bin/codex-acp"))))
+#+end_src
+
+- Each harness inherits Emacs's login environment unless its upstream environment option already has a non-nil value. This supplies PATH, proxies and certificates while preserving explicit per-harness environments. The snapshot is made on first load; restart after changing the login environment.
+- Use the upstream authentication, model and environment options for the selected harness. Their reference and installation instructions live in [[https://github.com/xenodium/agent-shell/tree/14e8e2a2f2b495f83c9d7b18be7838e45d75bf56][the pinned agent-shell source]]. No credentials are written by onboarding.
+- Shared MCP servers, notifications, Meow states and session keys apply across harnesses. Resume, model changes, forms, MCP and permission modes depend on each adapter's ACP capabilities.
+- Source blocks remain unhighlighted, activity groups collapsed and the header text-only, keeping streamed output cheap.
+- agent-shell =14e8e2a= and acp.el =2959da5= retain their tested pins. An older installed copy is not automatically replaced by =use-package=; delete it and restart to use the pin.
+- Question forms retain the private, experimental elicitation switch. Claude's =AskUserQuestion= is one use of it; other harnesses need to advertise the corresponding capability.
 
 #+begin_src emacs-lisp
+(defun kittymacs-agent-choose-harness ()
+  "Start a new shell with the ACP picker, regardless of the saved default."
+  (interactive)
+  (require 'agent-shell)
+  (let ((agent-shell-preferred-agent-config nil))
+    (agent-shell-new-shell)))
+
+(defcustom kittymacs-agent-harness nil
+  "Default ACP harness identifier, or nil to ask when starting a shell.
+See `kittymacs-agent-harnesses' for built-ins.  A custom identifier must
+also have a configuration in `agent-shell-agent-configs'."
+  :type 'symbol
+  :group 'kittymacs)
+
+(defcustom kittymacs-agent-commands nil
+  "Command overrides by ACP harness identifier.
+Each entry is (IDENTIFIER . (PROGRAM ARG...)).  Unlisted harnesses use
+agent-shell's command options.  Set this before the agents module loads."
+  :type '(alist :key-type symbol :value-type (repeat string))
+  :group 'kittymacs)
+
+(defun kittymacs-agent-configure-harnesses ()
+  "Apply host command overrides and default environments to ACP harnesses."
+  (dolist (row kittymacs-agent-harnesses)
+    (let* ((identifier (car row))
+           (command-option (plist-get (cdr row) :command-option))
+           (environment-option (plist-get (cdr row) :environment-option))
+           (override (alist-get identifier kittymacs-agent-commands)))
+      (when override
+        (unless (and (consp override) (seq-every-p #'stringp override))
+          (error "Invalid ACP command for %s: %S" identifier override))
+        (set command-option override))
+      (when (and (boundp environment-option) (not (symbol-value environment-option)))
+        (set environment-option
+             (agent-shell-make-environment-variables :inherit-env t))))))
+
 (defcustom kittymacs-agent-claude-command '("claude-agent-acp")
   "The command agent-shell runs for Claude: a program, then its arguments.
 The program is looked up on `exec-path'.  Set this before this module
@@ -163,19 +219,19 @@ loads, in `private.el' or a host file."
           ;; so Claude's AskUserQuestion never reaches you.
           (setq agent-shell-elicitation--experimental-feature-enabled t)
           :custom
-          (agent-shell-preferred-agent-config 'claude-code)
+          (agent-shell-preferred-agent-config kittymacs-agent-harness)
           (agent-shell-anthropic-claude-acp-command kittymacs-agent-claude-command)
           (agent-shell-activity-group-expand-by-default nil)
           (agent-shell-highlight-blocks nil)
           (agent-shell-header-style 'text)
           :config
-          (setopt agent-shell-anthropic-claude-environment
-                  (agent-shell-make-environment-variables :inherit-env t))))
+          (kittymacs-agent-configure-harnesses)))
     (error
      (kittymacs-features-vc-warning "agent-shell" "https://github.com/xenodium/agent-shell" err)))
 
   (when (locate-library "agent-shell")
     (keymap-set kittymacs-agent-map "a" (cons "start or switch" #'agent-shell))
+    (keymap-set kittymacs-agent-map "h" (cons "choose ACP harness" #'kittymacs-agent-choose-harness))
     (keymap-set kittymacs-agent-map "n" (cons "new shell" #'agent-shell-new-shell))
     (keymap-set kittymacs-agent-map "t" (cons "toggle" #'agent-shell-toggle))
     (keymap-set kittymacs-agent-map "b" (cons "switch shell" #'agent-shell-switch-buffer))
@@ -186,7 +242,7 @@ loads, in `private.el' or a host file."
 
 #+end_src
 
-- The environment is set in =:config=, not =:custom=: =agent-shell-make-environment-variables= is a function of the package, and only exists once it has loaded.
+- Harness configuration runs in =:config= after agent-shell loads its built-in provider modules. It does not construct ACP clients or start processes.
 - The keys go in =SPC a=, each one a command =:commands= declares, so the first key press loads agent-shell.
   + Until agent-shell installs, they stay unbound, and a failed clone is a warning, as for every package here from Git.
 
@@ -195,14 +251,10 @@ loads, in `private.el' or a host file."
 :ID: 5cf88d37-2e87-4451-989c-b957aa817990
 :END:
 
-- The agent's policy belongs to the agent, not to the editor: the same rules must hold whether Claude runs here or in a terminal.
-  + So permissions, the output style, commit attribution and the skills live in =~/.claude=, written by you or by the machine's configuration, never here.
-- This chapter holds only what is about Emacs: the buffers, the keys and the notifications.
-- agent-shell and claude-code-ide both run the =claude= command line, so =~/.claude= governs both.
-  + agent-shell runs it through =kittymacs-agent-claude-command=, =claude-agent-acp= by default, and claude-code-ide runs =claude= itself; each must be on =PATH=, unless the option names a path.
-- gptel-agent is an agent of its own, so =~/.claude= does not reach it.
-  + gptel-agent asks before every tool that changes a file or runs a command, and its presets live in Emacs.
-  + This chapter does not change its rules: choosing it means choosing its rules too.
+- Permissions, skills, hooks, model selection and authentication live with the selected harness and provider. Read their own documentation for the files and credentials they load.
+- Claude Code uses =~/.claude= and =CLAUDE.md= files. Codex, OpenCode and other harnesses use their own configuration and project instructions. They do not share policy merely because they share ACP.
+- claude-code-ide always runs Claude Code, regardless of the ACP harness selected. Its existing keys and integration names remain stable.
+- gptel-agent runs its own Emacs tool loop and uses the gptel backend configured by the user.
 
 * MCP servers: none until you declare them
 :PROPERTIES:
@@ -469,7 +521,7 @@ w, d and j are left free for an integration's own commands.")
   + It reads, searches and edits files, and runs commands, asking you first for each tool that changes something.
   + Its header line switches between agent and plan, where plan has only the tools that read.
 - It talks to whichever model you give gptel, so it works offline with a local one.
-  + It cannot use a Claude or ChatGPT login: Anthropic and OpenAI give an agent that is not their own an API key, not a subscription.
+  + Configure authentication for your gptel backend separately. A subscription login for another harness does not automatically authenticate gptel.
 - This chapter sets no model, because which one is yours to pay for or to run.
   + Without a setting, gptel uses OpenAI and asks for a key, so set one of these in =private.el=:
 
@@ -545,10 +597,10 @@ w, d and j are left free for an integration's own commands.")
 
 * Check
 
-- For =agents= or =agent-claude-code-ide=, once, in a terminal: =claude=, then =/login=.
+- For =agents=, install and authenticate the selected harness and adapter using its upstream instructions. For =agent-claude-code-ide=, authenticate Claude Code.
 - =SPC a a= in a project: the agent you chose opens, in Insert for agent-shell, and in the terminal for claude-code-ide.
-- Ask it to read a file: the read happens; ask it to change one: it asks first, and agent-shell's diff opens in Motion with =y= to accept, claude-code-ide's in Ediff.
-- Ask "which MCP tools do you have?": for agent-shell, the servers in =kittymacs-agent-mcp-servers= plus any your Claude configuration adds; for claude-code-ide, the five Emacs tools as well.
+- Ask it to read and change a disposable project file. Check the selected harness's permission mode and review behavior; agent-shell's diff opens in Motion, claude-code-ide's in Ediff.
+- Ask "which MCP tools do you have?": for agent-shell, the servers in =kittymacs-agent-mcp-servers= plus any the selected harness configuration adds; for claude-code-ide, the five Emacs tools as well.
 - With agent-shell, switch frames while it works: the mode line shows =AS:1= when it stops, and the desktop shows a notification.
 - Select a different agent in onboarding: the one before turns off, and =SPC a= shows the new one's keys.
 - In agent-shell, ask Claude to ask you something with its question tool: a form appears in the shell, =AS:1= shows while it waits, and it clears once you answer or decline.

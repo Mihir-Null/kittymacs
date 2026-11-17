@@ -4,17 +4,58 @@
 ;;; Code:
 
 (require 'map)
+(require 'seq)
+(require 'kittymacs-catalogue)
 (require 'kittymacs-defaults)
 (require 'kittymacs-leader)
 
 (declare-function notifications-notify "notifications" (&rest params))
 (declare-function claude-code-ide "claude-code-ide" ())
 (declare-function claude-code-ide-switch-to-buffer "claude-code-ide" ())
+(declare-function agent-shell-make-environment-variables "agent-shell" (&rest vars))
 (declare-function agent-shell-subscribe-to "agent-shell" (&rest args))
 (declare-function agent-shell-attention-acknowledge "agent-shell-attention" (buffer))
 (declare-function agent-shell-attention--mark-buffer "agent-shell-attention" (buffer label &rest args))
 (defvar agent-shell-elicitation--experimental-feature-enabled)
+(defvar agent-shell-preferred-agent-config)
+(declare-function agent-shell-new-shell "agent-shell" ())
 (declare-function gptel-agent "gptel-agent" (&optional project-dir agent-preset))
+(defun kittymacs-agent-choose-harness ()
+  "Start a new shell with the ACP picker, regardless of the saved default."
+  (interactive)
+  (require 'agent-shell)
+  (let ((agent-shell-preferred-agent-config nil))
+    (agent-shell-new-shell)))
+
+(defcustom kittymacs-agent-harness nil
+  "Default ACP harness identifier, or nil to ask when starting a shell.
+See `kittymacs-agent-harnesses' for built-ins.  A custom identifier must
+also have a configuration in `agent-shell-agent-configs'."
+  :type 'symbol
+  :group 'kittymacs)
+
+(defcustom kittymacs-agent-commands nil
+  "Command overrides by ACP harness identifier.
+Each entry is (IDENTIFIER . (PROGRAM ARG...)).  Unlisted harnesses use
+agent-shell's command options.  Set this before the agents module loads."
+  :type '(alist :key-type symbol :value-type (repeat string))
+  :group 'kittymacs)
+
+(defun kittymacs-agent-configure-harnesses ()
+  "Apply host command overrides and default environments to ACP harnesses."
+  (dolist (row kittymacs-agent-harnesses)
+    (let* ((identifier (car row))
+           (command-option (plist-get (cdr row) :command-option))
+           (environment-option (plist-get (cdr row) :environment-option))
+           (override (alist-get identifier kittymacs-agent-commands)))
+      (when override
+        (unless (and (consp override) (seq-every-p #'stringp override))
+          (error "Invalid ACP command for %s: %S" identifier override))
+        (set command-option override))
+      (when (and (boundp environment-option) (not (symbol-value environment-option)))
+        (set environment-option
+             (agent-shell-make-environment-variables :inherit-env t))))))
+
 (defcustom kittymacs-agent-claude-command '("claude-agent-acp")
   "The command agent-shell runs for Claude: a program, then its arguments.
 The program is looked up on `exec-path'.  Set this before this module
@@ -40,19 +81,19 @@ loads, in `private.el' or a host file."
           ;; so Claude's AskUserQuestion never reaches you.
           (setq agent-shell-elicitation--experimental-feature-enabled t)
           :custom
-          (agent-shell-preferred-agent-config 'claude-code)
+          (agent-shell-preferred-agent-config kittymacs-agent-harness)
           (agent-shell-anthropic-claude-acp-command kittymacs-agent-claude-command)
           (agent-shell-activity-group-expand-by-default nil)
           (agent-shell-highlight-blocks nil)
           (agent-shell-header-style 'text)
           :config
-          (setopt agent-shell-anthropic-claude-environment
-                  (agent-shell-make-environment-variables :inherit-env t))))
+          (kittymacs-agent-configure-harnesses)))
     (error
      (kittymacs-features-vc-warning "agent-shell" "https://github.com/xenodium/agent-shell" err)))
 
   (when (locate-library "agent-shell")
     (keymap-set kittymacs-agent-map "a" (cons "start or switch" #'agent-shell))
+    (keymap-set kittymacs-agent-map "h" (cons "choose ACP harness" #'kittymacs-agent-choose-harness))
     (keymap-set kittymacs-agent-map "n" (cons "new shell" #'agent-shell-new-shell))
     (keymap-set kittymacs-agent-map "t" (cons "toggle" #'agent-shell-toggle))
     (keymap-set kittymacs-agent-map "b" (cons "switch shell" #'agent-shell-switch-buffer))

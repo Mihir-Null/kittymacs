@@ -1665,3 +1665,35 @@ Return its exit status, what it drew, and the directory it ran in, as a list."
       (delete-directory root t))))
 
 ;;; kittymacs-onboard-tests.el ends here
+
+(ert-deftest kittymacs-onboard-acp-choice-round-trips-every-harness-and-prompt ()
+  (kittymacs-onboard-test-with-machine
+    (let* ((state (kittymacs-onboard--make-state :profile 'full))
+           (row (assq 'kittymacs-agent-harness kittymacs-onboard-options)))
+      (should (memq row (kittymacs-onboard--options-here state)))
+      (dolist (choice (cons '(nil :label "Prompt") kittymacs-agent-harnesses))
+        (let ((input (if (car choice) (symbol-name (car choice)) "prompt")))
+          (cl-letf (((symbol-function 'kittymacs-onboard--read-text)
+                     (lambda (&rest _) input)))
+            (kittymacs-onboard--change-option state row))
+          (should (assq 'kittymacs-agent-harness (kittymacs-onboard--options state)))
+          (should (eq (alist-get 'kittymacs-agent-harness (kittymacs-onboard--options state))
+                      (car choice)))
+          (let* ((forms (kittymacs-onboard--block-forms state))
+                 (text (kittymacs-onboard--block-text forms)))
+            (kittymacs-onboard-test--write-bytes private text)
+            (should (equal (kittymacs-onboard-test--value private 'kittymacs-agent-harness)
+                           (list (if (car choice) (list 'quote (car choice)) nil))))))))))
+
+(ert-deftest kittymacs-onboard-acp-choices-follow-the-feature-gate ()
+  (let ((state (kittymacs-onboard--make-state :profile 'minimal)))
+    (should-not (assq 'kittymacs-agent-harness (kittymacs-onboard--options-here state)))))
+
+(ert-deftest kittymacs-onboard-acp-invalid-input-preserves-the-current-answer ()
+  (let ((state (kittymacs-onboard--make-state
+                :profile 'full :options '((kittymacs-agent-harness . codex)))))
+    (cl-letf (((symbol-function 'kittymacs-onboard--read-text)
+               (lambda (&rest _) "not-an-acp-harness")))
+      (kittymacs-onboard--change-option state
+                                      (assq 'kittymacs-agent-harness kittymacs-onboard-options)))
+    (should (eq (alist-get 'kittymacs-agent-harness (kittymacs-onboard--options state)) 'codex))))

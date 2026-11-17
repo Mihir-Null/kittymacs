@@ -306,6 +306,9 @@
 ;;            (kittymacs-org-node-excluded-directories . ("secrets")))))
 
 ;; Agents
+;; nil offers the ACP picker; use a built-in identifier or custom registry entry.
+;; (setopt kittymacs-agent-harness 'opencode)
+;; (setopt kittymacs-agent-commands '((codex . ("/opt/bin/codex-acp"))))
 ;; The MCP servers each agent-shell session starts with; see
 ;; literate/77-agents.org.
 ;; (setopt kittymacs-agent-mcp-servers

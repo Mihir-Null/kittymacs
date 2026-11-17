@@ -858,7 +858,7 @@
     ],
     "one-of": "agent",
     "option": "kittymacs-agent-mcp-servers",
-    "summary": "Runs Claude Code through agent-shell, in an Emacs buffer of its own.",
+    "summary": "Runs any supported ACP harness through agent-shell, with a shared session picker.",
     "example": "=SPC a a= starts an agent in this project."
   },
   "claude-code-ide": {

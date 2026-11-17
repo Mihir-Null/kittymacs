@@ -61,6 +61,7 @@ doc-test:
 # onboarding screens, with scripted keys and through a real pty; a program
 # with a window, started from M-! in a graphical frame, not waited for.
 test:
+    emacs -Q --batch -l tests/kittymacs-agents-tests.el -f ert-run-tests-batch-and-exit
     emacs -Q --batch -l tests/kittymacs-tangle-tests.el -f ert-run-tests-batch-and-exit
     emacs -Q --batch -l tests/kittymacs-startup-tests.el -f ert-run-tests-batch-and-exit
     emacs -Q --batch -l tests/kittymacs-platform-tests.el -f ert-run-tests-batch-and-exit
@@ -113,6 +114,7 @@ compile:
 # which replays a real startup and fails on any warning. All under the full
 # profile: `KITTYMACS_TEST_PROFILE=full just install` makes its directory.
 test-packages:
+    KITTYMACS_TEST_PACKAGES={{quote(packages)}} emacs -Q --batch -l tests/kittymacs-agents-upstream-tests.el -f ert-run-tests-batch-and-exit
     KITTYMACS_TEST_PROFILE=full KITTYMACS_TEST_PACKAGES={{quote(packages)}} emacs -Q --batch -l tests/kittymacs-org-tasks-tests.el -f ert-run-tests-batch-and-exit
     KITTYMACS_TEST_PROFILE=full KITTYMACS_TEST_PACKAGES={{quote(packages)}} emacs -Q --batch -l tests/kittymacs-leader-tests.el -f ert-run-tests-batch-and-exit
     KITTYMACS_TEST_PROFILE=full KITTYMACS_TEST_PACKAGES={{quote(packages)}} emacs -Q --batch -l tests/kittymacs-org-node-tests.el -f ert-run-tests-batch-and-exit
