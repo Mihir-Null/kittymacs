@@ -100,17 +100,17 @@ No feature has the label now, so a stand-in carries it."
     (should-not (kittymacs-feature-p 'doom-look))
     (should-not (kittymacs-feature-p 'jupyter))))
 
-(ert-deftest kittymacs-features-minimal-turns-on-the-minimal-features-alone ()
+(ert-deftest kittymacs-features-minimal-turns-on-core-and-defaults ()
   (kittymacs-features-test-with ((kittymacs-profile 'minimal)) warnings
-    (should (equal (kittymacs-features-enabled) (kittymacs-features-test--names 'minimal)))
+    (should (equal (kittymacs-features-enabled) (append (kittymacs-features-test--names 'minimal) '(lang-typst))))
     (should-not warnings)))
 
-(ert-deftest kittymacs-features-the-tried-look-features-are-in-full-and-minimal-is-unchanged ()
-  "The owner moved three look features into `full'; `minimal' must stay as it was."
+(ert-deftest kittymacs-features-look-features-stay-full-and-typst-is-default ()
+  "Look features stay full; Typst is the default authoring tool."
   (let ((system-type 'gnu/linux))
     (should (equal (kittymacs-features--compute 'minimal nil nil)
                    '(meow undo-tree whitespace-cleanup completion version-control diff-hl
-                     project-environment shell-path)))
+                     project-environment shell-path lang-typst)))
     (dolist (feature '(smooth-scroll hover-docs meow-state-cursor))
       (should (equal (list feature t)
                      (list feature (and (memq feature (kittymacs-features--compute 'full nil nil))
@@ -886,3 +886,6 @@ It goes outside `kittymacs-features-test-with': replacing a primitive such as
       (kittymacs-features-move-leftovers))))
 
 ;;; kittymacs-features-tests.el ends here
+
+(ert-deftest kittymacs-features-typst-can-be-excluded ()
+  (should-not (memq 'lang-typst (kittymacs-features--compute 'minimal nil '(lang-typst)))))

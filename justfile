@@ -52,6 +52,7 @@ tangle-check:
 # chapter ends with a Check; prose names only keys and packages that exist, and
 # code follows the rules the chapters state. See literate/conventions.org.
 doc-test:
+    emacs -Q --batch -l tests/kittymacs-typst-tests.el -f ert-run-tests-batch-and-exit
     emacs -Q --batch -l tests/kittymacs-doc-tests.el -f ert-run-tests-batch-and-exit
     emacs -Q --batch -l tests/kittymacs-lint-tests.el -f ert-run-tests-batch-and-exit
 

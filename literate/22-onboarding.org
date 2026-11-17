@@ -140,7 +140,8 @@
     ("Shell scripts" :code t :modes (sh-base-mode))
     ("Org" :modes (org-mode))
     ("Markdown" :modes (markdown-mode markdown-ts-mode))
-    ("LaTeX" :modes (tex-mode))
+    ("Typst" :modes (typst-ts-mode))
+    ("LaTeX (legacy compatibility)" :modes (tex-mode))
     ("The M-: prompt" :modes (eval-expression-minibuffer-setup)))
   "Each language to ask about, and the modes that answering yes adds.")
 

@@ -255,6 +255,8 @@ let
       (tool "project-environment" "direnv" direnv) # shells chapter: envrc, each project's own environment
       (tool "notebooks" "jupytext" (python3Packages.toPythonApplication python3Packages.jupytext)) # notebooks chapter: .ipynb files
       (tool "notebooks" "math-preview" math-preview) # notebooks chapter: LaTeX drawn with MathJax
+      (tool "lang-typst" "typst" typst)
+      (tool "lang-typst" "tinymist" tinymist)
       (tool "org-press" "node" nodejs)
       (tool "org-web-capture" "pandoc" pandoc)
       (tool "org-web-capture" "wget" wget)
@@ -652,7 +654,10 @@ rec {
         lib.filter (name: setOf name == null || winner name == name) features;
       removed = lib.subtractLists floor excluded;
       wanted = lib.unique (
-        floor ++ lib.optionals (cfg.profile != "minimal") (inProfile "full") ++ withDeps selected
+        floor
+        ++ lib.filter (name: (catalogue.${name}.default or "nil") == "t") names
+        ++ lib.optionals (cfg.profile != "minimal") (inProfile "full")
+        ++ withDeps selected
       );
       applies = name: !(lib.elem systemType (catalogue.${name}.not-on or [ ]));
     in

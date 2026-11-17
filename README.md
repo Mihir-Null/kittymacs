@@ -415,3 +415,15 @@ The loop:
 kittymacs is GPL-3.0-or-later. Copyright (C) 2026 Mihir Talati.
 
 Much of the policy is distilled from [Lambda-Emacs](https://codeberg.org/Lambda-Emacs/lambda-emacs) and [Colin McLear's configuration](https://codeberg.org/mclear-tools/dotemacs), both GPL-3.0-or-later; each chapter outlines what it took, and each generated module says so in its header. The Meow grammar follows Meow's documented layout, and the Sonokai theme is a tracked port in `lisp/themes/`. Everything else is the work of the packages' authors, credited in the chapters that use them.
+
+### Typst authoring
+
+Typst editing and Org-to-Typst/PDF export are enabled by default. Opt out by
+excluding `lang-typst` in onboarding. Install `typst` and `tinymist` (provided
+by feature-selected Nix tools); start Eglot with `SPC l e`. Enable the optional
+`typst-preview` feature for browser preview.
+
+Org Typst exports interpret math as Typst. For older TeX equations, run
+`M-x kittymacs-typst-tex-compatibility` and install Pandoc. Persist the choice
+with file or directory locals: `(kittymacs-typst-math-syntax . latex)`.
+Existing `.tex` documents retain built-in TeX editing.
