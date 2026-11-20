@@ -260,8 +260,8 @@
      :summary "Runs notebook cells in a live Jupyter kernel; it needs a native module."
      :example "Set =kittymacs-notebooks-jupyter= to run a cell and see its output inline.")
     (lang-typst
-     :group programming :packages (typst-ts-mode ox-typst) :module kittymacs-languages :profile full :default t
-     :summary "Typst documents and Typst-first Org math, with per-document TeX compatibility."
+     :group programming :packages (typst-ts-mode ox-typst typst-overlay) :vc (typst-overlay) :module kittymacs-languages :profile full :default t
+     :summary "Typst editing, inline equation previews in Typst/Org, and per-document TeX compatibility."
      :example "Open a .typ file, or export an Org document to Typst/PDF.")
     (typst-preview
      :group programming :packages (typst-preview) :module kittymacs-languages :profile optional :deps (lang-typst)

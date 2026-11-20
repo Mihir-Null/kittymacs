@@ -427,3 +427,12 @@ Org Typst exports interpret math as Typst. For older TeX equations, run
 `M-x kittymacs-typst-tex-compatibility` and install Pandoc. Persist the choice
 with file or directory locals: `(kittymacs-typst-math-syntax . latex)`.
 Existing `.tex` documents retain built-in TeX editing.
+
+Inline equations render automatically in Typst and Org buffers with SVG display,
+`typst` and the Typst Tree-sitter grammar installed. Use `$frac(a,b)$` inline or
+`$ frac(a,b) $` for display math. Move into an equation to edit it; previews
+refresh after typing pauses. `M-x typst-overlay-mode` toggles them and
+`M-x typst-overlay-refresh` refreshes them. Set `kittymacs-typst-inline-preview`
+to `nil` globally or per document to opt out. TeX compatibility disables Typst
+overlays in that Org buffer. See [the languages chapter](literate/74-languages.org)
+for grammar installation, source-block editing and preview settings.

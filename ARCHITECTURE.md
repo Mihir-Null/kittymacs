@@ -361,4 +361,13 @@ Org math sent to the Typst exporter uses Typst syntax by default. The safe,
 buffer-local `kittymacs-typst-math-syntax` option selects `latex` compatibility
 through Pandoc per document or project; detection only suggests the switch.
 It never changes source text, TeX mode associations, native Org LaTeX export or
-notebook math. Inline Typst rendering is deferred.
+notebook math. Inline rendering belongs to `lang-typst` through the pinned
+`typst-overlay` package in the languages chapter. It reuses the Typst grammar,
+compiles asynchronously after edits and caches SVGs under `kittymacs-cache-dir`.
+File previews start after local variables, so TeX compatibility and the safe
+`kittymacs-typst-inline-preview` opt-out apply before rendering. Non-file Org
+and Typst buffers use mode hooks. Switching to TeX compatibility removes the
+overlays. Missing compiler/grammar/SVG display and remote directories skip
+automatic previews; opening Org never installs a grammar. Org uses overlay
+Flymake diagnostics; Typst leaves diagnostics to Tinymist. Source blocks remain
+literal in Org, with the guarded Typst mode used by `org-edit-special`.

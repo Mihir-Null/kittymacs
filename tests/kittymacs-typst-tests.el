@@ -51,3 +51,88 @@
   (cl-letf (((symbol-function 'executable-find) (lambda (_) "/bin/pandoc"))
             ((symbol-function 'call-process-region) (lambda (&rest _) 1)))
     (should-error (kittymacs-typst-convert-tex-math "$x$") :type 'user-error)))
+
+(defmacro kittymacs-test-with-typst-display (&rest body)
+  "Exercise preview policy independently of this test runner's display."
+  (declare (indent 0))
+  `(let (calls (flymake-starts 0))
+     (cl-letf (((symbol-function 'display-images-p) (lambda (&rest _) t))
+               ((symbol-function 'image-type-available-p) (lambda (_) t))
+               ((symbol-function 'executable-find) (lambda (_) "/bin/typst"))
+               ((symbol-function 'treesit-ready-p) (lambda (&rest _) t))
+               ((symbol-function 'require) (lambda (&rest _) t))
+               ((symbol-function 'typst-overlay-mode)
+                (lambda (arg)
+                  (push arg calls)
+                  (setq-local typst-overlay-mode (> arg 0))))
+               ((symbol-function 'flymake-mode)
+                (lambda (&rest _)
+                  (cl-incf flymake-starts)
+                  (setq-local flymake-mode t))))
+       ,@body)))
+
+(ert-deftest kittymacs-typst-overlays-follow-tex-compatibility ()
+  (with-temp-buffer
+    (org-mode)
+    (kittymacs-test-with-typst-display
+      (kittymacs-typst-overlay-setup)
+      (should (equal calls '(1)))
+      (kittymacs-typst-overlay-setup)
+      (should (equal calls '(1)))
+      (kittymacs-typst-tex-compatibility)
+      (should-not typst-overlay-mode)
+      (should (equal calls '(-1 1)))
+      (kittymacs-typst-tex-compatibility)
+      (should typst-overlay-mode)
+      (should (equal calls '(1 -1 1)))
+      ;; Re-enabling Flymake would discard the just-registered backend state.
+      (should (= flymake-starts 1)))))
+
+(ert-deftest kittymacs-typst-overlays-respect-file-locals-before-render ()
+  (dolist (setting '((kittymacs-typst-math-syntax . latex)
+                     (kittymacs-typst-inline-preview . nil)))
+    (with-temp-buffer
+      (org-mode)
+      (setq buffer-file-name "/tmp/kittymacs-typst-test.org")
+      (insert (format (concat "Equation $x$\n\n# Local " "Variables:\n# %s: %s\n# End:\n")
+                      (car setting) (cdr setting)))
+      (kittymacs-test-with-typst-display
+        (kittymacs-typst-overlay-non-file-setup)
+        (should-not calls)
+        (let ((enable-local-variables :safe)
+              (hack-local-variables-hook '(kittymacs-typst-overlay-setup)))
+          (hack-local-variables))
+        (should (local-variable-p (car setting)))
+        (should-not calls)))))
+
+(ert-deftest kittymacs-typst-overlays-non-file-and-typst-buffers ()
+  (dolist (mode '(org-mode typst-ts-mode))
+    (with-temp-buffer
+      (setq major-mode mode)
+      (kittymacs-test-with-typst-display
+        (kittymacs-typst-overlay-non-file-setup)
+        (should (equal calls '(1)))
+        (setq-local kittymacs-typst-inline-preview nil)
+        (kittymacs-typst-overlay-setup)
+        (should (equal calls '(-1 1)))))))
+
+(ert-deftest kittymacs-typst-overlays-missing-prerequisites-are-harmless ()
+  (dolist (missing '(display-images-p image-type-available-p executable-find
+                    treesit-ready-p require))
+    (with-temp-buffer
+      (org-mode)
+      (kittymacs-test-with-typst-display
+        (cl-letf (((symbol-function missing) (lambda (&rest _) nil)))
+          (kittymacs-typst-overlay-setup)
+          (should-not calls))))))
+
+(ert-deftest kittymacs-typst-overlays-skip-remote-and-unrelated-buffers ()
+  (with-temp-buffer
+    (org-mode)
+    (kittymacs-test-with-typst-display
+      (cl-letf (((symbol-function 'file-remote-p) (lambda (&rest _) "remote")))
+        (kittymacs-typst-overlay-setup)
+        (should-not calls))
+      (setq major-mode 'text-mode)
+      (kittymacs-typst-overlay-setup)
+      (should-not calls))))

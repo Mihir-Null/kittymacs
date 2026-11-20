@@ -466,14 +466,32 @@ until the language server for a mode is deliberately installed on each machine."
     :ensure t
     :after geiser))
 
+#+end_src
+
+** Typst editing, export and inline equations
+
+- One feature owns the editing mode, Org export policy and equation overlays. File-local settings are applied before previews; missing rendering tools leave editable source.
+- The pinned overlay revision supplies idle refresh and a shared cache. Org math diagnostics use Flymake; Typst buffers use Tinymist when Eglot is started.
+
+#+begin_src emacs-lisp
 (defcustom kittymacs-typst-math-syntax 'typst
-  "Math syntax in Org documents exported through Typst.
+  "Math syntax for Org Typst export and inline equation previews.
 Set to `latex' in file or directory locals for legacy equations.  This does
 not translate the buffer or alter TeX documents and notebook math."
   :type '(choice (const typst) (const latex))
   :safe (lambda (value) (memq value '(typst latex)))
   :group 'kittymacs-languages)
 (make-variable-buffer-local 'kittymacs-typst-math-syntax)
+(defcustom kittymacs-typst-inline-preview t
+  "Automatically render Typst equations in supported buffers.
+Set to nil in private.el or file/directory locals to keep source visible.
+Needs SVG display, the Typst compiler and its Tree-sitter grammar."
+  :type 'boolean :safe #'booleanp :group 'kittymacs-languages)
+(make-variable-buffer-local 'kittymacs-typst-inline-preview)
+(defvar typst-overlay-mode)
+(defvar org-src-lang-modes)
+(declare-function typst-overlay-mode "typst-overlay" (&optional arg))
+(declare-function typst-overlay-refresh "typst-overlay" (&optional force))
 (defvar org-typst-from-latex-fragment)
 (defvar org-typst-from-latex-environment)
 (declare-function org-typst-from-latex-with-naive "ox-typst" (fragment))
@@ -491,6 +509,32 @@ not translate the buffer or alter TeX documents and notebook math."
         (user-error "Pandoc math conversion failed: %s" (buffer-string))))
     (string-trim-right (buffer-string))))
 
+(defun kittymacs-typst-overlay-setup ()
+  "Synchronize inline previews with this buffer's settings and capabilities.
+File buffers call this after local variables; non-file buffers use mode hooks.
+Do not install tools or grammars merely to display an Org document."
+  (when (derived-mode-p 'org-mode 'typst-ts-mode)
+    (if (and kittymacs-typst-inline-preview
+             (or (derived-mode-p 'typst-ts-mode)
+                 (eq kittymacs-typst-math-syntax 'typst))
+             (not (file-remote-p default-directory))
+             (display-images-p)
+             (image-type-available-p 'svg)
+             (executable-find "typst")
+             (treesit-ready-p 'typst t)
+             (require 'typst-overlay nil t))
+        (unless (bound-and-true-p typst-overlay-mode)
+          (typst-overlay-mode 1)
+          (unless (bound-and-true-p flymake-mode)
+            (flymake-mode 1)))
+      (when (bound-and-true-p typst-overlay-mode)
+        (typst-overlay-mode -1)))))
+
+(defun kittymacs-typst-overlay-non-file-setup ()
+  "Enable previews in non-file buffers, including Org capture and src edits."
+  (unless buffer-file-name
+    (kittymacs-typst-overlay-setup)))
+
 (defun kittymacs-typst-apply-math-syntax ()
   "Apply this document's math convention to the Typst exporter."
   (setq-local org-typst-from-latex-fragment
@@ -507,6 +551,7 @@ Persist with `add-file-local-variable' or `add-dir-local-variable', setting
   (setq-local kittymacs-typst-math-syntax
               (if (eq kittymacs-typst-math-syntax 'latex) 'typst 'latex))
   (kittymacs-typst-apply-math-syntax)
+  (kittymacs-typst-overlay-setup)
   (message "Typst export math: %s%s" kittymacs-typst-math-syntax
            (if (eq kittymacs-typst-math-syntax 'latex) " (requires pandoc)" "")))
 
@@ -545,6 +590,21 @@ Persist with `add-file-local-variable' or `add-dir-local-variable', setting
     (add-to-list 'auto-mode-alist '("\\.typ\\'" . kittymacs-typst-mode)))
   (with-eval-after-load 'eglot
     (add-to-list 'eglot-server-programs '(typst-ts-mode . ("tinymist"))))
+  (use-package typst-overlay
+    :vc (:url "https://github.com/hesampakdaman/typst-overlay"
+         :rev "3b69366a435a9b4df45ed8fda01af3fca511e999")
+    :commands (typst-overlay-mode typst-overlay-refresh)
+    :custom
+    (typst-overlay-use-flymake 'org)
+    (typst-overlay-idle-refresh-delay 0.25)
+    (typst-overlay-cache-directory
+     (expand-file-name "typst-overlay/" kittymacs-cache-dir)))
+  ;; File-local syntax and opt-out settings must precede the first render.
+  (add-hook 'hack-local-variables-hook #'kittymacs-typst-overlay-setup)
+  (add-hook 'org-mode-hook #'kittymacs-typst-overlay-non-file-setup)
+  (add-hook 'typst-ts-mode-hook #'kittymacs-typst-overlay-non-file-setup)
+  (with-eval-after-load 'org-src
+    (add-to-list 'org-src-lang-modes '("typst" . kittymacs-typst)))
   (use-package ox-typst
     :ensure t :after ox
     :commands (org-typst-export-to-pdf org-typst-export-to-typst))
@@ -570,13 +630,28 @@ Persist with `add-file-local-variable' or `add-dir-local-variable', setting
 
 * Typst-first documents
 
+- [[https://github.com/hesampakdaman/typst-overlay][typst-overlay]] renders equations in =typst-ts-mode= and Org buffers. It belongs to =lang-typst=, alongside editing and export, and uses the same pinned grammar.
+  + Write =$frac(a,b)$= for inline math or =$ frac(a,b) $= for display math, including in Org prose. Enter an equation to edit its source; leave it to see the rendered image. Edits refresh after 0.25 idle seconds.
+  + Org code/verbatim spans and source blocks are excluded. =C-c '= opens a Typst source/export block using the guarded Typst mode, with previews in that editing buffer when its grammar is available.
+  + Definitions in preceding Typst export blocks are available to Org equations. =typst-overlay-extra-prelude= supplies shared rendering rules. This does not change how other Org exporters interpret equations.
+- Preview requires an image-capable frame with SVG support, =typst= on PATH and the Typst grammar, even for Org-only use. Run =M-x kittymacs-treesit-install-grammars= to install the grammar, then reopen the buffer or run =M-x typst-overlay-mode=.
+  + Missing prerequisites and remote files skip automatic rendering. The explicit =typst-overlay-mode= command reports missing dependencies. Remote rendering is not configured here.
+  + Set =kittymacs-typst-inline-preview= to =nil= globally or in file/directory locals to opt out. =M-x typst-overlay-mode= toggles previews temporarily; =M-x typst-overlay-refresh= refreshes them, with =C-u= to bypass cached images.
+  + Rendered SVGs live under =var/cache/typst-overlay/= by default. Org equation errors appear in Flymake; Typst buffers keep Tinymist diagnostics without a duplicate overlay backend.
+  + File/project settings are read before the first render. Switching to TeX compatibility removes Typst overlays; switching back restores them when prerequisites are present.
+
 - =lang-typst= is enabled in both profiles. Exclude it in onboarding or add it to =kittymacs-features-excluded= to opt out. =typst-preview= is a separate optional browser preview.
-- Install =typst= for compile/watch and =tinymist= for Eglot and live preview. Nix supplies both for this feature. Start Eglot explicitly with =SPC l e=; opening a document starts neither a server nor a preview.
+- Install =typst= for compile/watch and =tinymist= for Eglot and live preview. Nix supplies both for this feature. Start Eglot explicitly with =SPC l e=; opening a document starts no language server or browser.
 - Org export uses Typst math by default. Load the export dispatcher and choose its Typst backend. For old equations, run =M-x kittymacs-typst-tex-compatibility=, then persist =kittymacs-typst-math-syntax= as =latex= in file or directory locals if desired. Install Pandoc for that conversion. Detection suggests compatibility but never rewrites a document.
 - Existing TeX modes, Org LaTeX export and notebook math remain available. This feature changes Typst export interpretation, not the source language of all Org exporters.
 - Missing grammars fall back to editable text. Compiler/server errors remain visible; install tools on the host running Emacs. Remote live preview and Windows/WSL browser handoff require manual validation.
 
 * Check
+
+- With the Typst grammar, compiler and SVG display available, open an Org file containing =$frac(a,b)$= and =$ sum_(i=1)^n i $=: both render outside point. Repeat in a =.typ= file, edit an equation, and check the idle refresh.
+- In Org, toggle =M-x kittymacs-typst-tex-compatibility=: previews disappear in TeX mode and return in Typst mode. A file with =(kittymacs-typst-math-syntax . latex)= or =(kittymacs-typst-inline-preview . nil)= in its locals must never start a Typst render.
+- An Org Typst source block stays literal in the parent buffer; =C-c '= opens its editing buffer with Typst previews. Try =org-capture= too. A terminal without image support or a missing compiler/grammar must leave source editable.
+- =just doc-test= includes the preview policy, prerequisite guards and file-local ordering tests in [[file:../tests/kittymacs-typst-tests.el][the Typst suite]].
 
 - Open a =.py= file on a machine without the Python grammar: Emacs asks to build it.
   + Answer =y=: the mode line shows =python-ts-mode=, with highlighting.
