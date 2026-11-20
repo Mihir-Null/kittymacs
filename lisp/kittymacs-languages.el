@@ -82,15 +82,24 @@ until the language server for a mode is deliberately installed on each machine."
   (use-package geiser-guile
     :ensure t
     :after geiser))
-
 (defcustom kittymacs-typst-math-syntax 'typst
-  "Math syntax in Org documents exported through Typst.
+  "Math syntax for Org Typst export and inline equation previews.
 Set to `latex' in file or directory locals for legacy equations.  This does
 not translate the buffer or alter TeX documents and notebook math."
   :type '(choice (const typst) (const latex))
   :safe (lambda (value) (memq value '(typst latex)))
   :group 'kittymacs-languages)
 (make-variable-buffer-local 'kittymacs-typst-math-syntax)
+(defcustom kittymacs-typst-inline-preview t
+  "Automatically render Typst equations in supported buffers.
+Set to nil in private.el or file/directory locals to keep source visible.
+Needs SVG display, the Typst compiler and its Tree-sitter grammar."
+  :type 'boolean :safe #'booleanp :group 'kittymacs-languages)
+(make-variable-buffer-local 'kittymacs-typst-inline-preview)
+(defvar typst-overlay-mode)
+(defvar org-src-lang-modes)
+(declare-function typst-overlay-mode "typst-overlay" (&optional arg))
+(declare-function typst-overlay-refresh "typst-overlay" (&optional force))
 (defvar org-typst-from-latex-fragment)
 (defvar org-typst-from-latex-environment)
 (declare-function org-typst-from-latex-with-naive "ox-typst" (fragment))
@@ -108,6 +117,32 @@ not translate the buffer or alter TeX documents and notebook math."
         (user-error "Pandoc math conversion failed: %s" (buffer-string))))
     (string-trim-right (buffer-string))))
 
+(defun kittymacs-typst-overlay-setup ()
+  "Synchronize inline previews with this buffer's settings and capabilities.
+File buffers call this after local variables; non-file buffers use mode hooks.
+Do not install tools or grammars merely to display an Org document."
+  (when (derived-mode-p 'org-mode 'typst-ts-mode)
+    (if (and kittymacs-typst-inline-preview
+             (or (derived-mode-p 'typst-ts-mode)
+                 (eq kittymacs-typst-math-syntax 'typst))
+             (not (file-remote-p default-directory))
+             (display-images-p)
+             (image-type-available-p 'svg)
+             (executable-find "typst")
+             (treesit-ready-p 'typst t)
+             (require 'typst-overlay nil t))
+        (unless (bound-and-true-p typst-overlay-mode)
+          (typst-overlay-mode 1)
+          (unless (bound-and-true-p flymake-mode)
+            (flymake-mode 1)))
+      (when (bound-and-true-p typst-overlay-mode)
+        (typst-overlay-mode -1)))))
+
+(defun kittymacs-typst-overlay-non-file-setup ()
+  "Enable previews in non-file buffers, including Org capture and src edits."
+  (unless buffer-file-name
+    (kittymacs-typst-overlay-setup)))
+
 (defun kittymacs-typst-apply-math-syntax ()
   "Apply this document's math convention to the Typst exporter."
   (setq-local org-typst-from-latex-fragment
@@ -124,6 +159,7 @@ Persist with `add-file-local-variable' or `add-dir-local-variable', setting
   (setq-local kittymacs-typst-math-syntax
               (if (eq kittymacs-typst-math-syntax 'latex) 'typst 'latex))
   (kittymacs-typst-apply-math-syntax)
+  (kittymacs-typst-overlay-setup)
   (message "Typst export math: %s%s" kittymacs-typst-math-syntax
            (if (eq kittymacs-typst-math-syntax 'latex) " (requires pandoc)" "")))
 
@@ -162,6 +198,21 @@ Persist with `add-file-local-variable' or `add-dir-local-variable', setting
     (add-to-list 'auto-mode-alist '("\\.typ\\'" . kittymacs-typst-mode)))
   (with-eval-after-load 'eglot
     (add-to-list 'eglot-server-programs '(typst-ts-mode . ("tinymist"))))
+  (use-package typst-overlay
+    :vc (:url "https://github.com/hesampakdaman/typst-overlay"
+         :rev "3b69366a435a9b4df45ed8fda01af3fca511e999")
+    :commands (typst-overlay-mode typst-overlay-refresh)
+    :custom
+    (typst-overlay-use-flymake 'org)
+    (typst-overlay-idle-refresh-delay 0.25)
+    (typst-overlay-cache-directory
+     (expand-file-name "typst-overlay/" kittymacs-cache-dir)))
+  ;; File-local syntax and opt-out settings must precede the first render.
+  (add-hook 'hack-local-variables-hook #'kittymacs-typst-overlay-setup)
+  (add-hook 'org-mode-hook #'kittymacs-typst-overlay-non-file-setup)
+  (add-hook 'typst-ts-mode-hook #'kittymacs-typst-overlay-non-file-setup)
+  (with-eval-after-load 'org-src
+    (add-to-list 'org-src-lang-modes '("typst" . kittymacs-typst)))
   (use-package ox-typst
     :ensure t :after ox
     :commands (org-typst-export-to-pdf org-typst-export-to-typst))

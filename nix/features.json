@@ -689,12 +689,16 @@
     "group": "programming",
     "packages": [
       "typst-ts-mode",
-      "ox-typst"
+      "ox-typst",
+      "typst-overlay"
+    ],
+    "vc": [
+      "typst-overlay"
     ],
     "module": "kittymacs-languages",
     "profile": "full",
     "default": "t",
-    "summary": "Typst documents and Typst-first Org math, with per-document TeX compatibility.",
+    "summary": "Typst editing, inline equation previews in Typst/Org, and per-document TeX compatibility.",
     "example": "Open a .typ file, or export an Org document to Typst/PDF."
   },
   "typst-preview": {
