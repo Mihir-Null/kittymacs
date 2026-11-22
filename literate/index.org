@@ -67,6 +67,7 @@
 | [[id:2a4efa58-f173-48d0-966c-a395f71ad368][Org Babel]] | code | language execution, kernels and diagrams |
 | [[id:134a6236-9049-4607-b6a7-bd795e150402][Project tasks]] | notes | task dependencies and project work views |
 | [[id:b1603aff-ef0d-4e19-b373-0beaa6a95840][Research and publishing]] | notes | reference material and Org Press |
+| [[id:dd02e28d-87f3-4b22-a7fe-9cfa5636de04][Hyperbole]] | notes | the Action Key on links and buttons, HyWiki, HyRolo and the Koutliner |
 | [[id:94d55283-5011-4f98-a7f0-8c6bcb51aab9][Agents]]          | apps      | Claude Code in a buffer, through agent-shell, and its MCP servers                  |
 | [[id:0b43a1e9-2e16-4d5b-985d-342c4897634f][Suggestions]]     | code      | Copilot's ghost text and next-edit suggestions, off until you turn them on        |
 | [[id:9ea539a0-f1a3-4d05-aa10-6f2d2ff3e335][Maintenance]]     | core      | the loop, the builder, CI, updating, =private.el=                                    |

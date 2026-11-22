@@ -368,7 +368,7 @@ This also undoes `kittymacs-quickstart-remove'; see the startup chapter."
 - =kittymacs-features-resolve= runs straight after them, so everything later asks a settled question, and =kittymacs-features-install= right after that ([[id:5c1e7a94-8f30-4d26-b7a1-3e92d06f4c18][the features chapter]]).
 - =kittymacs-activate-packages= comes first, before anything can need a package ([[*The quickstart file]]).
 - The archive index is fetched only when a package has to be installed, by =kittymacs-ensure-package= ([[*A stale archive index]]); a start that installs nothing touches no network.
-- A chapter that is one feature and nothing else loads only when that feature is on: Treemacs, the dashboard, Org extras, Org Node, reading, notebooks, agents and suggestions.
+- A chapter that is one feature and nothing else loads only when that feature is on: Treemacs, the dashboard, Org extras, Org Node, reading, notebooks, Hyperbole, agents and suggestions.
   + Mixed chapters always load, and put a =when= around each optional package and its keys.
   + [[id:5c1e7a94-8f30-4d26-b7a1-3e92d06f4c18][The features chapter]] answers both.
 - A group under =SPC= that nothing bound a key in leaves the tree at the end of startup ([[id:e5942eb0-4389-447d-9317-d9178adcaaae][the leader]]).
@@ -573,6 +573,8 @@ Set before init.el loads to change them, because they are read during init.")
   (kittymacs-require-module 'kittymacs-org-workflows))
 (when (kittymacs-feature-p 'org-web-capture)
   (kittymacs-require-module 'kittymacs-org-workflows))
+(when (kittymacs-feature-p 'hyperbole)
+  (kittymacs-require-module 'kittymacs-hyperbole))
 ;; One chapter holds every agent: at most one owns SPC a, and claude-code-ide
 ;; may run beside it.
 (when (kittymacs-feature-p 'agents)

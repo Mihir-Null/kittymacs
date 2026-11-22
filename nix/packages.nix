@@ -27,9 +27,11 @@ emacs.pkgs.withPackages (
   epkgs:
   let
     # MELPA builds ws-butler from a clone of Savannah's whole NonGNU ELPA
-    # repository; NonGNU ELPA's own release is one small tarball.
+    # repository, and hyperbole from a clone of its own Savannah repository;
+    # each ELPA's own release is one small tarball.
     packageSet = epkgs // {
       inherit (epkgs.nongnuPackages) ws-butler;
+      inherit (epkgs.elpaPackages) hyperbole;
     };
     rank = package: builtins.replaceStrings [ "-" ] [ "" ] package.pname;
   in

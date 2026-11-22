@@ -368,7 +368,8 @@ in
 - The Emacs is built from =emacs.pkgs=, the package set of the Emacs's own nixpkgs, not the host's =emacsPackagesFor=, so a host whose Emacs comes from a second nixpkgs (unstable on a stable system, say) still gets packages built against it.
 - No source may be a clone of a whole ELPA repository from Savannah.
   + MELPA builds a package that moved to GNU or NonGNU ELPA from that ELPA's Git repository, which holds every package's history; nixpkgs fetches it whole, slowly, from a host that is often unreachable.
-  + Such a package is taken from =elpaPackages= or =nongnuPackages= instead, ELPA's own release tarball: today only =ws-butler=, which the =let= below lays over =epkgs=.
+  + Such a package is taken from =elpaPackages= or =nongnuPackages= instead, ELPA's own release tarball: today =ws-butler=, which the =let= below lays over =epkgs=.
+  + =hyperbole= is laid over the same way, from =elpaPackages=: MELPA builds it from a clone of Hyperbole's own repository on Savannah, and [[id:dd02e28d-87f3-4b22-a7fe-9cfa5636de04][the Hyperbole chapter]] pins the Elisp install to GNU ELPA too, so both get the same release.
   + =just eval= fails if any derivation behind the package build, a dependency's included, fetches from =savannah.gnu.org/git/elpa=, on unstable and on stable nixpkgs.
 - Two are left to the archives on purpose, in =archiveOnly=, and =tests/kittymacs-startup-tests.el= keeps what this file builds and the chapters' declarations in step, with these two as the only exceptions:
   + =copilot= :: nixpkgs marks it unfree with its server, and an unfree package here would make every user of the flake allow it ([[id:9e0c1f52-7a43-4d0e-b1a8-63c2f5d48e17][the server's opt-in]] has the same reasoning);
@@ -414,9 +415,11 @@ emacs.pkgs.withPackages (
   epkgs:
   let
     # MELPA builds ws-butler from a clone of Savannah's whole NonGNU ELPA
-    # repository; NonGNU ELPA's own release is one small tarball.
+    # repository, and hyperbole from a clone of its own Savannah repository;
+    # each ELPA's own release is one small tarball.
     packageSet = epkgs // {
       inherit (epkgs.nongnuPackages) ws-butler;
+      inherit (epkgs.elpaPackages) hyperbole;
     };
     rank = package: builtins.replaceStrings [ "-" ] [ "" ] package.pname;
   in

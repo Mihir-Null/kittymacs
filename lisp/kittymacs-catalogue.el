@@ -221,6 +221,10 @@
      :summary "Reads PDFs in Emacs and keeps notes beside each page."
      :example "Opening a PDF renders it in a buffer, where you can search and annotate.")
 
+    (hyperbole
+     :group notes :packages (hyperbole) :module kittymacs-hyperbole :profile full
+     :summary "GNU Hyperbole: one key acts on links and buttons anywhere, with HyWiki, HyRolo and the Koutliner."
+     :example "=M-RET= on a file name opens it, and =SPC H w= finds or makes a HyWiki page.")
     (task-dependencies
      :group notes :packages (org-edna) :module kittymacs-org-tasks :profile full :deps (org-extras)
      :summary "Edit task prerequisites and inspect blocked project work."

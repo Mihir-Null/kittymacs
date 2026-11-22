@@ -58,7 +58,8 @@ doc-test:
 
 # The tests that need no packages: the builder; the startup guards and the
 # Nix package list; each operating system's platform branch (on any
-# machine); the Tree-sitter grammar policy, offline; Org table wrapping; the
+# machine); the Tree-sitter grammar policy, offline; Org table wrapping;
+# Hyperbole's keys and settings, without Hyperbole itself; the
 # onboarding screens, with scripted keys and through a real pty; a program
 # with a window, started from M-! in a graphical frame, not waited for.
 test:
@@ -76,6 +77,7 @@ test:
     emacs -Q --batch -l tests/kittymacs-treesit-tests.el -f ert-run-tests-batch-and-exit
     emacs -Q --batch -l tests/kittymacs-which-key-frame-tests.el -f ert-run-tests-batch-and-exit
     emacs -Q --batch -l tests/kittymacs-org-table-tests.el -f ert-run-tests-batch-and-exit
+    emacs -Q --batch -l tests/kittymacs-hyperbole-tests.el -f ert-run-tests-batch-and-exit
     emacs -Q --batch -l tests/kittymacs-v3-org-tests.el -f ert-run-tests-batch-and-exit
     emacs -Q --batch -l tests/kittymacs-bench-tests.el -f ert-run-tests-batch-and-exit
     emacs -Q --batch -l tests/kittymacs-catalogue-tests.el -f ert-run-tests-batch-and-exit
@@ -108,17 +110,18 @@ compile:
       -f batch-byte-compile lisp/*.el
 
 # The tests that load installed packages: the SPC and SPC m machinery, real
-# Org Node project scopes, the look without doom, a file visited before the
-# remote chapter loads, a remote machine through a Tramp method that needs no
-# ssh, the six diff-review internals the TRAMP adapter advises, and the
-# startup verifier,
-# which replays a real startup and fails on any warning. All under the full
-# profile: `KITTYMACS_TEST_PROFILE=full just install` makes its directory.
+# Org Node project scopes, Hyperbole in Org, the look without doom, a file
+# visited before the remote chapter loads, a remote machine through a Tramp
+# method that needs no ssh, the six diff-review internals the TRAMP adapter
+# advises, and the startup verifier, which replays a real startup and fails
+# on any warning. All under the full profile:
+# `KITTYMACS_TEST_PROFILE=full just install` makes its directory.
 test-packages:
     KITTYMACS_TEST_PACKAGES={{quote(packages)}} emacs -Q --batch -l tests/kittymacs-agents-upstream-tests.el -f ert-run-tests-batch-and-exit
     KITTYMACS_TEST_PROFILE=full KITTYMACS_TEST_PACKAGES={{quote(packages)}} emacs -Q --batch -l tests/kittymacs-org-tasks-tests.el -f ert-run-tests-batch-and-exit
     KITTYMACS_TEST_PROFILE=full KITTYMACS_TEST_PACKAGES={{quote(packages)}} emacs -Q --batch -l tests/kittymacs-leader-tests.el -f ert-run-tests-batch-and-exit
     KITTYMACS_TEST_PROFILE=full KITTYMACS_TEST_PACKAGES={{quote(packages)}} emacs -Q --batch -l tests/kittymacs-org-node-tests.el -f ert-run-tests-batch-and-exit
+    KITTYMACS_TEST_PROFILE=full KITTYMACS_TEST_PACKAGES={{quote(packages)}} emacs -Q --batch -l tests/kittymacs-hyperbole-tests.el -f ert-run-tests-batch-and-exit
     KITTYMACS_TEST_PROFILE=full KITTYMACS_TEST_PACKAGES={{quote(packages)}} emacs -Q --batch -l tests/kittymacs-theme-tests.el -f ert-run-tests-batch-and-exit
     KITTYMACS_TEST_PROFILE=full KITTYMACS_TEST_PACKAGES={{quote(packages)}} emacs -Q --batch -l tests/kittymacs-load-order-tests.el -f ert-run-tests-batch-and-exit
     KITTYMACS_TEST_PROFILE=full KITTYMACS_TEST_PACKAGES={{quote(packages)}} emacs -Q --batch -l tests/kittymacs-remote-tests.el -f ert-run-tests-batch-and-exit

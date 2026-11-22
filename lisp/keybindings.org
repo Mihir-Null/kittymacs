@@ -77,6 +77,7 @@ Press =SPC=, then:
 | =t=   | toggle                            |
 | =C=   | this configuration                |
 | =h=   | help                              |
+| =H=   | Hyperbole                         |
 | =q=   | quit                              |
 | =u=   | your own keys                     |
 | =m=   | this major mode (the localleader) |
@@ -278,6 +279,28 @@ In that list, =g= runs the query again and =v= changes it or its grouping.
 | SPC n a | Audit graph | kittymacs-org-node-audit |
 | SPC n b | Backlinks side panel | kittymacs-org-node-backlinks |
 | SPC n s | Sync graph | kittymacs-org-node-sync |
+
+* Hyperbole
+
+=M-RET= is the Action Key: it acts on the link, file name or button at point,
+anywhere; =C-u M-RET= is the Assist Key. In Org it acts only on links and
+buttons, and makes headings and items as Org's =M-RET= does everywhere else.
+
+| Key | Action | Command |
+|-----+--------+---------|
+| SPC H h | The Hyperbole menu (also C-h h) | kittymacs-hyperbole-menu |
+| SPC H a | Action Key at point | kittymacs-hyperbole-action-key |
+| SPC H A | Assist Key at point | kittymacs-hyperbole-assist-key |
+| SPC H ? | What the Action Key would do here | kittymacs-hyperbole-help |
+| SPC H b | Make an explicit button | kittymacs-hyperbole-button-create |
+| SPC H l | Make a button linking to the other window | kittymacs-hyperbole-button-link |
+| SPC H w | Find or make a HyWiki page | kittymacs-hywiki-find |
+| SPC H i | Insert a HyWiki reference | kittymacs-hywiki-insert |
+| SPC H p | Publish HyWiki as HTML | kittymacs-hywiki-publish |
+| SPC H r | Search HyRolo | kittymacs-hyrolo-search |
+| SPC H R | Open the HyRolo file | kittymacs-hyrolo-open |
+| SPC H k | Find or make a Koutline | kittymacs-hyperbole-koutline |
+| SPC H t | Hyperbole off or on | kittymacs-hyperbole-toggle |
 
 * Coding interfaces
 

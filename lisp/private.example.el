@@ -35,6 +35,12 @@
 ;;   ((nil . ((kittymacs-org-node-project . t)
 ;;            (kittymacs-org-node-excluded-directories . ("secrets")))))
 
+;; Hyperbole, read when its chapter loads; the defaults are under the Org
+;; directory.  See literate/85-hyperbole.org.
+;; (setopt kittymacs-hywiki-directory (expand-file-name "~/wiki/"))
+;; (setopt kittymacs-hyrolo-files (list (expand-file-name "~/contacts.org")))
+;; (setopt kittymacs-hyperbole-after-org-delay nil)  ; load only on SPC H or M-RET
+
 ;; Agents
 ;; Enable interfaces independently; choose which owns the shared SPC a keys.
 ;; (setopt kittymacs-features '(agents agent-gptel claude-code-ide))
