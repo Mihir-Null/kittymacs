@@ -26,7 +26,9 @@
 - Loading Hyperbole loads Org, and [[id:6a1d4e90-2f7b-4c63-8e15-b93c07d2a4f8][Org loads on first use]]; so startup declares Hyperbole and never loads it.
   + It also takes most of a second, uncompiled, on its own.
 - It loads, and its global mode turns on, at the first of:
-  1. a key under =SPC H=, =M-RET= outside Org, or =C-h h=: each is a small command here that turns Hyperbole on, then runs Hyperbole's own command;
+  1. a key under =SPC H=, =M-RET=, or =C-h h=: each is a small command here that turns Hyperbole on, then runs Hyperbole's own command;
+     + in Org, =M-RET= is Org's key, so this chapter remaps Org's =org-meta-return= to the same loader until Hyperbole has loaded: the first =M-RET= on a link follows it, and on a heading still makes one;
+     + with the delay below nil, and while Hyperbole is not installed, the remap runs =org-meta-return= and loads nothing;
   2. visiting a Koutline (=.kotl=), whose mode is Hyperbole's;
   3. a moment of idle time after Org has loaded, =kittymacs-hyperbole-after-org-delay= seconds, so =M-RET= on an Org link works in the first Org file you open.
      + nil waits for a Hyperbole key instead, for a machine where Org opens often and Hyperbole is rarely wanted.
@@ -55,7 +57,9 @@
 (defvar hywiki-directory)
 (defvar hyrolo-file-list)
 (defvar hsys-org-enable-smart-keys)
+(defvar hywiki-word-create-exclude-action-key-modes)
 (defvar meow-mode-state-list)
+(defvar meow--delete-region-function)
 (declare-function hyperbole-mode "hyperbole" (&optional arg))
 (declare-function hywiki-mode "hywiki" (&optional arg))
 (declare-function hkey-help-show "hmouse-drv" (&optional buffer current-window))
@@ -164,7 +168,9 @@ A batch Emacs, such as a test or a build, never turns it on this way."
 - The values are handed to Hyperbole's own options, =hywiki-directory= and =hyrolo-file-list=, before Hyperbole loads.
   + Hyperbole watches both options once loaded, and setting =hyrolo-file-list= then can ask to rename an old rolo file; set before, it asks nothing.
   + An option already set, in =private.el= or by Customize, is left alone: set Hyperbole's own name and it wins.
-- Nothing is created as Emacs starts; HyWiki makes its directory with the first page, and =SPC H k= and =SPC H R= make theirs when used.
+- Nothing is created as Emacs starts, but turning Hyperbole on makes =<org>/hywiki/=, empty: HyWiki builds its page list as it starts, and makes the directory to list it.
+  + So the first Org file you open makes it, a moment later, through the idle path above; with that delay nil, the first Hyperbole key does.
+  + =<org>/hyperbole/= waits for =SPC H k= or =SPC H R=.
 - Hyperbole's global buttons file stays where Hyperbole puts it, =~/.hyperb/HYPB=, with its map of every directory that holds explicit buttons: an existing Hyperbole user keeps theirs.
 - Published HyWiki pages go where =hywiki-org-publishing-directory= says, =~/public_hywiki= by default.
 
@@ -193,7 +199,9 @@ Runs before Hyperbole loads, while its options are still unbound."
     (setq hyrolo-file-list kittymacs-hyrolo-files))
   (when (or (not (boundp 'hsys-org-enable-smart-keys))
             (eq hsys-org-enable-smart-keys 'unset))
-    (setq hsys-org-enable-smart-keys 'buttons)))
+    (setq hsys-org-enable-smart-keys 'buttons))
+  (unless (boundp 'hywiki-word-create-exclude-action-key-modes)
+    (setq hywiki-word-create-exclude-action-key-modes '(org-mode))))
 
 (kittymacs-hyperbole--hand-over)
 
@@ -232,18 +240,27 @@ Runs before Hyperbole loads, while its options are still unbound."
 |---------------+------------------------------+--------------------------------------------------------------------------------------------|
 | =M-RET=       | the Action Key               | kept; before Hyperbole loads, a global key that loads it first                             |
 | =C-u M-RET=   | the Assist Key               | kept                                                                                       |
-| =M-RET= in Org | the Action Key, Org's =M-RET= as its fallback | links and buttons only: =hsys-org-enable-smart-keys= is =buttons=          |
+| =M-RET= in Org | the Action Key, Org's =M-RET= as its fallback | links and buttons only: =hsys-org-enable-smart-keys= is =buttons=; it never makes a HyWiki page |
 | =C-h h=       | the Hyperbole menu           | kept, in place of =view-hello-file=; before Hyperbole loads, a key that loads it first     |
 | =C-h A=       | what the Action Key would do | kept                                                                                       |
 | =M-o=         | drag emulation, on a graphical frame, if =M-o= is free | kept: nothing in kittymacs or Emacs binds it                     |
 | =C-c /=, =C-c .=, =C-c RET= | web search, matching delimiter, select a thing | kept: each runs the major mode's command when the mode binds the key, as Org does |
 | =C-c @=, =C-c \= | HyControl's window grid and window mode | removed: they would hide Org's and Outline's keys; the Hyperbole menu still has HyControl |
 | =C-w=, =M-w=  | kill or copy the region, or the thing at point | kept: Meow's kill and copy always pass a region, which Hyperbole treats as Emacs does |
+| =C-x r s=     | copy the region, or the thing at point, to a register | kept: with a region, as Emacs does                                |
+| =@= in Dired  | HyControl's window grid, once the package is installed, even with Hyperbole off | given back to Dired's =tramp-dired-find-file-with-sudo= |
 
 - Org keeps =M-RET= on its structure:
   + with =buttons=, the Action Key in Org acts on a link, a radio target or a Hyperbole button, and anywhere else calls =org-meta-return=, which makes a heading, an item or a wrapped table cell;
   + Hyperbole's own default is =buttons= only when it finds Org's =M-RET= shared with its own, and =t= otherwise, which would cycle a heading's TODO state or run a source block on =M-RET=;
   + =t= and =nil= are the other two settings; set =hsys-org-enable-smart-keys= in =private.el= to choose one.
+- A HyWiki page is an Org file, and in one every capitalized word is a HyWiki word: Hyperbole's =M-RET= on a word that is not yet a page makes the page, even on a heading's own text.
+  + Here =hywiki-word-create-exclude-action-key-modes= is =(org-mode)=, so in Org =M-RET= opens a word that already names a page and is Org's =M-RET= on any other; make a page with =SPC H w=.
+  + Set that variable in =private.el=, before Hyperbole loads, to have Hyperbole's way back.
+- In a source block, =buttons= gives =M-RET= to Org, which makes a heading there as anywhere else, splitting the block; plain Org does the same, so only the habit is new: in a chapter's code, =M-RET= is not the jump to a definition it is in an Emacs Lisp buffer.
+- The Dired =@= is not a key of =hyperbole-mode-map=: Hyperbole binds it in Dired's own map, from its autoloads as the package is activated and again as Hyperbole loads, so this chapter gives it back as each Dired buffer opens, after both.
+  + With the feature off, but the package still installed from when it was on, the binding stays until =M-x package-delete=.
+- =M-RET= on a form in angle brackets evaluates it, and on keys in braces types them, in any file and without asking, where Org asks before following an =elisp:= link: in a file you did not write, read a button before you press it, or ask =C-h A= what it will do.
 - Vertico keeps its =M-RET=: Hyperbole's first test for the minibuffer runs Vertico's own =M-RET= command, so [[id:42b02bb4-ea68-4981-b427-35705bf162f4][the completion chapter]]'s key does what it did.
 - Help and other temporary buffers are shown as Emacs and [[id:f1d045c2-e2dc-4514-ab17-dd982ed6be00][the frames chapter]] decide:
   + Hyperbole sets =temp-buffer-show-function= as it loads, which would route every such buffer around =display-buffer-alist=;
@@ -270,9 +287,12 @@ Turning Hyperbole off turns HyWiki off, so turning it on brings it back."
   (remove-hook 'temp-buffer-show-hook #'hkey-help-show)
   (when (eq temp-buffer-show-function #'hkey-help-show)
     (setq temp-buffer-show-function nil))
-  (dolist (key '("M-RET" "C-h h"))
+  ;; The loaders go, so Hyperbole's keys answer, and Org's M-RET is Org's
+  ;; again: Hyperbole falls back to it only when it finds it in Org's map.
+  (dolist (key '("M-RET" "C-h h" "<remap> <org-meta-return>"))
     (when (memq (keymap-lookup global-map key)
-                '(kittymacs-hyperbole-action-key kittymacs-hyperbole-menu))
+                '(kittymacs-hyperbole-action-key kittymacs-hyperbole-menu
+                  kittymacs-hyperbole-org-meta-return))
       (keymap-global-unset key t)))
   (add-hook 'hyperbole-mode-hook #'kittymacs-hyperbole--start-hywiki)
   (if hyperbole-mode
@@ -281,6 +301,17 @@ Turning Hyperbole off turns HyWiki off, so turning it on brings it back."
 
 (with-eval-after-load 'hyperbole
   (kittymacs-hyperbole--settle))
+
+(defvar dired-mode-map)
+
+(defun kittymacs-hyperbole--release-dired ()
+  "Give Dired back the `@' that Hyperbole takes for HyControl."
+  (when (eq (keymap-lookup dired-mode-map "@") 'hycontrol-windows-grid)
+    (if (fboundp 'tramp-dired-find-file-with-sudo)
+        (keymap-set dired-mode-map "@" #'tramp-dired-find-file-with-sudo)
+      (keymap-unset dired-mode-map "@" t))))
+
+(add-hook 'dired-mode-hook #'kittymacs-hyperbole--release-dired)
 
 #+end_src
 
@@ -309,7 +340,7 @@ Turning Hyperbole off turns HyWiki off, so turning it on brings it back."
 | =SPC H k= | find or make a Koutline                               | =kfile:find=            |
 | =SPC H t= | turn Hyperbole off or on                              | =hyperbole-mode=        |
 
-- Each key runs a command of this chapter that turns Hyperbole on first, so none of them waits for Hyperbole to have loaded.
+- Each key runs a command of this chapter that turns Hyperbole on first, so none of them waits for Hyperbole to have loaded; so do =M-RET=, =C-h h= and, in Org, =M-RET= through the remap of =org-meta-return=, until Hyperbole has loaded and its own keys take over.
   + =C-h f= on one names Hyperbole's command it runs, and that command's own help says the rest.
 - =SPC H w= makes a new page before it opens it.
   + Hyperbole's =hywiki-find-page= opens only a page that exists, and its menu's "Create" also types the word into the buffer you are in.
@@ -320,6 +351,17 @@ Turning Hyperbole off turns HyWiki off, so turning it on brings it back."
   "Run the Action Key at point; with \\[universal-argument], the Assist Key."
   (interactive)
   (kittymacs-hyperbole--call #'hkey-either))
+
+(declare-function org-meta-return "org" (&optional arg))
+
+(defun kittymacs-hyperbole-org-meta-return (&optional arg)
+  "Org's M-RET until Hyperbole loads: load it, then let the Action Key act.
+With `kittymacs-hyperbole-after-org-delay' nil, or Hyperbole not installed,
+run `org-meta-return' with ARG, as Org's key would."
+  (interactive "P")
+  (if (and kittymacs-hyperbole-after-org-delay (locate-library "hyperbole"))
+      (kittymacs-hyperbole-action-key)
+    (org-meta-return arg)))
 
 (defun kittymacs-hyperbole-assist-key ()
   "Run the Assist Key at point."
@@ -412,6 +454,7 @@ Interactively, read its name, offering the existing pages."
 
 (keymap-global-set "M-RET" #'kittymacs-hyperbole-action-key)
 (keymap-global-set "C-h h" #'kittymacs-hyperbole-menu)
+(keymap-global-set "<remap> <org-meta-return>" #'kittymacs-hyperbole-org-meta-return)
 
 #+end_src
 
@@ -424,7 +467,7 @@ Interactively, read its name, offering the existing pages."
 
 - The book has no HyWiki of its own, and its =.dir-locals.el= does not set =hywiki-directory=:
   + HyWiki keeps one wiki at a time, in the global value of =hywiki-directory=; a directory-local value is not local, because Hyperbole's watcher on the variable sets the global value too, so opening a chapter would swap your wiki for the book's;
-  + in a HyWiki page, =M-RET= on any capitalized word that is not yet a page makes one, so a book whose chapters were pages would grow a page each time a reader pressed =M-RET= on /Emacs/ or on a heading.
+  + in a HyWiki page, every capitalized word is a HyWiki word, so a book whose chapters were pages would highlight /Emacs/ and every heading as a link to a page that does not exist, and with Hyperbole's own setting would make one each time a reader pressed =M-RET= on it ([[*Keys outside the leader]] turns that off in Org).
 - Instead the book lends its words to your wiki: [[id:c94fbfb2-8ff4-4238-9acd-a099d6e7c4cb][the vocabulary]] gives each term a heading with an =:ID:= and a =:HYWIKI:= word, and =kittymacs-hywiki-adopt= makes each word a HyWiki reference to that heading.
   + The referent is the heading's Org ID, so the word follows the heading through renames and moves, as the book's own =id:= links do.
   + Adopting is something you do, once, with the Action Key on the button the vocabulary page holds; nothing adopts as Emacs starts.
@@ -480,7 +523,11 @@ current buffer's file by default.  Return the words added."
 
 - A Koutline is text you write, so =kotl-mode= starts in Normal state.
   + Hyperbole marks the mode /special/, from which Meow would guess Motion.
-  + Meow's motions and kills run Emacs's own keys, which =kotl-mode= maps to its cell-aware commands, so they keep a cell's label and number intact.
+- A cell's label is text at the start of its first line, so Meow's line selection, =x=, takes it, and a line kill, =s=, also takes the newline after it; left to themselves, =x s= and =x c= take a cell's label and run the cells together.
+  + Every kill in a Koutline goes through =kotl-mode:kill-region=, which refuses a region across cells; here it is also fitted to the cell's text first: a label, and the blank line after the cell, are left out.
+  + Meow's change deletes with =meow--delete-region-function=, which Meow provides for modes with their own deletion; in a Koutline it is the Koutliner's, so it is fitted and refused the same way, and leaves the kill ring and the clipboard alone.
+  + So =x s= empties a one-line cell and keeps the cell, =x c= retypes it, and either across two cells is refused; =SPC m k= kills a whole tree.
+  + =I= on a cell's first line still opens a line above its label, outside every cell, and what is typed there is dropped when the file is saved; add a cell with =SPC m i=.
 - HyRolo's match buffer, =*HyRolo*=, is a read-only list with one-letter keys of its own, so it starts in Motion state, as the agenda does.
 - HyWiki pages are Org files: they start as Org does, with Org's =SPC m=.
 - =SPC m= in a Koutline uses Org's letters where Org has the same idea:
@@ -512,6 +559,39 @@ current buffer's file by default.  Return the words added."
 (with-eval-after-load 'meow
   (add-to-list 'meow-mode-state-list '(kotl-mode . normal))
   (add-to-list 'meow-mode-state-list '(hyrolo-mode . motion)))
+
+(declare-function kcell-view:cell "kview" (&optional pos))
+(declare-function kcell-view:start "kview" (&optional pos lbl-sep-len))
+(declare-function kcell-view:end-contents "kview" (&optional pos))
+(declare-function kotl-mode:delete-region "kotl-mode" (start end))
+
+(defun kittymacs-hyperbole--kotl-fit-region (args)
+  "Fit the region in ARGS, those of `kotl-mode:kill-region', to its cell's text.
+A region that starts in a cell's label, or ends in the blank line after the
+cell, is cut to the cell's text.  One across cells is left for the Koutliner
+to refuse."
+  (pcase-let ((`(,start ,end . ,rest) args))
+    (if (and (number-or-marker-p start) (number-or-marker-p end)
+             (eq (kcell-view:cell start) (kcell-view:cell end)))
+        (let* ((from (min start end))
+               (text-start (max from (kcell-view:start from)))
+               (text-end (max text-start
+                              (min (max start end) (kcell-view:end-contents from)))))
+          (cons text-start (cons text-end rest)))
+      args)))
+
+(advice-add 'kotl-mode:kill-region :filter-args #'kittymacs-hyperbole--kotl-fit-region)
+
+(defun kittymacs-hyperbole--kotl-delete-region (start end)
+  "Delete from START to END in a Koutline, for Meow, keeping the kill ring."
+  (let ((interprogram-cut-function nil))
+    (kotl-mode:delete-region start end)))
+
+(defun kittymacs-hyperbole--kotl-meow ()
+  "Have Meow's change delete through the Koutliner in this buffer."
+  (setq-local meow--delete-region-function #'kittymacs-hyperbole--kotl-delete-region))
+
+(add-hook 'kotl-mode-hook #'kittymacs-hyperbole--kotl-meow)
 
 (kittymacs-define-localleader 'kotl-mode
   "i" (cons "add cell" #'kotl-mode:add-cell)
@@ -545,6 +625,10 @@ current buffer's file by default.  Return the words added."
 - <featurep 'hyperbole> in a fresh Emacs: =nil=; after {SPC H h}: =t=, and the mode line shows =Hypb=.
 - In =inbox.org=, =M-RET= on a heading makes a new heading; on a =file:= link, it follows the link.
 - {C-h A} on a heading says the Action Key will run =hsys-org-meta-return=.
+- In a fresh Emacs, the first =M-RET= on a link in an Org file follows it, and on a heading makes a heading, before the idle second has passed.
+- In a HyWiki page, =M-RET= on a heading's word makes a heading, not a page; on a word that names a page, it opens the page.
+- In a Koutline in Normal state, =x= then =s= on a cell empties it and keeps its label; =x= until the selection reaches the next cell, then =s=, is refused.
+- In Dired, =C-h k @=: =tramp-dired-find-file-with-sudo=.
 - {SPC H w}, then a new word such as =GardenPlan=: the page opens in =<org>/hywiki/=, and the word is highlighted wherever a page names it.
 - {SPC H k}, then =ideas.kotl=: a Koutline opens in Normal state, and =SPC m i= adds cell =2=.
 - "book.kotl": the book's map opens as a Koutline; =M-RET= on a chapter's file name opens the chapter.

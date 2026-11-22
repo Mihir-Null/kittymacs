@@ -6,7 +6,7 @@
 ;; Koutline map.  The doc tests read them as text; these open every page with
 ;; Hyperbole on and ask Hyperbole itself what each one is.  Every test skips
 ;; without Hyperbole: `just test' runs them so, and `just test-packages' with
-;; KITTYMACS_TEST_PACKAGES, where Hyperbole is installed.  HOME and the Org
+;; KITTYMACS_TEST_PACKAGES, where Hyperbole is installed and its absence fails.  HOME and the Org
 ;; directory are temporary, so the reader's HyWiki is a throwaway one.
 
 ;;; Code:
@@ -42,8 +42,13 @@
   (expand-file-name name (expand-file-name "literate" kittymacs-book-test-root)))
 
 (defun kittymacs-book-test--start ()
-  "Skip without Hyperbole; otherwise turn it on."
+  "Skip without Hyperbole; otherwise turn it on.
+`just test-packages' runs under the full profile, which installs Hyperbole,
+so there a missing Hyperbole fails instead."
   (unless (locate-library "hyperbole")
+    (when (and (equal (getenv "KITTYMACS_TEST_PROFILE") "full")
+               (getenv "KITTYMACS_TEST_PACKAGES"))
+      (error "Hyperbole is not installed in %s" (getenv "KITTYMACS_TEST_PACKAGES")))
     (ert-skip "Hyperbole is not installed"))
   (kittymacs-hyperbole-enable)
   (require 'org))

@@ -13,7 +13,9 @@
 (defvar hywiki-directory)
 (defvar hyrolo-file-list)
 (defvar hsys-org-enable-smart-keys)
+(defvar hywiki-word-create-exclude-action-key-modes)
 (defvar meow-mode-state-list)
+(defvar meow--delete-region-function)
 (declare-function hyperbole-mode "hyperbole" (&optional arg))
 (declare-function hywiki-mode "hywiki" (&optional arg))
 (declare-function hkey-help-show "hmouse-drv" (&optional buffer current-window))
@@ -122,7 +124,9 @@ Runs before Hyperbole loads, while its options are still unbound."
     (setq hyrolo-file-list kittymacs-hyrolo-files))
   (when (or (not (boundp 'hsys-org-enable-smart-keys))
             (eq hsys-org-enable-smart-keys 'unset))
-    (setq hsys-org-enable-smart-keys 'buttons)))
+    (setq hsys-org-enable-smart-keys 'buttons))
+  (unless (boundp 'hywiki-word-create-exclude-action-key-modes)
+    (setq hywiki-word-create-exclude-action-key-modes '(org-mode))))
 
 (kittymacs-hyperbole--hand-over)
 
@@ -145,9 +149,12 @@ Turning Hyperbole off turns HyWiki off, so turning it on brings it back."
   (remove-hook 'temp-buffer-show-hook #'hkey-help-show)
   (when (eq temp-buffer-show-function #'hkey-help-show)
     (setq temp-buffer-show-function nil))
-  (dolist (key '("M-RET" "C-h h"))
+  ;; The loaders go, so Hyperbole's keys answer, and Org's M-RET is Org's
+  ;; again: Hyperbole falls back to it only when it finds it in Org's map.
+  (dolist (key '("M-RET" "C-h h" "<remap> <org-meta-return>"))
     (when (memq (keymap-lookup global-map key)
-                '(kittymacs-hyperbole-action-key kittymacs-hyperbole-menu))
+                '(kittymacs-hyperbole-action-key kittymacs-hyperbole-menu
+                  kittymacs-hyperbole-org-meta-return))
       (keymap-global-unset key t)))
   (add-hook 'hyperbole-mode-hook #'kittymacs-hyperbole--start-hywiki)
   (if hyperbole-mode
@@ -157,10 +164,32 @@ Turning Hyperbole off turns HyWiki off, so turning it on brings it back."
 (with-eval-after-load 'hyperbole
   (kittymacs-hyperbole--settle))
 
+(defvar dired-mode-map)
+
+(defun kittymacs-hyperbole--release-dired ()
+  "Give Dired back the `@' that Hyperbole takes for HyControl."
+  (when (eq (keymap-lookup dired-mode-map "@") 'hycontrol-windows-grid)
+    (if (fboundp 'tramp-dired-find-file-with-sudo)
+        (keymap-set dired-mode-map "@" #'tramp-dired-find-file-with-sudo)
+      (keymap-unset dired-mode-map "@" t))))
+
+(add-hook 'dired-mode-hook #'kittymacs-hyperbole--release-dired)
+
 (defun kittymacs-hyperbole-action-key ()
   "Run the Action Key at point; with \\[universal-argument], the Assist Key."
   (interactive)
   (kittymacs-hyperbole--call #'hkey-either))
+
+(declare-function org-meta-return "org" (&optional arg))
+
+(defun kittymacs-hyperbole-org-meta-return (&optional arg)
+  "Org's M-RET until Hyperbole loads: load it, then let the Action Key act.
+With `kittymacs-hyperbole-after-org-delay' nil, or Hyperbole not installed,
+run `org-meta-return' with ARG, as Org's key would."
+  (interactive "P")
+  (if (and kittymacs-hyperbole-after-org-delay (locate-library "hyperbole"))
+      (kittymacs-hyperbole-action-key)
+    (org-meta-return arg)))
 
 (defun kittymacs-hyperbole-assist-key ()
   "Run the Assist Key at point."
@@ -253,6 +282,7 @@ Interactively, read its name, offering the existing pages."
 
 (keymap-global-set "M-RET" #'kittymacs-hyperbole-action-key)
 (keymap-global-set "C-h h" #'kittymacs-hyperbole-menu)
+(keymap-global-set "<remap> <org-meta-return>" #'kittymacs-hyperbole-org-meta-return)
 
 (declare-function hywiki-get-referent "hywiki" (wikiword &optional absolute-path-flag))
 (declare-function hywiki-add-referent "hywiki" (wikiword referent))
@@ -292,6 +322,39 @@ current buffer's file by default.  Return the words added."
 (with-eval-after-load 'meow
   (add-to-list 'meow-mode-state-list '(kotl-mode . normal))
   (add-to-list 'meow-mode-state-list '(hyrolo-mode . motion)))
+
+(declare-function kcell-view:cell "kview" (&optional pos))
+(declare-function kcell-view:start "kview" (&optional pos lbl-sep-len))
+(declare-function kcell-view:end-contents "kview" (&optional pos))
+(declare-function kotl-mode:delete-region "kotl-mode" (start end))
+
+(defun kittymacs-hyperbole--kotl-fit-region (args)
+  "Fit the region in ARGS, those of `kotl-mode:kill-region', to its cell's text.
+A region that starts in a cell's label, or ends in the blank line after the
+cell, is cut to the cell's text.  One across cells is left for the Koutliner
+to refuse."
+  (pcase-let ((`(,start ,end . ,rest) args))
+    (if (and (number-or-marker-p start) (number-or-marker-p end)
+             (eq (kcell-view:cell start) (kcell-view:cell end)))
+        (let* ((from (min start end))
+               (text-start (max from (kcell-view:start from)))
+               (text-end (max text-start
+                              (min (max start end) (kcell-view:end-contents from)))))
+          (cons text-start (cons text-end rest)))
+      args)))
+
+(advice-add 'kotl-mode:kill-region :filter-args #'kittymacs-hyperbole--kotl-fit-region)
+
+(defun kittymacs-hyperbole--kotl-delete-region (start end)
+  "Delete from START to END in a Koutline, for Meow, keeping the kill ring."
+  (let ((interprogram-cut-function nil))
+    (kotl-mode:delete-region start end)))
+
+(defun kittymacs-hyperbole--kotl-meow ()
+  "Have Meow's change delete through the Koutliner in this buffer."
+  (setq-local meow--delete-region-function #'kittymacs-hyperbole--kotl-delete-region))
+
+(add-hook 'kotl-mode-hook #'kittymacs-hyperbole--kotl-meow)
 
 (kittymacs-define-localleader 'kotl-mode
   "i" (cons "add cell" #'kotl-mode:add-cell)
