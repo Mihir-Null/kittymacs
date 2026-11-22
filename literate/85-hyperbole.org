@@ -14,6 +14,7 @@
 - Leans on [[id:afa6b7fd-742a-4c15-86a6-32e3e8027b0e][the platform chapter]] for the Org directory, [[id:e5942eb0-4389-447d-9317-d9178adcaaae][the leader]] for =SPC H= and =SPC m=, and [[id:8ff7e58e-c155-4513-99ae-3b2c3a6ab729][Org]] only by waiting for it.
 - Must not know about [[id:f48e8f01-88da-4e33-8398-c00ab346b8bb][Org Node]], Org extras or the reading chapter: each can be off while this is on ([[*HyWiki beside Org Node]]).
 - The decisions behind it are in [[file:../ARCHITECTURE.md][ARCHITECTURE.md]], "Hyperbole".
+- The book itself is written to be read with Hyperbole on: its *Check* sections are buttons, [[file:book.kotl][a Koutline]] maps it, and [[id:1b1e1815-02cd-4e1c-b6d8-a27e6412f732][the field notes]] record where Hyperbole and kittymacs rub.
 
 * Hyperbole loads on first use :decision:
 :PROPERTIES:
@@ -215,7 +216,7 @@ Runs before Hyperbole loads, while its options are still unbound."
   + HyWiki pages sit inside the Org directory, which is Org Node's personal root, so Org Node can search them and index any heading in them that has an ID;
   + HyWiki never writes IDs, and Org Node never makes pages;
   + this module names nothing of Org Node's, and the lint test holds both modules to that.
-- Pages of this book link with =id:=, whatever Hyperbole adds to them: [[id:22034c63-4c03-4c8a-aa13-3d888d264052][the doc tests]] check every =id:= link and none of Hyperbole's buttons.
+- Pages of this book link with =id:=, whatever Hyperbole adds to them: [[id:22034c63-4c03-4c8a-aa13-3d888d264052][the doc tests]] check every =id:= link, and the book has no HyWiki of its own; it lends its words to yours instead ([[*The book's words in your HyWiki]]).
 
 * Keys outside the leader :decision:
 :PROPERTIES:
@@ -414,6 +415,62 @@ Interactively, read its name, offering the existing pages."
 
 #+end_src
 
+* The book's words in your HyWiki :decision:
+:PROPERTIES:
+:KITTYMACS_GENERATE: ../lisp/kittymacs-hyperbole.el
+:header-args:emacs-lisp: :tangle ../lisp/kittymacs-hyperbole.el :eval never :comments no :padline no :mkdirp yes
+:ID: 75bf50f3-dc18-4c2d-8b2d-5279ef1c7a51
+:END:
+
+- The book has no HyWiki of its own, and its =.dir-locals.el= does not set =hywiki-directory=:
+  + HyWiki keeps one wiki at a time, in the global value of =hywiki-directory=; a directory-local value is not local, because Hyperbole's watcher on the variable sets the global value too, so opening a chapter would swap your wiki for the book's;
+  + in a HyWiki page, =M-RET= on any capitalized word that is not yet a page makes one, so a book whose chapters were pages would grow a page each time a reader pressed =M-RET= on /Emacs/ or on a heading.
+- Instead the book lends its words to your wiki: [[id:c94fbfb2-8ff4-4238-9acd-a099d6e7c4cb][the vocabulary]] gives each term a heading with an =:ID:= and a =:HYWIKI:= word, and =kittymacs-hywiki-adopt= makes each word a HyWiki reference to that heading.
+  + The referent is the heading's Org ID, so the word follows the heading through renames and moves, as the book's own =id:= links do.
+  + Adopting is something you do, once, with the Action Key on the button the vocabulary page holds; nothing adopts as Emacs starts.
+  + A word that already names a page or a referent in your wiki is left alone: the book never overwrites your notes.
+  + Each heading's ID is added to Org's ID locations as it is adopted, so the word works with Org Node off.
+- The words live in your wiki's cache file, =.hywiki.eld= in =hywiki-directory=, like any other referent; delete one with Hyperbole's =HyWiki= menu.
+- Pages of the book still link to each other with =id:= only; the field notes say why: [[id:1b1e1815-02cd-4e1c-b6d8-a27e6412f732][Hyperbole field notes]].
+
+#+begin_src emacs-lisp :padline yes
+(declare-function hywiki-get-referent "hywiki" (wikiword &optional absolute-path-flag))
+(declare-function hywiki-add-referent "hywiki" (wikiword referent))
+(declare-function org-map-entries "org" (func &optional match scope &rest skip))
+(declare-function org-entry-get "org" (epom property &optional inherit literal-nil))
+(declare-function org-id-add-location "org-id" (id file))
+
+(defun kittymacs-hywiki-adopt (&optional file)
+  "Make each HYWIKI word of FILE's headings a HyWiki reference to its heading.
+The referent is the heading's Org ID, in whichever HyWiki is current.  A word
+that already names a page or a referent there is left as it is.  FILE is the
+current buffer's file by default.  Return the words added."
+  (interactive)
+  (setq file (or file buffer-file-name (user-error "This buffer visits no file")))
+  (kittymacs-hyperbole-enable)
+  (require 'org-id)
+  (let (added kept)
+    (with-current-buffer (find-file-noselect file)
+      (save-restriction
+        (widen)
+        (org-map-entries
+         (lambda ()
+           (let* ((word (org-entry-get nil "HYWIKI"))
+                  (id (org-entry-get nil "ID"))
+                  (referent (and id (hywiki-get-referent word))))
+             (when id
+               (org-id-add-location id file)
+               (cond ((equal referent (cons 'org-id id)))
+                     (referent (push word kept))
+                     (t (hywiki-add-referent word (cons 'org-id id))
+                        (push word added))))))
+         "HYWIKI={.}")))
+    (message "HyWiki: %d words added%s" (length added)
+             (if kept (format "; kept your own %s" (string-join (nreverse kept) ", ")) ""))
+    (nreverse added)))
+
+#+end_src
+
 * Meow in the Koutliner and HyRolo :meow:
 :PROPERTIES:
 :KITTYMACS_GENERATE: ../lisp/kittymacs-hyperbole.el
@@ -484,11 +541,16 @@ Interactively, read its name, offering the existing pages."
 
 * Check
 
-- =M-: (featurep 'hyperbole)= in a fresh Emacs: =nil=; after =SPC H h=: =t=, and the mode line shows =Hypb=.
+- This *Check* is itself a set of buttons: with Hyperbole on, =M-RET= in Normal state on a key in braces types it, and on a form in angle brackets evaluates it ([[id:b1f2f39e-5ded-4e87-a1bb-5152cefb0fe2][the conventions]] say which buttons a page may hold).
+- <featurep 'hyperbole> in a fresh Emacs: =nil=; after {SPC H h}: =t=, and the mode line shows =Hypb=.
 - In =inbox.org=, =M-RET= on a heading makes a new heading; on a =file:= link, it follows the link.
-- =C-h A= on a heading says the Action Key will run =hsys-org-meta-return=.
-- =SPC H w=, then a new word such as =GardenPlan=: the page opens in =<org>/hywiki/=, and the word is highlighted wherever a page names it.
-- =SPC H k=, then =ideas.kotl=: a Koutline opens in Normal state, and =SPC m i= adds cell =2=.
-- =SPC H R=, add =* Ada Lovelace=, save; =SPC H r= then =Ada= lists the entry in =*HyRolo*=, in Motion state.
-- =SPC H t= twice: off, =M-RET= in Org runs =org-meta-return= directly; on again, Hyperbole answers.
-- [[file:../tests/kittymacs-hyperbole-tests.el][The Hyperbole tests]] check these promises; =just test= runs those that need no packages, and =just test-packages= the rest with Hyperbole installed.
+- {C-h A} on a heading says the Action Key will run =hsys-org-meta-return=.
+- {SPC H w}, then a new word such as =GardenPlan=: the page opens in =<org>/hywiki/=, and the word is highlighted wherever a page names it.
+- {SPC H k}, then =ideas.kotl=: a Koutline opens in Normal state, and =SPC m i= adds cell =2=.
+- "book.kotl": the book's map opens as a Koutline; =M-RET= on a chapter's file name opens the chapter.
+- {SPC H R}, add =* Ada Lovelace=, save; {SPC H r} then =Ada= lists the entry in =*HyRolo*=, in Motion state.
+- {SPC H t} twice: off, =M-RET= in Org runs =org-meta-return= directly; on again, Hyperbole answers.
+- In [[id:c94fbfb2-8ff4-4238-9acd-a099d6e7c4cb][the vocabulary]], =M-RET= on its adopt button; then, in a page of your HyWiki, type =KittymacsTangle=: it is highlighted, and =M-RET= on it opens the vocabulary at /tangle/.
+- <hywiki-get-referent "KittymacsTangle"> then shows =(org-id . "0ce4253b-…")=.
+- [[file:../tests/kittymacs-hyperbole-tests.el][The Hyperbole tests]] check these promises; <compile "just test"> runs those that need no packages, and <compile "just test-packages"> the rest with Hyperbole installed.
+- [[file:../tests/kittymacs-hyperbole-book-tests.el][The book's button tests]] open every page with Hyperbole on and check that each key series and action button it holds is one Hyperbole recognizes, that the map parses as a Koutline whose file names are buttons, and that adopting the vocabulary adds its words without touching yours.

@@ -10,7 +10,7 @@
 - kittymacs is an Emacs configuration written as a book: each chapter explains one part of the editor and is the source of the Lisp that configures it.
   + The blocks are /tangled/ (copied out) into =lisp/*.el= and the two startup files, which is what Emacs loads.
   + You read and edit the chapters; Emacs runs the generated files.
-- A word you do not know: follow its link, or see [[*Vocabulary]].
+- A word you do not know: follow its link, or see [[id:c94fbfb2-8ff4-4238-9acd-a099d6e7c4cb][the vocabulary]].
 - How a chapter is written, tagged and linked: [[id:7edccfdc-3c38-489a-bc9e-4c002b432ab4][the conventions]]. How to change one: [[id:9ea539a0-f1a3-4d05-aa10-6f2d2ff3e335][the loop]].
 
 * Start here
@@ -19,9 +19,28 @@
   1. *Meow* is the editing model: select something, then act on it ([[id:a1607a41-b741-428a-9de3-c16e7c8d3ecc][editing]]).
   2. *=SPC= is a real keymap*, not a translation trick: press it, wait, and which-key shows every group; =SPC m= is the menu for the current mode ([[id:e5942eb0-4389-447d-9317-d9178adcaaae][leader]], [[id:53ad53ed-155f-47dc-973d-7be18de2893c][keys]]).
   3. *Frames, not windows*: new editing surfaces are OS windows, so your window manager arranges them ([[id:f1d045c2-e2dc-4514-ab17-dd982ed6be00][frames]]).
-- Read one more thing: [[file:../lisp/keybindings.org][the cheat sheet]]; =SPC h ?= opens it from inside Emacs.
-- =SPC h t= (=M-x meow-tutor=) teaches the grammar in ten minutes.
+- Read one more thing: [[file:../lisp/keybindings.org][the cheat sheet]]; {SPC h ?} opens it from inside Emacs.
+- {SPC h t} (=M-x meow-tutor=) teaches the grammar in ten minutes.
 - In a chapter, =TAB= on a heading folds or unfolds it, =S-TAB= shows the outline, and =C-c '= edits a code block in its own buffer.
+- Read inside Emacs, the book is hypertext: [[*Reading with Hyperbole]].
+
+* Reading with Hyperbole
+:PROPERTIES:
+:ID: 1e7ae911-03fc-41e7-a9b8-60a697593f25
+:END:
+
+- With [[id:dd02e28d-87f3-4b22-a7fe-9cfa5636de04][Hyperbole]] on, the Action Key, =M-RET= in Normal state, does what the text under it says; it is on a moment after Org first loads, or after {SPC H h}.
+  + On a key series in braces, such as {SPC h ?} above, it types the keys.
+  + On a form in angle brackets, such as <emacs-init-time>, it evaluates the form and shows the value.
+  + On an Org link it follows the link, as =RET= does; anywhere else in a page, =M-RET= is Org's again and makes a heading or an item.
+  + {C-h A} says what it would do at point, before you press it.
+- Every chapter ends with a *Check*: keys to press and values to look at, written as these buttons, so you check a chapter by pressing =M-RET= down its last heading.
+  + On GitHub, and with Hyperbole off, the braces and brackets are plain text, and the keys still read as keys.
+- Three pages exist for reading this way:
+  + [[file:book.kotl][the map]], a Koutline of the book by part: =C-c C-v= then =1= shows only the parts, and =M-RET= on a chapter's file name opens it;
+  + [[id:c94fbfb2-8ff4-4238-9acd-a099d6e7c4cb][the vocabulary]], whose words your own HyWiki can borrow, so =KittymacsLeader= in your notes leads to the leader;
+  + [[id:1b1e1815-02cd-4e1c-b6d8-a27e6412f732][the Hyperbole field notes]]: where Hyperbole and this book rub, and what could come next.
+- Which buttons a page may hold, and why no others: [[id:b1f2f39e-5ded-4e87-a1bb-5152cefb0fe2][the conventions]].
 
 * The chapters, in reading order
 
@@ -73,6 +92,7 @@
 | [[id:9ea539a0-f1a3-4d05-aa10-6f2d2ff3e335][Maintenance]]     | core      | the loop, the builder, CI, updating, =private.el=                                    |
 | [[id:d25a5063-1439-4ae0-8fbe-b0162d05a0e0][Nix]]             | nix       | the flake, the nix-darwin and Home Manager modules, nix-on-droid                   |
 
+- The same list as an outline, by part: [[file:book.kotl][the map]].
 - Live, by tag: =SPC n f= then =#keys= or =#meow= narrows the list ([[id:7edccfdc-3c38-489a-bc9e-4c002b432ab4][the conventions]] list the tags).
 - [[file:../ARCHITECTURE.md][ARCHITECTURE.md]] records the design and every decision behind it.
 
@@ -89,6 +109,7 @@
 | Path                   | Holds                                                                 |
 |------------------------+-----------------------------------------------------------------------|
 | =literate/=              | these chapters: the source of everything generated                    |
+| =literate/book.kotl=     | the map of the chapters, a Koutline for reading with Hyperbole        |
 | =early-init.el=, =init.el= | generated from [[id:40302e33-d2b2-4c0b-9bc3-1f9e121307e1][startup]]; the only files Emacs reads on its own         |
 | =lisp/kittymacs-*.el=    | generated, one module per chapter                                     |
 | =lisp/keybindings.org=   | the cheat sheet; the startup verifier checks it against the live keys |
@@ -102,14 +123,4 @@
 
 * Vocabulary
 
-- chapter :: an Org file =literate/NN-name.org=: one part of the editor explained, and the source of its module.
-- tangle :: copy a chapter's code blocks into the files they name; kittymacs's only build step.
-- module :: a generated =lisp/kittymacs-NAME.el=, loaded by a =require= in =init.el=.
-- state :: Meow's mode of the moment: /Normal/ (select and act), /Insert/ (type), /Motion/ (a package's own keys, plus =j=, =k= and =SPC=).
-- thing :: what Meow can select as a unit: a word, a line, a sentence, a pair of brackets, a syntax-tree node.
-- leader :: =SPC= in Normal and Motion state: the keymap every command group hangs from.
-- localleader :: =SPC m=: the current major mode's own menu.
-- frame :: an Emacs OS window; kittymacs opens one where Emacs would split a window.
-- which-key :: the popup listing the keys that can follow the prefix you typed.
-- graph :: registered notes that share the Org ID index and can be viewed by project.
-- private.el :: your settings for this machine, read early and never committed.
+- The book's own words, one heading each, are on [[id:c94fbfb2-8ff4-4238-9acd-a099d6e7c4cb][their own page]], where a link, a backlink or a HyWiki word can reach each one.

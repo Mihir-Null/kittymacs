@@ -1,0 +1,247 @@
+;; -*- Mode: kotl -*- 
+"Kotl-4.0" ;; file-format
+
+   1. kittymacs, the book, as a Koutline: one cell per part, one child per chapter, in reading order.  With Hyperbole on, M-RET on a file name in double quotes opens that page, on a key series in braces types its keys, and on a cell reference such as <@ 9> moves there.  The reading guide is "index.org"; the words are in "vocabulary.org"; the rules are in "conventions.org".
+
+     1a. Reading this map: {C-c C-v} sets the view, so 1 shows only the parts and 0 shows everything; {C-c C-s} shows a cell's subtree and {C-c C-h} hides it; {C-c C-j} jumps to a cell by its label.  Labels such as 3b renumber as cells move; the permanent idstamp behind each does not, and a link made with {C-c C-l} uses it.
+
+     1b. Why a Koutline as well as the reading guide: the field notes say, "hyperbole-field-notes.org".  The reading guide stays the map GitHub shows and the doc tests check; this one is for reading inside Emacs, where its buttons work.
+
+   2. Core: startup, the catalogue, defaults, platform and maintenance; what every other chapter uses.
+
+     2a. Startup: the two files Emacs reads, and the order the rest loads in.  "10-startup.org"
+
+     2b. Catalogue: every optional feature and the packages behind it.  "20-catalogue.org"
+
+     2c. Features: which of them this machine selected.  "21-features.org"
+
+     2d. Onboarding: screens that choose them and write private.el, and how they stay safe.  "22-onboarding.org"
+
+     2e. Defaults: files, backups, text, the interface, windows, scratch, the server.  "25-defaults.org"
+
+     2f. Basics: small packages for undo, whitespace and windows.  "26-basics.org"
+
+     2g. Platform: paths, shells, spelling; the macOS, Windows and Android policies.  "30-platform.org"
+
+     2h. Remote: Tramp, named backends, and guards for a dead connection.  "36-remote.org"
+
+     2i. Maintenance: the loop, the builder, CI, updating, private.el.  "80-maintenance.org"
+
+   3. Keys: Meow, the leader and the SPC tree.
+
+     3a. Editing: Meow's states and grammar.  "40-editing.org"
+
+     3b. Leader: why SPC is a real keymap, its groups, and how modes get their own menu.  "41-leader.org"
+
+     3c. Keys: the whole SPC tree, group by group, and the keys no feature owns.  "42-keys.org"
+
+   4. Interface: frames, appearance, the dashboard, completion and help.
+
+     4a. Meow's state in colour: the cursor and the mode line's mark by state, in full.  "52-meow-state-cursor.org"
+
+     4b. which-key frame: the key menu in a child frame, hidden and off unless set by hand.  "43-which-key-frame.org"
+
+     4c. EXWM: Emacs as the X window manager, with LeopardWM's keys.  "44-exwm.org"
+
+     4d. Frames: frames-only mode and its exceptions.  "45-frames.org"
+
+     4e. Appearance: fonts, theme, mode line, icons, highlighting.  "50-appearance.org"
+
+     4f. Smooth scrolling: pixel scrolling and animated page keys, in full.  "51-smooth-scroll.org"
+
+     4g. Dashboard: the home page.  "55-dashboard.org"
+
+     4h. Completion: Vertico, Orderless, Marginalia, Consult, Embark, Corfu, Cape, snippets.  "60-completion.org"
+
+     4i. Help: Helpful, Info, Transient.  "62-help.org"
+
+   5. Apps: the terminal, shells, Dired, Treemacs, version control, navigation and agents.
+
+     5a. Terminal: ghostel: a real terminal, its integrations, and Meow inside it.  "34-terminal.org"
+
+     5b. Windows-side fallback: off by default, and it warns: for work on Windows-side files.  "37-msys2.org"
+
+     5c. Shells: the login environment and Eshell.  "35-shells.org"
+
+     5d. Dired: the file manager.  "64-dired.org"
+
+     5e. Treemacs: the project tree in a sidebar.  "65-treemacs.org"
+
+     5f. Version control: Magit and VC.  "66-vc.org"
+
+     5g. Navigation: recent files, places, projects, search tools.  "68-navigation.org"
+
+     5h. Agents: Claude Code in a buffer, through agent-shell, and its MCP servers.  "77-agents.org"
+
+   6. Notes: Org, linked notes, reading and Hyperbole.
+
+     6a. Org: notes, tasks, the agenda, searches by tag.  "70-org.org"
+
+     6b. Org extras: queries across files, grouped lists, Org drawn like a document.  "73-org-extras.org"
+
+     6c. Org Node: linked notes: personal and project graphs, capture, backlinks, tags.  "71-org-node.org"
+
+     6d. Reading: PDFs in Emacs, and org-noter's notes beside them.  "75-reading.org"
+
+     6e. Project tasks: task dependencies and project work views.  "83-org-tasks.org"
+
+     6f. Research and publishing: reference material and Org Press.  "84-org-workflows.org"
+
+     6g. Hyperbole: the Action Key on links and buttons, HyWiki, HyRolo and the Koutliner.  "85-hyperbole.org"
+
+   7. Code: programming, languages, notebooks and suggestions.
+
+     7a. Programming: delimiters, structural editing, linting, compiling, Emacs Lisp.  "72-programming.org"
+
+     7b. Languages: Tree-sitter grammars and opt-in language servers.  "74-languages.org"
+
+     7c. Hover documentation: Eglot's documentation in a child frame, in full.  "79-hover-docs.org"
+
+     7d. Notebooks: Jupytext scripts: cells, a Jupyter kernel, LaTeX drawn in Markdown cells.  "76-notebooks.org"
+
+     7e. Org Babel: language execution, kernels and diagrams.  "82-org-babel.org"
+
+     7f. Suggestions: Copilot's ghost text and next-edit suggestions, off until you turn them on.  "78-suggestions.org"
+
+   8. Nix: the flake and its modules.
+
+     8a. Nix: the flake, the nix-darwin and Home Manager modules, nix-on-droid.  "90-nix.org"
+
+   9. Meta: the pages that tangle nothing.  The Hyperbole chapter itself is with the notes, <@ 6>.
+
+     9a. The reading guide.  "index.org"
+
+     9b. The conventions: how a page is written, tagged and linked, and which Hyperbole buttons it may hold.  "conventions.org"
+
+     9c. The vocabulary, and the words it lends your HyWiki.  "vocabulary.org"
+
+     9d. Hyperbole field notes: what resisted, what confuses, what could come next, and what is wrong in the module.  "hyperbole-field-notes.org"
+
+
+"ben" ;; kvspec:current
+67 ;; id-counter
+alpha ;; label-type
+4 ;; label-min-width
+". " ;; label-separator
+3 ;; level-indent
+
+;; depth-first kcell attributes
+[[0
+  (creator "kittymacs" create-time "20261122:22:56:39" id-counter 67)]
+ [1
+  (creator "kittymacs" create-time "20261122:22:56:39")]
+ [3
+  (creator "kittymacs" create-time "20261122:22:56:39")]
+ [4
+  (creator "kittymacs" create-time "20261122:22:56:39")]
+ [5
+  (creator "kittymacs" create-time "20261122:22:56:39")]
+ [7
+  (creator "kittymacs" create-time "20261122:22:56:39")]
+ [8
+  (creator "kittymacs" create-time "20261122:22:56:39")]
+ [9
+  (creator "kittymacs" create-time "20261122:22:56:39")]
+ [10
+  (creator "kittymacs" create-time "20261122:22:56:39")]
+ [11
+  (creator "kittymacs" create-time "20261122:22:56:39")]
+ [12
+  (creator "kittymacs" create-time "20261122:22:56:39")]
+ [13
+  (creator "kittymacs" create-time "20261122:22:56:39")]
+ [14
+  (creator "kittymacs" create-time "20261122:22:56:39")]
+ [15
+  (creator "kittymacs" create-time "20261122:22:56:39")]
+ [16
+  (creator "kittymacs" create-time "20261122:22:56:39")]
+ [18
+  (creator "kittymacs" create-time "20261122:22:56:39")]
+ [19
+  (creator "kittymacs" create-time "20261122:22:56:39")]
+ [20
+  (creator "kittymacs" create-time "20261122:22:56:39")]
+ [21
+  (creator "kittymacs" create-time "20261122:22:56:39")]
+ [23
+  (creator "kittymacs" create-time "20261122:22:56:39")]
+ [24
+  (creator "kittymacs" create-time "20261122:22:56:39")]
+ [25
+  (creator "kittymacs" create-time "20261122:22:56:39")]
+ [26
+  (creator "kittymacs" create-time "20261122:22:56:39")]
+ [27
+  (creator "kittymacs" create-time "20261122:22:56:39")]
+ [28
+  (creator "kittymacs" create-time "20261122:22:56:39")]
+ [29
+  (creator "kittymacs" create-time "20261122:22:56:39")]
+ [30
+  (creator "kittymacs" create-time "20261122:22:56:39")]
+ [31
+  (creator "kittymacs" create-time "20261122:22:56:39")]
+ [32
+  (creator "kittymacs" create-time "20261122:22:56:39")]
+ [34
+  (creator "kittymacs" create-time "20261122:22:56:39")]
+ [35
+  (creator "kittymacs" create-time "20261122:22:56:39")]
+ [36
+  (creator "kittymacs" create-time "20261122:22:56:39")]
+ [37
+  (creator "kittymacs" create-time "20261122:22:56:39")]
+ [38
+  (creator "kittymacs" create-time "20261122:22:56:39")]
+ [39
+  (creator "kittymacs" create-time "20261122:22:56:39")]
+ [40
+  (creator "kittymacs" create-time "20261122:22:56:39")]
+ [41
+  (creator "kittymacs" create-time "20261122:22:56:39")]
+ [42
+  (creator "kittymacs" create-time "20261122:22:56:39")]
+ [44
+  (creator "kittymacs" create-time "20261122:22:56:39")]
+ [45
+  (creator "kittymacs" create-time "20261122:22:56:39")]
+ [46
+  (creator "kittymacs" create-time "20261122:22:56:39")]
+ [47
+  (creator "kittymacs" create-time "20261122:22:56:39")]
+ [48
+  (creator "kittymacs" create-time "20261122:22:56:39")]
+ [49
+  (creator "kittymacs" create-time "20261122:22:56:39")]
+ [50
+  (creator "kittymacs" create-time "20261122:22:56:39")]
+ [51
+  (creator "kittymacs" create-time "20261122:22:56:39")]
+ [53
+  (creator "kittymacs" create-time "20261122:22:56:39")]
+ [54
+  (creator "kittymacs" create-time "20261122:22:56:39")]
+ [55
+  (creator "kittymacs" create-time "20261122:22:56:39")]
+ [56
+  (creator "kittymacs" create-time "20261122:22:56:39")]
+ [57
+  (creator "kittymacs" create-time "20261122:22:56:39")]
+ [58
+  (creator "kittymacs" create-time "20261122:22:56:39")]
+ [59
+  (creator "kittymacs" create-time "20261122:22:56:39")]
+ [61
+  (creator "kittymacs" create-time "20261122:22:56:39")]
+ [62
+  (creator "kittymacs" create-time "20261122:22:56:39")]
+ [64
+  (creator "kittymacs" create-time "20261122:22:56:39")]
+ [65
+  (creator "kittymacs" create-time "20261122:22:56:39")]
+ [66
+  (creator "kittymacs" create-time "20261122:22:56:39")]
+ [67
+  (creator "kittymacs" create-time "20261122:22:56:39")]
+ nil nil nil nil nil nil nil nil nil]

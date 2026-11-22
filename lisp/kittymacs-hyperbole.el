@@ -254,6 +254,41 @@ Interactively, read its name, offering the existing pages."
 (keymap-global-set "M-RET" #'kittymacs-hyperbole-action-key)
 (keymap-global-set "C-h h" #'kittymacs-hyperbole-menu)
 
+(declare-function hywiki-get-referent "hywiki" (wikiword &optional absolute-path-flag))
+(declare-function hywiki-add-referent "hywiki" (wikiword referent))
+(declare-function org-map-entries "org" (func &optional match scope &rest skip))
+(declare-function org-entry-get "org" (epom property &optional inherit literal-nil))
+(declare-function org-id-add-location "org-id" (id file))
+
+(defun kittymacs-hywiki-adopt (&optional file)
+  "Make each HYWIKI word of FILE's headings a HyWiki reference to its heading.
+The referent is the heading's Org ID, in whichever HyWiki is current.  A word
+that already names a page or a referent there is left as it is.  FILE is the
+current buffer's file by default.  Return the words added."
+  (interactive)
+  (setq file (or file buffer-file-name (user-error "This buffer visits no file")))
+  (kittymacs-hyperbole-enable)
+  (require 'org-id)
+  (let (added kept)
+    (with-current-buffer (find-file-noselect file)
+      (save-restriction
+        (widen)
+        (org-map-entries
+         (lambda ()
+           (let* ((word (org-entry-get nil "HYWIKI"))
+                  (id (org-entry-get nil "ID"))
+                  (referent (and id (hywiki-get-referent word))))
+             (when id
+               (org-id-add-location id file)
+               (cond ((equal referent (cons 'org-id id)))
+                     (referent (push word kept))
+                     (t (hywiki-add-referent word (cons 'org-id id))
+                        (push word added))))))
+         "HYWIKI={.}")))
+    (message "HyWiki: %d words added%s" (length added)
+             (if kept (format "; kept your own %s" (string-join (nreverse kept) ", ")) ""))
+    (nreverse added)))
+
 (with-eval-after-load 'meow
   (add-to-list 'meow-mode-state-list '(kotl-mode . normal))
   (add-to-list 'meow-mode-state-list '(hyrolo-mode . motion)))
