@@ -156,11 +156,11 @@
 
 * Check
 
-- =just test= runs [[file:../tests/kittymacs-meow-state-cursor-tests.el][its tests]], which need no packages: the colours come from the theme's faces, a new theme paints again, and turning it off leaves the faces as they were.
-- =just test-features= starts Emacs with this feature on, and every other selection with it off; a start fails if this module loads with the feature off.
+- <compile "just test"> runs [[file:../tests/kittymacs-meow-state-cursor-tests.el][its tests]], which need no packages: the colours come from the theme's faces, a new theme paints again, and turning it off leaves the faces as they were.
+- <compile "just test-features"> starts Emacs with this feature on, and every other selection with it off; a start fails if this module loads with the feature off.
 - On =full=, or =minimal= with =(setopt kittymacs-features '(meow-state-cursor))=, on a graphical frame:
   + a file, then =i=, then =ESC=: the cursor changes colour with its shape, and the mark in the mode line changes with it;
   + Dired or Magit: the Motion colour;
-  + =SPC t t=: both change to the other theme's colours, and each still reads against the background;
-  + =SPC t c=: every state's cursor goes back to the theme's, and the mark to plain text.
+  + {SPC t t}: both change to the other theme's colours, and each still reads against the background;
+  + {SPC t c}: every state's cursor goes back to the theme's, and the mark to plain text.
 - =emacs -nw= with the feature on: the mode line's mark has its colour, and the terminal's cursor does not change.

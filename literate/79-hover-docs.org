@@ -112,10 +112,10 @@
 
 * Check
 
-- =just test= runs [[file:../tests/kittymacs-hover-docs-tests.el][its tests]], which need no packages: which buffers ask for the frame, and what turning it off leaves.
-- =just test-features= starts Emacs with this feature on, and every other selection with it off; a start fails if this module or =eldoc-box= loads with the feature off.
-- On =full=, or =minimal= with =(setopt kittymacs-features '(hover-docs))=, on a graphical frame, press =SPC l e= for a language server, then:
+- <compile "just test"> runs [[file:../tests/kittymacs-hover-docs-tests.el][its tests]], which need no packages: which buffers ask for the frame, and what turning it off leaves.
+- <compile "just test-features"> starts Emacs with this feature on, and every other selection with it off; a start fails if this module or =eldoc-box= loads with the feature off.
+- On =full=, or =minimal= with =(setopt kittymacs-features '(hover-docs))=, on a graphical frame, press {SPC l e} for a language server, then:
   + pause on a name with long documentation: a small frame shows it at the top right of the window;
   + move away: it goes;
-  + =SPC t e=, then pause again: the echo area shows it instead.
+  + {SPC t e}, then pause again: the echo area shows it instead.
 - =emacs -nw= with the feature on: the echo area shows documentation, as it does with the feature off.

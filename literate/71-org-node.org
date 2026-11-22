@@ -433,6 +433,6 @@
 #+end_src
 
 * Check
-- =SPC n s= refreshes the index. =SPC n f= finds notes in the current scope and =SPC n F= searches all registered roots.
-- =SPC n c= shows the capture destination. =SPC n b= groups backlinks by scope and =SPC n a= reports graph issues.
-- =just test-packages= checks scope, capture, IDs and changes on disk.
+- {SPC n s} refreshes the index. {SPC n f} finds notes in the current scope and {SPC n F} searches all registered roots.
+- {SPC n c} shows the capture destination. {SPC n b} groups backlinks by scope and {SPC n a} reports graph issues.
+- <compile "just test-packages"> checks scope, capture, IDs and changes on disk.

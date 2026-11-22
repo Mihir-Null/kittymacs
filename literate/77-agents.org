@@ -752,11 +752,11 @@ w, d and j are left free for an integration's own commands.")
 * Check
 
 - For =agents=, install and authenticate the selected harness and adapter using its upstream instructions. For =claude-code-ide=, authenticate Claude Code.
-- =SPC a a= in a project: the agent you chose opens, in Insert for agent-shell, and in the terminal for claude-code-ide.
+- {SPC a a} in a project: the agent you chose opens, in Insert for agent-shell, and in the terminal for claude-code-ide.
 - Ask it to read and change a disposable project file. Check the selected harness's permission mode and review behavior; agent-shell's diff opens in Motion, claude-code-ide's in Ediff.
 - Ask "which MCP tools do you have?": for agent-shell, the servers in =kittymacs-agent-mcp-servers= plus any the selected harness configuration adds; for claude-code-ide, the five Emacs tools as well.
 - With agent-shell, switch frames while it works: the mode line shows =AS:1= when it stops, and the desktop shows a notification.
 - Enable all three interfaces in onboarding. Change the primary preference and confirm all three dedicated prefixes remain available.
 - In agent-shell, ask Claude to ask you something with its question tool: a form appears in the shell, =AS:1= shows while it waits, and it clears once you answer or decline.
-- With =agents= and =claude-code-ide= both on: =SPC a a= opens agent-shell, =SPC a w n= a claude-code-ide instance, =SPC a w b= picks one, and =SPC a j= and =SPC a d= stay agent-shell-attention's.
-- =just test-packages=: the verifier fails on any warning at startup, and checks that every =SPC= key runs a command.
+- With =agents= and =claude-code-ide= both on: {SPC a a} opens agent-shell, {SPC a w n} a claude-code-ide instance, {SPC a w b} picks one, and {SPC a j} and {SPC a d} stay agent-shell-attention's.
+- <compile "just test-packages">: the verifier fails on any warning at startup, and checks that every =SPC= key runs a command.

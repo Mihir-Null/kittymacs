@@ -633,11 +633,11 @@ has changed or was assembled by tangling."
 
 * Check
 
-- =SPC C k=: =*kittymacs literate build*= ends with =LITERATE CHECK PASS=.
-- =SPC C p= on a fresh clone: =private.el= opens, a copy of the example.
-- A start with no selection: the echo area names the profile and =SPC C o=, and =*Messages*= keeps the line.
-- =just size=: a table of counts.
-- =KITTYMACS_BENCH_RUNS=3 just bench=: a table of times against =emacs -Q=, with a number in every row but the =emacs -Q= cell of =SPC t m=.
+- {SPC C k}: =*kittymacs literate build*= ends with =LITERATE CHECK PASS=.
+- {SPC C p} on a fresh clone: =private.el= opens, a copy of the example.
+- A start with no selection: the echo area names the profile and {SPC C o}, and =*Messages*= keeps the line.
+- <compile "just size">: a table of counts.
+- =KITTYMACS_BENCH_RUNS=3 just bench=: a table of times against =emacs -Q=, with a number in every row but the =emacs -Q= cell of {SPC t m}.
 - From a shell:
 
 #+begin_src sh :tangle no

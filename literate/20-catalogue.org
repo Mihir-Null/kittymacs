@@ -509,6 +509,6 @@ This metadata needs no agent packages, so onboarding works offline.")
 
 * Check
 
-- =just test=: the catalogue tests compare this list with every declared package.
-- =just tangle=: =nix/features.json= changes only when this list does.
-- =C-h v kittymacs-catalogue=: the list, loaded at startup.
+- <compile "just test">: the catalogue tests compare this list with every declared package.
+- <compile "just tangle">: =nix/features.json= changes only when this list does.
+- <describe-variable 'kittymacs-catalogue>: the list, loaded at startup.

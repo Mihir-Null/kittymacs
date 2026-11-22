@@ -191,11 +191,11 @@ before this module is loaded, to override."
 
 * Check
 
-- =C-h f= on any function: the Help buffer opens in a new OS window; =q= closes it.
-- =SPC v s= in a repository: Magit status in its own frame; =q= closes it.
-- =M-x=: Vertico's candidates stay at the top of the current frame.
-- =SPC t f=, then =SPC w v=: the frame splits; =SPC t f= again and =SPC w v= makes a frame.
-- =just frames-test= opens a graphical Emacs, runs [[file:../tests/kittymacs-frames-tests.el][the frame tests]] and leaves the results on screen; they exercise:
+- {C-h f} on any function: the Help buffer opens in a new OS window; =q= closes it.
+- {SPC v s} in a repository: Magit status in its own frame; =q= closes it.
+- {M-x}: Vertico's candidates stay at the top of the current frame.
+- {SPC t f}, then {SPC w v}: the frame splits; {SPC t f} again and {SPC w v} makes a frame.
+- <compile "just frames-test"> opens a graphical Emacs, runs [[file:../tests/kittymacs-frames-tests.el][the frame tests]] and leaves the results on screen; they exercise:
   + auxiliary-frame creation and cleanup on quit;
   + the completion side window;
   + Magit's lazy load, its status frame, and its return to internal splits when the mode is disabled;

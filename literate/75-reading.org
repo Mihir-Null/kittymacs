@@ -310,13 +310,13 @@
 
 * Check
 
-- =SPC f f= a PDF: it opens fitted to the window, in Motion state; =j=, =k=, =n=, =p= move.
-- =M-: (executable-find "epdfinfo")=: a path into the Nix store on a Nix machine.
-- =SPC m n= on a PDF in a project's =papers/= folder: org-noter offers =papers/<paper>.org= first, and the frame splits, PDF left, notes right; no new frame opens.
-- =SPC m i= adds a heading for this page; =n= in the PDF moves the notes along.
-- In the notes, =SPC m N= lists the reading keys.
-- =SPC m l= in the PDF, then =SPC m l= in any Org file: a =pdf:= link; =RET= on it opens the page.
-- =M-: (executable-find "mutool")=: a path; =SPC m r= in a PDF opens its text at the page on screen, paging either buffer moves the other, and =RET= in the text shows its page in the PDF.
+- {SPC f f} a PDF: it opens fitted to the window, in Motion state; =j=, =k=, =n=, =p= move.
+- <executable-find "epdfinfo">: a path into the Nix store on a Nix machine.
+- {SPC m n} on a PDF in a project's =papers/= folder: org-noter offers =papers/<paper>.org= first, and the frame splits, PDF left, notes right; no new frame opens.
+- {SPC m i} adds a heading for this page; =n= in the PDF moves the notes along.
+- In the notes, {SPC m N} lists the reading keys.
+- {SPC m l} in the PDF, then {SPC m l} in any Org file: a =pdf:= link; =RET= on it opens the page.
+- <executable-find "mutool">: a path; {SPC m r} in a PDF opens its text at the page on screen, paging either buffer moves the other, and =RET= in the text shows its page in the PDF.
 - =C-x C-w= in the text, then reopen the file: an Org file of the paper, its headings folding.
-- =just test-packages=: the verifier fails on any warning at startup, and checks that every =SPC= key runs a command.
-- =just doc-test=: the lint tests check that this module requires neither Org Node nor Org extras, and uses their names only behind a guard.
+- <compile "just test-packages">: the verifier fails on any warning at startup, and checks that every =SPC= key runs a command.
+- <compile "just doc-test">: the lint tests check that this module requires neither Org Node nor Org extras, and uses their names only behind a guard.

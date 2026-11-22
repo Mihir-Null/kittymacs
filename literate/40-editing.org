@@ -242,6 +242,6 @@
 - =o=, ~=~, =W= on a repeated symbol, =c=, type, =ESC=, ~=~: every occurrence in the block changes.
 - =, <= inside =<...>=: the text between the angle brackets is selected.
 - =, f= in a Tree-sitter buffer: the inside of the current function is selected.
-- =SPC= in Normal state opens the leader; =C-h k SPC f f= describes the real command.
-- =SPC h t=: Meow's tutorial.
-- =just test-packages=: the leader tests load Meow; the verifier checks that =meow-global-mode= is on and that =SPC= is the leader in Normal and Motion states.
+- =SPC= in Normal state opens the leader; {C-h k SPC f f} describes the real command.
+- {SPC h t}: Meow's tutorial.
+- <compile "just test-packages">: the leader tests load Meow; the verifier checks that =meow-global-mode= is on and that =SPC= is the leader in Normal and Motion states.

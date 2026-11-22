@@ -204,8 +204,8 @@
 
 * Check
 
-- =SPC p p= switches project in the current frame; =SPC b b= lists every buffer.
-- =SPC s d= then a word: ripgrep across the project, with live preview.
-- =SPC f r= for recent files; reopen one and you are where you left off.
-- =SPC j j= then a character: letters appear on every match in the frame.
-- =just test-packages=: the startup verifier replays a real startup, after-init hooks included, and fails on any warning.
+- {SPC p p} switches project in the current frame; {SPC b b} lists every buffer.
+- {SPC s d} then a word: ripgrep across the project, with live preview.
+- {SPC f r} for recent files; reopen one and you are where you left off.
+- {SPC j j} then a character: letters appear on every match in the frame.
+- <compile "just test-packages">: the startup verifier replays a real startup, after-init hooks included, and fails on any warning.

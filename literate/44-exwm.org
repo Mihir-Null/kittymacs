@@ -532,21 +532,21 @@ If EXWM does not start, install xauth where this Emacs's PATH finds it, then sta
 
 * Check
 
-- Start a session whose script sets =KITTYMACS_EXWM=1= and runs =emacs=; =M-: kittymacs-exwm= is =t=, =M-: exwm-wm-mode= is =t=, =M-: exwm-randr-mode= is =t=.
-- In that Emacs, =M-: server-name= is ="exwm"=. From a shell in the session, =emacsclient --eval '(daemonp)'= answers from the daemon, and =emacsclient -s exwm --eval exwm-wm-mode= answers =t=.
-- The daemon's frame, which the session opens, shows in a workspace as a buffer named =Emacs: …=; =C-x C-f= typed there prompts in that frame, and =H-h= still moves away from it.
+- Start a session whose script sets =KITTYMACS_EXWM=1= and runs =emacs=; <kittymacs-exwm> is =t=, <$exwm-wm-mode> is =t=, <$exwm-randr-mode> is =t=.
+- In that Emacs, <server-name> is ="exwm"=. From a shell in the session, =emacsclient --eval '(daemonp)'= answers from the daemon, and =emacsclient -s exwm --eval exwm-wm-mode= answers =t=.
+- The daemon's frame, which the session opens, shows in a workspace as a buffer named =Emacs: …=; {C-x C-f} typed there prompts in that frame, and =H-h= still moves away from it.
 - Resize the RDP client's window (or rotate the tablet): after a moment the workspace fills the new size; =xrandr= in the session shows the new resolution.
-- =M-x= then =xev=, press the Hyper key: =Hyper_L= with =mod3=, and no other modifier.
+- {M-x} then =xev=, press the Hyper key: =Hyper_L= with =mod3=, and no other modifier.
 - Start Chrome: a buffer named =Google-chrome: …= appears; =H-l= and =H-h= move between it and an Emacs window beside it.
 - =H-2=, then =H-1=: a second workspace, and back; =H-@= in Chrome moves it to workspace 2.
 - =H-m= twice: one window, then the old layout; =H-== a few times steps through the widths, back to the narrowest.
 - =H-S= in Chrome: it vanishes; =H-s= brings it back floating, and again hides it.
-- =C-h k H-w=: =kittymacs-exwm-close=, from the table.
+- {C-h k H-w}: =kittymacs-exwm-close=, from the table.
 - =H-Q=, then =n=: nothing happens. =H-Q=, then =y=: the session ends, and the daemon still answers =emacsclient --eval '(daemonp)'= over SSH.
 - The daemon's frame has one mode line, its own, at the bottom of the workspace.
-- =H-d emacs RET=: a plain Emacs frame opens, and =M-: kittymacs-exwm= there is =nil=.
+- =H-d emacs RET=: a plain Emacs frame opens, and <kittymacs-exwm> there is =nil=.
 - =H-d=, type =google-ch= and =TAB=: it completes to =google-chrome=; =RET= opens Chrome, and =H-h= still moves away while Chrome runs.
 - =H-d nosuchprogram RET=: the echo area says it exited with code 127, and why.
-- In an Emacs started any other way: =M-: kittymacs-exwm= is =nil=, and =(featurep 'exwm)= is =nil=.
-- On an X server with no Hyper modifier, =*Warnings*= says "Key unavailable" for each =H-= key, and =M-: exwm-wm-mode= is still =t=.
-- =just test= runs [[file:../tests/kittymacs-exwm-tests.el][the EXWM tests]], with stand-ins for EXWM and xelb.
+- In an Emacs started any other way: <kittymacs-exwm> is =nil=, and =(featurep 'exwm)= is =nil=.
+- On an X server with no Hyper modifier, =*Warnings*= says "Key unavailable" for each =H-= key, and <$exwm-wm-mode> is still =t=.
+- <compile "just test"> runs [[file:../tests/kittymacs-exwm-tests.el][the EXWM tests]], with stand-ins for EXWM and xelb.

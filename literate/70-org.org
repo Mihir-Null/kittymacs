@@ -694,15 +694,15 @@ Headings are semi-bold.  The faces are remapped in this buffer only."
 
 * Check
 
-- =SPC o c=, then =t=, from anywhere captures a task into the inbox.
+- {SPC o c}, then =t=, from anywhere captures a task into the inbox.
 - A table with a cookie row, such as =| <10> | <10> |= under its header rule, and a long cell wraps that cell onto rows of at most ten columns when the file is saved; edit any of those rows, save, and the cell flows again.
-  + =just test= runs [[file:../tests/kittymacs-org-table-tests.el][the table tests]], which check the wrapping, its idempotence and the tables it must leave alone.
-- In =inbox.org=, =SPC m t= cycles its state; =SPC m s= schedules it.
-- =SPC m a= shows today, due-soon and next actions together.
+  + <compile "just test"> runs [[file:../tests/kittymacs-org-table-tests.el][the table tests]], which check the wrapping, its idempotence and the tables it must leave alone.
+- In =inbox.org=, {SPC m t} cycles its state; {SPC m s} schedules it.
+- {SPC m a} shows today, due-soon and next actions together.
 - An Org file with prose, a source block and a table shows the prose in Google Sans Flex (or the platform's sans), and the block and the table in the editing font.
-  + =C-x C-+= grows prose and code together; =SPC t P= switches the prose font off and on in that buffer.
-- =M-: (featurep 'org)= in a fresh Emacs: =nil=; after =SPC o a=: =t=.
-- =just test-packages= runs [[file:../tests/verify-config.el][the startup verifier]], which checks this chapter's promises in a real startup:
+  + {C-x C-+} grows prose and code together; {SPC t P} switches the prose font off and on in that buffer.
+- <featurep 'org> in a fresh Emacs: =nil=; after {SPC o a}: =t=.
+- <compile "just test-packages"> runs [[file:../tests/verify-config.el][the startup verifier]], which checks this chapter's promises in a real startup:
   + startup leaves Org unloaded, and drawing the home page does too;
   + each option this chapter sets has a value its type accepts, once Org has loaded;
   + an Org buffer has =kittymacs-org-prose-mode= on.

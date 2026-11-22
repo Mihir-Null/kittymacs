@@ -649,9 +649,9 @@ Persist with `add-file-local-variable' or `add-dir-local-variable', setting
 * Check
 
 - With the Typst grammar, compiler and SVG display available, open an Org file containing =$frac(a,b)$= and =$ sum_(i=1)^n i $=: both render outside point. Repeat in a =.typ= file, edit an equation, and check the idle refresh.
-- In Org, toggle =M-x kittymacs-typst-tex-compatibility=: previews disappear in TeX mode and return in Typst mode. A file with =(kittymacs-typst-math-syntax . latex)= or =(kittymacs-typst-inline-preview . nil)= in its locals must never start a Typst render.
+- In Org, toggle {M-x kittymacs-typst-tex-compatibility RET}: previews disappear in TeX mode and return in Typst mode. A file with =(kittymacs-typst-math-syntax . latex)= or =(kittymacs-typst-inline-preview . nil)= in its locals must never start a Typst render.
 - An Org Typst source block stays literal in the parent buffer; =C-c '= opens its editing buffer with Typst previews. Try =org-capture= too. A terminal without image support or a missing compiler/grammar must leave source editable.
-- =just doc-test= includes the preview policy, prerequisite guards and file-local ordering tests in [[file:../tests/kittymacs-typst-tests.el][the Typst suite]].
+- <compile "just doc-test"> includes the preview policy, prerequisite guards and file-local ordering tests in [[file:../tests/kittymacs-typst-tests.el][the Typst suite]].
 
 - Open a =.py= file on a machine without the Python grammar: Emacs asks to build it.
   + Answer =y=: the mode line shows =python-ts-mode=, with highlighting.
@@ -659,11 +659,11 @@ Persist with `add-file-local-variable' or `add-dir-local-variable', setting
 - Open a =.yaml= or =.go= file: the same question, and =yaml-ts-mode= or =go-ts-mode= once the grammar is built; Emacs has no classic mode for these, so =n= gives =fundamental-mode=.
 - Open a =.md= file: Emacs asks to build the =markdown= and =markdown-inline= grammars, and the file opens in =markdown-ts-mode= once both are built; =n= gives =text-mode=, or =markdown-mode= when that package is installed.
 - With =nix= in =kittymacs-language-packages=, a =.nix= file opens in =nix-ts-mode= once the pinned grammar is built, and in =nix-mode= until then.
-- =M-x kittymacs-treesit-install-grammars= builds every grammar in =kittymacs-treesit-languages= that does not load yet and returns the list it built; =C-u M-x kittymacs-treesit-install-grammars= chooses languages and rebuilds them.
-- =C-h v major-mode-remap-alist=: one remap per Tree-sitter mode, minus any left out this session.
-- =SPC l e= in a buffer whose server is installed: Eglot connects, and its diagnostics appear in the fringe.
-- =just update-grammars= rebuilds every grammar in =kittymacs-treesit-languages= at its pinned commit, in batch, into the grammar directory.
-- =just test= includes the offline Tree-sitter tests, [[file:../tests/kittymacs-treesit-tests.el][tests/kittymacs-treesit-tests.el]], which check:
+- {M-x kittymacs-treesit-install-grammars RET} builds every grammar in =kittymacs-treesit-languages= that does not load yet and returns the list it built; =C-u M-x kittymacs-treesit-install-grammars= chooses languages and rebuilds them.
+- <describe-variable 'major-mode-remap-alist>: one remap per Tree-sitter mode, minus any left out this session.
+- {SPC l e} in a buffer whose server is installed: Eglot connects, and its diagnostics appear in the fringe.
+- <compile "just update-grammars"> rebuilds every grammar in =kittymacs-treesit-languages= at its pinned commit, in batch, into the grammar directory.
+- <compile "just test"> includes the offline Tree-sitter tests, [[file:../tests/kittymacs-treesit-tests.el][tests/kittymacs-treesit-tests.el]], which check:
   + the grammar directory defaults under the cache, and a directory chosen after load is searched before every probe and install;
   + every Tree-sitter mode is enabled, and a missing grammar is offered;
   + the Nix recipe is pinned to a commit, and names no compiler on any system;
@@ -672,7 +672,7 @@ Persist with `add-file-local-variable' or `add-dir-local-variable', setting
   + a Tree-sitter mode without a parser hands the file to its classic mode, or to =fundamental-mode= (=text-mode= for Markdown), and is left out for the session, but not for an oversized file;
   + the installer builds only what is missing unless told to rebuild, and explains when this Emacs cannot build grammars.
 - One test parses a real Nix file; it runs only when =NIX_GRAMMAR_TEST_DIR= names a directory holding the compiled Nix grammar, and is skipped otherwise.
-- =just test-packages= runs the verifier, which checks that =SPC l e= is =eglot=.
+- <compile "just test-packages"> runs the verifier, which checks that {SPC l e} is =eglot=.
 
 #+begin_src sh :tangle no
 just test               # includes tests/kittymacs-treesit-tests.el, offline

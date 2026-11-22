@@ -209,9 +209,9 @@
 
 * Check
 
-- =SPC d=, then =/= and type part of a name: the listing narrows.
+- {SPC d}, then =/= and type part of a name: the listing narrows.
 - Directories are listed before files (on macOS only with =gls=).
-- Mark two files with =m=, press =SPC m y=, go elsewhere, =SPC m p=: the copies appear.
-- =SPC m w= turns the listing into an editable buffer: rename by typing, =C-c C-c= to apply.
+- Mark two files with =m=, press {SPC m y}, go elsewhere, {SPC m p}: the copies appear.
+- {SPC m w} turns the listing into an editable buffer: rename by typing, =C-c C-c= to apply.
 - =h= twice, then =l=: still one Dired buffer, with point on the directory you came from.
-- =just test-packages= replays a real startup: this module must load and every =SPC= key must run a command.
+- <compile "just test-packages"> replays a real startup: this module must load and every =SPC= key must run a command.

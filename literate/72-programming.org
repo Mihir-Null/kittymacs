@@ -294,12 +294,12 @@ The package cannot derive its faces without a display."
 
 * Check
 
-- In a Lisp buffer, put point after a form and press =SPC m e=: the echo area shows its value.
+- In a Lisp buffer, put point after a form and press {SPC m e}: the echo area shows its value.
 - Type =(= inside code: the =)= appears.
 - Select an expression with =o= and press =d=: it is gone, and the parens around it stay balanced.
-- Break something on purpose: the fringe marks it; =SPC m E= lists it.
+- Break something on purpose: the fringe marks it; {SPC m E} lists it.
 - =SPC m= in a Python or shell buffer: =compile=, the error list and =format=, with no evaluation keys.
-- =just test-packages= runs the verifier, which starts the real configuration and fails if this module does not load, or a startup warning appears.
+- <compile "just test-packages"> runs the verifier, which starts the real configuration and fails if this module does not load, or a startup warning appears.
 
 #+begin_src sh :tangle no
 just test-packages

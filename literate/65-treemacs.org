@@ -215,11 +215,11 @@
 
 * Check
 
-1. =SPC t d= in any file of a project: =j= and =k= move, =TAB= opens a directory, =RET= opens a file in the window beside the tree.
-2. Open a file from a different project (=SPC p p=): the tree follows.
+1. {SPC t d} in any file of a project: =j= and =k= move, =TAB= opens a directory, =RET= opens a file in the window beside the tree.
+2. Open a file from a different project with {SPC p p}: the tree follows.
 3. Edit a file and save it: its name changes colour.
-4. Stage it with =SPC v s= then =s=: the colour changes again without a refresh.
-5. =SPC f t= from any buffer points the tree at the file you are editing.
-6. =SPC m ?= lists every key Treemacs has, in a menu.
+4. Stage it with {SPC v s} then =s=: the colour changes again without a refresh.
+5. {SPC f t} from any buffer points the tree at the file you are editing.
+6. {SPC m ?} lists every key Treemacs has, in a menu.
 
-- =just test-packages= replays a real startup: this module must load and every =SPC= key must run a command.
+- <compile "just test-packages"> replays a real startup: this module must load and every =SPC= key must run a command.

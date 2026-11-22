@@ -647,16 +647,16 @@ Set before init.el loads to change them, because they are read during init.")
 
 * Check
 
-- Start Emacs: the first frame appears with no toolbar or menu bar flashing; =SPC t m= shows the menu bar.
-- =M-x emacs-init-time=: how long the two files took.
-- =C-h v package-user-dir=: a directory under =var/elpa/= in the checkout.
-- =C-h v gc-cons-threshold= once started: =67108864=, not the startup value of =134217728=.
-- =C-h v package-check-signature=: =nil= means no native =gpg= was found ([[*GNU ELPA's signature check needs a native gpg]]).
-- =SPC C p= opens =private.el=, created from the example the first time; =SPC C u= opens the Customize file.
-- After editing this chapter, =just tangle= rewrites both files; =just tangle-check= proves they match.
-- =just install= starts the configuration once in batch, installing what its profile needs; =just test-packages= replays a real startup under =full= and fails on any warning.
-- =just quickstart=, then restart: =M-: kittymacs-quickstart-loaded= is =t= and =M-: package-alist= is =nil=. =just quickstart-remove=, then restart twice: the first is =nil= and the second lists the packages.
-- =just test= runs [[file:../tests/kittymacs-quickstart-tests.el][the quickstart tests]], =just test-quickstart= replays a real startup from the file, and =just test-new-machine= follows a new machine from its first start on.
+- Start Emacs: the first frame appears with no toolbar or menu bar flashing; {SPC t m} shows the menu bar.
+- {M-x emacs-init-time RET}: how long the two files took.
+- <describe-variable 'package-user-dir>: a directory under =var/elpa/= in the checkout.
+- <describe-variable 'gc-cons-threshold> once started: =67108864=, not the startup value of =134217728=.
+- <describe-variable 'package-check-signature>: =nil= means no native =gpg= was found ([[*GNU ELPA's signature check needs a native gpg]]).
+- {SPC C p} opens =private.el=, created from the example the first time; {SPC C u} opens the Customize file.
+- After editing this chapter, <compile "just tangle"> rewrites both files; <compile "just tangle-check"> proves they match.
+- <compile "just install"> starts the configuration once in batch, installing what its profile needs; <compile "just test-packages"> replays a real startup under =full= and fails on any warning.
+- <compile "just quickstart">, then restart: <kittymacs-quickstart-loaded> is =t= and <package-alist> is =nil=. <compile "just quickstart-remove">, then restart twice: the first is =nil= and the second lists the packages.
+- <compile "just test"> runs [[file:../tests/kittymacs-quickstart-tests.el][the quickstart tests]], <compile "just test-quickstart"> replays a real startup from the file, and <compile "just test-new-machine"> follows a new machine from its first start on.
 
 #+begin_src sh :tangle no
 just tangle-check     # early-init.el and init.el match this chapter

@@ -2931,12 +2931,12 @@ nix profile install github:Mihir-Null/kittymacs#backend
 
 * Check
 
-- =just nix-check= lints the generated Nix and evaluates the flake on every system, then both example hosts against this checkout; nothing is built.
-- =just nix-selection=, part of =nix-check=, starts Emacs once per host in [[id:1c9a5e37-d482-4b06-97f1-e3a80c6b42d5][the selection check]], and fails if =kittymacs-feature-p= disagrees with the options.
-- =just nix-matrix= and =just nix-templates=, also part of it, evaluate [[*The evaluation matrix][the matrix]] and each template on the lock and on stable.
-- =just nix-backend-closure= builds =packages.backend= and fails if a font or a GUI toolkit is in its closure. It builds, so CI leaves it out.
+- <compile "just nix-check"> lints the generated Nix and evaluates the flake on every system, then both example hosts against this checkout; nothing is built.
+- <compile "just nix-selection">, part of =nix-check=, starts Emacs once per host in [[id:1c9a5e37-d482-4b06-97f1-e3a80c6b42d5][the selection check]], and fails if =kittymacs-feature-p= disagrees with the options.
+- <compile "just nix-matrix"> and <compile "just nix-templates">, also part of it, evaluate [[*The evaluation matrix][the matrix]] and each template on the lock and on stable.
+- <compile "just nix-backend-closure"> builds =packages.backend= and fails if a font or a GUI toolkit is in its closure. It builds, so CI leaves it out.
 - =nix run .#doctor= says what this machine has. No real activation runs anywhere here: one on a real host is the owner's to do.
-- =nix develop= then =just --list=: the shell has every recipe's tools.
+- =nix develop= then <compile "just --list">: the shell has every recipe's tools.
 - CI also reads the clone options as a device would see them. It overrides the input with =git+file=, not =path:=, because a =path:= input has no revision, and without one the module defines no clone step:
 
 #+begin_src sh :tangle no

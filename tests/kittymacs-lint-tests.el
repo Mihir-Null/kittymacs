@@ -152,12 +152,14 @@ A MAP that no module defines is looked up in Emacs itself."
 (defun kittymacs-lint--leader-references (file)
   "Return (LINE . KEYS) for each `SPC ...' that FILE quotes as code.
 KEYS is a list without the leading SPC.  Org quotes with = or ~, Markdown
-with a backtick.  `SPC m' is left out: a major mode's map decides what follows."
+with a backtick, and a Hyperbole key series, which the Action Key types,
+sits in braces.  `SPC m' is left out: a major mode's map decides what follows."
   (with-temp-buffer
     (insert-file-contents file)
     (let (references (case-fold-search nil))
-      (while (re-search-forward "[=~`]SPC \\([^=~`\n]+\\)[=~`]" nil t)
-        (let ((keys (split-string (match-string 1) " " t)))
+      (while (re-search-forward
+              "[=~`]SPC \\([^=~`\n]+\\)[=~`]\\|{SPC \\([^{}=~`\n]+\\)}" nil t)
+        (let ((keys (split-string (or (match-string 1) (match-string 2)) " " t)))
           (unless (equal (car keys) "m")
             (push (cons (line-number-at-pos) keys) references))))
       (nreverse references))))
@@ -207,6 +209,40 @@ with a backtick.  `SPC m' is left out: a major mode's map decides what follows."
                 missing))))
     ;; A pattern that stopped matching would otherwise pass by checking nothing.
     (should (> checked 200))
+    (should-not (reverse missing))))
+
+;;; Action buttons
+
+(defun kittymacs-lint--names-the-code-defines ()
+  "Every name a module, `init.el' or `early-init.el' defines."
+  (kittymacs-lint--defined-names
+   (seq-mapcat #'kittymacs-lint--forms
+               (append (kittymacs-lint--modules)
+                       (list (kittymacs-lint--path "init.el")
+                             (kittymacs-lint--path "early-init.el"))))))
+
+(defun kittymacs-lint--action-buttons (file)
+  "Return (LINE . NAME) for each Hyperbole action button in FILE naming kittymacs.
+An action button is a call or a variable in angle brackets; a $ marks a
+variable whose name is also a function's."
+  (with-temp-buffer
+    (insert-file-contents file)
+    (let (buttons (case-fold-search nil))
+      (while (re-search-forward "<\\$?\\(kittymacs-[[:alnum:]-]+\\)[ >]" nil t)
+        (push (cons (line-number-at-pos) (intern (match-string 1))) buttons))
+      (nreverse buttons))))
+
+(ert-deftest kittymacs-lint-action-buttons-name-what-exists ()
+  "A button naming a removed or misspelt function would do nothing when pressed."
+  (let ((names (kittymacs-lint--names-the-code-defines))
+        (checked 0)
+        missing)
+    (dolist (file (kittymacs-lint--pages))
+      (pcase-dolist (`(,line . ,name) (kittymacs-lint--action-buttons file))
+        (setq checked (1+ checked))
+        (unless (memq name names)
+          (push (format "%s:%d: %s" (file-name-nondirectory file) line name) missing))))
+    (should (> checked 5))
     (should-not (reverse missing))))
 
 ;;; Removed packages

@@ -115,10 +115,10 @@ With prefix ARG, create another one instead of reusing the existing buffer."
 
 * Check
 
-- With the feature off, =M-: (featurep 'kittymacs-msys2)= is =nil=, and =SPC o m= is unbound.
+- With the feature off, <featurep 'kittymacs-msys2> is =nil=, and {SPC o m} is unbound.
   + =kittymacs-check-msys2-inactive= checks this at each start the verifier makes, with what else the module would leave behind.
   + A lint fails if code outside this module, the catalogue and =init.el='s one gate names the feature or the module, or looks for an MSYS2 directory.
-- With it on, a start warns once, and =SPC o m= opens a UCRT64 shell.
+- With it on, a start warns once, and {SPC o m} opens a UCRT64 shell.
 - With it on, =C-x C-f /wslm:DISTRIBUTION:/mnt/c/Windows/win.ini= warns too, and says the shell and tools are here.
-- =M-: (executable-find "hunspell")= names the one under the root, unless a native one comes first.
-- =just test= runs [[file:../tests/kittymacs-msys2-tests.el][the fallback's tests]] on any machine, and =just test-features= starts with it on, as if on Windows.
+- <executable-find "hunspell"> names the one under the root, unless a native one comes first.
+- <compile "just test"> runs [[file:../tests/kittymacs-msys2-tests.el][the fallback's tests]] on any machine, and <compile "just test-features"> starts with it on, as if on Windows.

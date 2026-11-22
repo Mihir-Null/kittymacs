@@ -480,15 +480,15 @@ detached instead, through `kittymacs-exwm-launch' when it is defined."
 
 * Check
 
-- =SPC o s= opens an Eshell for this project; =SPC o e= opens a real terminal.
-- =M-x eshell=, type =ff init.el=: the file opens. =z=, then pick a directory.
+- {SPC o s} opens an Eshell for this project; {SPC o e} opens a real terminal.
+- {M-x eshell RET}, type =ff init.el=: the file opens. =z=, then pick a directory.
 - Type =htop= in Eshell: it opens in a terminal buffer and works.
 - =ESC= in Eshell, select some output with =x=, =y= copies it; =i= goes back to typing.
-- =M-x shell=, then =git log=: the output lands in the buffer, with no pager waiting for keys.
-- In a project with a =.envrc=, open a file: the mode line shows =envrc= as waiting; =SPC p E a= allows it, and =M-: (executable-find "python3")= then names the project's Python, not the system's.
+- {M-x shell RET}, then =git log=: the output lands in the buffer, with no pager waiting for keys.
+- In a project with a =.envrc=, open a file: the mode line shows =envrc= as waiting; {SPC p E a} allows it, and <executable-find "python3"> then names the project's Python, not the system's.
 - In a graphical frame, =M-! google-chrome RET=: Chrome opens, the echo area says it started without waiting, and Emacs still answers keys while Chrome runs.
 - =M-! date RET= shows the date, as before; =M-! google-chrome & RET= opens a =*Async Shell Command*= buffer, as before.
 - In Dired, on an HTML file, =!= then =google-chrome RET=: Chrome opens that file, and Emacs does not wait.
 - In a terminal frame (=emacsclient -t=), =M-! google-chrome RET= waits for Chrome, as Emacs always has; =C-g= ends the wait.
-- =just test= runs [[file:../tests/kittymacs-shell-detach-tests.el][the detach tests]], with stand-ins for the frame, the launcher and the command.
-- =just test-packages= replays a real startup: this module must load and every =SPC= key must run a command.
+- <compile "just test"> runs [[file:../tests/kittymacs-shell-detach-tests.el][the detach tests]], with stand-ins for the frame, the launcher and the command.
+- <compile "just test-packages"> replays a real startup: this module must load and every =SPC= key must run a command.

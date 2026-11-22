@@ -725,26 +725,26 @@ machine, or DIRECTORY exists here."
 
 * Check
 
-- =SPC v s= in any file of a Git project: the status buffer opens; =TAB= folds sections.
+- {SPC v s} in any file of a Git project: the status buffer opens; =TAB= folds sections.
 - On a changed file: =s= stages it, =c c= opens the commit message in Insert state, =C-c C-c= commits.
 - =SPC m= in the status buffer lists what else you can do.
 - Edit a tracked file: the fringe marks the changed lines.
-- =*Warnings*= stays empty after the first =SPC v s= of a session.
-- =just test-packages=: the startup verifier replays a real startup and fails on any warning, such as the =defvaralias= one above.
-- With =pull-requests= on and a token stored: =N / a= in a GitHub repository's status buffer adds it; =SPC v g= then lists its pull requests.
-  + On a pull request, =SPC v u= fetches it and opens diff-review's overview.
+- =*Warnings*= stays empty after the first {SPC v s} of a session.
+- <compile "just test-packages">: the startup verifier replays a real startup and fails on any warning, such as the =defvaralias= one above.
+- With =pull-requests= on and a token stored: =N / a= in a GitHub repository's status buffer adds it; {SPC v g} then lists its pull requests.
+  + On a pull request, {SPC v u} fetches it and opens diff-review's overview.
 - With =git-extras= on: the status buffer of a repository with a =TODO= has a TODOs section; a =.gitignore= opens in its own mode.
-- With =git-links= on: =SPC v o= in a tracked file copies a URL that opens that line on the forge.
-  + =SPC m L= on a commit in a Magit log, then =C-c C-l= in an Org buffer, inserts an =orgit-rev:= link.
-- With =structural-diffs= on and =difft= installed: =SPC v D= in a changed file opens a difftastic buffer in Motion state.
+- With =git-links= on: {SPC v o} in a tracked file copies a URL that opens that line on the forge.
+  + {SPC m L} on a commit in a Magit log, then =C-c C-l= in an Org buffer, inserts an =orgit-rev:= link.
+- With =structural-diffs= on and =difft= installed: {SPC v D} in a changed file opens a difftastic buffer in Motion state.
 - With =branch-review= on, in a repository with a second worktree on a branch:
   + the status buffer has a /Worktree branches/ section; =RET= on the branch opens its review in Motion state;
-  + =SPC v v= from a file of the repository offers the same branch, and opens the same review;
+  + {SPC v v} from a file of the repository offers the same branch, and opens the same review;
   + =RET= on a file shows it with removed lines in place; =C-c _ c= there starts a comment, and =C-c _ v= marks the file viewed;
   + =q= in the overview ends the review; =.git/review/BRANCH.json= keeps the comment and the mark;
-  + =SPC m v= on a commit in a Magit log, or =d v=, reviews that commit;
-  + in a file under review, =SPC m R n n= walks two hunks, and =SPC m= still shows the major mode's menu beside =R=;
-  + =SPC v V= in a worktree with an uncommitted edit opens a review of that edit, kept in =.git/review/NAME.worktree.json=.
-  + after a change to =:rev=, =just test-packages= passes [[file:../tests/kittymacs-diff-review-adapter-tests.el][the adapter test]], or names the advised function that changed.
-- In a file with conflict markers: =SPC m C n= moves to the next conflict, and =n= again to the one after.
-- =SPC v b=, then =b=, in a tracked file; then =SPC m B n=: point moves to the next chunk; =SPC m B q= stops blaming and =SPC m B= is gone.
+  + {SPC m v} on a commit in a Magit log, or =d v=, reviews that commit;
+  + in a file under review, {SPC m R n n} walks two hunks, and =SPC m= still shows the major mode's menu beside =R=;
+  + {SPC v V} in a worktree with an uncommitted edit opens a review of that edit, kept in =.git/review/NAME.worktree.json=.
+  + after a change to =:rev=, <compile "just test-packages"> passes [[file:../tests/kittymacs-diff-review-adapter-tests.el][the adapter test]], or names the advised function that changed.
+- In a file with conflict markers: {SPC m C n} moves to the next conflict, and =n= again to the one after.
+- {SPC v b}, then =b=, in a tracked file; then {SPC m B n}: point moves to the next chunk; {SPC m B q} stops blaming and {SPC m B} is gone.
