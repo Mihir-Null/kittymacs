@@ -8,6 +8,7 @@
 
 - Notes from rewriting this book to be read with [[id:dd02e28d-87f3-4b22-a7fe-9cfa5636de04][Hyperbole]] on: what resisted, what will confuse a reader, what could be built next, and what is wrong in the Hyperbole module as it stands.
 - Each heading starts with its category: RESISTANCE, CONFUSION, INTEGRATION-OPPORTUNITY or BUG-IN-PASS-1 (a weakness of the module as first written).
+- A third pass reproduced each claim independently and gave each entry a /Resolution/: fixed, and in which commit; corrected in the docs; upstream; or kept, and why.
 - Every claim was checked against Hyperbole 9.3.2 in a batch Emacs 31.1 with the module loaded; the reproductions say how.
   + With Hyperbole on, the forms in angle brackets below are buttons: =M-RET= on <hywiki-get-referent "KittymacsTangle"> shows what that word means in your wiki.
 - The rules these notes led to are in [[id:b1f2f39e-5ded-4e87-a1bb-5152cefb0fe2][the conventions]]; the decisions in [[file:../ARCHITECTURE.md][ARCHITECTURE.md]], "Hyperbole".
@@ -17,16 +18,18 @@
 :ID: 834d760c-abc5-4668-ac1b-318d2d866586
 :END:
 
-1. [[*BUG-IN-PASS-1: M-RET on any capitalized word in a HyWiki page makes a page]]
-2. [[*BUG-IN-PASS-1: Meow's line kill in a Koutline destroys cell labels]]
-3. [[*BUG-IN-PASS-1: turning Hyperbole on makes the HyWiki directory]]
-4. [[*BUG-IN-PASS-1: in Org, M-RET does not load Hyperbole]]
-5. [[*RESISTANCE: M-RET in a source block splits the code]]
-6. [[*RESISTANCE: HyWiki has one directory, and directory locals cannot scope it]]
-7. [[*RESISTANCE: explicit buttons store a host name and an absolute path]]
-8. [[*CONFUSION: a key series is a button only where its keys are bound]]
-9. [[*RESISTANCE: verbatim hides key series but not action buttons]]
-10. [[*INTEGRATION-OPPORTUNITY: Org Node does not see Hyperbole's ID jumps]]
+1. [[*BUG-IN-PASS-1: M-RET on any capitalized word in a HyWiki page makes a page]]: fixed.
+2. [[*BUG-IN-PASS-1: Meow's line kill in a Koutline destroys cell labels]]: fixed.
+3. [[*BUG-IN-PASS-1: turning Hyperbole on makes the HyWiki directory]]: the docs corrected.
+4. [[*BUG-IN-PASS-1: in Org, M-RET does not load Hyperbole]]: fixed.
+5. [[*RESISTANCE: M-RET in a source block splits the code]]: Org's own; kept, and said.
+6. [[*RESISTANCE: HyWiki has one directory, and directory locals cannot scope it]]: upstream.
+7. [[*RESISTANCE: explicit buttons store a host name and an absolute path]]: upstream.
+8. [[*CONFUSION: a key series is a button only where its keys are bound]]: upstream.
+9. [[*RESISTANCE: verbatim hides key series but not action buttons]]: upstream.
+10. [[*INTEGRATION-OPPORTUNITY: Org Node does not see Hyperbole's ID jumps]]: open.
+11. [[*BUG-IN-PASS-1: Hyperbole takes Dired's @, even while off]]: found in review; fixed.
+12. [[*BUG-IN-PASS-1: the Hyperbole tests skipped where they should fail]]: found in review; fixed.
 
 * BUG-IN-PASS-1: M-RET on any capitalized word in a HyWiki page makes a page
 :PROPERTIES:
@@ -40,6 +43,7 @@
   + Batch: =hkey-either= at "Toma" in a page of =hywiki-directory=, then =(directory-files hywiki-directory nil "org$")= ⇒ =("Garden.org" "Tomatoes.org")=.
 - {SPC H ?} (=C-h A=) on the word says =actype: hywiki-word-create-and-display=, so the help is right and the chapter is wrong.
 - Fix candidates for pass 3: say so in the chapter and the Check; or add =org-mode= to =hywiki-word-create-exclude-action-key-modes= so the Action Key in Org only follows words that exist (making a page then goes through =SPC H w=); test with a page and a heading, as [[file:../tests/kittymacs-hyperbole-tests.el][the Hyperbole tests]] do for =inbox.org=.
+- Resolution: confirmed with pass 2's script, and fixed in commit =217b223= the second way. The variable is =(org-mode)= unless set before Hyperbole loads, so in Org =M-RET= opens a word that names a page and is Org's on any other. =kittymacs-hyperbole-m-ret-in-a-hywiki-page-makes-no-page= checks a heading's word and an existing page's.
 
 * BUG-IN-PASS-1: Meow's line kill in a Koutline destroys cell labels
 :PROPERTIES:
@@ -52,6 +56,7 @@
   + The region was ="   2. second cell has words"=; after the kill the buffer reads =1. first cell= then a bare = third=, and after save and reopen cells 2 and 3 have lost their labels.
 - =kotl-mode= remaps =kill-region= only through its keymap, so the remap never fires for a direct call.
 - Fix candidates: start =kotl-mode= in Motion with a small Normal-like set of safe commands on =SPC m=; or advise =meow-kill= and =meow-line= in =kotl-mode= to clip the region to the cell's text (=kcell-view:start=, =kcell-view:end-contents=).
+- Resolution: confirmed, and the mechanism is a little different. =meow-kill= does press =C-w=, as a keyboard macro, which reaches =kotl-mode:kill-region= through Hyperbole's own =hui:kill-region=; that function accepts the label because it is in the same cell, and Meow's line kill adds the newline after the cell. =meow-change= is worse: it deletes with =delete-region= directly, so =x c= ran two cells into one. Motion state would make letters type in a Koutline, so the fix is at the kill, in commit =217b223=: =kotl-mode:kill-region= is cut to the cell's text first, and =meow--delete-region-function=, Meow's documented hook for this, sends Meow's change through it; across cells, both are refused. =I= on a cell's first line still opens a line outside every cell, which a save drops; the chapter says so. =kittymacs-hyperbole-meow-keeps-koutline-labels= saves and reopens.
 
 * BUG-IN-PASS-1: turning Hyperbole on makes the HyWiki directory
 :PROPERTIES:
@@ -63,6 +68,7 @@
 - Reproduce: a fresh =HOME=, load the module, =(kittymacs-hyperbole-enable)=, then <file-exists-p hywiki-directory> ⇒ =t=.
 - So any interactive session that opens an Org file makes =<org>/hywiki/= a second later, through the idle timer; the module test checks only that /loading the module/ makes nothing.
 - Fix candidate: correct the sentence, and extend =kittymacs-hyperbole-module-loads-neither-hyperbole-nor-org= with a case after =kittymacs-hyperbole-enable=, deciding whether the directory is acceptable.
+- Resolution: confirmed; it is Hyperbole's behaviour, and an empty directory under the Org directory is acceptable, so the chapter and ARCHITECTURE.md were corrected in commit =217b223=. =kittymacs-hyperbole-turning-on-makes-only-the-wiki-directory= pins it: =<org>/hywiki/= exists after turning on, =<org>/hyperbole/= does not.
 
 * BUG-IN-PASS-1: in Org, M-RET does not load Hyperbole
 :PROPERTIES:
@@ -74,6 +80,7 @@
 - The idle timer hides this a second after Org loads; with =kittymacs-hyperbole-after-org-delay= nil, or within that second, =M-RET= on a button in a chapter inserts a heading instead.
 - The chapter does say "=M-RET= outside Org"; but the book now asks readers to press =M-RET= /in/ Org, so the reading guide says to press {SPC H h} once.
 - Fix candidate: bind the loader in =org-mode-map= too until Hyperbole loads, falling back to =org-meta-return= when there is no button.
+- Resolution: confirmed, and fixed in commit =217b223= without touching Org's map: the global map remaps =org-meta-return= to a loader until Hyperbole loads, and the remap is removed as it loads, because Hyperbole falls back to Org's =M-RET= only when it finds =org-meta-return= in Org's map. With the delay nil the remap is plain =org-meta-return=: that setting means "only when a Hyperbole key asks", and in Org =M-RET= is first Org's key. =kittymacs-hyperbole-first-m-ret-in-org-loads-hyperbole= presses it in a fresh Emacs, with each delay.
 
 * RESISTANCE: M-RET in a source block splits the code
 :PROPERTIES:
@@ -89,6 +96,7 @@
   + a symbol, a key string such as ="M-RET"=, or the =#+begin_src= line is nothing, and falls through to the heading insert above.
 - The book uses no =(kbd …)= in its chapters, so the third is latent.
 - See [[*INTEGRATION-OPPORTUNITY: the Action Key in a chapter's code]].
+- Resolution: confirmed, and kept: =buttons= is what gives Org its =M-RET= back, and Org's =M-RET= in a block is Org's own behaviour. With kittymacs's =org-M-RET-may-split-line= nil the heading lands after the line rather than inside the word, but still inside the block. The chapter's key section now says so.
 
 * RESISTANCE: HyWiki has one directory, and directory locals cannot scope it
 :PROPERTIES:
@@ -101,6 +109,7 @@
 - Reproduce: a directory with =.dir-locals.el= setting =hywiki-directory=, visit a file there, then compare: the buffer-local value and =(default-value 'hywiki-directory)= are both the checkout's; the reader's wiki is gone for the session. The variable is not marked safe either, so Emacs asks first.
 - And a book whose chapters were HyWiki pages would make a page whenever a reader pressed =M-RET= on /Emacs/ (above).
 - So: no book HyWiki, no directory local, and a doc test that keeps =hywiki= out of =.dir-locals.el=. The book lends its words instead: [[id:75bf50f3-dc18-4c2d-8b2d-5279ef1c7a51][the book's words in your HyWiki]].
+- Resolution: confirmed (pass 2's script); upstream, and the design above stands.
 
 * RESISTANCE: explicit buttons store a host name and an absolute path
 :PROPERTIES:
@@ -114,6 +123,7 @@
 - The lint test caught exactly this in a draft of these notes, which quoted the =user@host= the experiment's =.hypb= recorded; it also refused a sentence naming a host's agent, because only that test may spell host names.
 - So the book holds none; =SPC H b= and =SPC H l= still work, and the doc tests refuse an explicit button or a =.hypb= file in =literate/=.
 - The Koutline map has a milder form of this: every cell records =creator= (=hyperb:user-email=) and =create-time=. The map's cells say =kittymacs=, and a doc test keeps them so.
+- Resolution: upstream; the doc tests that refuse =.hypb= files and other creators stand.
 
 * CONFUSION: a key series is a button only where its keys are bound
 :PROPERTIES:
@@ -125,6 +135,7 @@
 - Worse, a key series that /is/ bound in Org means Org's command: =C-c C-c= in braces, in the version-control chapter's "commits", would run =org-ctrl-c-ctrl-c= in the chapter, not Magit's commit.
 - [[file:../tests/kittymacs-hyperbole-book-tests.el][The book's button tests]] caught seven such keys on the first run; they went back to verbatim, and the conventions now say a key series is for keys that act from the page.
 - A key series types its keys in the buffer's current Meow state: in Insert state, ={SPC f f}= types a space and two =f=; read the Check in Normal state.
+- Resolution: upstream; the conventions and the book's button tests stand.
 
 * RESISTANCE: verbatim hides key series but not action buttons
 :PROPERTIES:
@@ -135,6 +146,7 @@
 - An action button in verbatim still is: the conventions' own table holds =<compile "just test">= as an example, and =M-RET= on it runs the tests.
 - The tradeoff for GitHub: a key in braces renders as plain text, not code, so the book presses keys in braces only in *Check* and the reading guide, and names them in verbatim everywhere else.
 - Org's HTML export escapes =<…>=; its Markdown export (=ox-md=) passes =<describe-variable 'x>= through raw, where a Markdown renderer reads it as an HTML tag and drops it.
+- Resolution: upstream (Org's Markdown export); nothing exports the book to Markdown.
 
 * CONFUSION: three kinds of link, one key
 :PROPERTIES:
@@ -148,6 +160,7 @@
 - =hy:Word= Org links make a HyWiki word look like an =id:= link, and resolve in the reader's wiki; the doc tests keep them out of the book.
 - {C-h A} names what the Action Key will do at point; the reading guide says so.
 - =SPC n= (Org Node) and =SPC H w= (HyWiki) both "find a note"; the Hyperbole chapter's table says when each fits.
+- Resolution: kept; one fewer kind in Org, since =M-RET= there no longer makes HyWiki pages.
 
 * CONFUSION: GitHub and the Koutline map
 :PROPERTIES:
@@ -158,6 +171,7 @@
 - So the reading guide stays the map GitHub shows and the doc tests check, and the Koutline is the map for reading inside Emacs, where its file names, cell references and keys are buttons.
 - The map is a second list of the chapters; a doc test keeps it complete, so a new chapter fails =just doc-test= until it has a cell.
 - Generating it is possible with =kotl-mode:add-cell= and =kotl-mode:add-child=; mind that =add-cell='s argument is a /relative level/ (=1= is a following sibling, =0= the parent's first child), not a count.
+- Resolution: kept; the doc test that the map names every page stands.
 
 * INTEGRATION-OPPORTUNITY: Org Node does not see Hyperbole's ID jumps
 :PROPERTIES:
@@ -174,6 +188,7 @@
   + an =org-node= HyWiki referent type (Hyperbole has one for Org Roam, =hywiki-add-org-roam-node=): =M-RET= on a word opens the node, through Org Node's scopes;
   + a command that adopts every Org Node title in a scope as a HyWiki word, so a project's notes are WikiWords in its code comments;
   + keep the separable-modules rule: such a bridge lives in a third place, behind =kittymacs-feature-p= for both.
+- Resolution: open. Since the first bug's fix, =M-RET= in Org no longer makes pages by accident, so the stray indexed page is gone; the rest waits for a decision.
 
 * INTEGRATION-OPPORTUNITY: the Action Key in a chapter's code
 :PROPERTIES:
@@ -196,6 +211,7 @@
 #+end_src
 
   + =kittymacs-chapter-of-module= would read the module's second line, =Generated from literate/…=, which the lint test already keeps true.
+- Resolution: open; nothing built.
 
 * INTEGRATION-OPPORTUNITY: more buttons for kittymacs
 :PROPERTIES:
@@ -207,6 +223,26 @@
 - HyRolo through Consult: =consult-hyrolo= exists in Hyperbole's =hsys-consult.el=; =SPC H r= could use it when Consult is on.
 - Embark on buttons: an Embark target finder for =hbut:at-p= would offer "act", "assist", "help" and "copy action" on any button.
 - A host's own agent, or any agent, can read the book's *Check* sections as a test plan: each key series and action button is a step it can run with =kbd-key:act= or =eval=.
+- Resolution: open; nothing built.
+
+* BUG-IN-PASS-1: Hyperbole takes Dired's @, even while off
+:PROPERTIES:
+:ID: 3e8a1c5f-9b27-4d06-8f14-7c2b5e9d0a63
+:END:
+
+- Found in the third pass's review, not by reading the book.
+- Hyperbole's autoloads, run as the package is activated at every start, bind =@= in Dired's own map to =hycontrol-windows-grid=, and =hycontrol.el= binds it again as Hyperbole loads; in Emacs 31 Dired's =@= is =tramp-dired-find-file-with-sudo=.
+- Reproduce: activate the package, =(require 'dired)=, then <lookup-key dired-mode-map "@"> ⇒ =hycontrol-windows-grid= while =(featurep 'hyperbole)= is =nil=.
+- Resolution: fixed in commit =217b223=: a =dired-mode-hook= gives the key back, which runs after both bindings whatever the load order; =kittymacs-hyperbole-dired-keeps-its-at-key= opens a Dired buffer after Hyperbole has loaded. With the feature off and the package still installed, the binding stays: only deleting the package removes it.
+
+* BUG-IN-PASS-1: the Hyperbole tests skipped where they should fail
+:PROPERTIES:
+:ID: 6c0d2f8e-41a7-4b93-9e5d-1f7a3b8c2e40
+:END:
+
+- Found in the third pass's review.
+- Every test that needs Hyperbole skipped when it was missing, under =just test-packages= too, whose full profile installs it; a broken install would have passed both files with nothing checked.
+- Resolution: fixed in commit =217b223=: with =KITTYMACS_TEST_PROFILE= =full= and =KITTYMACS_TEST_PACKAGES= set, a missing Hyperbole or Meow fails; =just test= still skips.
 
 * Check
 
