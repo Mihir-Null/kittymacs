@@ -462,7 +462,8 @@ has defined `kittymacs-after-init', so a call at its top level would fail.")
   '((kittymacs-org)
     (kittymacs-org-extras kittymacs-org)
     (kittymacs-org-node)
-    (kittymacs-reading))
+    (kittymacs-reading)
+    (kittymacs-hyperbole))
   "Each module and the others of this list it may lean on.
 `init.el' decides per feature whether each of them loads, so one must not
 need another that may be off.  `bound-and-true-p' and its like ask first, which
