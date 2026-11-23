@@ -5,6 +5,7 @@
 
 (require 'kittymacs-leader)
 (require 'kittymacs-platform)
+(require 'cl-lib)
 (use-package pdf-tools
   :ensure t
   :defer t
@@ -22,6 +23,29 @@
   (org-noter-notes-search-path
    (list (or (bound-and-true-p kittymacs-org-node-directory) kittymacs-org-directory)))
   (org-noter-always-create-frame 'reuse-if-free))
+
+(defun kittymacs-reading--noter-local-notes-window (original &rest args)
+  "Keep split-layout notes in their document's frame under frames-only mode.
+Org-noter normally reuses a notes window in any frame, even if the document
+session needs a split in its own frame.  Leave other-frame layouts unchanged."
+  (if (and (bound-and-true-p frames-only-mode)
+           (bound-and-true-p org-noter--session)
+           (not (eq (org-noter--session-window-location org-noter--session)
+                    'other-frame)))
+      (let ((notes (org-noter--session-notes-buffer org-noter--session))
+            (frame (org-noter--session-frame org-noter--session))
+            (lookup (symbol-function 'get-buffer-window)))
+        (cl-letf (((symbol-function 'get-buffer-window)
+                   (lambda (buffer &optional all-frames)
+                     (funcall lookup buffer
+                              (if (and (eq buffer notes) (eq all-frames t))
+                                  frame all-frames)))))
+          (apply original args)))
+    (apply original args)))
+
+(with-eval-after-load 'org-noter
+  (advice-add 'org-noter--get-notes-window :around
+              #'kittymacs-reading--noter-local-notes-window))
 (declare-function org-pdftools-open "org-pdftools" (link &optional arg))
 
 (defun kittymacs-reading-follow-pdf-link (link arg)

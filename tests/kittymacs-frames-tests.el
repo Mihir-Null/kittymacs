@@ -86,4 +86,48 @@
             (should-not (frame-parameter frame 'parent-frame))
             (should-not (frame-parameter frame 'undecorated))
             (delete-frame frame t)))))))
+
+
+(ert-deftest kittymacs-frames-org-noter-reuses-only-local-notes-windows ()
+  "Notes visible elsewhere must not suppress the document's notes pane."
+  (skip-unless (and (display-graphic-p)
+                    (fboundp 'kittymacs-reading--noter-local-notes-window)
+                    (locate-library "org-noter")))
+  (require 'org-noter)
+  (kittymacs-frames-test-with-buffer
+    (let ((notes (generate-new-buffer " *kittymacs-noter-test-notes*")))
+      (unwind-protect
+          (progn
+            (switch-to-buffer buffer)
+            (let* ((foreign (make-frame '((name . "Kittymacs org-noter test"))))
+                   (session (make-org-noter--session
+                             :frame original
+                             :doc-buffer buffer
+                             :notes-buffer notes
+                             :window-location 'horizontal-split
+                             :window-behavior '(start scroll)
+                             :doc-split-fraction '(0.5 . 0.5))))
+              (set-window-buffer (frame-selected-window foreign) notes)
+              (select-frame original)
+              (with-current-buffer notes
+                (setq-local org-noter--session session)
+                (let ((window (org-noter--get-notes-window 'start)))
+                  (should (window-live-p window))
+                  (should (eq (window-frame window) original))
+                  (should (eq (window-buffer window) notes))
+                  (should (= (length (window-list original 'no-minibuf)) 2)))
+                ;; A deliberate other-frame layout may still reuse that frame.
+                (with-selected-frame original
+                  (delete-other-windows)
+                  (set-window-buffer (selected-window) buffer))
+                (setf (org-noter--session-window-location session) 'other-frame)
+                (should (eq (window-frame (org-noter--get-notes-window 'start))
+                            foreign))
+                ;; Disabling frames-only also restores upstream global reuse.
+                (setf (org-noter--session-window-location session) 'horizontal-split)
+                (let ((frames-only-mode nil))
+                  (should (eq (window-frame (org-noter--get-notes-window 'start))
+                              foreign))))))
+        (when (buffer-live-p notes) (kill-buffer notes))))))
+
 (provide 'kittymacs-frames-tests)

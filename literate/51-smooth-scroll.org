@@ -135,6 +135,7 @@ WINDOW may be a frame, as a wheel event's can, and nil means the selected one."
 - =kittymacs--pulse-line= follows the animation, because the [[id:0286f652-e861-4e61-9ca6-91e225c8939d][appearance chapter]]'s pulse is advice on the plain commands, which an animated page no longer calls.
 - A scroll past either end of the buffer stops with a message rather than an error.
 - =C-d= and =C-u= scroll half a window, in Normal state only.
+  + Meow's =d= delete operation dispatches directly to =delete-char= (see [[id:a1607a41-b741-428a-9de3-c16e7c8d3ecc][the Meow chapter]]), so it cannot accidentally inherit =C-d='s scroll binding.
   + Insert state keeps =delete-char= and =universal-argument= under those keys, and so do Motion-state buffers such as Magit.
   + In Normal state, =C-u= stops being =universal-argument= while this is on: =M-1= and its neighbours still give a count, and =-= still negates.
   + A menu item's =:filter= asks for the state as the key is read, so nothing edits Meow's map, and turning this off leaves nothing behind.
@@ -231,7 +232,7 @@ WINDOW may be a frame, as a wheel event's can, and nil means the selected one."
 - <compile "just test-features"> starts Emacs with this feature on, and every other selection with it off; a start fails if this module or its package loads with the feature off.
 - A real feel is for a person. On =full=, or =minimal= with =(setopt kittymacs-features '(smooth-scroll))=, on a graphical frame:
   + {C-v} glides a page, and the line pulses where it stops;
-  + =C-d= and =C-u= glide half a window in Normal state, and =C-d= still deletes in Insert state;
+  + =C-d= and =C-u= glide half a window in Normal state, =d= deletes in Normal state, and =C-d= still deletes in Insert state;
   + a touchpad moves the text by pixels; {M-x ultra-scroll-check RET} says if the system sends pixel data at all;
   + {SPC t S}, then {C-v}: the page jumps, as it does with the feature off.
 - =emacs -nw= with the feature on: {C-v} and =C-d= scroll with no animation.

@@ -172,6 +172,8 @@
   + Dired and Magit start in Motion;
   + shells and terminals in Insert: their keys belong to the program.
 - =:= goes to a line through =consult-goto-line=; Meow uses the system clipboard.
+- Meow implements =d= through its internal =C-d= dispatch.  Smooth-scroll rebinds =C-d= in Normal state, so without a direct command =d= mistakenly scrolls.
+  + Keep Meow's internal delete operation bound to =delete-char=, independently of the visible =C-d= key.  Its unselected-character deletion and =meow-change-char= both use the same dispatch.
 - Once everything is set, Meow is enabled globally and the leader attached.
 - The numbered expansion hints keep their colours from the theme (=meow-use-dynamic-face-color=, left at its default of =t=):
   + Meow mixes the cursor colour into the region colour for the hint backgrounds, recomputed each time a theme is enabled;
@@ -186,6 +188,9 @@
   (meow-use-clipboard t)
   (meow-goto-line-function #'consult-goto-line)
   :config
+  ;; Meow's delete command resolves C-d at invocation time.  Smooth-scroll
+  ;; assigns C-d to half-page scrolling in Normal state, so dispatch directly.
+  (setq meow--kbd-delete-char #'delete-char)
   (meow-thing-register 'angle '(regexp "<" ">") '(regexp "<" ">"))
   (add-to-list 'meow-char-thing-table '(?< . angle))
   (kittymacs-meow-setup)
@@ -237,6 +242,7 @@
 
 - The mode line names the state: Normal in a file, Motion in Dired or Magit, Insert in a terminal.
 - =w= on a word, then =d=: the word is selected, then deleted.
+- With no selection, =d= deletes a character even when smooth-scroll maps =C-d= to half-page scrolling.
 - =x=, then =3=: the line is selected, then grows to the hint numbered 3; the hints are coloured, not plain text.
 - =i=, type, =ESC=: Insert state and back to Normal.
 - =o=, ~=~, =W= on a repeated symbol, =c=, type, =ESC=, ~=~: every occurrence in the block changes.

@@ -88,6 +88,9 @@
   (meow-use-clipboard t)
   (meow-goto-line-function #'consult-goto-line)
   :config
+  ;; Meow's delete command resolves C-d at invocation time.  Smooth-scroll
+  ;; assigns C-d to half-page scrolling in Normal state, so dispatch directly.
+  (setq meow--kbd-delete-char #'delete-char)
   (meow-thing-register 'angle '(regexp "<" ">") '(regexp "<" ">"))
   (add-to-list 'meow-char-thing-table '(?< . angle))
   (kittymacs-meow-setup)

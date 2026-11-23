@@ -122,6 +122,7 @@ test-packages:
     KITTYMACS_TEST_PACKAGES={{quote(packages)}} emacs -Q --batch -l tests/kittymacs-agents-upstream-tests.el -f ert-run-tests-batch-and-exit
     KITTYMACS_TEST_PROFILE=full KITTYMACS_TEST_PACKAGES={{quote(packages)}} emacs -Q --batch -l tests/kittymacs-org-tasks-tests.el -f ert-run-tests-batch-and-exit
     KITTYMACS_TEST_PROFILE=full KITTYMACS_TEST_PACKAGES={{quote(packages)}} emacs -Q --batch -l tests/kittymacs-leader-tests.el -f ert-run-tests-batch-and-exit
+    KITTYMACS_TEST_PROFILE=full KITTYMACS_TEST_PACKAGES={{quote(packages)}} emacs -Q --batch -l tests/kittymacs-meow-tests.el -f ert-run-tests-batch-and-exit
     KITTYMACS_TEST_PROFILE=full KITTYMACS_TEST_PACKAGES={{quote(packages)}} emacs -Q --batch -l tests/kittymacs-org-node-tests.el -f ert-run-tests-batch-and-exit
     KITTYMACS_TEST_PROFILE=full KITTYMACS_TEST_PACKAGES={{quote(packages)}} emacs -Q --batch -l tests/kittymacs-hyperbole-tests.el -f ert-run-tests-batch-and-exit
     KITTYMACS_TEST_PROFILE=full KITTYMACS_TEST_PACKAGES={{quote(packages)}} emacs -Q --batch -l tests/kittymacs-hyperbole-book-tests.el -f ert-run-tests-batch-and-exit
@@ -136,6 +137,7 @@ test-packages:
 # then also checks that the directory holds exactly what that profile needs.
 test-minimal:
     KITTYMACS_TEST_PROFILE=minimal KITTYMACS_TEST_PACKAGES={{quote(packages)}} emacs -Q --batch -l tests/kittymacs-leader-tests.el -f ert-run-tests-batch-and-exit
+    KITTYMACS_TEST_PROFILE=minimal KITTYMACS_TEST_PACKAGES={{quote(packages)}} emacs -Q --batch -l tests/kittymacs-meow-tests.el -f ert-run-tests-batch-and-exit
     KITTYMACS_TEST_PROFILE=minimal KITTYMACS_TEST_PACKAGES={{quote(packages)}} emacs -Q --batch -l tests/kittymacs-theme-tests.el -f ert-run-tests-batch-and-exit
     KITTYMACS_TEST_PROFILE=minimal KITTYMACS_TEST_PACKAGES={{quote(packages)}} emacs -Q --batch -l tests/kittymacs-remote-tests.el -f ert-run-tests-batch-and-exit
     KITTYMACS_TEST_PROFILE=minimal KITTYMACS_TEST_PACKAGES={{quote(packages)}} emacs -Q --batch -l tests/verify-config.el
