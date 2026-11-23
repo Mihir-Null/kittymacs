@@ -237,6 +237,10 @@
   + It writes the file if this start could not load one: an install, a removal, or a Nix switch that moved the store paths.
   + It sets =package-quickstart=, so Emacs refreshes the file after each later install, upgrade and removal, =:vc= packages included.
   + During =init.el= that option stays nil: refreshing there would call =package-initialize= a second time, which warns.
+- Writing the file activates the installed packages first, from a scan.
+  + Emacs joins every package's autoloads into the file, each inside a =let=, and compiles it; a =require= inside a =let= does not run while compiling.
+  + Hyperbole's autoloads =require= its =hact= library, then use =hact='s =defact= macro: compiled without it, the call reads =yt-info= as a variable, and the file fails to load.
+  + With the packages active, their autoloads have already run in the Emacs that compiles, so their macros are known.
 - A file that cannot load does not stop startup: =package-activate-all= demotes the error and scans, and =kittymacs-activate-packages= deletes the compiled file so the hook writes a new one.
   + A file naming a package that has gone only adds a directory that does not exist to =load-path=: a declaration that loads the package at startup warns, as it would after a failed install, and the start goes on.
 - A start from the file has the same packages active, and knows less about them until something asks:
@@ -321,6 +325,9 @@ This also undoes `kittymacs-quickstart-remove'; see the startup chapter."
   (make-directory kittymacs-cache-dir t)
   (setq package-quickstart-file (kittymacs-quickstart-file)
         package-quickstart t)
+  ;; With no file left, this scans: each package's autoloads run here first, so a
+  ;; macro they define for themselves is known while the joined file compiles.
+  (package-activate-all)
   (package-quickstart-refresh))
 
 (defun kittymacs-quickstart--keep-current ()
