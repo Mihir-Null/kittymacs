@@ -36,6 +36,7 @@
 
 (require 'kittymacs-leader)
 (require 'kittymacs-platform)
+(require 'cl-lib)
 
 #+end_src
 
@@ -52,6 +53,7 @@
   + =SPC m i= adds a note for this page; =SPC m I= one for an exact spot (a click, or the selected text);
   + paging the PDF moves the notes to the page's heading, and moving through the notes pages the PDF.
 - =SPC m k= ends the session; the notes file stays an ordinary Org file, with =:NOTER_PAGE:= properties on its headings.
+- Starting a session with its notes file already visible in another frame still opens a notes pane beside the PDF under frames-only mode.
 - Notes are yours, so they are permanent notes: a file next to a PDF in a project joins that project's [[id:f48e8f01-88da-4e33-8398-c00ab346b8bb][notes graph]] like any other Org file.
 
 * pdf-tools: Emacs draws the PDF
@@ -124,6 +126,29 @@
    (list (or (bound-and-true-p kittymacs-org-node-directory) kittymacs-org-directory)))
   (org-noter-always-create-frame 'reuse-if-free))
 
+(defun kittymacs-reading--noter-local-notes-window (original &rest args)
+  "Keep split-layout notes in their document's frame under frames-only mode.
+Org-noter normally reuses a notes window in any frame, even if the document
+session needs a split in its own frame.  Leave other-frame layouts unchanged."
+  (if (and (bound-and-true-p frames-only-mode)
+           (bound-and-true-p org-noter--session)
+           (not (eq (org-noter--session-window-location org-noter--session)
+                    'other-frame)))
+      (let ((notes (org-noter--session-notes-buffer org-noter--session))
+            (frame (org-noter--session-frame org-noter--session))
+            (lookup (symbol-function 'get-buffer-window)))
+        (cl-letf (((symbol-function 'get-buffer-window)
+                   (lambda (buffer &optional all-frames)
+                     (funcall lookup buffer
+                              (if (and (eq buffer notes) (eq all-frames t))
+                                  frame all-frames)))))
+          (apply original args)))
+    (apply original args)))
+
+(with-eval-after-load 'org-noter
+  (advice-add 'org-noter--get-notes-window :around
+              #'kittymacs-reading--noter-local-notes-window))
+
 #+end_src
 
 ** One frame for a reading session :decision:
@@ -134,6 +159,9 @@
 - [[id:f1d045c2-e2dc-4514-ab17-dd982ed6be00][Frames-only mode]] gives every buffer you read or edit its own OS window; a reading session is the exception.
   + Reading needs the page and its notes in view together, in step; two OS windows would drift apart and fight for the screen.
 - org-noter splits the session's frame itself, with =split-window-right=, which frames-only mode leaves alone: its remap changes keys, not the function.
+- org-noter normally searches all frames for a notes buffer.  If its notes file is already visible in another OS frame, that global match prevents a notes pane from appearing beside the document.
+  + In frames-only mode, when a split is requested, constrain only the existing-notes-window lookup to the session frame.  Let org-noter itself perform the usual split and sizing.
+  + An explicit =other-frame= layout keeps upstream behavior.  With frames-only off, global notes-window reuse is unchanged.
 - =org-noter-always-create-frame= decides /which/ frame:
   + its default, =t=, opens a new maximised frame, which a tiling window manager has to undo;
   + ='reuse-if-free= splits the frame you started from, unless another session already owns it.
