@@ -29,7 +29,7 @@
   1. a key under =SPC H=, =M-RET=, or =C-h h=: each is a small command here that turns Hyperbole on, then runs Hyperbole's own command;
      + in Org, =M-RET= is Org's key, so this chapter remaps Org's =org-meta-return= to the same loader until Hyperbole has loaded: the first =M-RET= on a link follows it, and on a heading still makes one;
      + with the delay below nil, and while Hyperbole is not installed, the remap runs =org-meta-return= and loads nothing;
-  2. visiting a Koutline (=.kotl=), whose mode is Hyperbole's;
+  2. visiting a Koutline (=.kotl=), whose mode is Hyperbole's: by its name, or by the =Mode: kotl= its first line names, which a package install may not autoload, so the chapter remaps it;
   3. a moment of idle time after Org has loaded, =kittymacs-hyperbole-after-org-delay= seconds, so =M-RET= on an Org link works in the first Org file you open.
      + nil waits for a Hyperbole key instead, for a machine where Org opens often and Hyperbole is rarely wanted.
      + A batch Emacs never takes this path, so a test or a build that loads Org does not load Hyperbole too.
@@ -140,9 +140,14 @@ A batch Emacs, such as a test or a build, never turns it on this way."
 (defun kittymacs-hyperbole-kotl-mode ()
   "Turn Hyperbole on, then edit this buffer as a Koutline."
   (kittymacs-hyperbole-enable)
+  (require 'kotl-mode)
   (kotl-mode))
 
 (add-to-list 'auto-mode-alist '("\\.kotl?\\'" . kittymacs-hyperbole-kotl-mode))
+;; A Koutline's first line names its mode, which outranks `auto-mode-alist',
+;; and a package install may have no autoload for `kotl-mode': without the
+;; remap, Emacs ignores the mode and opens the file as plain text.
+(add-to-list 'major-mode-remap-alist '(kotl-mode . kittymacs-hyperbole-kotl-mode))
 
 #+end_src
 

@@ -96,9 +96,14 @@ A batch Emacs, such as a test or a build, never turns it on this way."
 (defun kittymacs-hyperbole-kotl-mode ()
   "Turn Hyperbole on, then edit this buffer as a Koutline."
   (kittymacs-hyperbole-enable)
+  (require 'kotl-mode)
   (kotl-mode))
 
 (add-to-list 'auto-mode-alist '("\\.kotl?\\'" . kittymacs-hyperbole-kotl-mode))
+;; A Koutline's first line names its mode, which outranks `auto-mode-alist',
+;; and a package install may have no autoload for `kotl-mode': without the
+;; remap, Emacs ignores the mode and opens the file as plain text.
+(add-to-list 'major-mode-remap-alist '(kotl-mode . kittymacs-hyperbole-kotl-mode))
 
 (defcustom kittymacs-hywiki-directory
   (expand-file-name "hywiki/" kittymacs-org-directory)
