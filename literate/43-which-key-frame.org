@@ -151,10 +151,10 @@
 
 * Check
 
-- =just test= runs [[file:../tests/kittymacs-which-key-frame-tests.el][its tests]], which need no packages: which place each kind of frame gets, and what turning it off leaves.
-- =just test-features= starts Emacs with this feature on, and every other selection with it off; a start fails if this module or its package loads with the feature off.
+- <compile "just test"> runs [[file:../tests/kittymacs-which-key-frame-tests.el][its tests]], which need no packages: which place each kind of frame gets, and what turning it off leaves.
+- <compile "just test-features"> starts Emacs with this feature on, and every other selection with it off; a start fails if this module or its package loads with the feature off.
 - With =(setopt kittymacs-features '(which-key-frame))= on a graphical frame:
   + =SPC=, then wait: the groups show at the bottom right, over the text, and the last row is whole;
-  + =SPC t W=, then =SPC=: they show at the top of the frame, as they do with the feature off;
-  + =SPC t t=: the menu's colours follow the theme.
+  + {SPC t W}, then =SPC=: they show at the top of the frame, as they do with the feature off;
+  + {SPC t t}: the menu's colours follow the theme.
 - =emacs -nw= with the feature on: =SPC=, then wait: the side window, with its last row whole.

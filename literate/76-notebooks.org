@@ -374,16 +374,16 @@ Code cells are left alone, so a `$' in a string of code stays text."
 
 - Once per project, the loop end to end:
   1. a =flake.nix= whose dev shell has =python3.withPackages (ps: [ ps.jupyterlab ps.jupytext ps.numpy ])=;
-  2. a =.envrc= containing =use flake=, then =direnv allow= in a shell or =SPC p E a= in Emacs;
+  2. a =.envrc= containing =use flake=, then =direnv allow= in a shell or {SPC p E a} in Emacs;
   3. a =jupytext.toml= containing =formats = "ipynb,py:percent"= (and =cell_markers = '"""'= for display math).
 - Open a percent script: the mode line has =envrc= in the success colour, and =M-n= / =M-p= walk the cells.
-- =SPC m n R=, then =SPC m n e= on a code cell: it runs in the Python shell; =SPC m n s= runs it and moves on.
+- {SPC m n R}, then {SPC m n e} on a code cell: it runs in the Python shell; {SPC m n s} runs it and moves on.
 - With =(setopt kittymacs-notebooks-jupyter t)= in =private.el= and a restart:
-  + =M-: (kittymacs-notebooks--zmq-module)= names a file in the Nix store on a Nix machine;
-  + =SPC m n j= lists the project's kernels; pick =python3=, and the REPL opens in Insert state;
+  + <kittymacs-notebooks--zmq-module> names a file in the Nix store on a Nix machine;
+  + {SPC m n j} lists the project's kernels; pick =python3=, and the REPL opens in Insert state;
   + =C-c C-c= in a cell: its output appears in the REPL; a Matplotlib plot appears as an image;
-  + =ls -l= zmq's package directory (=M-: (file-name-directory (locate-library "zmq"))=): =emacs-zmq.so= is a link into the store.
-- With it off: =SPC m n j= says how to turn it on, and =M-: (featurep 'jupyter)= is nil.
-- =SPC m n m= in a script whose Markdown cell says =$\omega_0$=: the equation is drawn; a =$= in a code cell's string stays text; =SPC m n M= clears it.
+  + =ls -l= zmq's package directory (<file-name-directory (locate-library "zmq")>): =emacs-zmq.so= is a link into the store.
+- With it off: {SPC m n j} says how to turn it on, and <featurep 'jupyter> is nil.
+- {SPC m n m} in a script whose Markdown cell says =$\omega_0$=: the equation is drawn; a =$= in a code cell's string stays text; {SPC m n M} clears it.
 - Open the paired =.ipynb=: it shows as a script with cells. Close it without saving, to keep its outputs.
-- =just test-packages=: the startup verifier checks that emacs-jupyter is neither on nor loaded by default.
+- <compile "just test-packages">: the startup verifier checks that emacs-jupyter is neither on nor loaded by default.

@@ -213,6 +213,7 @@ and `indent-region' everywhere else."
 | Prefix  | Group  | Doubled key          | Also                                                           |
 |---------+--------+----------------------+----------------------------------------------------------------|
 | =SPC n= | notes  | (=f= find node)      | =i= insert ID link, =c= capture, =b= backlinks, =s= sync graph  |
+| =SPC H= | hyperbole | =h= Hyperbole menu | =a= / =A= Action / Assist Key, =w= HyWiki page, =r= HyRolo, =k= Koutline, =t= on/off |
 | =SPC a= | agent  | =a= start or switch  | =P= primary interface, =e= ACP, =g= gptel-agent, =w= IDE, =c= a suggestion here |
 | =SPC o= | open   | (=e= terminal)       | =p= project terminal, =t= file tree, =s= eshell, =a= agenda dashboard, =b= a backend's project |
 | =SPC t= | toggle | =t= light/dark theme | =n= line numbers, =w= writeroom, =P= prose font, =s= spelling, =f= frames-only mode, =d= file tree, =a= suggestions |
@@ -223,6 +224,7 @@ and `indent-region' everywhere else."
 - These groups' keys and commands belong to the chapters they serve:
   + the Org inbox to [[id:8ff7e58e-c155-4513-99ae-3b2c3a6ab729][the Org chapter]];
   + the linked-notes commands to [[id:f48e8f01-88da-4e33-8398-c00ab346b8bb][Org Node]];
+  + the Hyperbole commands to [[id:dd02e28d-87f3-4b22-a7fe-9cfa5636de04][the Hyperbole chapter]], which also says why its group is a capital;
   + the agent commands to [[id:94d55283-5011-4f98-a7f0-8c6bcb51aab9][the agents chapter]];
   + the suggestion commands, =SPC a c= and =SPC t a=, to [[id:0b43a1e9-2e16-4d5b-985d-342c4897634f][the suggestions chapter]];
   + the =SPC C= commands that open and rebuild this configuration to [[id:9ea539a0-f1a3-4d05-aa10-6f2d2ff3e335][the maintenance chapter]].
@@ -325,9 +327,9 @@ in the server, which keeps running."
 * Check
 
 - =SPC= in a Normal-state buffer, then wait: which-key lists the groups by label at the top of the frame, and the last row is whole.
-- =SPC f f= finds a file; =SPC b b= switches buffer: the doubled key is the common action.
-- =SPC p f= in a project: Emacs's own =project-find-file=, inherited from =C-x p=.
-- =SPC /=: Emacs's help view of the whole tree, plus this buffer's =SPC m= menu.
+- {SPC f f} finds a file; {SPC b b} switches buffer: the doubled key is the common action.
+- {SPC p f} in a project: Emacs's own =project-find-file=, inherited from {C-x p}.
+- {SPC /}: Emacs's help view of the whole tree, plus this buffer's =SPC m= menu.
 - =i=, then =C-c C-SPC=: the same tree from Insert state.
-- =just test-packages=: the verifier fails if any key under =SPC= runs something that is not a command, and checks =SPC l e=, =SPC s l=, =SPC h ?= and =SPC h h=.
-- =just test-packages=: =kittymacs-check-first-look= fails if the imprecise fit is on.
+- <compile "just test-packages">: the verifier fails if any key under =SPC= runs something that is not a command, and checks {SPC l e}, {SPC s l}, {SPC h ?} and {SPC h h}.
+- <compile "just test-packages">: =kittymacs-check-first-look= fails if the imprecise fit is on.

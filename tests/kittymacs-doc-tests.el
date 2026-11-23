@@ -163,5 +163,53 @@
       (let ((top (seq-filter (lambda (h) (= (nth 3 h) 1)) (kittymacs-doc-headings))))
         (should (equal (list file "Check") (list file (car (car (last top))))))))))
 
+;;; Hyperbole in the book: literate/conventions.org, "Hyperbole in the book".
+
+(defconst kittymacs-doc-map (expand-file-name "literate/book.kotl" kittymacs-doc-root)
+  "The Koutline map of the book.")
+
+(ert-deftest kittymacs-doc-map-names-every-page ()
+  "The map is read as text: the doc tests need no Hyperbole."
+  (let ((map (with-temp-buffer (insert-file-contents kittymacs-doc-map) (buffer-string))))
+    (should (string-prefix-p ";; -*- Mode: kotl -*-" map))
+    (dolist (file (kittymacs-doc-pages))
+      (let ((name (file-name-nondirectory file)))
+        (should (equal (list name t)
+                       (list name (and (string-search (format "\"%s\"" name) map) t))))))))
+
+(ert-deftest kittymacs-doc-map-cells-name-no-person ()
+  "Each Koutline cell records its creator; the map's say `kittymacs'."
+  (with-temp-buffer
+    (insert-file-contents kittymacs-doc-map)
+    (let (creators)
+      (while (re-search-forward "(creator \"\\([^\"]*\\)\"" nil t)
+        (push (match-string 1) creators))
+      (should creators)
+      (should (equal (delete-dups creators) '("kittymacs"))))))
+
+(defun kittymacs-doc-outside-markup-p ()
+  "Non-nil unless point is in verbatim, code, a block or a comment."
+  (not (memq (org-element-type (org-element-context))
+             '(verbatim code src-block example-block fixed-width comment comment-block))))
+
+(ert-deftest kittymacs-doc-pages-hold-only-implicit-buttons ()
+  "No explicit button, `hy:' link or `.hypb' file: see the conventions."
+  (should-not (directory-files (expand-file-name "literate" kittymacs-doc-root) nil "\\`\\.hypb\\'"))
+  (dolist (file (kittymacs-doc-pages))
+    (kittymacs-doc-with-page file
+      (should (equal (list file nil) (list file (kittymacs-doc-links "hy"))))
+      (goto-char (point-min))
+      (while (re-search-forward "<(\\([^()<>\n]+\\))>" nil t)
+        (goto-char (match-beginning 0))
+        (should-not (and (kittymacs-doc-outside-markup-p)
+                         (list file (match-string 0))))
+        (goto-char (match-end 0))))))
+
+(ert-deftest kittymacs-doc-dir-locals-leave-hywiki-alone ()
+  "A directory-local `hywiki-directory' would replace the reader's wiki."
+  (with-temp-buffer
+    (insert-file-contents (expand-file-name ".dir-locals.el" kittymacs-doc-root))
+    (should-not (string-search "hywiki" (buffer-string)))))
+
 (provide 'kittymacs-doc-tests)
 ;;; kittymacs-doc-tests.el ends here

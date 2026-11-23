@@ -23,7 +23,7 @@
     kittymacs-org-babel kittymacs-org-tasks kittymacs-org-workflows
     kittymacs-agents kittymacs-suggestions kittymacs-smooth-scroll
     kittymacs-hover-docs kittymacs-which-key-frame
-    kittymacs-meow-state-cursor)
+    kittymacs-meow-state-cursor kittymacs-hyperbole)
   "The modules `init.el' loads only while a feature that owns them is on.
 The features that own one are those whose catalogue `:module' names it, so a
 feature added to a chapter, as the coding agents share one, needs no entry here.")

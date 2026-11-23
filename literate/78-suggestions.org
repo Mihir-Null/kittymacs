@@ -268,12 +268,12 @@ A member of `copilot-disable-display-predicates'."
 
 * Check
 
-- Once: =copilot-language-server= on =PATH= (=M-: (executable-find "copilot-language-server")=), then =M-x copilot-login=, and enter the code it copies at the page it opens.
-- =SPC t a= in a Python or Lisp file: the echo area says "Suggestions on in this buffer"; =M-x copilot-diagnose= reports the server and your account.
+- Once: =copilot-language-server= on =PATH= (<executable-find "copilot-language-server">), then {M-x copilot-login RET}, and enter the code it copies at the page it opens.
+- {SPC t a} in a Python or Lisp file: the echo area says "Suggestions on in this buffer"; {M-x copilot-diagnose RET} reports the server and your account.
 - In Insert state, type the start of a function: grey text follows the cursor; =TAB= takes it, =C-TAB= one word, =M-n= another suggestion.
 - =ESC= to Normal and wait: no new grey text appears.
 - Type a symbol until Corfu's popup opens: the grey text goes; =TAB= inserts Corfu's candidate.
 - Rename a parameter and leave Insert: a next edit appears at one of its uses; =TAB= jumps there, =TAB= again applies it, =C-g= dismisses it.
-- =SPC C p=, then =SPC t a= in =private.el=: the echo area says suggestions stay off.
-- =SPC a c= in a file with suggestions off: they turn on, and grey text appears at point.
+- {SPC C p}, then {SPC t a} in =private.el=: the echo area says suggestions stay off.
+- {SPC a c} in a file with suggestions off: they turn on, and grey text appears at point.
 - With =(setopt kittymacs-suggestions t)= in =private.el=, every programming file you open starts with them; =*scratch*= does not.

@@ -185,6 +185,8 @@ Set before init.el loads to change them, because they are read during init.")
   (kittymacs-require-module 'kittymacs-org-workflows))
 (when (kittymacs-feature-p 'org-web-capture)
   (kittymacs-require-module 'kittymacs-org-workflows))
+(when (kittymacs-feature-p 'hyperbole)
+  (kittymacs-require-module 'kittymacs-hyperbole))
 ;; One chapter holds every agent: at most one owns SPC a, and claude-code-ide
 ;; may run beside it.
 (when (kittymacs-feature-p 'agents)

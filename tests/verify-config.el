@@ -282,6 +282,8 @@ Types the configuration deliberately silences are left out."
                                 "Startup created the notes root")
         (kittymacs-verify-check (not (featurep 'org-node))
                                 "Startup loaded the linked-notes backend"))
+      ;; Hyperbole loads Org, so it waits for Org or for one of its own keys.
+      (kittymacs-verify-check (not (featurep 'hyperbole)) "Hyperbole loaded at startup")
       (require 'org)
       (kittymacs-verify-check (and (eql org-tags-column 7) (equal org-ellipsis "!"))
                               "Org's loading overwrote a value from Customize or private.el")

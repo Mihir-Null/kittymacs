@@ -560,10 +560,10 @@
 
 * Check
 
-- =SPC SPC= then =th lin=: =thing-at-point= style commands match, words in any order.
-- =SPC s s=, type a word, move through the list: the buffer scrolls to each match.
-- =SPC f f=, move to a file, =C-.=: which-key lists the actions.
+- {SPC SPC} then =th lin=: =thing-at-point= style commands match, words in any order.
+- {SPC s s}, type a word, move through the list: the buffer scrolls to each match.
+- {SPC f f}, move to a file, =C-.=: which-key lists the actions.
 - In a Lisp buffer, type =(def= and wait: Corfu opens; =C-j= moves down.
 - In Eshell, type =ls ~/= and press =TAB=: the popup opens only now; =RET= on a candidate runs the line.
-- =C-h B=: every key bound here, searchable.
-- =just test-packages=: the startup verifier replays a real startup with the installed packages and fails on any warning.
+- {C-h B}: every key bound here, searchable.
+- <compile "just test-packages">: the startup verifier replays a real startup with the installed packages and fails on any warning.

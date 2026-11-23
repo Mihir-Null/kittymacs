@@ -258,10 +258,10 @@
 
 * Check
 
-- =C-h k SPC f f=: Helpful describes =find-file= and names the key you pressed.
-- =C-h f mapcar=: the page includes a worked example from =elisp-demos=.
-- =C-h B= in any buffer: every key that works right now, searchable.
-- =C-h i= opens the manuals, in colour; =SPC m= there shows how to move.
-- =SPC t k=, then type: the header line shows each key and its command.
-- In Dired, =C-o= or =SPC m ?=: Casual's menu opens in a window at the top.
-- =just test-packages=: the startup verifier replays a real startup with the installed packages and fails on any warning.
+- {C-h k SPC f f}: Helpful describes =find-file= and names the key you pressed.
+- <describe-function 'mapcar>: the page includes a worked example from =elisp-demos=.
+- {C-h B} in any buffer: every key that works right now, searchable.
+- {C-h i} opens the manuals, in colour; =SPC m= there shows how to move.
+- {SPC t k}, then type: the header line shows each key and its command.
+- In Dired, =C-o= or {SPC m ?}: Casual's menu opens in a window at the top.
+- <compile "just test-packages">: the startup verifier replays a real startup with the installed packages and fails on any warning.

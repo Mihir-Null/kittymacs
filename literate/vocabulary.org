@@ -1,0 +1,167 @@
+:PROPERTIES:
+:ID: c94fbfb2-8ff4-4238-9acd-a099d6e7c4cb
+:END:
+
+#+TITLE: Vocabulary: the book's words, and their HyWiki names
+#+FILETAGS: :meta:
+#+STARTUP: overview
+
+- The words the book uses in its own sense, one heading each, so that a link, a backlink or a HyWiki word can point at one.
+- Each heading has an =:ID:=, which the chapters link to, and a =:HYWIKI:= word, which your own HyWiki can borrow:
+  + with Hyperbole on, the Action Key (=M-RET=) on <kittymacs-hywiki-adopt> makes each word a reference to its heading, in whichever HyWiki is current;
+  + a word your wiki already has is kept as yours;
+  + why the book lends words instead of being a wiki: [[id:75bf50f3-dc18-4c2d-8b2d-5279ef1c7a51][the book's words in your HyWiki]].
+- The words are CamelCase, and the book's own carry a =Kittymacs= prefix, so they stand out in your notes and cannot be mistaken for a page you wrote.
+- Back to [[id:52a45bf9-9521-4e0d-9867-1c54721844a3][the reading guide]].
+
+* kittymacs
+:PROPERTIES:
+:ID: 890ecb00-20bf-435d-85cc-607cb010c1cc
+:HYWIKI: Kittymacs
+:END:
+
+- An Emacs configuration written as a book; [[id:52a45bf9-9521-4e0d-9867-1c54721844a3][the reading guide]] is its first page.
+
+* chapter
+:PROPERTIES:
+:ID: 63be800e-d1ee-4391-860b-3d5342c3f94e
+:HYWIKI: KittymacsChapter
+:END:
+
+- An Org file =literate/NN-name.org=: one part of the editor explained, and the source of its module.
+- Unnumbered pages, such as this one, are prose and tangle nothing ([[id:7edccfdc-3c38-489a-bc9e-4c002b432ab4][the conventions]]).
+
+* tangle
+:PROPERTIES:
+:ID: 0ce4253b-9b34-45c8-b0d1-ec73c0b7e1b8
+:HYWIKI: KittymacsTangle
+:END:
+
+- Copy a chapter's code blocks into the files they name; kittymacs's only build step ([[id:9ea539a0-f1a3-4d05-aa10-6f2d2ff3e335][the maintenance chapter]]).
+
+* module
+:PROPERTIES:
+:ID: 8ae82e98-f0ed-4619-a365-29afb0560bd2
+:HYWIKI: KittymacsModule
+:END:
+
+- A generated =lisp/kittymacs-NAME.el=, loaded by a =require= in =init.el= ([[id:40302e33-d2b2-4c0b-9bc3-1f9e121307e1][startup]]).
+
+* state
+:PROPERTIES:
+:ID: 960b8c30-bde6-4c26-8b83-466c618bd19f
+:HYWIKI: MeowState
+:END:
+
+- Meow's mode of the moment: /Normal/ (select and act), /Insert/ (type), /Motion/ (a package's own keys, plus =j=, =k= and =SPC=) ([[id:a1607a41-b741-428a-9de3-c16e7c8d3ecc][editing]]).
+- A key series button types its keys in the state you are in, so press =M-RET= on one in Normal state.
+
+* thing
+:PROPERTIES:
+:ID: f558b128-6d16-4e6c-b040-373eaadc633c
+:HYWIKI: MeowThing
+:END:
+
+- What Meow can select as a unit: a word, a line, a sentence, a pair of brackets, a syntax-tree node.
+
+* leader
+:PROPERTIES:
+:ID: 6d192998-9283-43f3-be5f-5164b95b3903
+:HYWIKI: KittymacsLeader
+:END:
+
+- =SPC= in Normal and Motion state: the keymap every command group hangs from ([[id:e5942eb0-4389-447d-9317-d9178adcaaae][the leader]]).
+
+* localleader
+:PROPERTIES:
+:ID: 575de3c0-63c6-4f30-8c62-0fcc4defa078
+:HYWIKI: KittymacsLocalleader
+:END:
+
+- =SPC m=: the current major mode's own menu.
+
+* frame
+:PROPERTIES:
+:ID: f92255ab-94ce-4a13-b5e5-fa5fe4816d8f
+:HYWIKI: KittymacsFrame
+:END:
+
+- An Emacs OS window; kittymacs opens one where Emacs would split a window ([[id:f1d045c2-e2dc-4514-ab17-dd982ed6be00][frames]]).
+
+* which-key
+:PROPERTIES:
+:ID: 661401a9-e371-4b3c-a2cd-e2ce928e75b5
+:HYWIKI: WhichKey
+:END:
+
+- The popup listing the keys that can follow the prefix you typed.
+
+* graph
+:PROPERTIES:
+:ID: babddf68-e71b-4bce-99ac-a16b2eefbc70
+:HYWIKI: KittymacsGraph
+:END:
+
+- Registered notes that share the Org ID index and can be viewed by project ([[id:f48e8f01-88da-4e33-8398-c00ab346b8bb][Org Node]]).
+
+* private.el
+:PROPERTIES:
+:ID: 0be8d88a-e4cd-46ad-a93b-3a9c604bfa4c
+:HYWIKI: KittymacsPrivate
+:END:
+
+- Your settings for this machine, read early and never committed ([[id:9ea539a0-f1a3-4d05-aa10-6f2d2ff3e335][maintenance]]).
+
+* Action Key
+:PROPERTIES:
+:ID: a58df224-49e5-4d42-ba27-e46143724c6f
+:HYWIKI: ActionKey
+:END:
+
+- =M-RET= with Hyperbole on: do what the thing at point means; =C-u M-RET=, the Assist Key, explains or does the alternative ([[id:dd02e28d-87f3-4b22-a7fe-9cfa5636de04][Hyperbole]]).
+- In Org it acts only on links and buttons, so =M-RET= keeps making headings and items.
+
+* implicit button
+:PROPERTIES:
+:ID: 373e062c-c2ef-49c0-ae4e-51255ca4f84a
+:HYWIKI: ImplicitButton
+:END:
+
+- Text Hyperbole recognizes as a button by its shape alone, with no markup and nothing stored: a file name in double quotes, a key series in braces, an action button in angle brackets, a URL.
+- The book uses only these; explicit buttons store their actions in a hidden file ([[id:7edccfdc-3c38-489a-bc9e-4c002b432ab4][the conventions]] say why).
+
+* key series
+:PROPERTIES:
+:ID: c1b6062a-8147-43b0-9c4b-d9ca14928ab3
+:HYWIKI: KeySeries
+:END:
+
+- Keys in braces, such as {SPC h ?}: the Action Key types them for you.
+- Inside Org's verbatim or code markup they are only text, so the book writes a key in braces where you are meant to press it, and as verbatim where it is only named.
+
+* action button
+:PROPERTIES:
+:ID: 480e80e5-cea7-45e4-8349-14f061909d70
+:HYWIKI: ActionButton
+:END:
+
+- A Lisp call or a variable in angle brackets, such as <emacs-init-time>: the Action Key evaluates it and shows the value.
+- The *Check* of a chapter uses them for what it used to ask you to type after =M-:=.
+
+* Koutline
+:PROPERTIES:
+:ID: 90d91772-5b26-4f8e-9a54-f3b4dc4d7b1e
+:HYWIKI: Koutline
+:END:
+
+- Hyperbole's outline format, =.kotl=: every cell has a permanent ID and a relative label such as =2b3=, and a link to a cell survives the outline being reordered.
+- [[file:book.kotl][The book's map]] is one.
+
+* WikiWord
+:PROPERTIES:
+:ID: b21fc3b4-c89c-4c4a-8e55-eacf8e64a5fc
+:HYWIKI: WikiWord
+:END:
+
+- A capitalized word that names a HyWiki page or referent; with HyWiki on, the Action Key on it goes there.
+- In a HyWiki page, the Action Key on a capitalized word that names nothing yet makes a page for it.

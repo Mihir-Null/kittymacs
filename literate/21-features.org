@@ -621,14 +621,14 @@ NAME afresh."
 
 * Check
 
-- =M-: (kittymacs-features-profile)= names the profile, and =M-: (kittymacs-features-enabled)= lists what is on.
-- =M-: (kittymacs-feature-p 'jump)=: =t= here means =SPC j j= exists.
+- <kittymacs-features-profile> names the profile, and <kittymacs-features-enabled> lists what is on.
+- <kittymacs-feature-p 'jump>: =t= here means {SPC j j} exists.
 - Add =(setopt kittymacs-features '(no-such-feature))= to =private.el= and restart: a warning names it, and everything else starts.
-- =(setopt kittymacs-features '(jump))= on a machine without Avy: the next start installs it, and =SPC j j= works.
-- =just test= runs [[file:../tests/kittymacs-features-tests.el][the features tests]], which need no packages.
+- =(setopt kittymacs-features '(jump))= on a machine without Avy: the next start installs it, and {SPC j j} works.
+- <compile "just test"> runs [[file:../tests/kittymacs-features-tests.el][the features tests]], which need no packages.
 - A first graphical start in a new checkout: no =*Compile-Log*= window opens, =C-x b *Compile-Log*= shows the log, and compiling a file with a warning afterwards raises the panel.
   + On =full=, no =*Warnings*= window opens either, and =C-x b *Warnings*= lists the native compiler's reports.
 - CI's =startup= job fails if =just install= prints Embark's reminder, which it can only do when its package cache starts empty.
 - With =branch-review= on, delete =var/elpa/diff-review/diff-review-pkg.el= and restart, even as a daemon: one warning names =var/elpa/diff-review/=, and nothing asks to overwrite it.
-  + =M-x kittymacs-features-move-leftovers= then moves it to =diff-review.broken-…=, and the next start installs diff-review again.
-- =ls var/started-on-default= on a machine that started with nothing: the file is there, and =M-: (kittymacs-features-profile)= says =minimal=.
+  + {M-x kittymacs-features-move-leftovers RET} then moves it to =diff-review.broken-…=, and the next start installs diff-review again.
+- =ls var/started-on-default= on a machine that started with nothing: the file is there, and <kittymacs-features-profile> says =minimal=.

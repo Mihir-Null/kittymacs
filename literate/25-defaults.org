@@ -495,10 +495,10 @@ function as advice."
 
 * Check
 
-- Open a file, edit, wait five seconds: it is saved; =C-x C-s= is rarely needed.
+- Open a file, edit, wait five seconds: it is saved; {C-x C-s} is rarely needed.
 - =M-x customize-variable RET fill-column=, set and save: the value persists in =var/etc/custom.el=.
-- =M-x split-window-below= (=C-x 2= makes a frame while frames-only mode is on), then =C-c <left>=: winner brings the old layout back.
-- =SPC [= and =SPC ]= cycle your own buffers, skipping =*Messages*=.
-- With two windows: =C-x o o= moves to the second and back, and the echo area names =o= as the key that continues.
+- {M-x split-window-below RET} (=C-x 2= makes a frame while frames-only mode is on), then {C-c <left>}: winner brings the old layout back.
+- {SPC [} and {SPC ]} cycle your own buffers, skipping =*Messages*=.
+- With two windows: {C-x o o} moves to the second and back, and the echo area names =o= as the key that continues.
 - Type in =*scratch*=, restart Emacs: the text is still there.
-- =just test-packages= runs the startup verifier, which loads this module with the rest and fails on any warning.
+- <compile "just test-packages"> runs the startup verifier, which loads this module with the rest and fails on any warning.

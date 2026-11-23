@@ -601,9 +601,9 @@ With no checker, call WHEN-MISSING, if given."
 
 * Check
 
-- =C-h v shell-file-name=: this machine's shell, as in [[*The policy applied after private.el]].
-- =SPC f o= in a file buffer: the file manager opens on it, selected where the manager allows.
-- =SPC t s= in a text buffer: misspellings are underlined when a checker is installed; without one, nothing happens and nothing breaks.
+- <describe-variable 'shell-file-name>: this machine's shell, as in [[*The policy applied after private.el]].
+- {SPC f o} in a file buffer: the file manager opens on it, selected where the manager allows.
+- {SPC t s} in a text buffer: misspellings are underlined when a checker is installed; without one, nothing happens and nothing breaks.
 - With no checker on =PATH=, open two text files: the first says how to get one, and the second says nothing.
 - macOS: =⌘Q= in one of several frames closes only that frame; deleting a file in Dired puts it in the Trash; switching between a light and a dark theme changes the title bar.
 - Android: two quick presses of volume down quit; in Normal state the on-screen keyboard no longer rewrites the buffer.

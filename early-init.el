@@ -162,6 +162,9 @@ This also undoes `kittymacs-quickstart-remove'; see the startup chapter."
   (make-directory kittymacs-cache-dir t)
   (setq package-quickstart-file (kittymacs-quickstart-file)
         package-quickstart t)
+  ;; With no file left, this scans: each package's autoloads run here first, so a
+  ;; macro they define for themselves is known while the joined file compiles.
+  (package-activate-all)
   (package-quickstart-refresh))
 
 (defun kittymacs-quickstart--keep-current ()

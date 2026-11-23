@@ -198,7 +198,7 @@
 * Check
 
 - Add spaces to the end of a line you edited, wait to save: they are gone, and untouched lines keep theirs.
-- Undo a few edits, make a new one, then =SPC b u=: the tree shows the fork.
-- =SPC w w= with several windows in a frame: each gets a letter.
-- =M-`= toggles the last popup.
-- =SPC t r= in a buffer that names a colour: the name shows in that colour.
+- Undo a few edits, make a new one, then {SPC b u}: the tree shows the fork.
+- {SPC w w} with several windows in a frame: each gets a letter.
+- {M-`} toggles the last popup.
+- {SPC t r} in a buffer that names a colour: the name shows in that colour.

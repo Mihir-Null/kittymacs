@@ -303,5 +303,5 @@ Exclude trailing padding and compensate for leading indentation."
 - Start it with a file: the file opens and the home page does not.
 - =?= on the home page opens the cheat sheet; =j=/=k= move; =r=, =p=, =b= jump to a list.
 - Change the font size or theme: the page recentres.
-- =SPC h h= reopens the home page.
-- =just tangle-check= confirms =lisp/kittymacs-dashboard.el= matches this page.
+- {SPC h h} reopens the home page.
+- <compile "just tangle-check"> confirms =lisp/kittymacs-dashboard.el= matches this page.

@@ -129,6 +129,7 @@ Add a command with `keymap-set'.  Add a labelled group with
 (defvar-keymap kittymacs-diagnostics-map :doc "Diagnostics (Flymake).")
 (defvar-keymap kittymacs-insert-map :doc "Insert.")
 (defvar-keymap kittymacs-notes-map :doc "Linked notes in the current graph.")
+(defvar-keymap kittymacs-hyperbole-map :doc "Hyperbole: its keys, HyWiki, HyRolo and the Koutliner.")
 (defvar-keymap kittymacs-agent-map :doc "The coding agent that is on, and a suggestion at point.")
 (defvar-keymap kittymacs-open-map :doc "Open applications.")
 (defvar-keymap kittymacs-toggle-map :doc "Toggles.")
@@ -150,6 +151,7 @@ Add a command with `keymap-set'.  Add a labelled group with
 (keymap-set kittymacs-leader-map "F" (cons "diagnostics" kittymacs-diagnostics-map))
 (keymap-set kittymacs-leader-map "i" (cons "insert" kittymacs-insert-map))
 (keymap-set kittymacs-leader-map "n" (cons "notes" kittymacs-notes-map))
+(keymap-set kittymacs-leader-map "H" (cons "hyperbole" kittymacs-hyperbole-map))
 (keymap-set kittymacs-leader-map "a" (cons "agent" kittymacs-agent-map))
 (keymap-set kittymacs-leader-map "o" (cons "open" kittymacs-open-map))
 (keymap-set kittymacs-leader-map "t" (cons "toggle" kittymacs-toggle-map))
@@ -372,7 +374,7 @@ Safe to call more than once."
 * Check
 
 - =SPC= in a Normal-state buffer: which-key lists the groups after a pause.
-- =C-h k SPC f f=: Emacs describes =find-file=, the command the key really runs.
+- {C-h k SPC f f}: Emacs describes =find-file=, the command the key really runs.
 - =SPC m= in an Org buffer, then in an Emacs Lisp buffer: two different menus.
 - =i= then =SPC=: Insert state types a space; the leader is gone.
 - [[file:../tests/kittymacs-leader-tests.el][The leader tests]] load only Meow and this module and check the promises above:
@@ -380,7 +382,7 @@ Safe to call more than once."
   + localleaders override and inherit along the mode lineage, and other buffers see nothing;
   + a minor mode's group appears while the mode is on and goes when it is off, the major mode's keys stay as they were, and a nil definition leaves its key out;
   + the keypad is unbound unless =kittymacs-keypad-key= is set;
-  + every group exists with no other chapter loaded, and =SPC p= inherits Emacs's project keys;
+  + every group exists with no other chapter loaded, and {SPC p} inherits Emacs's project keys;
   + a nil definition leaves a key out, and an empty group leaves the tree.
 
 #+begin_src sh :tangle no

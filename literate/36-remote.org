@@ -1455,21 +1455,21 @@ Host vm
 
 * Check
 
-- With no remote project in play, =M-: (featurep 'tramp)= after a start is =nil=.
-- Set =kittymacs-backends= in =private.el=; =SPC o B= lists what the machine has, and =SPC o b= opens the project.
-  + A buffer there shows the backend's name in the mode line, and a click, or =SPC o R=, reconnects it.
-  + On native Windows with =:transport wsl=, =SPC o B= says processes start directly.
+- With no remote project in play, <featurep 'tramp> after a start is =nil=.
+- Set =kittymacs-backends= in =private.el=; {SPC o B} lists what the machine has, and {SPC o b} opens the project.
+  + A buffer there shows the backend's name in the mode line, and a click, or {SPC o R}, reconnects it.
+  + On native Windows with =:transport wsl=, {SPC o B} says processes start directly.
   + With =:transport wsl-rpc=, it says they start through the server, and names the server and =cat=.
-- On a remote machine with Nix, =C-x C-f /ssh:host:~/=, then =M-: (executable-find "rg" t)= in that buffer: it names the Nix profile's =rg=.
+- On a remote machine with Nix, =C-x C-f /ssh:host:~/=, then <executable-find "rg" t> in that buffer: it names the Nix profile's =rg=.
   + On Android with the virtual machine, =host= is =vm=.
-- =M-x shell= in that buffer runs =/bin/sh= there, or the backend's =:shell=.
-- =SPC o e= in that buffer opens a terminal on that machine, even with a local terminal open.
+- {M-x shell RET} in that buffer runs =/bin/sh= there, or the backend's =:shell=.
+- {SPC o e} in that buffer opens a terminal on that machine, even with a local terminal open.
   + On a =wsl= backend =htop= draws its full screen, and =tty= names a =/dev/pts/= device.
 - =kittymacs-open .= in a WSL shell opens that folder in Windows Emacs, with Emacs running or not, and =kittymacs-open /mnt/c/Users= opens it with no Tramp.
-- On a =wsl= backend, =C-x C-f /wslm:DISTRIBUTION:/mnt/c/Windows/win.ini=: a message says it is slow, once, and =SPC o w= opens =c:/Windows/win.ini=.
-- From Windows Emacs, =C-x C-f= a new file on a backend, save two lines, and =file= there says it has no CRLF.
-- =SPC o B= on a machine that lacks =rg= says what to run there, and nothing installs itself.
+- On a =wsl= backend, =C-x C-f /wslm:DISTRIBUTION:/mnt/c/Windows/win.ini=: a message says it is slow, once, and {SPC o w} opens =c:/Windows/win.ini=.
+- From Windows Emacs, {C-x C-f} a new file on a backend, save two lines, and =file= there says it has no CRLF.
+- {SPC o B} on a machine that lacks =rg= says what to run there, and nothing installs itself.
 - On a =wsl= backend with =direnv=, in a project with an allowed =.envrc=: the mode line shows =envrc=, and =M-! echo $NAME= prints that variable.
-  + =SPC o B= says a project's direnv is on there, and off on any other backend.
+  + {SPC o B} says a project's direnv is on there, and off on any other backend.
 - Open a remote file and cut the network: Emacs keeps responding while you are idle; =C-g= ends a command that was waiting.
-- =just test-packages= and =just test-minimal= run [[file:../tests/kittymacs-remote-tests.el][the remote tests]], with a Tramp method that needs no ssh.
+- <compile "just test-packages"> and <compile "just test-minimal"> run [[file:../tests/kittymacs-remote-tests.el][the remote tests]], with a Tramp method that needs no ssh.

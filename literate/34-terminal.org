@@ -576,12 +576,12 @@ is not used at all, Eshell answers this key instead."
 
 * Check
 
-1. =SPC o e=, then =htop=; =q= quits it.
-2. =SPC o e= and =vim=: =ESC= reaches vim, because vim is drawing a full screen; =:q= leaves, and =ESC= means Meow again.
+1. {SPC o e}, then =htop=; =q= quits it.
+2. {SPC o e} and =vim=: =ESC= reaches vim, because vim is drawing a full screen; =:q= leaves, and =ESC= means Meow again.
 3. Run something long and press =ESC=: output freezes and you are in Normal state; select a line with =x=, copy it with =y=, press =i= to thaw.
-4. =cd= somewhere in the terminal, then =SPC f f=: Emacs offers files from the shell's directory.
+4. =cd= somewhere in the terminal, then {SPC f f}: Emacs offers files from the shell's directory.
 5. Type =ghostel_cmd find-file README.md= in the terminal: Emacs opens it.
-6. =SPC o E= lists every terminal with a preview; a new name creates one.
+6. {SPC o E} lists every terminal with a preview; a new name creates one.
 
 - [[file:../tests/verify-config.el][The startup verifier]] checks that ghostel and =consult-ghostel= are archive packages, not Git checkouts, and that loading them turns on =consult-ghostel-mode=.
 

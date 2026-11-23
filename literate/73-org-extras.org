@@ -230,11 +230,11 @@ Code that is already lexical expands as before."
 * Check
 
 - An Org file shows =◉= headings, =•= bullets and a bracket beside each source block.
-- =SPC s Q= and =todo:TODO= list your open tasks grouped by file; =v g=, =tags=, =r= regroups them by their tags.
-- In a project with tagged headings, =SPC s q= and =tags-local:decision= jump straight to one of its decisions.
-- =just test-packages= runs [[file:../tests/verify-config.el][the startup verifier]], which checks these promises in a real startup:
-  + =SPC s Q= with =tags:decision= lists exactly the tagged heading, grouped;
+- {SPC s Q} and =todo:TODO= list your open tasks grouped by file; =v g=, =tags=, =r= regroups them by their tags.
+- In a project with tagged headings, {SPC s q} and =tags-local:decision= jump straight to one of its decisions.
+- <compile "just test-packages"> runs [[file:../tests/verify-config.el][the startup verifier]], which checks these promises in a real startup:
+  + {SPC s Q} with =tags:decision= lists exactly the tagged heading, grouped;
   + =SPC= on a group header is still the leader;
-  + =SPC m g= runs the Org QL query again and picks up a new heading;
+  + {SPC m g} runs the Org QL query again and picks up a new heading;
   + an Org buffer has =org-modern-indent-mode= on.
-- =just doc-test=: the lint tests check that this module, the Org chapter's, Org Node's and reading's use nothing of each other's without a guard.
+- <compile "just doc-test">: the lint tests check that this module, the Org chapter's, Org Node's and reading's use nothing of each other's without a guard.
