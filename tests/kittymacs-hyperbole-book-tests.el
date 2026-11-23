@@ -15,10 +15,17 @@
 (require 'seq)
 (require 'cl-lib)
 
+;; Spell the checkout without "~" before HOME moves, as the Hyperbole tests do.
+(setq default-directory (expand-file-name default-directory))
+;; Windows' runners name the temporary directory in 8.3 form (RUNNER~1),
+;; while a visited file's name is the long one: use the long one throughout.
+(setq temporary-file-directory
+      (file-name-as-directory (file-truename temporary-file-directory)))
 (defconst kittymacs-book-test-root
-  (file-name-directory
-   (directory-file-name
-    (file-name-directory (or load-file-name buffer-file-name)))))
+  (expand-file-name
+   (file-name-directory
+    (directory-file-name
+     (file-name-directory (or load-file-name buffer-file-name))))))
 
 (setenv "HOME" (make-temp-file "kittymacs-book-home-" t))
 (when-let* ((directory (getenv "KITTYMACS_TEST_PACKAGES")))

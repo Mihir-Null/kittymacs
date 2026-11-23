@@ -13,10 +13,19 @@
 (require 'seq)
 (require 'cl-lib)
 
+;; Spell the checkout without "~" before HOME moves: a checkout under the real
+;; HOME starts with `default-directory' as "~/...", which would then name a
+;; directory inside the temporary HOME.
+(setq default-directory (expand-file-name default-directory))
+;; Windows' runners name the temporary directory in 8.3 form (RUNNER~1),
+;; while a visited file's name is the long one: use the long one throughout.
+(setq temporary-file-directory
+      (file-name-as-directory (file-truename temporary-file-directory)))
 (defconst kittymacs-hyperbole-test-root
-  (file-name-directory
-   (directory-file-name
-    (file-name-directory (or load-file-name buffer-file-name)))))
+  (expand-file-name
+   (file-name-directory
+    (directory-file-name
+     (file-name-directory (or load-file-name buffer-file-name))))))
 
 (defconst kittymacs-hyperbole-test-home (make-temp-file "kittymacs-hyperbole-home-" t))
 (setenv "HOME" kittymacs-hyperbole-test-home)

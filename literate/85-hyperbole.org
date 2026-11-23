@@ -593,6 +593,11 @@ to refuse."
 
 (add-hook 'kotl-mode-hook #'kittymacs-hyperbole--kotl-meow)
 
+;; Only Hyperbole's kotl-autoloads.el makes the export a command before
+;; kexport loads, and an install that has none (as on Windows) would leave
+;; SPC m e naming a function no key can run.
+(autoload 'kexport:html "kexport" "Export the Koutline to HTML." t)
+
 (kittymacs-define-localleader 'kotl-mode
   "i" (cons "add cell" #'kotl-mode:add-cell)
   "c" (cons "add child" #'kotl-mode:add-child)
