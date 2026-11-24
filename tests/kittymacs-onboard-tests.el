@@ -1307,6 +1307,15 @@ A stand-in, since this machine has no `wsl.exe'.  A STATUS of `missing' means no
       (should (string-search "Warning: a backend uses wsl-rpc"
                              (car kittymacs-onboard-test-screens))))))
 
+(ert-deftest kittymacs-onboard-an-ssh-rpc-backend-needs-the-feature-too ()
+  (kittymacs-onboard-test-with-machine
+    (kittymacs-onboard-test-on-windows "" 0
+      (kittymacs-onboard-test--write-bytes
+       private "(setopt kittymacs-backends '((\"vm\" :transport ssh-rpc :host \"vm\" :root \"/\")))\n")
+      (should (= 0 (car (kittymacs-onboard-test--run (kittymacs-onboard-test--keys ?m nil)))))
+      (should (string-search "Warning: a backend uses wsl-rpc or ssh-rpc"
+                             (car kittymacs-onboard-test-screens))))))
+
 (ert-deftest kittymacs-onboard-no-warning-where-the-feature-cannot-apply ()
   (kittymacs-onboard-test-with-machine
     (kittymacs-onboard-test--write-bytes

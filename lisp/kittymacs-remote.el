@@ -97,7 +97,8 @@ Add the language servers your projects there use."
 (defvar kittymacs-remote-transports
   '((ssh . kittymacs-remote--tramp-root)
     (wsl . kittymacs-remote--wsl-root)
-    (wsl-rpc . kittymacs-remote--wsl-rpc-root))
+    (wsl-rpc . kittymacs-remote--wsl-rpc-root)
+    (ssh-rpc . kittymacs-remote--ssh-rpc-root))
   "How each transport names a directory on its machine, by the `:transport' key.
 A value is a function of the transport and the backend's plist.  An enabled
 Tramp method needs no row: its name is the transport, handled as `ssh' is.")
@@ -135,8 +136,8 @@ Tramp method needs no row: its name is the transport, handled as `ssh' is.")
   (completing-read "Backend: " kittymacs-backends nil t))
 
 (defun kittymacs-remote--rpc-p (backend)
-  "Return non-nil if BACKEND uses the `wsl-rpc' transport."
-  (eq (plist-get backend :transport) 'wsl-rpc))
+  "Return non-nil if BACKEND uses tramp-rpc: the `wsl-rpc' or `ssh-rpc' transport."
+  (memq (plist-get backend :transport) '(wsl-rpc ssh-rpc)))
 
 (defun kittymacs-remote--preflight (name)
   "Refuse the backend called NAME if its transport can tell what would fail."
@@ -252,7 +253,7 @@ Interactively, NAME is this buffer's backend, or else one you choose."
     (format "/%s:%s:"
             (pcase transport
               ('wsl kittymacs-remote-wsl-method)
-              ('wsl-rpc kittymacs-remote-wsl-rpc-method)
+              ((or 'wsl-rpc 'ssh-rpc) kittymacs-remote-wsl-rpc-method)
               (_ transport))
             (or (plist-get backend :host) ""))))
 
@@ -344,7 +345,7 @@ Anywhere else it calls ORIGINAL unchanged, after one test that never connects."
 (defun kittymacs-remote--wsl-rpc-hosts ()
   "Return the distributions that `wsl-rpc' backends name."
   (seq-keep (lambda (backend)
-              (and (kittymacs-remote--rpc-p (cdr backend))
+              (and (eq (plist-get (cdr backend) :transport) 'wsl-rpc)
                    (plist-get (cdr backend) :host)))
             kittymacs-backends))
 
@@ -406,7 +407,17 @@ A file with line endings keeps them.  This never connects."
 (add-hook 'find-file-hook #'kittymacs--remote-unix-newlines)
 (add-hook 'after-set-visited-file-name-hook #'kittymacs--remote-unix-newlines)
 (defconst kittymacs-remote-wsl-rpc-method "rpc"
-  "The Tramp method behind the `wsl-rpc' transport, which tramp-rpc registers.")
+  "The Tramp method behind the `wsl-rpc' and `ssh-rpc' transports.
+tramp-rpc registers it.")
+
+(defun kittymacs-remote--rpc-ready (transport fallback)
+  "Signal unless tramp-rpc can serve TRANSPORT, naming FALLBACK as the way back."
+  (unless (featurep 'kittymacs-remote-rpc)
+    (user-error "The %s transport needs the wsl-rpc feature: add it to `kittymacs-features' and restart, or use `:transport %s'"
+                transport fallback))
+  (unless (locate-library "tramp-rpc")
+    (user-error "The wsl-rpc feature is on and tramp-rpc is not installed: see the warning from the start, or use `:transport %s'"
+                fallback)))
 
 (defun kittymacs-remote--wsl-rpc-root (_transport backend)
   "Return the root of BACKEND, a distribution reached through tramp-rpc."
@@ -414,10 +425,14 @@ A file with line endings keeps them.  This never connects."
     (user-error "The wsl-rpc transport needs wsl.exe, and this machine has none"))
   (unless (plist-get backend :host)
     (user-error "A wsl-rpc backend needs :host, the distribution's name in `wsl --list'"))
-  (unless (featurep 'kittymacs-remote-rpc)
-    (user-error "The wsl-rpc transport needs the wsl-rpc feature: add it to `kittymacs-features' and restart, or use `:transport wsl'"))
-  (unless (locate-library "tramp-rpc")
-    (user-error "The wsl-rpc feature is on and tramp-rpc is not installed: see the warning from the start, or use `:transport wsl'"))
+  (kittymacs-remote--rpc-ready 'wsl-rpc 'wsl)
+  (kittymacs-remote--tramp-root kittymacs-remote-wsl-rpc-method backend))
+
+(defun kittymacs-remote--ssh-rpc-root (_transport backend)
+  "Return the root of BACKEND, a machine reached through tramp-rpc over ssh."
+  (unless (plist-get backend :host)
+    (user-error "An ssh-rpc backend needs :host, as Tramp takes it: build, me@build or build#2222"))
+  (kittymacs-remote--rpc-ready 'ssh-rpc 'sshx)
   (kittymacs-remote--tramp-root kittymacs-remote-wsl-rpc-method backend))
 (defun kittymacs-remote--apply-backend (name)
   "Set the connection-local variables of the backend called NAME."

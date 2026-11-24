@@ -973,6 +973,13 @@ Host wrappers and remote commands are not executed or probed."
 (defconst kittymacs-onboard-wsl-transports '(wsl wsl-rpc)
   "The transports the form also offers on native Windows with a distribution.")
 
+(defconst kittymacs-onboard-rpc-transports '(wsl-rpc ssh-rpc)
+  "The transports that need the `wsl-rpc' feature, which installs tramp-rpc.")
+
+(defun kittymacs-onboard--rpc-p (plist)
+  "Return non-nil if the backend PLIST needs the `wsl-rpc' feature."
+  (memq (kittymacs-onboard--transport-of plist) kittymacs-onboard-rpc-transports))
+
 (defun kittymacs-onboard--read-distributions ()
   "Return the distributions to offer: only native Windows has any."
   (and (eq system-type 'windows-nt) (kittymacs-wsl-distributions)))
@@ -1209,8 +1216,8 @@ and the backends after it, unless the page cannot change them."
         (if old
             (cl-substitute entry old (kittymacs-onboard--backends state) :test #'eq)
           (append (kittymacs-onboard--backends state) (list entry))))
-  (when (and (eq (kittymacs-onboard--transport-of (cdr entry)) 'wsl-rpc)
-             (not (eq (kittymacs-onboard--transport-of (cdr old)) 'wsl-rpc))
+  (when (and (kittymacs-onboard--rpc-p (cdr entry))
+             (not (kittymacs-onboard--rpc-p (cdr old)))
              (not (memq 'wsl-rpc (kittymacs-onboard--on state))))
     (kittymacs-onboard--toggle state 'wsl-rpc)))
 
@@ -1347,17 +1354,16 @@ The backends compete only while the block holds them."
 (defun kittymacs-onboard--backend-warning (state)
   "Return what the preview warns about the `wsl-rpc' feature and backends in STATE."
   (let ((on (memq 'wsl-rpc (kittymacs-onboard--on state)))
-        (named (seq-some (lambda (entry)
-                           (eq (kittymacs-onboard--transport-of (cdr entry)) 'wsl-rpc))
+        (named (seq-some (lambda (entry) (kittymacs-onboard--rpc-p (cdr entry)))
                          (kittymacs-onboard--backends state))))
     (cond
      ((seq-some #'kittymacs-onboard--backend-setting-opaque-p
                 (kittymacs-onboard--backend-settings state))
       nil)
      ((and on (not named))
-      "Warning: the wsl-rpc feature is on, and no backend uses it, so it would install and do nothing.  b goes back: name a backend over wsl-rpc, or turn it off.\n\n")
+      "Warning: the wsl-rpc feature is on, and no backend uses it, so it would install and do nothing.  b goes back: name a backend over wsl-rpc or ssh-rpc, or turn it off.\n\n")
      ((and named (not on) (kittymacs-features--applies-p 'wsl-rpc))
-      "Warning: a backend uses wsl-rpc, and that feature is off, so connecting to it would fail.  b goes back: turn it on, or change the backend.\n\n"))))
+      "Warning: a backend uses wsl-rpc or ssh-rpc, and the wsl-rpc feature is off, so connecting to it would fail.  b goes back: turn it on, or change the backend.\n\n"))))
 
 (defun kittymacs-onboard--render-preview (state place)
   "Return the last screen for STATE, with PLACE as in the title."
@@ -1564,8 +1570,8 @@ Refuse if `private.el' cannot be understood."
      (concat
       (format "After that start, SPC o B and then %s says what that machine has and what it is missing.\n"
               (car entry))
-      (if (eq (kittymacs-onboard--transport-of (cdr entry)) 'wsl-rpc)
-          (format "%s also needs a server in the distribution, which nothing installs for you: that report prints the line to run, or a Nix home there sets programs.kittymacs.backend.rpcServer.\n"
+      (if (kittymacs-onboard--rpc-p (cdr entry))
+          (format "%s also needs a server on that machine, which nothing installs for you: that report prints the line to run, or a Nix home there sets programs.kittymacs.backend.rpcServer.\n"
                   (car entry))
         "")))
    (seq-difference (kittymacs-onboard--backends state)
