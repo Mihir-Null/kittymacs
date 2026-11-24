@@ -254,8 +254,8 @@
      :group shells :packages (msgpack tramp-rpc) :module kittymacs-remote-rpc :profile optional
      :vc (msgpack tramp-rpc)
      :not-on (gnu/linux gnu gnu/kfreebsd berkeley-unix darwin cygwin haiku android)
-     :summary "A quicker, sturdier way into a WSL backend, through a small server there."
-     :example "=SPC o B= on a backend with =:transport wsl-rpc= names the server and how processes start.")
+     :summary "A quicker, sturdier way into a WSL or ssh backend, through a small server there."
+     :example "=SPC o B= on a backend with =:transport wsl-rpc= or =ssh-rpc= names the server and how processes start.")
     (eshell-highlight
      :group shells :packages (eshell-syntax-highlighting) :module kittymacs-shell :profile full
      :summary "Colours the Eshell command line as you type."

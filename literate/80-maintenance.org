@@ -334,6 +334,11 @@
 ;; (setopt kittymacs-features '(wsl-rpc)
 ;;         kittymacs-backends
 ;;         '(("wsl" :transport wsl-rpc :host "Ubuntu-24.04" :root "~/src/project/")))
+;; A machine on the network through the same server, over ssh with a key, from
+;; Windows: ssh-rpc.  It needs the same feature, and the server there.
+;; (setopt kittymacs-features '(wsl-rpc)
+;;         kittymacs-backends
+;;         '(("vm" :transport ssh-rpc :host "vm.example.org" :root "~/src/project/")))
 ;; What the doctor looks for, and where Tramp searches after the login shell's PATH.
 ;; (setopt kittymacs-backend-tools '("git" "rg" "pyright-langserver"))
 ;; (setopt kittymacs-remote-nix-path '("~/.nix-profile/bin"))

@@ -12,7 +12,11 @@
 (defvar ghostel-tramp-shells)
 (defvar tramp-rpc-use-controlmaster)
 (defvar tramp-rpc-use-direct-ssh-pty)
+(defvar tramp-rpc-ssh-options)
+(declare-function tramp-dissect-file-name "tramp" (name &optional nodefault))
 (declare-function tramp-file-name-hop "tramp" (vec))
+(declare-function tramp-file-name-port "tramp" (vec))
+(declare-function tramp-file-name-user "tramp" (vec))
 (declare-function tramp-file-name-host "tramp" (vec))
 (declare-function tramp-file-name-method "tramp" (vec))
 
@@ -96,12 +100,20 @@ which starts `ssh'."
         (funcall original vec binary-path sudo-password)))))
 
 (defun kittymacs--remote-rpc-scope (original vec &rest arguments)
-  "Call ORIGINAL on VEC and ARGUMENTS, with `ssh''s switches off for a WSL backend."
-  (if (kittymacs-remote-rpc--vec-p vec)
-      (let ((tramp-rpc-use-controlmaster nil)
-            (tramp-rpc-use-direct-ssh-pty nil))
-        (apply original vec arguments))
-    (apply original vec arguments)))
+  "Call ORIGINAL on VEC and ARGUMENTS, with `ssh''s switches set for a backend.
+A WSL backend has no `ssh' at all.  An `ssh-rpc' backend has Windows's, which
+has no ControlMaster and no local pty, and must never wait for a password."
+  (cond ((kittymacs-remote-rpc--vec-p vec)
+         (let ((tramp-rpc-use-controlmaster nil)
+               (tramp-rpc-use-direct-ssh-pty nil))
+           (apply original vec arguments)))
+        ((kittymacs-remote-rpc--ssh-vec-p vec)
+         (let ((tramp-rpc-use-controlmaster nil)
+               (tramp-rpc-use-direct-ssh-pty nil)
+               ;; ssh takes the first value of an option, so the user's win.
+               (tramp-rpc-ssh-options (append tramp-rpc-ssh-options '("BatchMode=yes"))))
+           (apply original vec arguments)))
+        (t (apply original vec arguments))))
 
 (defun kittymacs--remote-rpc-direnv-variables (environment)
   "Return ENVIRONMENT, an alist, with what direnv set that this scope still has.
@@ -154,22 +166,30 @@ backend, or move the seam: see \"Moving the pin\" in the remote chapter."
 ;;; What the rest of the remote chapter asks
 
 (defun kittymacs-remote-rpc-preflight (name backend)
-  "Refuse the backend NAME, with plist BACKEND, if WSL lacks its distribution."
-  (let ((distribution (plist-get backend :host))
-        (known (kittymacs-wsl-distributions)))
-    (unless (member distribution known)
-      (user-error "Backend %s names the distribution %s, and `wsl --list' has %s"
-                  name distribution (if known (string-join known ", ") "none")))))
+  "Refuse the backend NAME, with plist BACKEND, if what it starts with is missing.
+That is `ssh' here for `ssh-rpc', and the distribution for `wsl-rpc'."
+  (if (kittymacs-remote-rpc--ssh-p backend)
+      (unless (executable-find "ssh")
+        (user-error "Backend %s uses ssh-rpc, and `exec-path' has no ssh: add Windows's OpenSSH Client, or Git for Windows"
+                    name))
+    (let ((distribution (plist-get backend :host))
+          (known (kittymacs-wsl-distributions)))
+      (unless (member distribution known)
+        (user-error "Backend %s names the distribution %s, and `wsl --list' has %s"
+                    name distribution (if known (string-join known ", ") "none"))))))
 
 (defun kittymacs-remote-rpc--server (backend)
-  "Return where BACKEND's distribution has its server, or nil."
-  (let ((default-directory temporary-file-directory))
+  "Return where BACKEND's machine has its server, or nil.
+Nil too where an `ssh-rpc' machine does not answer."
+  (let ((default-directory temporary-file-directory)
+        (command (format "command -v %s" (or (plist-get backend :server) "tramp-rpc-server"))))
     (with-temp-buffer
-      (when (eql 0 (apply #'call-process "wsl.exe" nil '(t nil) nil
-                          (kittymacs-remote-rpc--in-distribution
-                           (plist-get backend :host)
-                           (format "command -v %s"
-                                   (or (plist-get backend :server) "tramp-rpc-server")))))
+      (when (eql 0 (if (kittymacs-remote-rpc--ssh-p backend)
+                       (apply #'call-process "ssh" nil '(t nil) nil
+                              (kittymacs-remote-rpc--ssh-arguments backend command))
+                     (apply #'call-process "wsl.exe" nil '(t nil) nil
+                            (kittymacs-remote-rpc--in-distribution
+                             (plist-get backend :host) command))))
         (string-trim (buffer-string))))))
 
 (defun kittymacs-remote-rpc-report (backend)
@@ -185,9 +205,16 @@ person, with what to install for whichever is missing."
            (format "Server   %s\n" (or server "NOT FOUND"))
            (format "cat      %s\n\n" (or cat "NOT FOUND"))
            (unless server
-             (format "On that machine, with Nix:\n\n  nix profile install github:Mihir-Null/kittymacs#rpc-server\n\nOr with Rust 1.88 or later:\n\n  cargo install --locked --root ~/.local --git %s --rev %s tramp-rpc-server\n\nOr set `:server' on the backend, if it is installed where this PATH misses:\n\n  %s\n\n"
-                     kittymacs-remote-rpc-repository kittymacs-remote-rpc-revision
-                     (kittymacs-remote-rpc--path)))
+             (concat
+              (when (kittymacs-remote-rpc--ssh-p backend)
+                (format "Either it is missing there, or ssh did not answer: run %s in a terminal,\nwhich must log in with a key and ask nothing.\n\n"
+                        (kittymacs-remote-rpc--ssh-login backend)))
+              (format "On that machine, with Nix:\n\n  nix profile install github:Mihir-Null/kittymacs#rpc-server\n\nor, in its Home Manager or NixOS configuration, programs.kittymacs.backend.rpcServer = true.\n\nOr with Rust 1.88 or later:\n\n  cargo install --locked --root ~/.local --git %s --rev %s tramp-rpc-server\n\n"
+                      kittymacs-remote-rpc-repository kittymacs-remote-rpc-revision)
+              (if (kittymacs-remote-rpc--ssh-p backend)
+                  "Or set `:server' on the backend to its absolute path, if a command over ssh\ndoes not find it, such as /etc/profiles/per-user/USER/bin/tramp-rpc-server.\n\n"
+                (format "Or set `:server' on the backend, if it is installed where this PATH misses:\n\n  %s\n\n"
+                        (kittymacs-remote-rpc--path)))))
            (unless cat
              "Every process there runs a local cat, and tramp-rpc has no fallback.\nInstall Git for Windows, whose usr/bin has one, and restart Emacs.\n\n")))))
 
@@ -210,14 +237,52 @@ person, with what to install for whichever is missing."
   (advice-add 'server-visit-files :filter-args #'kittymacs--remote-rpc-own-names))
 (with-eval-after-load 'ghostel-shell
   (add-to-list 'ghostel-tramp-shells (list kittymacs-remote-wsl-rpc-method 'login-shell)))
+;;; ssh-rpc
+
+(defun kittymacs-remote-rpc--ssh-p (backend)
+  "Return non-nil if BACKEND uses the `ssh-rpc' transport."
+  (eq (plist-get backend :transport) 'ssh-rpc))
+
+(defun kittymacs-remote-rpc--ssh-vec-p (vec)
+  "Return non-nil if VEC is the machine that an `ssh-rpc' backend names.
+That is the same user, host and port, with no hop.  It never connects."
+  (and (equal (tramp-file-name-method vec) kittymacs-remote-wsl-rpc-method)
+       (not (tramp-file-name-hop vec))
+       (seq-some (lambda (backend)
+                   (and (kittymacs-remote-rpc--ssh-p (cdr backend))
+                        (let ((named (tramp-dissect-file-name
+                                      (kittymacs-remote--prefix (cdr backend)))))
+                          (and (equal (tramp-file-name-host vec) (tramp-file-name-host named))
+                               (equal (tramp-file-name-user vec) (tramp-file-name-user named))
+                               (equal (tramp-file-name-port vec) (tramp-file-name-port named))))))
+                 kittymacs-backends)))
+
+(defun kittymacs-remote-rpc--ssh-arguments (backend command)
+  "Return the arguments of `ssh' that run COMMAND on BACKEND's machine.
+It never asks for anything, and gives up on a machine silent for 10 s."
+  (let ((vec (tramp-dissect-file-name (kittymacs-remote--prefix backend))))
+    (append '("-o" "BatchMode=yes" "-o" "ConnectTimeout=10")
+            (when-let* ((user (tramp-file-name-user vec))) (list "-l" user))
+            (when-let* ((port (tramp-file-name-port vec))) (list "-p" (format "%s" port)))
+            (list (tramp-file-name-host vec) command))))
+
+(defun kittymacs-remote-rpc--ssh-login (backend)
+  "Return the `ssh' command line that logs in to BACKEND's machine, for a person."
+  (string-join (cons "ssh" (butlast (nthcdr 4 (kittymacs-remote-rpc--ssh-arguments backend nil))))
+               " "))
 (defun kittymacs-remote-rpc--file-p (file)
-  "Return non-nil if the name FILE is on a `wsl-rpc' backend's distribution.
+  "Return non-nil if the name FILE is on a `wsl-rpc' or `ssh-rpc' backend.
 This reads the name, and never connects."
-  (and (kittymacs-remote--wsl-distribution file)
-       (string-prefix-p (format "/%s:" kittymacs-remote-wsl-rpc-method) file)))
+  (and (stringp file)
+       (string-prefix-p (format "/%s:" kittymacs-remote-wsl-rpc-method) file)
+       (or (kittymacs-remote--wsl-distribution file)
+           (seq-some (lambda (backend)
+                       (and (kittymacs-remote-rpc--ssh-p (cdr backend))
+                            (string-prefix-p (kittymacs-remote--prefix (cdr backend)) file)))
+                     kittymacs-backends))))
 
 (defun kittymacs--remote-rpc-precious ()
-  "Have this save replace its file, if a `wsl-rpc' backend holds it.
+  "Have this save replace its file, if a `wsl-rpc' or `ssh-rpc' backend holds it.
 Not a symbolic link or a file with other names, which replacing would cut off."
   (when (kittymacs-remote-rpc--file-p buffer-file-name)
     (let ((attributes (file-attributes buffer-file-name)))

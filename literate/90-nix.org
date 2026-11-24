@@ -611,7 +611,7 @@ rec {
 
     backend.rpcServer = lib.mkEnableOption ''
       tramp-rpc-server, for a machine that another Emacs reaches with
-      `:transport wsl-rpc`.  It builds from source.  It installs beside the
+      `:transport wsl-rpc` or `ssh-rpc`.  It builds from source.  It installs beside the
       headless tools under `backend.enable`, and beside Emacs on a machine
       that runs kittymacs too
     '';
@@ -904,7 +904,7 @@ in
 :KITTYMACS_GENERATE: ../nix/tramp-rpc-server.nix
 :END:
 
-- =packages.<system>.rpc-server= is =tramp-rpc-server=, for [[id:4e8b1d76-3a95-4c20-b7f1-92c6d0e5a813][the wsl-rpc transport]], built from source at the revision its Lisp pins, because the two must match exactly, with no negotiation.
+- =packages.<system>.rpc-server= is =tramp-rpc-server=, for [[id:4e8b1d76-3a95-4c20-b7f1-92c6d0e5a813][the wsl-rpc transport]] and [[id:7a3f5c18-2e64-4b9d-8c01-d5e9b2f47a36][ssh-rpc]], built from source at the revision its Lisp pins, because the two must match exactly, with no negotiation.
 - It follows upstream's own =default.nix=, with =fetchFromGitHub= in place of its checkout, and =cargoHash= in place of =importCargoLock=, so evaluating it builds nothing.
 - Upstream's test suite stays off here, because it needs a Python and a shell of its own, and upstream's CI runs it.
 - [[file:../tests/kittymacs-remote-rpc-tests.el][A test]] fails when the Lisp's pin and this one differ, and [[file:../.github/workflows/rpc-server.yml][a hosted job]] builds it, then asks it =system.info= over its own protocol, because it has no =--version=.
@@ -937,7 +937,7 @@ rustPlatform.buildRustPackage {
   doCheck = false;
 
   meta = {
-    description = "The server behind kittymacs's wsl-rpc transport";
+    description = "The server behind kittymacs's wsl-rpc and ssh-rpc transports";
     homepage = "https://github.com/ArthurHeymans/emacs-tramp-rpc";
     license = lib.licenses.gpl3Plus;
     mainProgram = "tramp-rpc-server";

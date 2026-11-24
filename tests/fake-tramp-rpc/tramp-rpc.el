@@ -10,7 +10,9 @@
 
 (defvar tramp-rpc-use-controlmaster t)
 (defvar tramp-rpc-use-direct-ssh-pty t)
+(defvar tramp-rpc-ssh-options nil)
 (defvar tramp-rpc-fake-seen nil "What each function saw of the switches, newest first.")
+(defvar tramp-rpc-fake-ssh-options nil "The `tramp-rpc-ssh-options' the last connect saw.")
 
 (defun tramp-rpc--start-server-process (vec binary-path &optional _sudo-password)
   "Start the server on VEC at BINARY-PATH with `ssh', as the real one does."
@@ -20,6 +22,7 @@
 (defun tramp-rpc--connect (vec)
   "Record the switch `tramp-rpc--connect' reads, for VEC, and start the server."
   (push (list 'connect tramp-rpc-use-controlmaster) tramp-rpc-fake-seen)
+  (setq tramp-rpc-fake-ssh-options tramp-rpc-ssh-options)
   (tramp-rpc--start-server-process vec "tramp-rpc-server"))
 
 (defun tramp-rpc--caller-environment ()
