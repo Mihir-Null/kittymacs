@@ -49,7 +49,9 @@ directory such as /tmp would meet another user's files.")
 (defconst kittymacs-rpc-test-backends
   '(("wsl" :transport wsl-rpc :host "Fake-24.04" :root "~/src/")
     ("old" :transport wsl :host "Old-22.04" :root "~/src/")
-    ("far" :transport ssh :host "far" :root "/src/")))
+    ("far" :transport ssh :host "far" :root "/src/")
+    ("vm" :transport ssh-rpc :host "me@vm#2222" :root "~/src/")
+    ("mcm" :transport ssh-rpc :host "mcm" :root "~/src/")))
 
 (defun kittymacs-rpc-test--in-fresh-emacs (&rest forms)
   "Run FORMS in a new batch Emacs with the tests' `load-path', and return its last output."
@@ -68,14 +70,17 @@ directory such as /tmp would meet another user's files.")
         (car (last lines))))))
 
 (defmacro kittymacs-rpc-test--with-fakes (&rest body)
-  "Run BODY as on a machine with `wsl.exe', with nothing really started."
+  "Run BODY as on a machine with `wsl.exe' and `ssh', with nothing really started."
   (declare (indent 0))
   `(let ((kittymacs-backends kittymacs-rpc-test-backends)
          (exec-path (cons (make-temp-file "rpc-test-" t) exec-path)))
      (cl-letf* ((real-find (symbol-function 'executable-find))
                 ((symbol-function 'executable-find)
                  (lambda (name &rest rest)
-                   (if (equal name "wsl.exe") "C:/Windows/wsl.exe" (apply real-find name rest)))))
+                   (pcase name
+                     ("wsl.exe" "C:/Windows/wsl.exe")
+                     ("ssh" "C:/Windows/System32/OpenSSH/ssh.exe")
+                     (_ (apply real-find name rest))))))
        ,@body)))
 
 (defmacro kittymacs-rpc-test--with-module (&rest body)
@@ -453,6 +458,133 @@ That is `unset' if the hook left it alone, and it records any connecting."
     (should (equal (kittymacs--remote-rpc-own-names
                     '((("/wslm:Fake-24.04:/a" . (1 . 2))) proc t))
                    '((("/rpc:Fake-24.04:/a" . (1 . 2))) proc t)))))
+
+;;; ssh-rpc: upstream's own ssh, with Windows's limits
+
+(ert-deftest kittymacs-rpc-ssh-row-names-the-machine-on-the-rpc-method ()
+  (kittymacs-rpc-test--with-module
+    (should (equal (kittymacs-backend-root "mcm") "/rpc:mcm:~/src/"))
+    (should (equal (kittymacs-backend-root "vm") "/rpc:me@vm#2222:~/src/"))
+    (should (equal (kittymacs-remote--prefix '(:transport ssh-rpc :host "D")) "/rpc:D:"))))
+
+(ert-deftest kittymacs-rpc-ssh-row-needs-no-wsl-and-names-the-feature ()
+  (let ((kittymacs-backends kittymacs-rpc-test-backends))
+    (cl-letf (((symbol-function 'executable-find) #'ignore)
+              ((symbol-function 'featurep)
+               (lambda (feature &rest _) (not (eq feature 'kittymacs-remote-rpc)))))
+      (let ((failure (should-error (kittymacs-remote--ssh-rpc-root
+                                    'ssh-rpc '(:host "mcm" :root "/"))
+                                   :type 'user-error)))
+        (should (string-match-p "ssh-rpc transport needs the wsl-rpc feature" (cadr failure)))
+        (should (string-match-p ":transport sshx" (cadr failure)))))
+    (should-error (kittymacs-remote--ssh-rpc-root 'ssh-rpc '(:root "/")) :type 'user-error)))
+
+(ert-deftest kittymacs-rpc-ssh-machine-is-no-distribution ()
+  "Its /mnt/ is not Windows, and its terminal has no wsl.exe to run."
+  (let ((kittymacs-backends kittymacs-rpc-test-backends))
+    (should-not (kittymacs-remote--wsl-distribution "/rpc:mcm:/mnt/c/a"))
+    (should-not (kittymacs-remote--windows-file "/rpc:mcm:/mnt/c/a"))
+    (should-not (member "mcm" (kittymacs-remote--wsl-rpc-hosts)))
+    (should (equal (kittymacs-remote--wsl-rpc-hosts) '("Fake-24.04")))))
+
+(ert-deftest kittymacs-rpc-ssh-a-buffer-knows-its-backend ()
+  (let ((kittymacs-backends kittymacs-rpc-test-backends)
+        (default-directory "/"))
+    (cl-letf (((symbol-function 'file-remote-p) (lambda (&rest _) "/rpc:me@vm#2222:")))
+      (should (equal (kittymacs-remote--buffer-backend) "vm")))))
+
+(ert-deftest kittymacs-rpc-ssh-the-server-starts-over-upstream-s-ssh ()
+  (kittymacs-rpc-test--with-module
+    (should (equal (car (kittymacs-rpc-test--started-by "mcm")) "ssh"))
+    (should (equal (car (kittymacs-rpc-test--started-by "me@vm#2222")) "ssh"))))
+
+(ert-deftest kittymacs-rpc-ssh-switches-change-for-the-backend-s-machine-only ()
+  (kittymacs-rpc-test--with-module
+    (let ((tramp-rpc-ssh-options '("BatchMode=no" "Mine=1")))
+      (cl-letf (((symbol-function 'make-process) #'ignore))
+        (tramp-rpc--connect (tramp-dissect-file-name "/rpc:mcm:/"))
+        (should (equal (car tramp-rpc-fake-seen) '(connect nil)))
+        ;; Yours first, since ssh takes the first value; then BatchMode.
+        (should (equal tramp-rpc-fake-ssh-options '("BatchMode=no" "Mine=1" "BatchMode=yes")))
+        (tramp-rpc--connect (tramp-dissect-file-name "/rpc:me@vm#2222:/"))
+        (should (equal (car tramp-rpc-fake-seen) '(connect nil)))
+        ;; Another user, port or hop on the same host is not the backend.
+        (dolist (name '("/rpc:vm#2222:/" "/rpc:me@vm:/" "/rpc:other@mcm:/" "/rpc:far:/"))
+          (tramp-rpc--connect (tramp-dissect-file-name name))
+          (should (equal (car tramp-rpc-fake-seen) '(connect t)))
+          (should (equal tramp-rpc-fake-ssh-options '("BatchMode=no" "Mine=1"))))))
+    (tramp-rpc--make-pty-process (tramp-dissect-file-name "/rpc:mcm:/"))
+    (should (equal (car tramp-rpc-fake-seen) '(pty nil)))
+    (should-not (kittymacs-remote-rpc--ssh-vec-p
+                 (tramp-dissect-file-name "/rpc:mcm|rpc:mcm:/")))
+    (should (eq tramp-rpc-use-controlmaster t))
+    (should (eq tramp-rpc-use-direct-ssh-pty t))
+    (should-not tramp-rpc-ssh-options)))
+
+(ert-deftest kittymacs-rpc-ssh-a-save-replaces-the-file ()
+  (kittymacs-rpc-test--with-module
+    (should (eq t (kittymacs-rpc-test--precious-after "/rpc:mcm:/home/me/a" '(nil 1))))
+    (should (eq t (kittymacs-rpc-test--precious-after "/rpc:me@vm#2222:/home/me/a" '(nil 1))))
+    (should-not (kittymacs-rpc-test--precious-after "/rpc:mcm:/home/me/a" '("target" 1)))
+    (should (eq 'unset (kittymacs-rpc-test--precious-after "/rpc:vm#2222:/home/me/a" '(nil 1))))
+    (should (eq 'unset (kittymacs-rpc-test--precious-after "/ssh:mcm:/home/me/a" '(nil 1))))))
+
+(ert-deftest kittymacs-rpc-ssh-preflight-needs-ssh-here-and-not-wsl ()
+  (kittymacs-rpc-test--with-module
+    (setq kittymacs-rpc-test--calls nil)
+    (cl-letf (((symbol-function 'call-process) (kittymacs-rpc-test--wsl "" 1)))
+      (should-not (kittymacs-remote-rpc-preflight "mcm" '(:transport ssh-rpc :host "mcm")))
+      (should-not kittymacs-rpc-test--calls)
+      (cl-letf* ((real-find (symbol-function 'executable-find))
+                 ((symbol-function 'executable-find)
+                  (lambda (name &rest rest) (unless (equal name "ssh") (apply real-find name rest)))))
+        (should (string-match-p "no ssh"
+                                (cadr (should-error
+                                       (kittymacs-remote-rpc-preflight
+                                        "mcm" '(:transport ssh-rpc :host "mcm"))
+                                       :type 'user-error))))))))
+
+(ert-deftest kittymacs-rpc-ssh-the-doctor-asks-over-ssh-and-never-waits ()
+  (kittymacs-rpc-test--with-module
+    (setq kittymacs-rpc-test--calls nil)
+    (cl-letf (((symbol-function 'call-process) (kittymacs-rpc-test--wsl "/etc/profiles/per-user/me/bin/tramp-rpc-server\n" 0)))
+      (should (equal (kittymacs-remote-rpc--server '(:transport ssh-rpc :host "me@vm#2222"))
+                     "/etc/profiles/per-user/me/bin/tramp-rpc-server")))
+    (should (equal (car kittymacs-rpc-test--calls)
+                   '("ssh" "-o" "BatchMode=yes" "-o" "ConnectTimeout=10" "-l" "me" "-p" "2222"
+                     "vm" "command -v tramp-rpc-server")))
+    (setq kittymacs-rpc-test--calls nil)
+    (cl-letf (((symbol-function 'call-process) (kittymacs-rpc-test--wsl "" 0)))
+      (kittymacs-remote-rpc--server '(:transport ssh-rpc :host "mcm" :server "/opt/s")))
+    (should (equal (cdar kittymacs-rpc-test--calls)
+                   '("-o" "BatchMode=yes" "-o" "ConnectTimeout=10" "mcm" "command -v /opt/s")))))
+
+(ert-deftest kittymacs-rpc-ssh-the-report-says-what-to-run-there ()
+  (kittymacs-rpc-test--with-module
+    (cl-letf (((symbol-function 'call-process) (kittymacs-rpc-test--wsl "" 255)))
+      (let ((text (plist-get (kittymacs-remote-rpc-report '(:transport ssh-rpc :host "me@vm#2222"))
+                             :text)))
+        (should (string-search "run ssh -l me -p 2222 vm in a terminal" text))
+        (should (string-search "backend.rpcServer = true" text))
+        (should (string-search "/etc/profiles/per-user/USER/bin/tramp-rpc-server" text))
+        ;; The PATH a distribution's server is found on means nothing here.
+        (should-not (string-search "$HOME/.local/bin" text))))))
+
+(ert-deftest kittymacs-rpc-ssh-the-doctor-reports-processes-through-the-server ()
+  (kittymacs-rpc-test--with-module
+    (cl-letf (((symbol-function 'call-process)
+               (lambda (program _input destination _display &rest _)
+                 (should (equal program "ssh"))
+                 (when destination (insert "/nix/server\n"))
+                 0))
+              ((symbol-function 'kittymacs-remote--tools) (lambda (&rest _) '(("git" . "/bin/git"))))
+              ((symbol-function 'kittymacs-remote--apply-backend) #'ignore)
+              ((symbol-function 'file-directory-p) (lambda (&rest _) t)))
+      (should (equal (kittymacs-backend-doctor "mcm") '(("git" . "/bin/git"))))
+      (with-current-buffer "*kittymacs backend*"
+        (should (string-search "over ssh-rpc" (buffer-string)))
+        (should (string-search "Server   /nix/server" (buffer-string)))
+        (should (string-search "Processes start through tramp-rpc-server" (buffer-string)))))))
 
 ;;; The Nix package pairs with the Lisp, with no negotiation
 

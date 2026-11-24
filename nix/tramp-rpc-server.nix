@@ -24,7 +24,7 @@ rustPlatform.buildRustPackage {
   doCheck = false;
 
   meta = {
-    description = "The server behind kittymacs's wsl-rpc transport";
+    description = "The server behind kittymacs's wsl-rpc and ssh-rpc transports";
     homepage = "https://github.com/ArthurHeymans/emacs-tramp-rpc";
     license = lib.licenses.gpl3Plus;
     mainProgram = "tramp-rpc-server";
